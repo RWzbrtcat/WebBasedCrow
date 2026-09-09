@@ -1012,7 +1012,6 @@ CMakeFiles/task_server.dir/src/main.cpp.o: /home/wb/projects/WebBasedCrow/src/ma
   /usr/include/c++/12/bits/this_thread_sleep.h \
   /home/wb/projects/WebBasedCrow/Crow/include/crow/http_response.h \
   /home/wb/projects/WebBasedCrow/Crow/include/crow/mime_types.h \
-  /home/wb/projects/WebBasedCrow/Crow/include/crow/tcp_socket_options.h \
   /home/wb/projects/WebBasedCrow/Crow/include/crow/TinySHA1.hpp \
   /home/wb/projects/WebBasedCrow/Crow/include/crow/parser.h \
   /home/wb/projects/WebBasedCrow/Crow/include/crow/multipart.h \
@@ -1063,8 +1062,6 @@ CMakeFiles/task_server.dir/src/main.cpp.o: /home/wb/projects/WebBasedCrow/src/ma
 /home/wb/projects/WebBasedCrow/Crow/include/crow/compression.h:
 
 /home/wb/projects/WebBasedCrow/Crow/include/crow/middleware.h:
-
-/home/wb/projects/WebBasedCrow/Crow/include/crow/tcp_socket_options.h:
 
 /usr/include/c++/12/optional:
 

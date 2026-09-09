@@ -7,6 +7,8 @@
 #include <sstream>
 #include <iostream>
 #include <cstring>
+#include <unistd.h>
+#include <limits.h>
 
 
 // DataBase 类：封装所有 MySQL 操作
@@ -101,12 +103,12 @@ public:
 		checkConnection();
 
 		crow::json::wvalue result;
-		std::vector<crow::json::wvalue> tasks;
+		// std::vector<crow::json::wvalue> tasks;
 
 		const char* sql = R"(
 			SELECT id, title, description, priority, completed, created_at 
 			FROM tasks 
-			ORDERED BY id DESC
+			ORDER BY id DESC
 		)";
 
 		if (mysql_query(conn_, sql) != 0)
@@ -121,6 +123,7 @@ public:
 		if (res)
 		{
 			MYSQL_ROW row;
+			int index = 0;
 			while ((row = mysql_fetch_row(res)))
 			{
 				crow::json::wvalue task;
@@ -130,12 +133,14 @@ public:
 				task["priority"] = std::stoi(row[3]);
 				task["completed"] = (std::stoi(row[4]) == 1);
 				task["created_at"] = row[5] ? row[5] : "";
-				tasks.push_back(std::move(task));
+				// tasks.push_back(std::move(task));
+
+				result["tasks"][index++] = std::move(task);
 			}
 			mysql_free_result(res);
 		}
 
-		result["tasks"] = std::move(tasks);
+		// result["tasks"] = std::move(tasks);
 		result["success"] = true;
 		return result;
 	}
@@ -179,7 +184,7 @@ public:
 		// 参数 2 - decription 字符串
 		bind[1].buffer_type = MYSQL_TYPE_STRING;
 		bind[1].buffer = (void*)desc.c_str();
-		bind[1].buffer_length = title.length();
+		bind[1].buffer_length = desc.length();
 
 		// 参数 3 - priority
 		bind[2].buffer_type = MYSQL_TYPE_LONG;
@@ -217,7 +222,7 @@ public:
 		if (!stmt)
 		{
 			result["success"] = false;
-			result["messgae"] = "mysql_stmt_init 失败";
+			result["message"] = "mysql_stmt_init 失败";
 			return result;
 		}
 
@@ -225,7 +230,7 @@ public:
 		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
 		{
 			result["success"] = false;
-			result["messgae"] = mysql_stmt_error(stmt);
+			result["message"] = mysql_stmt_error(stmt);
 			mysql_stmt_close(stmt);
 			return result;
 		}
@@ -255,7 +260,7 @@ public:
 		if (mysql_stmt_execute(stmt) != 0)
 		{
 			result["success"] = false;
-			result["messgae"] = mysql_stmt_error(stmt);
+			result["message"] = mysql_stmt_error(stmt);
 		}
 		else
 		{
@@ -265,7 +270,7 @@ public:
 		}
 
 		mysql_stmt_close(stmt);
-		return stmt;
+		return result;
 	}
 
 	// 删除任务
@@ -283,7 +288,7 @@ public:
 			return result;
 		}
 
-		const char* sql = "DELETE FROM tasks WHRER id=?";
+		const char* sql = "DELETE FROM tasks WHERE id=?";
 		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
 		{
 			result["success"] = false;
@@ -339,7 +344,7 @@ public:
 				mysql_free_result(res);
 			}
 			result["success"] = false;
-			result["messgae"] = "任务不存在";
+			result["message"] = "任务不存在";
 			return result;
 		}
 
@@ -377,6 +382,23 @@ std::string readFile(const std::string& path)
 	std::stringstream buffer;
 	buffer << file.rdbuf();
 	return buffer.str();
+}
+
+// 获取 static 目录的绝对路径（基于可执行文件位置，避免依赖启动目录）
+std::string getStaticDir()
+{
+	char buf[PATH_MAX];
+	ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+	if (len == -1)
+	{
+		return "static";
+	}
+	buf[len] = '\0';
+	std::string exe(buf);
+	size_t pos = exe.find_last_of('/');
+	std::string binDir = (pos == std::string::npos) ? "." : exe.substr(0, pos);
+	// 可执行文件位于 <root>/bin/，static 目录位于 <root>/static
+	return binDir + "/../static";
 }
 
 
@@ -482,25 +504,28 @@ int main()
 
 		// 静态文件服务
 
+		std::string staticDir = getStaticDir();
+		std::cout << "[Static] 静态文件目录: " << staticDir << std::endl;
+
 		// 根路径返回首页
-		CROW_ROUTE(app, "/")([](){
-			auto content = readFile("static/index.html");
+		CROW_ROUTE(app, "/")([staticDir](){
+			auto content = readFile(staticDir + "/index.html");
 			crow::response res(content);
 			res.add_header("Content-Type", "text/html; charset=utf8mb4");
 			return res;
 		});
 
 		// CSS 文件
-		CROW_ROUTE(app, "/css/<string>")([](std::string filename){
-			auto content = readFile("static/css/" + filename);
+		CROW_ROUTE(app, "/css/<string>")([staticDir](std::string filename){
+			auto content = readFile(staticDir + "/css/" + filename);
 			crow::response res(content);
 			res.add_header("Content-Type", "text/css; charset=utf8mb4");
 			return res;
 		});
 
 		// JS 文件
-		CROW_ROUTE(app, "/js/<string>")([](std::string filename){
-			auto content = readFile("static/js/" + filename);
+		CROW_ROUTE(app, "/js/<string>")([staticDir](std::string filename){
+			auto content = readFile(staticDir + "/js/" + filename);
 			crow::response res(content);
 			res.add_header("Content-Type", "application/javascript; charset=utf8mb4");
 			return res;
