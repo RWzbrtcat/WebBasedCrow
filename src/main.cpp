@@ -103,7 +103,7 @@ public:
 		checkConnection();
 
 		crow::json::wvalue result;
-		// std::vector<crow::json::wvalue> tasks;
+		std::vector<crow::json::wvalue> tasks;
 
 		const char* sql = R"(
 			SELECT id, title, description, priority, completed, created_at 
@@ -123,7 +123,6 @@ public:
 		if (res)
 		{
 			MYSQL_ROW row;
-			int index = 0;
 			while ((row = mysql_fetch_row(res)))
 			{
 				crow::json::wvalue task;
@@ -133,14 +132,12 @@ public:
 				task["priority"] = std::stoi(row[3]);
 				task["completed"] = (std::stoi(row[4]) == 1);
 				task["created_at"] = row[5] ? row[5] : "";
-				// tasks.push_back(std::move(task));
-
-				result["tasks"][index++] = std::move(task);
+				tasks.push_back(std::move(task));
 			}
 			mysql_free_result(res);
 		}
 
-		// result["tasks"] = std::move(tasks);
+		result["tasks"] = std::move(tasks);
 		result["success"] = true;
 		return result;
 	}
