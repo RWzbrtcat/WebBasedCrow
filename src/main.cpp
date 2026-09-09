@@ -351,7 +351,7 @@ public:
 
 		// 取反
 		int newstatus = (current == 1) ? 0 : 1;
-		std::string update = "UPDATE tasks SET completed=" + std::to_string(newstatus) + "WHERE id=" + std::to_string(id);
+		std::string update = "UPDATE tasks SET completed=" + std::to_string(newstatus) + " WHERE id=" + std::to_string(id);
 
 		if (mysql_query(conn_, update.c_str()) != 0)
 		{
