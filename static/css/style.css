@@ -133,6 +133,44 @@ a {
     margin-bottom: 28px;
 }
 
+/* ========== 主题标签页 ========== */
+.topic-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: -8px 0 24px;
+}
+
+.topic-tab {
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    font-family: var(--sans);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.topic-tab:hover {
+    color: var(--text);
+    border-color: var(--text-muted);
+}
+
+.topic-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+}
+
+.topic-count {
+    font-size: 0.78rem;
+    opacity: 0.7;
+    margin-left: 2px;
+}
+
 /* ========== 文章列表 ========== */
 .post-list {
     display: flex;
@@ -174,6 +212,17 @@ a {
 
 .post-meta .sep {
     color: var(--border);
+}
+
+.post-topic {
+    display: inline-block;
+    padding: 1px 9px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 10px;
 }
 
 .post-excerpt {

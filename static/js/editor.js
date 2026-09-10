@@ -119,6 +119,7 @@ async function loadForEdit(id) {
         document.getElementById('editorTitle').textContent = '编辑文章';
         document.getElementById('title').value = post.title;
         document.getElementById('author').value = post.author || '';
+        document.getElementById('topic').value = post.topic || '';
         document.getElementById('content').value = post.content || '';
         document.getElementById('submitBtn').textContent = '保存';
         document.title = `编辑 · ${post.title}`;
@@ -133,6 +134,7 @@ async function handleSubmit(e) {
 
     const title = document.getElementById('title').value.trim();
     const author = document.getElementById('author').value.trim() || '匿名';
+    const topic = document.getElementById('topic').value.trim();
     const content = document.getElementById('content').value;
 
     if (!title) {
@@ -147,7 +149,7 @@ async function handleSubmit(e) {
     try {
         const url = editingId ? `${API_BASE}/posts/${editingId}` : `${API_BASE}/posts`;
         const method = editingId ? 'PUT' : 'POST';
-        const data = await apiRequest(url, method, { title, author, content });
+        const data = await apiRequest(url, method, { title, author, topic, content });
 
         if (data.success) {
             showToast(editingId ? '✏️ 文章已保存' : '✅ 文章发布成功');

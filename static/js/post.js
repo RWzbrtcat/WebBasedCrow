@@ -49,10 +49,16 @@ function renderPost(post) {
         ? `<span class="sep">·</span><span>更新于 ${formatDate(post.updated_at)}</span>`
         : '';
 
+    const topic = (post.topic || '').trim();
+    const topicBadge = topic
+        ? `<span class="post-topic">${escapeHtml(topic)}</span>`
+        : '';
+
     document.getElementById('postDetail').innerHTML = `
         <article class="post-full">
             <h1 class="post-title">${escapeHtml(post.title)}</h1>
             <div class="post-meta">
+                ${topicBadge}
                 <span>${escapeHtml(post.author || '匿名')}</span>
                 <span class="sep">·</span>
                 <span>${formatDate(post.created_at)}</span>

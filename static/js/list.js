@@ -4,7 +4,23 @@
 
 const API_BASE = '/api';
 
-document.addEventListener('DOMContentLoaded', loadPosts);
+// 全部文章数据 + 当前选中的主题（'all' 表示全部）
+let allPosts = [];
+let currentTopic = 'all';
+let topicsList = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadPosts();
+
+    document.getElementById('topicTabs').addEventListener('click', (e) => {
+        const btn = e.target.closest('.topic-tab');
+        if (!btn) return;
+        const idx = btn.dataset.index;
+        currentTopic = idx === '-1' ? 'all' : topicsList[Number(idx)];
+        renderTopicTabs(allPosts);
+        renderPosts(allPosts);
+    });
+});
 
 async function apiRequest(url, method = 'GET', body = null) {
     const options = { method, headers: { 'Content-Type': 'application/json' } };
@@ -22,7 +38,9 @@ async function loadPosts() {
     try {
         const data = await apiRequest(`${API_BASE}/posts`);
         if (data.success) {
-            renderPosts(data.posts);
+            allPosts = data.posts || [];
+            renderTopicTabs(allPosts);
+            renderPosts(allPosts);
         } else {
             list.innerHTML = `<div class="empty-state"><p>❌ ${escapeHtml(data.message || '加载失败')}</p></div>`;
         }
@@ -36,36 +54,77 @@ async function loadPosts() {
     }
 }
 
+// 顶部主题标签页
+function renderTopicTabs(posts) {
+    const container = document.getElementById('topicTabs');
+    topicsList = [...new Set(posts.map(p => (p.topic || '').trim()).filter(Boolean))];
+
+    if (topicsList.length === 0) {
+        container.innerHTML = '';
+        container.style.display = 'none';
+        return;
+    }
+    container.style.display = 'flex';
+
+    let html = `<button class="topic-tab${currentTopic === 'all' ? ' active' : ''}" data-index="-1">全部文章 <span class="topic-count">${posts.length}</span></button>`;
+
+    topicsList.forEach((t, i) => {
+        const count = posts.filter(p => (p.topic || '').trim() === t).length;
+        html += `<button class="topic-tab${currentTopic === t ? ' active' : ''}" data-index="${i}">${escapeHtml(t)} <span class="topic-count">${count}</span></button>`;
+    });
+
+    container.innerHTML = html;
+}
+
 function renderPosts(posts) {
     const list = document.getElementById('postList');
 
-    if (!posts.length) {
-        list.innerHTML = `
-            <div class="empty-state">
-                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                    <line x1="12" y1="18" x2="12" y2="12"/>
-                    <line x1="9" y1="15" x2="15" y2="15"/>
-                </svg>
-                <p>还没有文章，点击右上角「写文章」开始创作吧！</p>
-            </div>
-        `;
+    const filtered = currentTopic === 'all'
+        ? posts
+        : posts.filter(p => (p.topic || '').trim() === currentTopic);
+
+    if (!filtered.length) {
+        if (currentTopic === 'all') {
+            list.innerHTML = `
+                <div class="empty-state">
+                    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="12" y1="18" x2="12" y2="12"/>
+                        <line x1="9" y1="15" x2="15" y2="15"/>
+                    </svg>
+                    <p>还没有文章，点击右上角「写文章」开始创作吧！</p>
+                </div>
+            `;
+        } else {
+            list.innerHTML = `
+                <div class="empty-state">
+                    <p>该主题下还没有文章</p>
+                </div>
+            `;
+        }
         return;
     }
 
-    list.innerHTML = posts.map(post => `
-        <article class="post-card">
-            <h2 class="post-title"><a href="/post?id=${post.id}">${escapeHtml(post.title)}</a></h2>
-            <div class="post-meta">
-                <span>${escapeHtml(post.author || '匿名')}</span>
-                <span class="sep">·</span>
-                <span>${formatDate(post.created_at)}</span>
-            </div>
-            <p class="post-excerpt">${escapeHtml(makeExcerpt(post.content))}</p>
-            <a class="read-more" href="/post?id=${post.id}">阅读全文 →</a>
-        </article>
-    `).join('');
+    list.innerHTML = filtered.map(post => {
+        const topic = (post.topic || '').trim();
+        const topicBadge = topic
+            ? `<span class="post-topic">${escapeHtml(topic)}</span>`
+            : '';
+        return `
+            <article class="post-card">
+                <h2 class="post-title"><a href="/post?id=${post.id}">${escapeHtml(post.title)}</a></h2>
+                <div class="post-meta">
+                    ${topicBadge}
+                    <span>${escapeHtml(post.author || '匿名')}</span>
+                    <span class="sep">·</span>
+                    <span>${formatDate(post.created_at)}</span>
+                </div>
+                <p class="post-excerpt">${escapeHtml(makeExcerpt(post.content))}</p>
+                <a class="read-more" href="/post?id=${post.id}">阅读全文 →</a>
+            </article>
+        `;
+    }).join('');
 }
 
 function makeExcerpt(content) {
