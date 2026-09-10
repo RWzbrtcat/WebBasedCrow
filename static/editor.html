@@ -22,7 +22,7 @@
     </header>
 
     <!-- 主体 -->
-    <main class="container">
+    <main class="container container-editor">
         <div class="editor-card">
             <h1 id="editorTitle">写文章</h1>
             <form id="postForm">
@@ -35,8 +35,17 @@
                     <input type="text" id="author" placeholder="作者名（留空默认为「匿名」）">
                 </div>
                 <div class="form-group">
-                    <label for="content">正文</label>
-                    <textarea id="content" placeholder="写下你的内容..."></textarea>
+                    <label for="content">正文（支持 Markdown 语法）</label>
+                    <div class="markdown-editor">
+                        <div class="markdown-editor-pane markdown-editor-input">
+                            <div class="pane-label">Markdown 编辑</div>
+                            <textarea id="content" placeholder="使用 Markdown 语法写下你的内容，例如：# 标题、**加粗**、- 列表、```代码块```..."></textarea>
+                        </div>
+                        <div class="markdown-editor-pane markdown-editor-preview">
+                            <div class="pane-label">预览</div>
+                            <div id="preview" class="markdown-body"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary" id="submitBtn">发布</button>
@@ -46,6 +55,9 @@
         </div>
     </main>
 
+    <script src="/js/marked.min.js"></script>
+    <script src="/js/purify.min.js"></script>
+    <script src="/js/markdown.js"></script>
     <script src="/js/editor.js"></script>
 </body>
 </html>

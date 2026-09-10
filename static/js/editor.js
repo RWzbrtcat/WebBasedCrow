@@ -8,10 +8,17 @@ const API_BASE = '/api';
 let editingId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    const contentInput = document.getElementById('content');
+
+    // 输入时实时刷新预览
+    contentInput.addEventListener('input', updatePreview);
+
     const id = new URLSearchParams(window.location.search).get('id');
     if (id) {
         editingId = id;
         loadForEdit(id);
+    } else {
+        updatePreview();
     }
 
     document.getElementById('postForm').addEventListener('submit', handleSubmit);
@@ -24,6 +31,19 @@ async function apiRequest(url, method = 'GET', body = null) {
     const response = await fetch(url, options);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.json();
+}
+
+// 刷新右侧预览
+function updatePreview() {
+    const text = document.getElementById('content').value;
+    const preview = document.getElementById('preview');
+    const html = renderMarkdown(text);
+
+    if (!text.trim()) {
+        preview.innerHTML = '<p class="empty-preview">暂无内容，开始输入以预览效果…</p>';
+        return;
+    }
+    preview.innerHTML = html;
 }
 
 async function loadForEdit(id) {
@@ -40,6 +60,7 @@ async function loadForEdit(id) {
         document.getElementById('content').value = post.content || '';
         document.getElementById('submitBtn').textContent = '保存';
         document.title = `编辑 · ${post.title}`;
+        updatePreview();
     } catch (e) {
         showToast('加载文章失败，请稍后重试', 'error');
     }

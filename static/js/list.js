@@ -69,9 +69,29 @@ function renderPosts(posts) {
 }
 
 function makeExcerpt(content) {
-    const text = (content || '').trim().replace(/\s+/g, ' ');
+    const text = stripMarkdown(content || '');
     if (text.length <= 120) return text;
     return text.slice(0, 120) + '…';
+}
+
+// 去掉 Markdown 语法标记，生成纯文本摘要
+function stripMarkdown(md) {
+    return md
+        .replace(/```[\s\S]*?```/g, ' ')      // 代码块
+        .replace(/`[^`]*`/g, ' ')             // 行内代码
+        .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1') // 图片
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')  // 链接
+        .replace(/^#{1,6}\s+/gm, '')          // 标题
+        .replace(/^\s*>\s?/gm, '')            // 引用
+        .replace(/^\s*[-*+]\s+/gm, '')        // 无序列表
+        .replace(/^\s*\d+\.\s+/gm, '')        // 有序列表
+        .replace(/\*\*([^*]+)\*\*/g, '$1')    // 加粗
+        .replace(/__([^_]+)__/g, '$1')        // 加粗
+        .replace(/\*([^*]+)\*/g, '$1')        // 斜体
+        .replace(/_([^_]+)_/g, '$1')          // 斜体
+        .replace(/~~([^~]+)~~/g, '$1')        // 删除线
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 function escapeHtml(text) {
