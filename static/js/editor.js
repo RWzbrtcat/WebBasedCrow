@@ -13,6 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // 输入时实时刷新预览
     contentInput.addEventListener('input', updatePreview);
 
+    // 工具栏按钮
+    document.getElementById('markdownToolbar').addEventListener('click', (e) => {
+        const btn = e.target.closest('.md-btn');
+        if (!btn) return;
+        applyMarkdown(btn.dataset.action);
+    });
+
     const id = new URLSearchParams(window.location.search).get('id');
     if (id) {
         editingId = id;
@@ -37,13 +44,68 @@ async function apiRequest(url, method = 'GET', body = null) {
 function updatePreview() {
     const text = document.getElementById('content').value;
     const preview = document.getElementById('preview');
-    const html = renderMarkdown(text);
 
     if (!text.trim()) {
         preview.innerHTML = '<p class="empty-preview">暂无内容，开始输入以预览效果…</p>';
         return;
     }
-    preview.innerHTML = html;
+    renderMarkdownInto(preview, text);
+}
+
+// 工具栏动作定义
+const TOOLBAR_ACTIONS = {
+    bold:      { prefix: '**', suffix: '**', placeholder: '加粗文本' },
+    italic:    { prefix: '*',  suffix: '*',  placeholder: '斜体文本' },
+    strike:    { prefix: '~~', suffix: '~~', placeholder: '删除线文本' },
+    heading:   { prefix: '## ', suffix: '', placeholder: '标题', block: true },
+    quote:     { prefix: '> ',  suffix: '', placeholder: '引用内容', block: true },
+    ul:        { prefix: '- ',  suffix: '', placeholder: '列表项', block: true },
+    ol:        { prefix: '1. ', suffix: '', placeholder: '列表项', block: true },
+    code:      { prefix: '`',  suffix: '`',  placeholder: '代码' },
+    codeblock: { prefix: '```\n', suffix: '\n```', placeholder: '代码块' },
+    link:      { type: 'link',  placeholder: '链接文字' },
+    image:     { type: 'image', placeholder: '图片描述' }
+};
+
+// 在光标处插入 / 包裹选中文本
+function applyMarkdown(actionName) {
+    const action = TOOLBAR_ACTIONS[actionName];
+    if (!action) return;
+
+    const ta = document.getElementById('content');
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = ta.value.slice(start, end);
+
+    let prefix = action.prefix || '';
+    let suffix = action.suffix || '';
+
+    // 链接 / 图片：弹窗获取地址
+    if (action.type === 'link' || action.type === 'image') {
+        const url = prompt('请输入链接地址：', 'https://');
+        if (url === null) return; // 用户取消
+        prefix = action.type === 'image' ? '![' : '[';
+        suffix = '](' + url + ')';
+    }
+
+    const text = selected || action.placeholder || '';
+    let selStart, selEnd;
+
+    if (action.block) {
+        // 块级：在光标所在行行首插入前缀
+        const lineStart = ta.value.lastIndexOf('\n', start - 1) + 1;
+        ta.value = ta.value.slice(0, lineStart) + prefix + text + suffix + ta.value.slice(end);
+        selStart = lineStart + prefix.length;
+        selEnd = selStart + text.length;
+    } else {
+        ta.value = ta.value.slice(0, start) + prefix + text + suffix + ta.value.slice(end);
+        selStart = start + prefix.length;
+        selEnd = selStart + text.length;
+    }
+
+    ta.focus();
+    ta.setSelectionRange(selStart, selEnd);
+    updatePreview();
 }
 
 async function loadForEdit(id) {

@@ -400,10 +400,58 @@ a {
     max-width: 1200px;
 }
 
+.markdown-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    background: #f6f5f2;
+}
+
+.md-btn {
+    padding: 5px 11px;
+    font-size: 0.85rem;
+    font-family: var(--sans);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.md-btn:hover {
+    color: var(--text);
+    border-color: var(--text-muted);
+}
+
+.md-btn:active {
+    background: var(--accent-soft);
+}
+
+.md-btn-bold {
+    font-weight: 700;
+}
+
+.md-btn-italic {
+    font-style: italic;
+    font-family: var(--serif);
+}
+
+.md-divider {
+    width: 1px;
+    background: var(--border);
+    margin: 2px 4px;
+    align-self: stretch;
+}
+
 .markdown-editor {
     display: flex;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 0 0 8px 8px;
     overflow: hidden;
     min-height: 520px;
 }
@@ -565,6 +613,14 @@ a {
     padding: 0;
     border-radius: 0;
     font-size: 0.88em;
+}
+
+/* 语法高亮：去掉 highlight 主题自带的背景与内边距，保持代码块整体深色风格 */
+.markdown-body pre code.hljs {
+    background: transparent;
+    padding: 0;
+    color: #e5e7eb;
+    overflow-x: visible;
 }
 
 .markdown-body img {

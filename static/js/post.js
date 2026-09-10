@@ -58,7 +58,7 @@ function renderPost(post) {
                 <span>${formatDate(post.created_at)}</span>
                 ${updated}
             </div>
-            <div class="post-content markdown-body">${renderMarkdown(post.content)}</div>
+            <div class="post-content markdown-body" id="postContent"></div>
             <div class="post-actions">
                 <a class="btn btn-secondary" href="/">← 返回列表</a>
                 <a class="btn btn-primary" href="/editor?id=${post.id}">编辑</a>
@@ -66,6 +66,8 @@ function renderPost(post) {
             </div>
         </article>
     `;
+
+    renderMarkdownInto(document.getElementById('postContent'), post.content);
 }
 
 function showNotFound(msg) {

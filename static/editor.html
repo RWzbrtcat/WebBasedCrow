@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>写文章 · 我的博客</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/highlight.css">
 </head>
 <body>
     <!-- 站点头部 -->
@@ -36,6 +37,21 @@
                 </div>
                 <div class="form-group">
                     <label for="content">正文（支持 Markdown 语法）</label>
+                    <div class="markdown-toolbar" id="markdownToolbar">
+                        <button type="button" class="md-btn md-btn-bold" data-action="bold" title="加粗">加粗</button>
+                        <button type="button" class="md-btn md-btn-italic" data-action="italic" title="斜体">斜体</button>
+                        <button type="button" class="md-btn" data-action="strike" title="删除线">删除线</button>
+                        <span class="md-divider"></span>
+                        <button type="button" class="md-btn" data-action="heading" title="二级标题">标题</button>
+                        <button type="button" class="md-btn" data-action="quote" title="引用">引用</button>
+                        <button type="button" class="md-btn" data-action="ul" title="无序列表">无序列表</button>
+                        <button type="button" class="md-btn" data-action="ol" title="有序列表">有序列表</button>
+                        <span class="md-divider"></span>
+                        <button type="button" class="md-btn" data-action="code" title="行内代码">行内代码</button>
+                        <button type="button" class="md-btn" data-action="codeblock" title="代码块">代码块</button>
+                        <button type="button" class="md-btn" data-action="link" title="插入链接">链接</button>
+                        <button type="button" class="md-btn" data-action="image" title="插入图片">插入图片</button>
+                    </div>
                     <div class="markdown-editor">
                         <div class="markdown-editor-pane markdown-editor-input">
                             <div class="pane-label">Markdown 编辑</div>
@@ -57,6 +73,7 @@
 
     <script src="/js/marked.min.js"></script>
     <script src="/js/purify.min.js"></script>
+    <script src="/js/highlight.min.js"></script>
     <script src="/js/markdown.js"></script>
     <script src="/js/editor.js"></script>
 </body>
