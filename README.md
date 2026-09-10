@@ -31,9 +31,17 @@ sudo make install
 
 - 主分支 - 任务管理器
 
-- 子分支(dev-blog) - 用于博客网站的编写
+- 子分支(dev-blog) - 博客网站（文章列表 / 详情 / 新建编辑 / 删除）
 
-## 2.1 编译安装
+## 2.1 数据库准备
+
+dev-blog 分支使用 `blogdb` 数据库，表名为 `posts`（启动时会自动建表）：
+
+```sql
+CREATE DATABASE IF NOT EXISTS blogdb DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+## 2.2 编译安装
 
 ```bash
 cd build

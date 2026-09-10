@@ -12,29 +12,28 @@
 
 
 // DataBase 类：封装所有 MySQL 操作
-// 使用 RALL 管理连接，使用 mutex 保证线程安全
-
-
+// 使用 RAII 管理连接，使用 mutex 保证线程安全
 class DataBase
 {
 	MYSQL* conn_ = nullptr; // MySQL 连接句柄
-	std::mutex mtx_;  // 互斥锁，保证多线程访问
+	std::mutex mtx_;        // 互斥锁，保证多线程访问
 	std::string host_, user_, pass_, db_;
 	unsigned int port_;
 
 public:
 	// 构造函数 - 建立连接并初始化表
 	DataBase(const std::string& host, const std::string& user, const std::string& pass,
-					const std::string db, unsigned int port = 3306) : host_(host), user_(user), pass_(pass), db_(db), port_(port)
+			 const std::string db, unsigned int port = 3306)
+		: host_(host), user_(user), pass_(pass), db_(db), port_(port)
 	{
-		connect(); // 建立连接
+		connect();   // 建立连接
 		initTable(); // 创建表（如果表不存在）
 	}
 
 	// 析构函数 - 释放连接
 	~DataBase()
 	{
-		if (conn_) 
+		if (conn_)
 		{
 			mysql_close(conn_);
 		}
@@ -50,42 +49,44 @@ public:
 			throw std::runtime_error("mysql_init 失败!");
 		}
 
-		// 设置字符集为 utf8mb4，支持中文和emoji
+		// 设置字符集为 utf8mb4，支持中文和 emoji
 		mysql_options(conn_, MYSQL_SET_CHARSET_NAME, "utf8mb4");
 
 		// 建立连接
 		if (!mysql_real_connect(conn_, host_.c_str(), user_.c_str(), pass_.c_str(), db_.c_str(), port_, nullptr, 0))
 		{
-			std::string err = "MySQL 连接失败!";
+			std::string err = "MySQL 连接失败! ";
 			err += mysql_error(conn_);
 			mysql_close(conn_);
 			conn_ = nullptr;
 			throw std::runtime_error(err);
 		}
 
-		std::cout << "[DB]已连接到 Mysql: " << host_ << ":" << port_ << std::endl;
+		std::cout << "[DB] 已连接到 Mysql: " << host_ << ":" << port_ << std::endl;
 	}
 
 	// 检查连接是否存活，如果断开则重连
-    void checkConnection() {
-        if (mysql_ping(conn_) != 0) {
-            std::cerr << "[DB] 连接断开，正在重连..." << std::endl;
-            mysql_close(conn_);
-            connect();
-        }
-    }
+	void checkConnection()
+	{
+		if (mysql_ping(conn_) != 0)
+		{
+			std::cerr << "[DB] 连接断开，正在重连..." << std::endl;
+			mysql_close(conn_);
+			connect();
+		}
+	}
 
 	// 初始化数据表
 	void initTable()
 	{
 		const char* sql = R"(
-			CREATE TABLE IF NOT EXISTS tasks(
+			CREATE TABLE IF NOT EXISTS posts(
 				id INT AUTO_INCREMENT PRIMARY KEY,
-				title VARCHAR(255) NOT NULL COMMENT '任务标题',
-				description TEXT COMMENT '任务描述',
-				priority INT DEFAULT 2 COMMENT '1=高 2=中 3=低',
-				completed TINYINT DEFAULT 0 COMMENT '0=未完成 1=已完成',
-				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				title VARCHAR(255) NOT NULL COMMENT '文章标题',
+				content TEXT COMMENT '文章正文',
+				author VARCHAR(100) DEFAULT '匿名' COMMENT '作者',
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
 			)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 		)";
 
@@ -95,19 +96,18 @@ public:
 		}
 	}
 
-
-	// 获取所有任务
-	crow::json::wvalue getAllTask()
+	// 获取所有文章
+	crow::json::wvalue getAllPosts()
 	{
 		std::lock_guard<std::mutex> lock(mtx_);
 		checkConnection();
 
 		crow::json::wvalue result;
-		std::vector<crow::json::wvalue> tasks;
+		std::vector<crow::json::wvalue> posts;
 
 		const char* sql = R"(
-			SELECT id, title, description, priority, completed, created_at 
-			FROM tasks 
+			SELECT id, title, content, author, created_at, updated_at
+			FROM posts
 			ORDER BY id DESC
 		)";
 
@@ -118,39 +118,79 @@ public:
 			return result;
 		}
 
-		// 获取查询结果
 		MYSQL_RES* res = mysql_store_result(conn_);
 		if (res)
 		{
 			MYSQL_ROW row;
 			while ((row = mysql_fetch_row(res)))
 			{
-				crow::json::wvalue task;
-				task["id"] = std::stoi(row[0]);
-				task["title"] = row[1] ? row[1] : "";
-				task["description"] = row[2] ? row[2] : "";
-				task["priority"] = std::stoi(row[3]);
-				task["completed"] = (std::stoi(row[4]) == 1);
-				task["created_at"] = row[5] ? row[5] : "";
-				tasks.push_back(std::move(task));
+				crow::json::wvalue post;
+				post["id"] = std::stoi(row[0]);
+				post["title"] = row[1] ? row[1] : "";
+				post["content"] = row[2] ? row[2] : "";
+				post["author"] = row[3] ? row[3] : "";
+				post["created_at"] = row[4] ? row[4] : "";
+				post["updated_at"] = row[5] ? row[5] : "";
+				posts.push_back(std::move(post));
 			}
 			mysql_free_result(res);
 		}
 
-		result["tasks"] = std::move(tasks);
+		result["posts"] = std::move(posts);
 		result["success"] = true;
 		return result;
 	}
-	
-	// 添加任务（使用预处理语句防止 SQL 注入攻击）
-	crow::json::wvalue addTask(const std::string& title, const std::string& desc, int priority)
+
+	// 获取单篇文章
+	crow::json::wvalue getPostById(int id)
 	{
 		std::lock_guard<std::mutex> lock(mtx_);
 		checkConnection();
 
 		crow::json::wvalue result;
+		std::string sql = "SELECT id, title, content, author, created_at, updated_at FROM posts WHERE id=" + std::to_string(id);
 
-		// 1. 初始化预处理语句
+		if (mysql_query(conn_, sql.c_str()) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_error(conn_);
+			return result;
+		}
+
+		MYSQL_RES* res = mysql_store_result(conn_);
+		if (!res || mysql_num_rows(res) == 0)
+		{
+			if (res)
+			{
+				mysql_free_result(res);
+			}
+			result["success"] = false;
+			result["message"] = "文章不存在";
+			return result;
+		}
+
+		MYSQL_ROW row = mysql_fetch_row(res);
+		crow::json::wvalue post;
+		post["id"] = std::stoi(row[0]);
+		post["title"] = row[1] ? row[1] : "";
+		post["content"] = row[2] ? row[2] : "";
+		post["author"] = row[3] ? row[3] : "";
+		post["created_at"] = row[4] ? row[4] : "";
+		post["updated_at"] = row[5] ? row[5] : "";
+		mysql_free_result(res);
+
+		result["post"] = std::move(post);
+		result["success"] = true;
+		return result;
+	}
+
+	// 发布文章（使用预处理语句防止 SQL 注入）
+	crow::json::wvalue addPost(const std::string& title, const std::string& content, const std::string& author)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		crow::json::wvalue result;
 		MYSQL_STMT* stmt = mysql_stmt_init(conn_);
 		if (!stmt)
 		{
@@ -159,8 +199,7 @@ public:
 			return result;
 		}
 
-		// 2. SQL 模板  ? - 占位符
-		const char* sql = "INSERT INTO tasks (title, description, priority) VALUES (?, ?, ?)";
+		const char* sql = "INSERT INTO posts (title, content, author) VALUES (?, ?, ?)";
 		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
 		{
 			result["success"] = false;
@@ -169,35 +208,30 @@ public:
 			return result;
 		}
 
-		// 3. 绑定参数
 		MYSQL_BIND bind[3];
 		std::memset(bind, 0, sizeof(bind));
 
-		// 参数 1 - title 字符串
 		bind[0].buffer_type = MYSQL_TYPE_STRING;
 		bind[0].buffer = (void*)title.c_str();
 		bind[0].buffer_length = title.length();
 
-		// 参数 2 - decription 字符串
 		bind[1].buffer_type = MYSQL_TYPE_STRING;
-		bind[1].buffer = (void*)desc.c_str();
-		bind[1].buffer_length = desc.length();
+		bind[1].buffer = (void*)content.c_str();
+		bind[1].buffer_length = content.length();
 
-		// 参数 3 - priority
-		bind[2].buffer_type = MYSQL_TYPE_LONG;
-		bind[2].buffer = (void*)&priority;
-		bind[2].is_unsigned = 0;
+		bind[2].buffer_type = MYSQL_TYPE_STRING;
+		bind[2].buffer = (void*)author.c_str();
+		bind[2].buffer_length = author.length();
 
 		mysql_stmt_bind_param(stmt, bind);
 
-		// 4. 执行
 		if (mysql_stmt_execute(stmt) == 0)
 		{
 			int newID = static_cast<int>(mysql_stmt_insert_id(stmt));
 			result["success"] = true;
 			result["id"] = newID;
-			result["message"] = "任务创建成功";
-		} 
+			result["message"] = "文章发布成功";
+		}
 		else
 		{
 			result["success"] = false;
@@ -207,9 +241,8 @@ public:
 		return result;
 	}
 
-	// 更新任务
-	crow::json::wvalue updateTask(int id, const std::string& title, const std::string& desc,
-								int priority, bool completed)
+	// 更新文章
+	crow::json::wvalue updatePost(int id, const std::string& title, const std::string& content, const std::string& author)
 	{
 		std::lock_guard<std::mutex> lock(mtx_);
 		checkConnection();
@@ -223,7 +256,7 @@ public:
 			return result;
 		}
 
-		const char* sql = "UPDATE tasks SET title=?, description=?, priority=?, completed=? WHERE id=?";
+		const char* sql = "UPDATE posts SET title=?, content=?, author=? WHERE id=?";
 		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
 		{
 			result["success"] = false;
@@ -232,8 +265,7 @@ public:
 			return result;
 		}
 
-		int completed_int = completed ? 1 : 0;
-		MYSQL_BIND bind[5];
+		MYSQL_BIND bind[4];
 		std::memset(bind, 0, sizeof(bind));
 
 		bind[0].buffer_type = MYSQL_TYPE_STRING;
@@ -241,19 +273,18 @@ public:
 		bind[0].buffer_length = title.length();
 
 		bind[1].buffer_type = MYSQL_TYPE_STRING;
-		bind[1].buffer = (void*)desc.c_str();
-		bind[1].buffer_length = desc.length();
+		bind[1].buffer = (void*)content.c_str();
+		bind[1].buffer_length = content.length();
 
-		bind[2].buffer_type = MYSQL_TYPE_LONG;
-		bind[2].buffer = (void*)&priority;
-		
+		bind[2].buffer_type = MYSQL_TYPE_STRING;
+		bind[2].buffer = (void*)author.c_str();
+		bind[2].buffer_length = author.length();
+
 		bind[3].buffer_type = MYSQL_TYPE_LONG;
-		bind[3].buffer = (void*)&completed_int;
-
-		bind[4].buffer_type = MYSQL_TYPE_LONG;
-		bind[4].buffer = (void*)&id;
+		bind[3].buffer = (void*)&id;
 
 		mysql_stmt_bind_param(stmt, bind);
+
 		if (mysql_stmt_execute(stmt) != 0)
 		{
 			result["success"] = false;
@@ -263,15 +294,14 @@ public:
 		{
 			my_ulonglong affected = mysql_stmt_affected_rows(stmt);
 			result["success"] = (affected > 0);
-			result["message"] = (affected > 0) ? "更新成功" : "更新失败";
+			result["message"] = (affected > 0) ? "更新成功" : "文章不存在";
 		}
-
 		mysql_stmt_close(stmt);
 		return result;
 	}
 
-	// 删除任务
-	crow::json::wvalue deleteTask(int id)
+	// 删除文章
+	crow::json::wvalue deletePost(int id)
 	{
 		std::lock_guard<std::mutex> lock(mtx_);
 		checkConnection();
@@ -285,7 +315,7 @@ public:
 			return result;
 		}
 
-		const char* sql = "DELETE FROM tasks WHERE id=?";
+		const char* sql = "DELETE FROM posts WHERE id=?";
 		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
 		{
 			result["success"] = false;
@@ -293,7 +323,7 @@ public:
 			mysql_stmt_close(stmt);
 			return result;
 		}
-		
+
 		MYSQL_BIND bind[1];
 		std::memset(bind, 0, sizeof(bind));
 
@@ -306,7 +336,7 @@ public:
 		{
 			my_ulonglong affected = mysql_stmt_affected_rows(stmt);
 			result["success"] = (affected > 0);
-			result["message"] = (affected > 0) ? "删除成功" : "任务不存在";
+			result["message"] = (affected > 0) ? "删除成功" : "文章不存在";
 		}
 		else
 		{
@@ -314,55 +344,6 @@ public:
 			result["message"] = mysql_stmt_error(stmt);
 		}
 		mysql_stmt_close(stmt);
-		return result;
-	}
-
-	// 切换完成状态（先查后改，避免使用 NOT 运算符）
-	crow::json::wvalue toggleTask(int id)
-	{
-		std::lock_guard<std::mutex> lock(mtx_);
-		checkConnection();
-
-		crow::json::wvalue result;
-		// 先查询当前状态
-		std::string query = "SELECT completed FROM tasks WHERE id=" + std::to_string(id);
-		if (mysql_query(conn_, query.c_str()) != 0)
-		{
-			result["success"] = false;
-			result["message"] = mysql_error(conn_);
-			return result;
-		}
-		
-		MYSQL_RES* res = mysql_store_result(conn_);
-		if (!res || mysql_num_rows(res) == 0)
-		{
-			if (res)
-			{
-				mysql_free_result(res);
-			}
-			result["success"] = false;
-			result["message"] = "任务不存在";
-			return result;
-		}
-
-		MYSQL_ROW row = mysql_fetch_row(res);
-		int current = std::stoi(row[0]);
-		mysql_free_result(res);
-
-		// 取反
-		int newstatus = (current == 1) ? 0 : 1;
-		std::string update = "UPDATE tasks SET completed=" + std::to_string(newstatus) + " WHERE id=" + std::to_string(id);
-
-		if (mysql_query(conn_, update.c_str()) != 0)
-		{
-			result["success"] = false;
-			result["message"] = mysql_error(conn_);
-		} 
-		else
-		{
-			result["success"] = true;
-			result["message"] = "状态切换成功";
-		}
 		return result;
 	}
 };
@@ -400,32 +381,31 @@ std::string getStaticDir()
 
 
 // 辅助函数：给 response 添加 CORS 头（旧版 Crow 没有中间件）
-void addCorsHeaders(crow::response& res) {
-    res.add_header("Access-Control-Allow-Origin", "*");
-    res.add_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    res.add_header("Access-Control-Allow-Headers", "Content-Type");
+void addCorsHeaders(crow::response& res)
+{
+	res.add_header("Access-Control-Allow-Origin", "*");
+	res.add_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+	res.add_header("Access-Control-Allow-Headers", "Content-Type");
 }
 
+// 返回一个 HTML 页面的响应
+crow::response htmlResponse(const std::string& content)
+{
+	crow::response res(content);
+	res.add_header("Content-Type", "text/html; charset=utf-8");
+	return res;
+}
 
 
 int main()
 {
-
 	try
 	{
 		// 数据库配置
 		// 生产环境使用配置文件或环境变量传入
-		DataBase db("localhost", "root", "123456", "taskdb", 3306);
+		DataBase db("localhost", "root", "123456", "blogdb", 3306);
 
 		crow::SimpleApp app;
-
-		// // CORS 中间件，允许浏览器跨域访问
-		// app.use([](crow::request& req, crow::response& res, crow::context& ctx){
-		// 	res.add_header("Access-Control-Allow-Origin", "*");
-		// 	res.add_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-		// 	res.add_header("Access-Control-Allow-Headers", "Content-Type");
-		// });
-
 
 		// 处理浏览器的 OPTIONS 预检请求
 		CROW_ROUTE(app, "/api/<path>").methods("OPTIONS"_method)([](const crow::request& req, std::string path){
@@ -434,17 +414,17 @@ int main()
 			return res;
 		});
 
-		// REST API 路由
+		// ========== REST API 路由 ==========
 
-		// GET /api/tasks - 获取所有任务
-		CROW_ROUTE(app, "/api/tasks").methods("GET"_method)([&db](){
-			crow::response res(db.getAllTask());
-            addCorsHeaders(res);
+		// GET /api/posts - 获取所有文章
+		CROW_ROUTE(app, "/api/posts").methods("GET"_method)([&db](){
+			crow::response res(db.getAllPosts());
+			addCorsHeaders(res);
 			return res;
 		});
 
-		// POST /api/tasks - 创建任务
-		CROW_ROUTE(app, "/api/tasks").methods("POST"_method)([&db](const crow::request& req){
+		// POST /api/posts - 发布文章
+		CROW_ROUTE(app, "/api/posts").methods("POST"_method)([&db](const crow::request& req){
 			auto body = crow::json::load(req.body);
 			if (!body)
 			{
@@ -455,68 +435,71 @@ int main()
 			}
 
 			std::string title = body["title"].s();
-			std::string desc = body.has("description") ? std::string(body["description"].s()) : std::string("");
-			int priority = body.has("priority") ? body["priority"].i() : 2;
-			crow::response res(db.addTask(title, desc, priority));
+			std::string content = body.has("content") ? std::string(body["content"].s()) : std::string("");
+			std::string author = body.has("author") ? std::string(body["author"].s()) : std::string("匿名");
+			crow::response res(db.addPost(title, content, author));
 			addCorsHeaders(res);
 			return res;
 		});
 
+		// GET /api/posts/<id> - 获取单篇文章
+		CROW_ROUTE(app, "/api/posts/<int>").methods("GET"_method)([&db](int id){
+			crow::response res(db.getPostById(id));
+			addCorsHeaders(res);
+			return res;
+		});
 
-		// PUT /api/tasks/<id> 更新任务
-		CROW_ROUTE(app, "/api/tasks/<int>").methods("PUT"_method)([&db](const crow::request& req, int id){
+		// PUT /api/posts/<id> - 更新文章
+		CROW_ROUTE(app, "/api/posts/<int>").methods("PUT"_method)([&db](const crow::request& req, int id){
 			auto body = crow::json::load(req.body);
 			if (!body)
 			{
 				crow::json::wvalue err;
 				err["success"] = false;
-				err["message"] = "无效的 JSON 信息";
+				err["message"] = "无效的 JSON 数据";
 				return crow::response(400, err);
 			}
 
 			std::string title = body["title"].s();
-			std::string desc = body.has("description") ? std::string(body["description"].s()) : std::string("");
-			int priority = body.has("priority") ? body["priority"].i() : 2;
-			bool completed = body.has("completed") ? body["completed"].b() : false;
-
-			crow::response res(db.updateTask(id, title, desc, priority, completed));
-            addCorsHeaders(res);
-            return res;
+			std::string content = body.has("content") ? std::string(body["content"].s()) : std::string("");
+			std::string author = body.has("author") ? std::string(body["author"].s()) : std::string("匿名");
+			crow::response res(db.updatePost(id, title, content, author));
+			addCorsHeaders(res);
+			return res;
 		});
 
-		// DELETE /api/tasks/<id> 删除任务
-		CROW_ROUTE(app, "/api/tasks/<int>").methods("DELETE"_method)([&db](int id){
-			crow::response res(db.deleteTask(id));
-            addCorsHeaders(res);
-            return res;
+		// DELETE /api/posts/<id> - 删除文章
+		CROW_ROUTE(app, "/api/posts/<int>").methods("DELETE"_method)([&db](int id){
+			crow::response res(db.deletePost(id));
+			addCorsHeaders(res);
+			return res;
 		});
 
-		// POST /api/tasks/<id>/toggle  - 切换完成状态
-		CROW_ROUTE(app, "/api/tasks/<int>/toggle").methods("POST"_method)([&db](int id){
-			crow::response res(db.toggleTask(id));
-            addCorsHeaders(res);
-            return res;
-		});
-
-
-		// 静态文件服务
+		// ========== 静态文件服务 ==========
 
 		std::string staticDir = getStaticDir();
 		std::cout << "[Static] 静态文件目录: " << staticDir << std::endl;
 
-		// 根路径返回首页
+		// 根路径返回首页（文章列表）
 		CROW_ROUTE(app, "/")([staticDir](){
-			auto content = readFile(staticDir + "/index.html");
-			crow::response res(content);
-			res.add_header("Content-Type", "text/html; charset=utf8mb4");
-			return res;
+			return htmlResponse(readFile(staticDir + "/index.html"));
+		});
+
+		// 文章详情页
+		CROW_ROUTE(app, "/post")([staticDir](){
+			return htmlResponse(readFile(staticDir + "/post.html"));
+		});
+
+		// 编辑器页（新建 / 编辑）
+		CROW_ROUTE(app, "/editor")([staticDir](){
+			return htmlResponse(readFile(staticDir + "/editor.html"));
 		});
 
 		// CSS 文件
 		CROW_ROUTE(app, "/css/<string>")([staticDir](std::string filename){
 			auto content = readFile(staticDir + "/css/" + filename);
 			crow::response res(content);
-			res.add_header("Content-Type", "text/css; charset=utf8mb4");
+			res.add_header("Content-Type", "text/css; charset=utf-8");
 			return res;
 		});
 
@@ -524,19 +507,18 @@ int main()
 		CROW_ROUTE(app, "/js/<string>")([staticDir](std::string filename){
 			auto content = readFile(staticDir + "/js/" + filename);
 			crow::response res(content);
-			res.add_header("Content-Type", "application/javascript; charset=utf8mb4");
+			res.add_header("Content-Type", "application/javascript; charset=utf-8");
 			return res;
 		});
 
-
 		// ========== 启动服务 ==========
-        std::cout << "========================================" << std::endl;
-        std::cout << "  🚀 任务管理系统已启动!" << std::endl;
-        std::cout << "  📍 访问地址: http://localhost:8080" << std::endl;
-        std::cout << "  🛑 按 Ctrl+C 停止服务" << std::endl;
-        std::cout << "========================================" << std::endl;
+		std::cout << "========================================" << std::endl;
+		std::cout << "  🚀 博客系统已启动!" << std::endl;
+		std::cout << "  📍 访问地址: http://localhost:8080" << std::endl;
+		std::cout << "  🛑 按 Ctrl+C 停止服务" << std::endl;
+		std::cout << "========================================" << std::endl;
 
-        app.port(8080).multithreaded().run();
+		app.port(8080).multithreaded().run();
 	}
 	catch (const std::exception& e)
 	{
