@@ -187,7 +187,7 @@ const TOOLBAR_ACTIONS = {
     image:     { type: 'image', placeholder: '图片描述' }
 };
 
-// 在光标处插入 / 包裹选中文本
+// 在光标处插入 / 包裹选中文本（支持再次点击取消）
 function applyMarkdown(actionName) {
     const action = TOOLBAR_ACTIONS[actionName];
     if (!action) return;
@@ -197,42 +197,79 @@ function applyMarkdown(actionName) {
     const end = ta.selectionEnd;
     const selected = ta.value.slice(start, end);
 
-    let prefix = action.prefix || '';
-    let suffix = action.suffix || '';
-
     // 链接：弹窗获取地址；图片：打开插入图片弹窗（支持本地 / 链接）
     if (action.type === 'link' || action.type === 'image') {
         if (action.type === 'link') {
             const url = prompt('请输入链接地址：', 'https://');
             if (url === null) return; // 用户取消
-            prefix = '[';
-            suffix = '](' + url + ')';
+            const text = selected || action.placeholder || '';
+            pushUndoState();
+            ta.value = ta.value.slice(0, start) + '[' + text + '](' + url + ')' + ta.value.slice(end);
+            ta.setSelectionRange(start + 1, start + 1 + text.length);
+            ta.focus({ preventScroll: true });
+            updatePreview();
         } else {
             openImageModal(start, end, selected);
-            return;
         }
+        return;
     }
-
-    const text = selected || action.placeholder || '';
-    let selStart, selEnd;
 
     pushUndoState();
 
     if (action.block) {
-        // 块级：在光标所在行行首插入前缀
-        const lineStart = ta.value.lastIndexOf('\n', start - 1) + 1;
-        ta.value = ta.value.slice(0, lineStart) + prefix + text + suffix + ta.value.slice(end);
-        selStart = lineStart + prefix.length;
-        selEnd = selStart + text.length;
+        toggleBlock(ta, start, end, action.prefix, action.placeholder);
     } else {
-        ta.value = ta.value.slice(0, start) + prefix + text + suffix + ta.value.slice(end);
-        selStart = start + prefix.length;
-        selEnd = selStart + text.length;
+        toggleInline(ta, start, end, action.prefix, action.suffix, action.placeholder);
     }
 
     ta.focus({ preventScroll: true });
-    ta.setSelectionRange(selStart, selEnd);
     updatePreview();
+}
+
+// 行内格式（加粗/斜体/删除线/行内代码/代码块）：已包裹则取消，否则包裹
+function toggleInline(ta, start, end, prefix, suffix, placeholder) {
+    const selected = ta.value.slice(start, end);
+
+    // 选区整体已含前后标记（例如选中了 **加粗**）
+    if (selected.length >= prefix.length + suffix.length
+        && selected.startsWith(prefix) && selected.endsWith(suffix)) {
+        const inner = selected.slice(prefix.length, selected.length - suffix.length);
+        ta.value = ta.value.slice(0, start) + inner + ta.value.slice(end);
+        ta.setSelectionRange(start, start + inner.length);
+        return;
+    }
+
+    // 标记在选区外（例如只选中了内部文字）
+    const before = ta.value.slice(Math.max(0, start - prefix.length), start);
+    const after = ta.value.slice(end, end + suffix.length);
+    if (selected && before === prefix && after === suffix) {
+        ta.value = ta.value.slice(0, start - prefix.length) + selected + ta.value.slice(end + suffix.length);
+        ta.setSelectionRange(start - prefix.length, start - prefix.length + selected.length);
+        return;
+    }
+
+    // 否则包裹
+    const text = selected || placeholder || '';
+    ta.value = ta.value.slice(0, start) + prefix + text + suffix + ta.value.slice(end);
+    ta.setSelectionRange(start + prefix.length, start + prefix.length + text.length);
+}
+
+// 块级（标题/引用/无序/有序列表）：行首已有前缀则取消，否则添加
+function toggleBlock(ta, start, end, prefix, placeholder) {
+    const lineStart = ta.value.lastIndexOf('\n', start - 1) + 1;
+    const nextNewline = ta.value.indexOf('\n', start);
+    const lineEnd = nextNewline === -1 ? ta.value.length : nextNewline;
+    const lineText = ta.value.slice(lineStart, lineEnd);
+
+    if (lineText.startsWith(prefix)) {
+        const inner = lineText.slice(prefix.length);
+        ta.value = ta.value.slice(0, lineStart) + inner + ta.value.slice(lineEnd);
+        ta.setSelectionRange(lineStart, lineStart + inner.length);
+    } else {
+        const content = lineText.trim() ? lineText : placeholder;
+        ta.value = ta.value.slice(0, lineStart) + prefix + content + ta.value.slice(lineEnd);
+        ta.setSelectionRange(lineStart + prefix.length, lineStart + prefix.length + content.length);
+    }
 }
 
 // 打开插入图片弹窗，记录插入位置与选中文本
