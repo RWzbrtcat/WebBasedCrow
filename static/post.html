@@ -16,8 +16,9 @@
             </div>
             <nav class="nav">
                 <a href="/">首页</a>
-                <a href="/drafts">草稿</a>
-                <a href="/editor" class="btn-write">写文章</a>
+                <a href="/drafts" data-auth-role="admin" hidden>草稿</a>
+                <a href="/editor" class="btn-write" data-auth-role="admin" hidden>写文章</a>
+                <a href="/logout" data-auth-role="admin" hidden>退出</a>
             </nav>
         </div>
     </header>
@@ -29,6 +30,31 @@
         </div>
     </main>
 
+    <!-- 打赏弹窗 -->
+    <div class="image-modal-overlay" id="donateModal" hidden>
+        <div class="image-modal donate-modal" role="dialog" aria-modal="true" aria-labelledby="donateModalTitle">
+            <div class="image-modal-header">
+                <h3 id="donateModalTitle">打赏支持</h3>
+                <button type="button" class="image-modal-close" id="donateModalClose" aria-label="关闭">&times;</button>
+            </div>
+            <div class="image-modal-body donate-body">
+                <p class="donate-tip">如果文章对你有帮助，欢迎打赏支持～</p>
+                <div class="donate-tabs">
+                    <button type="button" class="donate-tab active" data-tab="wechat">微信</button>
+                    <button type="button" class="donate-tab" data-tab="zfb">支付宝</button>
+                </div>
+                <div class="donate-qr-pane" data-qr="wechat">
+                    <img id="donateQrWechat" src="/uploads/wechat.jpg" alt="微信收款码" class="donate-qr">
+                </div>
+                <div class="donate-qr-pane" data-qr="zfb" hidden>
+                    <img id="donateQrZfb" src="/uploads/zfb.jpg" alt="支付宝收款码" class="donate-qr">
+                </div>
+                <p class="donate-hint">扫码或长按识别二维码打赏</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/auth.js"></script>
     <script src="/js/marked.min.js"></script>
     <script src="/js/purify.min.js"></script>
     <script src="/js/highlight.min.js"></script>

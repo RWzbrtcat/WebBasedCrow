@@ -15,8 +15,9 @@
             </div>
             <nav class="nav">
                 <a href="/">首页</a>
-                <a href="/drafts">草稿</a>
-                <a href="/editor" class="btn-write">写文章</a>
+                <a href="/drafts" data-auth-role="admin" hidden>草稿</a>
+                <a href="/editor" class="btn-write" data-auth-role="admin" hidden>写文章</a>
+                <a href="/logout" data-auth-role="admin" hidden>退出</a>
             </nav>
         </div>
     </header>
@@ -33,6 +34,7 @@
         </div>
     </main>
 
+    <script src="/js/auth.js"></script>
     <script src="/js/list.js"></script>
 </body>
 </html>

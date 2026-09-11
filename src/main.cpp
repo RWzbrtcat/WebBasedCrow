@@ -13,6 +13,8 @@
 #include <chrono>
 #include <algorithm>
 #include <cctype>
+#include <unordered_set>
+#include <random>
 
 
 // DataBase 类：封装所有 MySQL 操作
@@ -92,6 +94,7 @@ public:
 				author VARCHAR(100) DEFAULT '匿名' COMMENT '作者',
 				topic VARCHAR(100) NOT NULL DEFAULT '' COMMENT '文章主题',
 				status VARCHAR(20) NOT NULL DEFAULT 'published' COMMENT '文章状态: published/draft',
+				likes INT NOT NULL DEFAULT 0 COMMENT '点赞数',
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
 			)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -130,6 +133,31 @@ public:
 			{
 				throw std::runtime_error(std::string("补充 status 列失败：") + mysql_error(conn_));
 			}
+		}
+
+		// 兼容旧表：若缺少 likes 列，则补充
+		if (!columnExists("posts", "likes"))
+		{
+			const char* alterSql = "ALTER TABLE posts ADD COLUMN likes INT NOT NULL DEFAULT 0 COMMENT '点赞数' AFTER status";
+			if (mysql_query(conn_, alterSql) != 0)
+			{
+				throw std::runtime_error(std::string("补充 likes 列失败：") + mysql_error(conn_));
+			}
+		}
+
+		// 评论表
+		const char* commentsSql = R"(
+			CREATE TABLE IF NOT EXISTS comments(
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				post_id INT NOT NULL COMMENT '所属文章 ID',
+				nickname VARCHAR(100) DEFAULT '匿名' COMMENT '昵称',
+				content TEXT NOT NULL COMMENT '评论内容',
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '评论时间'
+			)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+		)";
+		if (mysql_query(conn_, commentsSql) != 0)
+		{
+			throw std::runtime_error(std::string("创建评论表失败：") + mysql_error(conn_));
 		}
 	}
 
@@ -210,7 +238,7 @@ public:
 		checkConnection();
 
 		crow::json::wvalue result;
-		std::string sql = "SELECT id, title, content, summary, author, topic, status, created_at, updated_at FROM posts WHERE id=" + std::to_string(id);
+		std::string sql = "SELECT id, title, content, summary, author, topic, status, likes, created_at, updated_at FROM posts WHERE id=" + std::to_string(id);
 
 		if (mysql_query(conn_, sql.c_str()) != 0)
 		{
@@ -240,8 +268,9 @@ public:
 		post["author"] = row[4] ? row[4] : "";
 		post["topic"] = row[5] ? row[5] : "";
 		post["status"] = row[6] ? row[6] : "";
-		post["created_at"] = row[7] ? row[7] : "";
-		post["updated_at"] = row[8] ? row[8] : "";
+		post["likes"] = row[7] ? std::stoi(row[7]) : 0;
+		post["created_at"] = row[8] ? row[8] : "";
+		post["updated_at"] = row[9] ? row[9] : "";
 		mysql_free_result(res);
 
 		result["post"] = std::move(post);
@@ -435,6 +464,173 @@ public:
 		mysql_stmt_close(stmt);
 		return result;
 	}
+
+	// 点赞/取消点赞：likes 计数增减（delta 为 +1/-1），返回最新点赞数
+	crow::json::wvalue changeLikes(int id, int delta)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		crow::json::wvalue result;
+		MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+		if (!stmt)
+		{
+			result["success"] = false;
+			result["message"] = "mysql_stmt_init 失败";
+			return result;
+		}
+
+		const char* sql = "UPDATE posts SET likes = GREATEST(likes + ?, 0) WHERE id=?";
+		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+			mysql_stmt_close(stmt);
+			return result;
+		}
+
+		MYSQL_BIND bind[2];
+		std::memset(bind, 0, sizeof(bind));
+
+		bind[0].buffer_type = MYSQL_TYPE_LONG;
+		bind[0].buffer = (void*)&delta;
+
+		bind[1].buffer_type = MYSQL_TYPE_LONG;
+		bind[1].buffer = (void*)&id;
+
+		mysql_stmt_bind_param(stmt, bind);
+
+		if (mysql_stmt_execute(stmt) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+		}
+		else
+		{
+			my_ulonglong affected = mysql_stmt_affected_rows(stmt);
+			if (affected == 0)
+			{
+				result["success"] = false;
+				result["message"] = "文章不存在";
+			}
+			else
+			{
+				// 查询最新点赞数
+				std::string sel = "SELECT likes FROM posts WHERE id=" + std::to_string(id);
+				if (mysql_query(conn_, sel.c_str()) == 0)
+				{
+					MYSQL_RES* res = mysql_store_result(conn_);
+					if (res)
+					{
+						MYSQL_ROW row = mysql_fetch_row(res);
+						if (row && row[0])
+						{
+							result["likes"] = std::stoi(row[0]);
+						}
+						mysql_free_result(res);
+					}
+				}
+				result["success"] = true;
+			}
+		}
+		mysql_stmt_close(stmt);
+		return result;
+	}
+
+	// 获取某篇文章的所有评论（按时间正序）
+	crow::json::wvalue getComments(int postId)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		crow::json::wvalue result;
+		std::vector<crow::json::wvalue> comments;
+
+		std::string sql = "SELECT id, post_id, nickname, content, created_at FROM comments WHERE post_id=" + std::to_string(postId) + " ORDER BY id ASC";
+
+		if (mysql_query(conn_, sql.c_str()) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_error(conn_);
+			return result;
+		}
+
+		MYSQL_RES* res = mysql_store_result(conn_);
+		if (res)
+		{
+			MYSQL_ROW row;
+			while ((row = mysql_fetch_row(res)))
+			{
+				crow::json::wvalue c;
+				c["id"] = std::stoi(row[0]);
+				c["post_id"] = std::stoi(row[1]);
+				c["nickname"] = row[2] ? row[2] : "";
+				c["content"] = row[3] ? row[3] : "";
+				c["created_at"] = row[4] ? row[4] : "";
+				comments.push_back(std::move(c));
+			}
+			mysql_free_result(res);
+		}
+
+		result["comments"] = std::move(comments);
+		result["success"] = true;
+		return result;
+	}
+
+	// 新增评论
+	crow::json::wvalue addComment(int postId, const std::string& nickname, const std::string& content)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		crow::json::wvalue result;
+		MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+		if (!stmt)
+		{
+			result["success"] = false;
+			result["message"] = "mysql_stmt_init 失败";
+			return result;
+		}
+
+		const char* sql = "INSERT INTO comments (post_id, nickname, content) VALUES (?, ?, ?)";
+		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+			mysql_stmt_close(stmt);
+			return result;
+		}
+
+		MYSQL_BIND bind[3];
+		std::memset(bind, 0, sizeof(bind));
+
+		bind[0].buffer_type = MYSQL_TYPE_LONG;
+		bind[0].buffer = (void*)&postId;
+
+		bind[1].buffer_type = MYSQL_TYPE_STRING;
+		bind[1].buffer = (void*)nickname.c_str();
+		bind[1].buffer_length = nickname.length();
+
+		bind[2].buffer_type = MYSQL_TYPE_STRING;
+		bind[2].buffer = (void*)content.c_str();
+		bind[2].buffer_length = content.length();
+
+		mysql_stmt_bind_param(stmt, bind);
+
+		if (mysql_stmt_execute(stmt) == 0)
+		{
+			int newID = static_cast<int>(mysql_stmt_insert_id(stmt));
+			result["success"] = true;
+			result["id"] = newID;
+		}
+		else
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+		}
+		mysql_stmt_close(stmt);
+		return result;
+	}
 };
 
 
@@ -480,6 +676,15 @@ std::string toLower(std::string s)
 {
 	std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return std::tolower(c); });
 	return s;
+}
+
+// 去除字符串首尾空白
+std::string trim(const std::string& s)
+{
+	size_t first = s.find_first_not_of(" \t\r\n");
+	if (first == std::string::npos) return "";
+	size_t last = s.find_last_not_of(" \t\r\n");
+	return s.substr(first, last - first + 1);
 }
 
 // 根据文件名返回 MIME 类型
@@ -551,6 +756,77 @@ crow::response htmlResponse(const std::string& content)
 }
 
 
+// ===== 管理员登录认证 =====
+// 修改这里设置管理员密码（重新编译后生效）
+const std::string ADMIN_PASSWORD = "admin123";
+const std::string SESSION_COOKIE = "blog_session";
+
+// 内存会话表（token -> 已登录）。个人博客用内存会话即可，服务重启后需重新登录
+std::unordered_set<std::string> g_sessions;
+std::mutex g_sessionsMtx;
+
+// 生成随机会话 token（十六进制）
+std::string generateToken()
+{
+	static thread_local std::mt19937_64 rng(std::random_device{}());
+	std::uniform_int_distribution<unsigned long long> dist;
+	std::ostringstream oss;
+	oss << std::hex << dist(rng) << dist(rng);
+	return oss.str();
+}
+
+// 常量时间比较，避免时序侧信道
+bool constantTimeEquals(const std::string& a, const std::string& b)
+{
+	if (a.size() != b.size()) return false;
+	unsigned char diff = 0;
+	for (size_t i = 0; i < a.size(); ++i) diff |= static_cast<unsigned char>(a[i] ^ b[i]);
+	return diff == 0;
+}
+
+// 从 Cookie 请求头中解析指定名称的值
+std::string getCookie(const crow::request& req, const std::string& name)
+{
+	const std::string& cookie = req.get_header_value("Cookie");
+	if (cookie.empty()) return "";
+	const std::string key = name + "=";
+	size_t pos = 0;
+	while ((pos = cookie.find(key, pos)) != std::string::npos)
+	{
+		bool boundaryOk = (pos == 0 || cookie[pos - 1] == ';' || cookie[pos - 1] == ' ');
+		if (boundaryOk)
+		{
+			pos += key.size();
+			size_t end = cookie.find(';', pos);
+			if (end == std::string::npos) end = cookie.size();
+			return cookie.substr(pos, end - pos);
+		}
+		pos += key.size();
+	}
+	return "";
+}
+
+// 判断请求是否已登录
+bool isLoggedIn(const crow::request& req)
+{
+	std::string token = getCookie(req, SESSION_COOKIE);
+	if (token.empty()) return false;
+	std::lock_guard<std::mutex> lock(g_sessionsMtx);
+	return g_sessions.count(token) > 0;
+}
+
+// 未登录时返回的 401 响应
+crow::response unauthorizedResponse()
+{
+	crow::json::wvalue err;
+	err["success"] = false;
+	err["message"] = "未登录";
+	crow::response res(401, err);
+	addCorsHeaders(res);
+	return res;
+}
+
+
 int main()
 {
 	try
@@ -571,6 +847,52 @@ int main()
 			return res;
 		});
 
+		// ========== 登录认证路由 ==========
+
+		// POST /api/login - 管理员登录，成功后设置会话 Cookie
+		CROW_ROUTE(app, "/api/login").methods("POST"_method)([](const crow::request& req){
+			auto body = crow::json::load(req.body);
+			crow::json::wvalue result;
+			if (!body)
+			{
+				result["success"] = false;
+				result["message"] = "无效的 JSON 数据";
+				return crow::response(400, result);
+			}
+
+			std::string password = body.has("password") ? std::string(body["password"].s()) : std::string("");
+			if (!constantTimeEquals(password, ADMIN_PASSWORD))
+			{
+				result["success"] = false;
+				result["message"] = "密码错误";
+				crow::response res(401, result);
+				addCorsHeaders(res);
+				return res;
+			}
+
+			std::string token = generateToken();
+			{
+				std::lock_guard<std::mutex> lock(g_sessionsMtx);
+				g_sessions.insert(token);
+			}
+
+			result["success"] = true;
+			crow::response res(200, result);
+			res.add_header("Set-Cookie", SESSION_COOKIE + "=" + token + "; HttpOnly; Path=/; SameSite=Lax; Max-Age=2592000");
+			addCorsHeaders(res);
+			return res;
+		});
+
+		// GET /api/auth - 查询当前是否已登录
+		CROW_ROUTE(app, "/api/auth").methods("GET"_method)([](const crow::request& req){
+			crow::json::wvalue result;
+			result["success"] = true;
+			result["authed"] = isLoggedIn(req);
+			crow::response res(result);
+			addCorsHeaders(res);
+			return res;
+		});
+
 		// ========== REST API 路由 ==========
 
 		// GET /api/posts - 获取所有已发布文章
@@ -580,15 +902,17 @@ int main()
 			return res;
 		});
 
-		// GET /api/drafts - 获取所有草稿
-		CROW_ROUTE(app, "/api/drafts").methods("GET"_method)([&db](){
+		// GET /api/drafts - 获取所有草稿（仅登录后可访问）
+		CROW_ROUTE(app, "/api/drafts").methods("GET"_method)([&db](const crow::request& req){
+			if (!isLoggedIn(req)) return unauthorizedResponse();
 			crow::response res(db.getPosts("draft"));
 			addCorsHeaders(res);
 			return res;
 		});
 
-		// POST /api/posts - 发布文章
+		// POST /api/posts - 发布文章（仅登录后可用）
 		CROW_ROUTE(app, "/api/posts").methods("POST"_method)([&db](const crow::request& req){
+			if (!isLoggedIn(req)) return unauthorizedResponse();
 			auto body = crow::json::load(req.body);
 			if (!body)
 			{
@@ -616,8 +940,9 @@ int main()
 			return res;
 		});
 
-		// PUT /api/posts/<id> - 更新文章
+		// PUT /api/posts/<id> - 更新文章（仅登录后可用）
 		CROW_ROUTE(app, "/api/posts/<int>").methods("PUT"_method)([&db](const crow::request& req, int id){
+			if (!isLoggedIn(req)) return unauthorizedResponse();
 			auto body = crow::json::load(req.body);
 			if (!body)
 			{
@@ -638,15 +963,70 @@ int main()
 			return res;
 		});
 
-		// DELETE /api/posts/<id> - 删除文章
-		CROW_ROUTE(app, "/api/posts/<int>").methods("DELETE"_method)([&db](int id){
+		// DELETE /api/posts/<id> - 删除文章（仅登录后可用）
+		CROW_ROUTE(app, "/api/posts/<int>").methods("DELETE"_method)([&db](const crow::request& req, int id){
+			if (!isLoggedIn(req)) return unauthorizedResponse();
 			crow::response res(db.deletePost(id));
 			addCorsHeaders(res);
 			return res;
 		});
 
-		// POST /api/upload - 上传图片（multipart/form-data，字段名 image）
+		// POST /api/posts/<id>/like - 点赞（公开，无需登录）
+		CROW_ROUTE(app, "/api/posts/<int>/like").methods("POST"_method)([&db](int id){
+			crow::response res(db.changeLikes(id, 1));
+			addCorsHeaders(res);
+			return res;
+		});
+
+		// POST /api/posts/<id>/unlike - 取消点赞（公开，无需登录）
+		CROW_ROUTE(app, "/api/posts/<int>/unlike").methods("POST"_method)([&db](int id){
+			crow::response res(db.changeLikes(id, -1));
+			addCorsHeaders(res);
+			return res;
+		});
+
+		// GET /api/posts/<id>/comments - 获取评论（公开）
+		CROW_ROUTE(app, "/api/posts/<int>/comments").methods("GET"_method)([&db](int id){
+			crow::response res(db.getComments(id));
+			addCorsHeaders(res);
+			return res;
+		});
+
+		// POST /api/posts/<id>/comments - 发表评论（公开，无需登录）
+		CROW_ROUTE(app, "/api/posts/<int>/comments").methods("POST"_method)([&db](const crow::request& req, int id){
+			auto body = crow::json::load(req.body);
+			if (!body)
+			{
+				crow::json::wvalue err;
+				err["success"] = false;
+				err["message"] = "无效的 JSON 数据";
+				return crow::response(400, err);
+			}
+
+			std::string nickname = body.has("nickname") ? std::string(body["nickname"].s()) : std::string("");
+			std::string content = body.has("content") ? std::string(body["content"].s()) : std::string("");
+			nickname = trim(nickname);
+			content = trim(content);
+
+			if (content.empty())
+			{
+				crow::json::wvalue err;
+				err["success"] = false;
+				err["message"] = "评论内容不能为空";
+				return crow::response(400, err);
+			}
+			if (nickname.empty()) nickname = "匿名";
+			if (nickname.length() > 50) nickname = nickname.substr(0, 50);
+			if (content.length() > 2000) content = content.substr(0, 2000);
+
+			crow::response res(db.addComment(id, nickname, content));
+			addCorsHeaders(res);
+			return res;
+		});
+
+		// POST /api/upload - 上传图片（multipart/form-data，字段名 image，仅登录后可用）
 		CROW_ROUTE(app, "/api/upload").methods("POST"_method)([staticDir](const crow::request& req){
+			if (!isLoggedIn(req)) return unauthorizedResponse();
 			crow::json::wvalue result;
 			try
 			{
@@ -726,13 +1106,44 @@ int main()
 			return htmlResponse(readFile(staticDir + "/post.html"));
 		});
 
-		// 草稿页
-		CROW_ROUTE(app, "/drafts")([staticDir](){
+		// 登录页
+		CROW_ROUTE(app, "/login")([staticDir](){
+			return htmlResponse(readFile(staticDir + "/login.html"));
+		});
+
+		// 退出登录：清除会话并跳回首页
+		CROW_ROUTE(app, "/logout")([](const crow::request& req){
+			std::string token = getCookie(req, SESSION_COOKIE);
+			if (!token.empty())
+			{
+				std::lock_guard<std::mutex> lock(g_sessionsMtx);
+				g_sessions.erase(token);
+			}
+			crow::response res;
+			res.add_header("Set-Cookie", SESSION_COOKIE + "=; HttpOnly; Path=/; Max-Age=0");
+			res.moved("/");
+			return res;
+		});
+
+		// 草稿页（仅登录后可访问）
+		CROW_ROUTE(app, "/drafts")([staticDir](const crow::request& req){
+			if (!isLoggedIn(req))
+			{
+				crow::response res;
+				res.moved("/login");
+				return res;
+			}
 			return htmlResponse(readFile(staticDir + "/drafts.html"));
 		});
 
-		// 编辑器页（新建 / 编辑）
-		CROW_ROUTE(app, "/editor")([staticDir](){
+		// 编辑器页（新建 / 编辑，仅登录后可访问）
+		CROW_ROUTE(app, "/editor")([staticDir](const crow::request& req){
+			if (!isLoggedIn(req))
+			{
+				crow::response res;
+				res.moved("/login");
+				return res;
+			}
 			return htmlResponse(readFile(staticDir + "/editor.html"));
 		});
 

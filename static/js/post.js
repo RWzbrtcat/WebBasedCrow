@@ -4,6 +4,10 @@
 
 const API_BASE = '/api';
 
+let currentPostId = null;
+let currentLikes = 0;
+let liked = false;
+
 document.addEventListener('DOMContentLoaded', () => {
     const id = new URLSearchParams(window.location.search).get('id');
     if (!id) {
@@ -11,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     loadPost(id);
+    bindDonateModal();
 });
 
 async function apiRequest(url, method = 'GET', body = null) {
@@ -18,6 +23,10 @@ async function apiRequest(url, method = 'GET', body = null) {
     if (body) options.body = JSON.stringify(body);
 
     const response = await fetch(url, options);
+    if (response.status === 401) {
+        window.location.href = '/login';
+        throw new Error('未登录');
+    }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.json();
 }
@@ -26,11 +35,15 @@ async function loadPost(id) {
     const detail = document.getElementById('postDetail');
 
     try {
-        const data = await apiRequest(`${API_BASE}/posts/${id}`);
-        if (data.success) {
-            renderPost(data.post);
+        const [postData, authData] = await Promise.all([
+            apiRequest(`${API_BASE}/posts/${id}`),
+            apiRequest(`${API_BASE}/auth`).catch(() => ({ authed: false }))
+        ]);
+        const authed = !!(authData && authData.authed);
+        if (postData.success) {
+            renderPost(postData.post, authed);
         } else {
-            showNotFound(data.message || '文章不存在');
+            showNotFound(postData.message || '文章不存在');
         }
     } catch (e) {
         detail.innerHTML = `
@@ -42,8 +55,12 @@ async function loadPost(id) {
     }
 }
 
-function renderPost(post) {
+function renderPost(post, authed) {
     document.title = `${post.title} · LazyCat's Blog`;
+
+    currentPostId = post.id;
+    currentLikes = Number(post.likes) || 0;
+    liked = isLiked(post.id);
 
     const updated = post.updated_at && post.updated_at !== post.created_at
         ? `<span class="sep">·</span><span>更新于 ${formatDate(post.updated_at)}</span>`
@@ -52,6 +69,11 @@ function renderPost(post) {
     const topic = (post.topic || '').trim();
     const topicBadge = topic
         ? `<span class="post-topic">${escapeHtml(topic)}</span>`
+        : '';
+
+    const adminActions = authed
+        ? `<a class="btn btn-primary" href="/editor?id=${post.id}">编辑</a>
+           <button class="btn btn-danger" id="deleteBtn">删除</button>`
         : '';
 
     document.getElementById('postDetail').innerHTML = `
@@ -65,15 +87,194 @@ function renderPost(post) {
                 ${updated}
             </div>
             <div class="post-content markdown-body" id="postContent"></div>
+            <div class="post-engagement">
+                <button class="btn btn-secondary like-btn" id="likeBtn">点赞</button>
+                <button class="btn btn-secondary" id="donateBtn">打赏</button>
+            </div>
             <div class="post-actions">
                 <a class="btn btn-secondary" href="/">← 返回列表</a>
-                <a class="btn btn-primary" href="/editor?id=${post.id}">编辑</a>
-                <button class="btn btn-danger" onclick="deletePost(${post.id})">删除</button>
+                ${adminActions}
             </div>
+            <section class="comments">
+                <h2 class="comments-title">评论 <span id="commentCount">0</span></h2>
+                <div class="comments-list" id="commentsList">
+                    <div class="loading">加载中...</div>
+                </div>
+                <form class="comment-form" id="commentForm">
+                    <input type="text" id="commentNickname" placeholder="昵称（可选，留空为匿名）" maxlength="50">
+                    <textarea id="commentContent" placeholder="写下你的评论..." required></textarea>
+                    <button type="submit" class="btn btn-primary">发表评论</button>
+                </form>
+            </section>
         </article>
     `;
 
     renderMarkdownInto(document.getElementById('postContent'), post.content);
+
+    bindPostInteractions(post, authed);
+    loadComments();
+}
+
+function bindPostInteractions(post, authed) {
+    updateLikeButton();
+
+    document.getElementById('likeBtn').addEventListener('click', handleLike);
+    document.getElementById('donateBtn').addEventListener('click', () => {
+        document.getElementById('donateModal').hidden = false;
+    });
+    document.getElementById('commentForm').addEventListener('submit', handleCommentSubmit);
+
+    if (authed) {
+        document.getElementById('deleteBtn').addEventListener('click', () => deletePost(post.id));
+    }
+}
+
+// ===== 点赞 =====
+function isLiked(id) {
+    try {
+        const arr = JSON.parse(localStorage.getItem('liked_posts') || '[]');
+        return arr.includes(Number(id));
+    } catch (e) {
+        return false;
+    }
+}
+
+function setLiked(id, val) {
+    try {
+        let arr = JSON.parse(localStorage.getItem('liked_posts') || '[]');
+        arr = arr.filter((x) => x !== Number(id));
+        if (val) arr.push(Number(id));
+        localStorage.setItem('liked_posts', JSON.stringify(arr));
+    } catch (e) { /* 忽略存储失败 */ }
+}
+
+function updateLikeButton() {
+    const btn = document.getElementById('likeBtn');
+    if (!btn) return;
+    btn.innerHTML = liked
+        ? `已点赞 · ${currentLikes}`
+        : `点赞 · ${currentLikes}`;
+    btn.classList.toggle('liked', liked);
+}
+
+async function handleLike() {
+    const action = liked ? 'unlike' : 'like';
+    try {
+        const data = await apiRequest(`${API_BASE}/posts/${currentPostId}/${action}`, 'POST');
+        if (data.success) {
+            const nowLiked = !liked;
+            liked = nowLiked;
+            currentLikes = (data.likes != null)
+                ? Number(data.likes)
+                : Math.max(0, currentLikes + (nowLiked ? 1 : -1));
+            setLiked(currentPostId, liked);
+            updateLikeButton();
+        } else {
+            showToast(data.message || '操作失败', 'error');
+        }
+    } catch (e) {
+        showToast('操作失败，请稍后重试', 'error');
+    }
+}
+
+// ===== 评论 =====
+async function loadComments() {
+    const list = document.getElementById('commentsList');
+    try {
+        const data = await apiRequest(`${API_BASE}/posts/${currentPostId}/comments`);
+        if (data.success) {
+            renderComments(data.comments || []);
+        } else {
+            list.innerHTML = '<p class="comments-empty">评论加载失败</p>';
+        }
+    } catch (e) {
+        list.innerHTML = '<p class="comments-empty">评论加载失败</p>';
+    }
+}
+
+function renderComments(comments) {
+    const list = document.getElementById('commentsList');
+    document.getElementById('commentCount').textContent = comments.length;
+
+    if (!comments.length) {
+        list.innerHTML = '<p class="comments-empty">还没有评论，来抢沙发吧～</p>';
+        return;
+    }
+
+    list.innerHTML = comments.map((c) => `
+        <div class="comment-item">
+            <div class="comment-head">
+                <span class="comment-nickname">${escapeHtml(c.nickname || '匿名')}</span>
+                <span class="comment-time">${formatDateTime(c.created_at)}</span>
+            </div>
+            <div class="comment-content">${escapeHtml(c.content)}</div>
+        </div>
+    `).join('');
+}
+
+async function handleCommentSubmit(e) {
+    e.preventDefault();
+
+    const nickname = document.getElementById('commentNickname').value.trim();
+    const content = document.getElementById('commentContent').value.trim();
+    if (!content) {
+        showToast('请输入评论内容', 'error');
+        return;
+    }
+
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = '提交中...';
+
+    try {
+        const data = await apiRequest(`${API_BASE}/posts/${currentPostId}/comments`, 'POST', { nickname, content });
+        if (data.success) {
+            document.getElementById('commentContent').value = '';
+            showToast('评论成功');
+            loadComments();
+        } else {
+            showToast(data.message || '评论失败', 'error');
+        }
+    } catch (e) {
+        showToast('评论失败，请稍后重试', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '发表评论';
+    }
+}
+
+// ===== 打赏弹窗 =====
+function bindDonateModal() {
+    const modal = document.getElementById('donateModal');
+    document.getElementById('donateModalClose').addEventListener('click', () => {
+        modal.hidden = true;
+    });
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.hidden = true;
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modal.hidden) modal.hidden = true;
+    });
+
+    const tabs = modal.querySelectorAll('.donate-tab');
+    tabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+            tabs.forEach((t) => t.classList.toggle('active', t === tab));
+            const target = tab.dataset.tab;
+            modal.querySelectorAll('.donate-qr-pane').forEach((pane) => {
+                pane.hidden = pane.dataset.qr !== target;
+            });
+        });
+    });
+
+    modal.querySelectorAll('.donate-qr').forEach((img) => {
+        img.addEventListener('error', () => {
+            const placeholder = document.createElement('p');
+            placeholder.className = 'donate-empty';
+            placeholder.textContent = '收款二维码加载失败';
+            img.replaceWith(placeholder);
+        });
+    });
 }
 
 function showNotFound(msg) {
@@ -113,6 +314,16 @@ function formatDate(dateStr) {
     if (isNaN(date.getTime())) return dateStr;
     return date.toLocaleDateString('zh-CN', {
         year: 'numeric', month: 'long', day: 'numeric'
+    });
+}
+
+function formatDateTime(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr.replace(' ', 'T'));
+    if (isNaN(date.getTime())) return dateStr;
+    return date.toLocaleString('zh-CN', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit'
     });
 }
 
