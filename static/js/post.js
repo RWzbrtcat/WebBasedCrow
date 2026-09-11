@@ -43,7 +43,7 @@ async function loadPost(id) {
 }
 
 function renderPost(post) {
-    document.title = `${post.title} · 我的博客`;
+    document.title = `${post.title} · LazyCat's Blog`;
 
     const updated = post.updated_at && post.updated_at !== post.created_at
         ? `<span class="sep">·</span><span>更新于 ${formatDate(post.updated_at)}</span>`

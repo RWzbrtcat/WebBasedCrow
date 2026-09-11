@@ -4,7 +4,7 @@
 
 const API_BASE = '/api';
 
-// 全部文章数据 + 当前选中的主题（'all' 表示全部）
+// 全部文章数据 + 当前选中的专栏（'all' 表示全部）
 let allPosts = [];
 let currentTopic = 'all';
 let topicsList = [];
@@ -54,7 +54,7 @@ async function loadPosts() {
     }
 }
 
-// 顶部主题标签页
+// 顶部专栏标签页
 function renderTopicTabs(posts) {
     const container = document.getElementById('topicTabs');
     topicsList = [...new Set(posts.map(p => (p.topic || '').trim()).filter(Boolean))];
@@ -78,6 +78,7 @@ function renderTopicTabs(posts) {
 
 function renderPosts(posts) {
     const list = document.getElementById('postList');
+    document.getElementById('pageTitle').textContent = currentTopic === 'all' ? '全部文章' : currentTopic;
 
     const filtered = currentTopic === 'all'
         ? posts
@@ -99,7 +100,7 @@ function renderPosts(posts) {
         } else {
             list.innerHTML = `
                 <div class="empty-state">
-                    <p>该主题下还没有文章</p>
+                    <p>该专栏下还没有文章</p>
                 </div>
             `;
         }
@@ -120,15 +121,16 @@ function renderPosts(posts) {
                     <span class="sep">·</span>
                     <span>${formatDate(post.created_at)}</span>
                 </div>
-                <p class="post-excerpt">${escapeHtml(makeExcerpt(post.content))}</p>
+                <p class="post-excerpt">${escapeHtml(makeExcerpt(post))}</p>
                 <a class="read-more" href="/post?id=${post.id}">阅读全文 →</a>
             </article>
         `;
     }).join('');
 }
 
-function makeExcerpt(content) {
-    const text = stripMarkdown(content || '');
+function makeExcerpt(post) {
+    const summary = (post.summary || '').trim();
+    const text = summary || stripMarkdown(post.content || '');
     if (text.length <= 120) return text;
     return text.slice(0, 120) + '…';
 }

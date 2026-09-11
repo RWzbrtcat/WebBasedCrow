@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>写文章 · 我的博客</title>
+    <title>写文章 · LazyCat's Blog</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/highlight.css">
 </head>
@@ -12,8 +12,7 @@
     <header class="site-header">
         <div class="header-inner">
             <div class="brand">
-                <a class="site-title" href="/">我的博客</a>
-                <span class="site-tagline">基于 C++ Crow + MySQL 构建</span>
+                <a class="site-title" href="/">LazyCat's Blog</a>
             </div>
             <nav class="nav">
                 <a href="/">首页</a>
@@ -27,17 +26,23 @@
         <div class="editor-card">
             <h1 id="editorTitle">写文章</h1>
             <form id="postForm">
-                <div class="form-group">
-                    <label for="title">标题 *</label>
-                    <input type="text" id="title" placeholder="输入文章标题..." required>
+                <div class="form-row">
+                    <div class="form-group form-row-item">
+                        <label for="title">标题 *</label>
+                        <input type="text" id="title" placeholder="输入文章标题..." required>
+                    </div>
+                    <div class="form-group form-row-item">
+                        <label for="author">作者</label>
+                        <input type="text" id="author" placeholder="作者名（留空默认为「匿名」）">
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label for="author">作者</label>
-                    <input type="text" id="author" placeholder="作者名（留空默认为「匿名」）">
+                    <label for="topic">专栏</label>
+                    <input type="text" id="topic">
                 </div>
                 <div class="form-group">
-                    <label for="topic">主题（可选）</label>
-                    <input type="text" id="topic" placeholder="例如：C++、生活、读书…（相同主题会自动归类到同一栏）">
+                    <label for="summary">内容简介</label>
+                    <textarea id="summary" rows="3" placeholder="一句话概括这篇文章（可选，会显示在文章列表中）"></textarea>
                 </div>
                 <div class="form-group">
                     <label for="content">正文（支持 Markdown 语法）</label>
@@ -74,6 +79,23 @@
             </form>
         </div>
     </main>
+
+    <!-- 插入图片弹窗 -->
+    <div class="image-modal-overlay" id="imageModal" hidden>
+        <div class="image-modal" role="dialog" aria-modal="true" aria-labelledby="imageModalTitle">
+            <div class="image-modal-header">
+                <h3 id="imageModalTitle">插入图片</h3>
+                <button type="button" class="image-modal-close" id="imageModalClose" aria-label="关闭">&times;</button>
+            </div>
+            <div class="image-modal-body">
+                <button type="button" class="btn btn-primary btn-block" id="imageUploadBtn">上传本地图片</button>
+                <div class="image-modal-divider"><span>或使用图片链接</span></div>
+                <input type="text" id="imageUrlInput" class="image-url-input" placeholder="https://example.com/pic.png">
+                <button type="button" class="btn btn-secondary btn-block" id="imageUrlConfirmBtn">插入链接</button>
+            </div>
+        </div>
+        <input type="file" id="imageFileInput" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" hidden>
+    </div>
 
     <script src="/js/marked.min.js"></script>
     <script src="/js/purify.min.js"></script>

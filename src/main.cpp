@@ -9,6 +9,10 @@
 #include <cstring>
 #include <unistd.h>
 #include <limits.h>
+#include <sys/stat.h>
+#include <chrono>
+#include <algorithm>
+#include <cctype>
 
 
 // DataBase 类：封装所有 MySQL 操作
@@ -84,6 +88,7 @@ public:
 				id INT AUTO_INCREMENT PRIMARY KEY,
 				title VARCHAR(255) NOT NULL COMMENT '文章标题',
 				content TEXT COMMENT '文章正文',
+				summary TEXT COMMENT '文章简介',
 				author VARCHAR(100) DEFAULT '匿名' COMMENT '作者',
 				topic VARCHAR(100) NOT NULL DEFAULT '' COMMENT '文章主题',
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -103,6 +108,16 @@ public:
 			if (mysql_query(conn_, alterSql) != 0)
 			{
 				throw std::runtime_error(std::string("补充 topic 列失败：") + mysql_error(conn_));
+			}
+		}
+
+		// 兼容旧表：若缺少 summary 列，则补充
+		if (!columnExists("posts", "summary"))
+		{
+			const char* alterSql = "ALTER TABLE posts ADD COLUMN summary TEXT COMMENT '文章简介' AFTER content";
+			if (mysql_query(conn_, alterSql) != 0)
+			{
+				throw std::runtime_error(std::string("补充 summary 列失败：") + mysql_error(conn_));
 			}
 		}
 	}
@@ -142,7 +157,7 @@ public:
 		std::vector<crow::json::wvalue> posts;
 
 		const char* sql = R"(
-			SELECT id, title, content, author, topic, created_at, updated_at
+			SELECT id, title, content, summary, author, topic, created_at, updated_at
 			FROM posts
 			ORDER BY id DESC
 		)";
@@ -164,10 +179,11 @@ public:
 				post["id"] = std::stoi(row[0]);
 				post["title"] = row[1] ? row[1] : "";
 				post["content"] = row[2] ? row[2] : "";
-				post["author"] = row[3] ? row[3] : "";
-				post["topic"] = row[4] ? row[4] : "";
-				post["created_at"] = row[5] ? row[5] : "";
-				post["updated_at"] = row[6] ? row[6] : "";
+				post["summary"] = row[3] ? row[3] : "";
+				post["author"] = row[4] ? row[4] : "";
+				post["topic"] = row[5] ? row[5] : "";
+				post["created_at"] = row[6] ? row[6] : "";
+				post["updated_at"] = row[7] ? row[7] : "";
 				posts.push_back(std::move(post));
 			}
 			mysql_free_result(res);
@@ -185,7 +201,7 @@ public:
 		checkConnection();
 
 		crow::json::wvalue result;
-		std::string sql = "SELECT id, title, content, author, topic, created_at, updated_at FROM posts WHERE id=" + std::to_string(id);
+		std::string sql = "SELECT id, title, content, summary, author, topic, created_at, updated_at FROM posts WHERE id=" + std::to_string(id);
 
 		if (mysql_query(conn_, sql.c_str()) != 0)
 		{
@@ -211,10 +227,11 @@ public:
 		post["id"] = std::stoi(row[0]);
 		post["title"] = row[1] ? row[1] : "";
 		post["content"] = row[2] ? row[2] : "";
-		post["author"] = row[3] ? row[3] : "";
-		post["topic"] = row[4] ? row[4] : "";
-		post["created_at"] = row[5] ? row[5] : "";
-		post["updated_at"] = row[6] ? row[6] : "";
+		post["summary"] = row[3] ? row[3] : "";
+		post["author"] = row[4] ? row[4] : "";
+		post["topic"] = row[5] ? row[5] : "";
+		post["created_at"] = row[6] ? row[6] : "";
+		post["updated_at"] = row[7] ? row[7] : "";
 		mysql_free_result(res);
 
 		result["post"] = std::move(post);
@@ -223,7 +240,7 @@ public:
 	}
 
 	// 发布文章（使用预处理语句防止 SQL 注入）
-	crow::json::wvalue addPost(const std::string& title, const std::string& content, const std::string& author, const std::string& topic)
+	crow::json::wvalue addPost(const std::string& title, const std::string& content, const std::string& summary, const std::string& author, const std::string& topic)
 	{
 		std::lock_guard<std::mutex> lock(mtx_);
 		checkConnection();
@@ -237,68 +254,7 @@ public:
 			return result;
 		}
 
-		const char* sql = "INSERT INTO posts (title, content, author, topic) VALUES (?, ?, ?, ?)";
-		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
-		{
-			result["success"] = false;
-			result["message"] = mysql_stmt_error(stmt);
-			mysql_stmt_close(stmt);
-			return result;
-		}
-
-		MYSQL_BIND bind[4];
-		std::memset(bind, 0, sizeof(bind));
-
-		bind[0].buffer_type = MYSQL_TYPE_STRING;
-		bind[0].buffer = (void*)title.c_str();
-		bind[0].buffer_length = title.length();
-
-		bind[1].buffer_type = MYSQL_TYPE_STRING;
-		bind[1].buffer = (void*)content.c_str();
-		bind[1].buffer_length = content.length();
-
-		bind[2].buffer_type = MYSQL_TYPE_STRING;
-		bind[2].buffer = (void*)author.c_str();
-		bind[2].buffer_length = author.length();
-
-		bind[3].buffer_type = MYSQL_TYPE_STRING;
-		bind[3].buffer = (void*)topic.c_str();
-		bind[3].buffer_length = topic.length();
-
-		mysql_stmt_bind_param(stmt, bind);
-
-		if (mysql_stmt_execute(stmt) == 0)
-		{
-			int newID = static_cast<int>(mysql_stmt_insert_id(stmt));
-			result["success"] = true;
-			result["id"] = newID;
-			result["message"] = "文章发布成功";
-		}
-		else
-		{
-			result["success"] = false;
-			result["message"] = mysql_stmt_error(stmt);
-		}
-		mysql_stmt_close(stmt);
-		return result;
-	}
-
-	// 更新文章
-	crow::json::wvalue updatePost(int id, const std::string& title, const std::string& content, const std::string& author, const std::string& topic)
-	{
-		std::lock_guard<std::mutex> lock(mtx_);
-		checkConnection();
-
-		crow::json::wvalue result;
-		MYSQL_STMT* stmt = mysql_stmt_init(conn_);
-		if (!stmt)
-		{
-			result["success"] = false;
-			result["message"] = "mysql_stmt_init 失败";
-			return result;
-		}
-
-		const char* sql = "UPDATE posts SET title=?, content=?, author=?, topic=? WHERE id=?";
+		const char* sql = "INSERT INTO posts (title, content, summary, author, topic) VALUES (?, ?, ?, ?, ?)";
 		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
 		{
 			result["success"] = false;
@@ -319,15 +275,84 @@ public:
 		bind[1].buffer_length = content.length();
 
 		bind[2].buffer_type = MYSQL_TYPE_STRING;
-		bind[2].buffer = (void*)author.c_str();
-		bind[2].buffer_length = author.length();
+		bind[2].buffer = (void*)summary.c_str();
+		bind[2].buffer_length = summary.length();
 
 		bind[3].buffer_type = MYSQL_TYPE_STRING;
-		bind[3].buffer = (void*)topic.c_str();
-		bind[3].buffer_length = topic.length();
+		bind[3].buffer = (void*)author.c_str();
+		bind[3].buffer_length = author.length();
 
-		bind[4].buffer_type = MYSQL_TYPE_LONG;
-		bind[4].buffer = (void*)&id;
+		bind[4].buffer_type = MYSQL_TYPE_STRING;
+		bind[4].buffer = (void*)topic.c_str();
+		bind[4].buffer_length = topic.length();
+
+		mysql_stmt_bind_param(stmt, bind);
+
+		if (mysql_stmt_execute(stmt) == 0)
+		{
+			int newID = static_cast<int>(mysql_stmt_insert_id(stmt));
+			result["success"] = true;
+			result["id"] = newID;
+			result["message"] = "文章发布成功";
+		}
+		else
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+		}
+		mysql_stmt_close(stmt);
+		return result;
+	}
+
+	// 更新文章
+	crow::json::wvalue updatePost(int id, const std::string& title, const std::string& content, const std::string& summary, const std::string& author, const std::string& topic)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		crow::json::wvalue result;
+		MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+		if (!stmt)
+		{
+			result["success"] = false;
+			result["message"] = "mysql_stmt_init 失败";
+			return result;
+		}
+
+		const char* sql = "UPDATE posts SET title=?, content=?, summary=?, author=?, topic=? WHERE id=?";
+		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+			mysql_stmt_close(stmt);
+			return result;
+		}
+
+		MYSQL_BIND bind[6];
+		std::memset(bind, 0, sizeof(bind));
+
+		bind[0].buffer_type = MYSQL_TYPE_STRING;
+		bind[0].buffer = (void*)title.c_str();
+		bind[0].buffer_length = title.length();
+
+		bind[1].buffer_type = MYSQL_TYPE_STRING;
+		bind[1].buffer = (void*)content.c_str();
+		bind[1].buffer_length = content.length();
+
+		bind[2].buffer_type = MYSQL_TYPE_STRING;
+		bind[2].buffer = (void*)summary.c_str();
+		bind[2].buffer_length = summary.length();
+
+		bind[3].buffer_type = MYSQL_TYPE_STRING;
+		bind[3].buffer = (void*)author.c_str();
+		bind[3].buffer_length = author.length();
+
+		bind[4].buffer_type = MYSQL_TYPE_STRING;
+		bind[4].buffer = (void*)topic.c_str();
+		bind[4].buffer_length = topic.length();
+
+		bind[5].buffer_type = MYSQL_TYPE_LONG;
+		bind[5].buffer = (void*)&id;
 
 		mysql_stmt_bind_param(stmt, bind);
 
@@ -426,6 +451,71 @@ std::string getStaticDir()
 }
 
 
+// 确保目录存在（不存在则创建）
+void ensureDir(const std::string& path)
+{
+	mkdir(path.c_str(), 0755);
+}
+
+// 字符串转小写
+std::string toLower(std::string s)
+{
+	std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return std::tolower(c); });
+	return s;
+}
+
+// 根据文件名返回 MIME 类型
+std::string mimeTypeFromFilename(const std::string& filename)
+{
+	std::string ext;
+	size_t dot = filename.find_last_of('.');
+	if (dot != std::string::npos)
+		ext = toLower(filename.substr(dot));
+
+	if (ext == ".png")  return "image/png";
+	if (ext == ".jpg" || ext == ".jpeg") return "image/jpeg";
+	if (ext == ".gif")  return "image/gif";
+	if (ext == ".webp") return "image/webp";
+	if (ext == ".bmp")  return "image/bmp";
+	return "application/octet-stream";
+}
+
+// 校验扩展名是否为允许上传的图片格式
+bool isAllowedImageExt(const std::string& filename)
+{
+	std::string ext;
+	size_t dot = filename.find_last_of('.');
+	if (dot == std::string::npos)
+		return false;
+	ext = toLower(filename.substr(dot));
+	return ext == ".png" || ext == ".jpg" || ext == ".jpeg" ||
+		   ext == ".gif" || ext == ".webp" || ext == ".bmp";
+}
+
+// 生成唯一文件名：时间戳 + 原始扩展名
+std::string generateImageName(const std::string& originalName)
+{
+	std::string ext;
+	size_t dot = originalName.find_last_of('.');
+	if (dot != std::string::npos)
+		ext = toLower(originalName.substr(dot));
+	auto now = std::chrono::system_clock::now().time_since_epoch().count();
+	return std::to_string(now) + ext;
+}
+
+// 从 multipart part 中提取原始文件名（来自 Content-Disposition）
+std::string getUploadFilename(const crow::multipart::part& p)
+{
+	auto it = p.headers.find("Content-Disposition");
+	if (it != p.headers.end())
+	{
+		auto pit = it->second.params.find("filename");
+		if (pit != it->second.params.end())
+			return pit->second;
+	}
+	return "";
+}
+
 // 辅助函数：给 response 添加 CORS 头（旧版 Crow 没有中间件）
 void addCorsHeaders(crow::response& res)
 {
@@ -452,6 +542,9 @@ int main()
 		DataBase db("localhost", "root", "123456", "blogdb", 3306);
 
 		crow::SimpleApp app;
+
+		std::string staticDir = getStaticDir();
+		std::cout << "[Static] 静态文件目录: " << staticDir << std::endl;
 
 		// 处理浏览器的 OPTIONS 预检请求
 		CROW_ROUTE(app, "/api/<path>").methods("OPTIONS"_method)([](const crow::request& req, std::string path){
@@ -482,9 +575,10 @@ int main()
 
 			std::string title = body["title"].s();
 			std::string content = body.has("content") ? std::string(body["content"].s()) : std::string("");
+			std::string summary = body.has("summary") ? std::string(body["summary"].s()) : std::string("");
 			std::string author = body.has("author") ? std::string(body["author"].s()) : std::string("匿名");
 			std::string topic = body.has("topic") ? std::string(body["topic"].s()) : std::string("");
-			crow::response res(db.addPost(title, content, author, topic));
+			crow::response res(db.addPost(title, content, summary, author, topic));
 			addCorsHeaders(res);
 			return res;
 		});
@@ -509,9 +603,10 @@ int main()
 
 			std::string title = body["title"].s();
 			std::string content = body.has("content") ? std::string(body["content"].s()) : std::string("");
+			std::string summary = body.has("summary") ? std::string(body["summary"].s()) : std::string("");
 			std::string author = body.has("author") ? std::string(body["author"].s()) : std::string("匿名");
 			std::string topic = body.has("topic") ? std::string(body["topic"].s()) : std::string("");
-			crow::response res(db.updatePost(id, title, content, author, topic));
+			crow::response res(db.updatePost(id, title, content, summary, author, topic));
 			addCorsHeaders(res);
 			return res;
 		});
@@ -523,10 +618,76 @@ int main()
 			return res;
 		});
 
-		// ========== 静态文件服务 ==========
+		// POST /api/upload - 上传图片（multipart/form-data，字段名 image）
+		CROW_ROUTE(app, "/api/upload").methods("POST"_method)([staticDir](const crow::request& req){
+			crow::json::wvalue result;
+			try
+			{
+				crow::multipart::message msg(req);
+				crow::multipart::part file = msg.get_part_by_name("image");
+				if (file.body.empty())
+				{
+					result["success"] = false;
+					result["message"] = "未找到上传的图片";
+					crow::response res(400, result);
+					addCorsHeaders(res);
+					return res;
+				}
 
-		std::string staticDir = getStaticDir();
-		std::cout << "[Static] 静态文件目录: " << staticDir << std::endl;
+				std::string originalName = getUploadFilename(file);
+				if (originalName.empty() || !isAllowedImageExt(originalName))
+				{
+					result["success"] = false;
+					result["message"] = "仅支持 png / jpg / jpeg / gif / webp / bmp 格式";
+					crow::response res(400, result);
+					addCorsHeaders(res);
+					return res;
+				}
+
+				// 限制图片大小不超过 10MB，避免异常上传占用磁盘
+				const size_t maxSize = 10 * 1024 * 1024;
+				if (file.body.size() > maxSize)
+				{
+					result["success"] = false;
+					result["message"] = "图片大小不能超过 10MB";
+					crow::response res(400, result);
+					addCorsHeaders(res);
+					return res;
+				}
+
+				std::string uploadDir = staticDir + "/uploads";
+				ensureDir(uploadDir);
+
+				std::string filename = generateImageName(originalName);
+				std::ofstream out(uploadDir + "/" + filename, std::ios::binary);
+				if (!out.is_open())
+				{
+					result["success"] = false;
+					result["message"] = "无法写入文件，请检查 uploads 目录权限";
+					crow::response res(500, result);
+					addCorsHeaders(res);
+					return res;
+				}
+				out.write(file.body.data(), static_cast<std::streamsize>(file.body.size()));
+				out.close();
+
+				result["success"] = true;
+				result["url"] = "/uploads/" + filename;
+				crow::response res(result);
+				addCorsHeaders(res);
+				return res;
+			}
+			catch (const std::exception& e)
+			{
+				result["success"] = false;
+				result["message"] = std::string("上传失败: ") + e.what();
+				crow::response res(500, result);
+				addCorsHeaders(res);
+				return res;
+			}
+		});
+
+		// ========== 静态文件服务 ==========
 
 		// 根路径返回首页（文章列表）
 		CROW_ROUTE(app, "/")([staticDir](){
@@ -556,6 +717,18 @@ int main()
 			auto content = readFile(staticDir + "/js/" + filename);
 			crow::response res(content);
 			res.add_header("Content-Type", "application/javascript; charset=utf-8");
+			return res;
+		});
+
+		// 上传的图片
+		CROW_ROUTE(app, "/uploads/<string>")([staticDir](std::string filename){
+			std::string content = readFile(staticDir + "/uploads/" + filename);
+			if (content.empty())
+			{
+				return crow::response(404);
+			}
+			crow::response res(content);
+			res.add_header("Content-Type", mimeTypeFromFilename(filename));
 			return res;
 		});
 

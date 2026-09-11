@@ -7,6 +7,9 @@ const API_BASE = '/api';
 // 编辑模式下的文章 id（null 表示新建）
 let editingId = null;
 
+// 插入图片时的光标 / 选中上下文
+let imageInsertContext = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     const contentInput = document.getElementById('content');
 
@@ -29,6 +32,57 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById('postForm').addEventListener('submit', handleSubmit);
+
+    // 单行输入框内按回车不提交表单（避免误提交，多行 textarea 不受影响）
+    document.getElementById('postForm').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+            e.preventDefault();
+        }
+    });
+
+    // ===== 插入图片弹窗 =====
+    const imageModal = document.getElementById('imageModal');
+    document.getElementById('imageModalClose').addEventListener('click', closeImageModal);
+    imageModal.addEventListener('click', (e) => {
+        if (e.target === imageModal) closeImageModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !imageModal.hidden) closeImageModal();
+    });
+
+    // 上传本地图片
+    document.getElementById('imageUploadBtn').addEventListener('click', () => {
+        document.getElementById('imageFileInput').click();
+    });
+    document.getElementById('imageFileInput').addEventListener('change', async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        try {
+            const url = await uploadImage(file);
+            insertImageMarkdown(url);
+            showToast('图片上传成功');
+        } catch (err) {
+            showToast(err.message || '图片上传失败', 'error');
+        } finally {
+            e.target.value = '';
+        }
+    });
+
+    // 使用图片链接
+    document.getElementById('imageUrlConfirmBtn').addEventListener('click', () => {
+        const url = document.getElementById('imageUrlInput').value.trim();
+        if (!url) {
+            showToast('请输入图片链接', 'error');
+            return;
+        }
+        insertImageMarkdown(url);
+    });
+    document.getElementById('imageUrlInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('imageUrlConfirmBtn').click();
+        }
+    });
 });
 
 async function apiRequest(url, method = 'GET', body = null) {
@@ -80,12 +134,17 @@ function applyMarkdown(actionName) {
     let prefix = action.prefix || '';
     let suffix = action.suffix || '';
 
-    // 链接 / 图片：弹窗获取地址
+    // 链接：弹窗获取地址；图片：打开插入图片弹窗（支持本地 / 链接）
     if (action.type === 'link' || action.type === 'image') {
-        const url = prompt('请输入链接地址：', 'https://');
-        if (url === null) return; // 用户取消
-        prefix = action.type === 'image' ? '![' : '[';
-        suffix = '](' + url + ')';
+        if (action.type === 'link') {
+            const url = prompt('请输入链接地址：', 'https://');
+            if (url === null) return; // 用户取消
+            prefix = '[';
+            suffix = '](' + url + ')';
+        } else {
+            openImageModal(start, end, selected);
+            return;
+        }
     }
 
     const text = selected || action.placeholder || '';
@@ -108,6 +167,54 @@ function applyMarkdown(actionName) {
     updatePreview();
 }
 
+// 打开插入图片弹窗，记录插入位置与选中文本
+function openImageModal(start, end, selected) {
+    imageInsertContext = { start, end, selected };
+    document.getElementById('imageUrlInput').value = '';
+    document.getElementById('imageModal').hidden = false;
+    document.getElementById('imageUrlInput').focus();
+}
+
+function closeImageModal() {
+    document.getElementById('imageModal').hidden = true;
+    imageInsertContext = null;
+}
+
+// 将图片 Markdown 插入到之前记录的光标位置
+function insertImageMarkdown(url) {
+    if (!imageInsertContext) return;
+    const { start, end, selected } = imageInsertContext;
+    const alt = selected || '图片';
+    const ta = document.getElementById('content');
+    const markdown = `![${alt}](${url})`;
+
+    ta.value = ta.value.slice(0, start) + markdown + ta.value.slice(end);
+    const caret = start + markdown.length;
+    ta.focus();
+    ta.setSelectionRange(caret, caret);
+    updatePreview();
+    closeImageModal();
+}
+
+// 上传图片到服务器，返回可访问的 URL
+async function uploadImage(file) {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: formData });
+    if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try {
+            const data = await res.json();
+            if (data && data.message) msg = data.message;
+        } catch (e) { /* 忽略解析错误 */ }
+        throw new Error(msg);
+    }
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || '上传失败');
+    return data.url;
+}
+
 async function loadForEdit(id) {
     try {
         const data = await apiRequest(`${API_BASE}/posts/${id}`);
@@ -120,6 +227,7 @@ async function loadForEdit(id) {
         document.getElementById('title').value = post.title;
         document.getElementById('author').value = post.author || '';
         document.getElementById('topic').value = post.topic || '';
+        document.getElementById('summary').value = post.summary || '';
         document.getElementById('content').value = post.content || '';
         document.getElementById('submitBtn').textContent = '保存';
         document.title = `编辑 · ${post.title}`;
@@ -135,6 +243,7 @@ async function handleSubmit(e) {
     const title = document.getElementById('title').value.trim();
     const author = document.getElementById('author').value.trim() || '匿名';
     const topic = document.getElementById('topic').value.trim();
+    const summary = document.getElementById('summary').value.trim();
     const content = document.getElementById('content').value;
 
     if (!title) {
@@ -149,7 +258,7 @@ async function handleSubmit(e) {
     try {
         const url = editingId ? `${API_BASE}/posts/${editingId}` : `${API_BASE}/posts`;
         const method = editingId ? 'PUT' : 'POST';
-        const data = await apiRequest(url, method, { title, author, topic, content });
+        const data = await apiRequest(url, method, { title, author, topic, summary, content });
 
         if (data.success) {
             showToast(editingId ? '✏️ 文章已保存' : '✅ 文章发布成功');
