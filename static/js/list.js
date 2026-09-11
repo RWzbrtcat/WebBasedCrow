@@ -134,6 +134,10 @@ function renderPosts(posts) {
         const actionLink = isDraft
             ? `<a class="read-more" href="${href}">继续编辑 →</a>`
             : `<a class="read-more" href="${href}">阅读全文 →</a>`;
+        const summary = makeExcerpt(post);
+        const updatedHtml = post.updated_at && post.updated_at !== post.created_at
+            ? `<span class="sep">·</span><span>更新于 ${formatDate(post.updated_at)}</span>`
+            : '';
         return `
             <article class="post-card">
                 <h2 class="post-title"><a href="${href}">${escapeHtml(post.title)}</a></h2>
@@ -143,8 +147,9 @@ function renderPosts(posts) {
                     <span>${escapeHtml(post.author || '匿名')}</span>
                     <span class="sep">·</span>
                     <span>${formatDate(post.created_at)}</span>
+                    ${updatedHtml}
                 </div>
-                <p class="post-excerpt">${escapeHtml(makeExcerpt(post))}</p>
+                ${summary ? `<p class="post-excerpt">${escapeHtml(summary)}</p>` : ''}
                 ${actionLink}
             </article>
         `;
@@ -152,30 +157,7 @@ function renderPosts(posts) {
 }
 
 function makeExcerpt(post) {
-    const summary = (post.summary || '').trim();
-    const text = summary || stripMarkdown(post.content || '');
-    if (text.length <= 120) return text;
-    return text.slice(0, 120) + '…';
-}
-
-// 去掉 Markdown 语法标记，生成纯文本摘要
-function stripMarkdown(md) {
-    return md
-        .replace(/```[\s\S]*?```/g, ' ')      // 代码块
-        .replace(/`[^`]*`/g, ' ')             // 行内代码
-        .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1') // 图片
-        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')  // 链接
-        .replace(/^#{1,6}\s+/gm, '')          // 标题
-        .replace(/^\s*>\s?/gm, '')            // 引用
-        .replace(/^\s*[-*+]\s+/gm, '')        // 无序列表
-        .replace(/^\s*\d+\.\s+/gm, '')        // 有序列表
-        .replace(/\*\*([^*]+)\*\*/g, '$1')    // 加粗
-        .replace(/__([^_]+)__/g, '$1')        // 加粗
-        .replace(/\*([^*]+)\*/g, '$1')        // 斜体
-        .replace(/_([^_]+)_/g, '$1')          // 斜体
-        .replace(/~~([^~]+)~~/g, '$1')        // 删除线
-        .replace(/\s+/g, ' ')
-        .trim();
+    return (post.summary || '').trim();
 }
 
 function escapeHtml(text) {
