@@ -32,7 +32,7 @@ function pushUndoState() {
 function restoreState(state) {
     const ta = contentTextarea();
     ta.value = state.value;
-    ta.focus();
+    ta.focus({ preventScroll: true });
     ta.setSelectionRange(state.selStart, state.selEnd);
     updatePreview();
 }
@@ -230,7 +230,7 @@ function applyMarkdown(actionName) {
         selEnd = selStart + text.length;
     }
 
-    ta.focus();
+    ta.focus({ preventScroll: true });
     ta.setSelectionRange(selStart, selEnd);
     updatePreview();
 }
@@ -259,7 +259,7 @@ function insertImageMarkdown(url) {
     pushUndoState();
     ta.value = ta.value.slice(0, start) + markdown + ta.value.slice(end);
     const caret = start + markdown.length;
-    ta.focus();
+    ta.focus({ preventScroll: true });
     ta.setSelectionRange(caret, caret);
     updatePreview();
     closeImageModal();
