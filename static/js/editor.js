@@ -20,6 +20,15 @@ function contentTextarea() {
     return document.getElementById('content');
 }
 
+// 滚动 textarea，使指定字符偏移所在行出现在可视区中间
+function scrollToOffset(ta, offset) {
+    const style = getComputedStyle(ta);
+    const lineHeight = parseFloat(style.lineHeight) || 20;
+    const paddingTop = parseFloat(style.paddingTop) || 0;
+    const lineIndex = ta.value.slice(0, offset).split('\n').length - 1;
+    ta.scrollTop = Math.max(0, paddingTop + lineIndex * lineHeight - ta.clientHeight / 2);
+}
+
 // 记录当前状态到撤销栈（并清空重做栈、重置输入合并计时）
 function pushUndoState() {
     const ta = contentTextarea();
@@ -86,6 +95,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (action === 'undo') { undo(); return; }
         if (action === 'redo') { redo(); return; }
         applyMarkdown(action);
+    });
+
+    // 双击右侧预览 → 定位到左侧对应编辑位置
+    document.getElementById('preview').addEventListener('dblclick', (e) => {
+        const block = e.target.closest('[data-offset]');
+        if (!block) return;
+        const offset = Number(block.dataset.offset);
+        if (Number.isNaN(offset)) return;
+        const ta = contentTextarea();
+        ta.focus({ preventScroll: true });
+        ta.setSelectionRange(offset, offset);
+        scrollToOffset(ta, offset);
     });
 
     const id = new URLSearchParams(window.location.search).get('id');
