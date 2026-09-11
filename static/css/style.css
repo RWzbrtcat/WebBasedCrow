@@ -95,6 +95,11 @@ a {
     background: var(--bg);
 }
 
+.nav a.active {
+    color: var(--text);
+    font-weight: 600;
+}
+
 .nav a.btn-write {
     background: var(--accent);
     color: #fff;
@@ -216,6 +221,17 @@ a {
     line-height: 1.5;
     color: var(--accent);
     background: var(--accent-soft);
+    border-radius: 10px;
+}
+
+.post-draft {
+    display: inline-block;
+    padding: 1px 9px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.5;
+    color: #b7791f;
+    background: #fef3c7;
     border-radius: 10px;
 }
 

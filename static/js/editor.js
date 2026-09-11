@@ -10,17 +10,82 @@ let editingId = null;
 // 插入图片时的光标 / 选中上下文
 let imageInsertContext = null;
 
+// ===== 撤销 / 重做 =====
+const MAX_HISTORY = 200;
+let undoStack = [];
+let redoStack = [];
+let lastInputAt = 0; // 用于合并连续输入为一步
+
+function contentTextarea() {
+    return document.getElementById('content');
+}
+
+// 记录当前状态到撤销栈（并清空重做栈、重置输入合并计时）
+function pushUndoState() {
+    const ta = contentTextarea();
+    undoStack.push({ value: ta.value, selStart: ta.selectionStart, selEnd: ta.selectionEnd });
+    if (undoStack.length > MAX_HISTORY) undoStack.shift();
+    redoStack.length = 0;
+    lastInputAt = 0;
+}
+
+function restoreState(state) {
+    const ta = contentTextarea();
+    ta.value = state.value;
+    ta.focus();
+    ta.setSelectionRange(state.selStart, state.selEnd);
+    updatePreview();
+}
+
+function undo() {
+    if (!undoStack.length) return;
+    const ta = contentTextarea();
+    redoStack.push({ value: ta.value, selStart: ta.selectionStart, selEnd: ta.selectionEnd });
+    restoreState(undoStack.pop());
+}
+
+function redo() {
+    if (!redoStack.length) return;
+    const ta = contentTextarea();
+    undoStack.push({ value: ta.value, selStart: ta.selectionStart, selEnd: ta.selectionEnd });
+    restoreState(redoStack.pop());
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const contentInput = document.getElementById('content');
 
     // 输入时实时刷新预览
     contentInput.addEventListener('input', updatePreview);
 
+    // 撤销 / 重做：输入前记录状态（800ms 内连续输入合并为一步）
+    contentInput.addEventListener('beforeinput', (e) => {
+        if (e.inputType && e.inputType.startsWith('history')) return;
+        const now = Date.now();
+        if (now - lastInputAt > 800) pushUndoState();
+        lastInputAt = now;
+    });
+
+    // Ctrl+Z 撤销 / Ctrl+Y（或 Ctrl+Shift+Z）重做
+    contentInput.addEventListener('keydown', (e) => {
+        if (!(e.ctrlKey || e.metaKey)) return;
+        const key = e.key.toLowerCase();
+        if (key === 'z' && !e.shiftKey) {
+            e.preventDefault();
+            undo();
+        } else if (key === 'y' || (key === 'z' && e.shiftKey)) {
+            e.preventDefault();
+            redo();
+        }
+    });
+
     // 工具栏按钮
     document.getElementById('markdownToolbar').addEventListener('click', (e) => {
         const btn = e.target.closest('.md-btn');
         if (!btn) return;
-        applyMarkdown(btn.dataset.action);
+        const action = btn.dataset.action;
+        if (action === 'undo') { undo(); return; }
+        if (action === 'redo') { redo(); return; }
+        applyMarkdown(action);
     });
 
     const id = new URLSearchParams(window.location.search).get('id');
@@ -32,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById('postForm').addEventListener('submit', handleSubmit);
+    document.getElementById('draftBtn').addEventListener('click', () => savePost('draft'));
 
     // 单行输入框内按回车不提交表单（避免误提交，多行 textarea 不受影响）
     document.getElementById('postForm').addEventListener('keydown', (e) => {
@@ -150,6 +216,8 @@ function applyMarkdown(actionName) {
     const text = selected || action.placeholder || '';
     let selStart, selEnd;
 
+    pushUndoState();
+
     if (action.block) {
         // 块级：在光标所在行行首插入前缀
         const lineStart = ta.value.lastIndexOf('\n', start - 1) + 1;
@@ -188,6 +256,7 @@ function insertImageMarkdown(url) {
     const ta = document.getElementById('content');
     const markdown = `![${alt}](${url})`;
 
+    pushUndoState();
     ta.value = ta.value.slice(0, start) + markdown + ta.value.slice(end);
     const caret = start + markdown.length;
     ta.focus();
@@ -239,41 +308,62 @@ async function loadForEdit(id) {
 
 async function handleSubmit(e) {
     e.preventDefault();
+    await savePost('published');
+}
 
-    const title = document.getElementById('title').value.trim();
+// 保存文章（status 为 published 发布 / draft 草稿）
+async function savePost(status) {
+    let title = document.getElementById('title').value.trim();
     const author = document.getElementById('author').value.trim() || '匿名';
     const topic = document.getElementById('topic').value.trim();
     const summary = document.getElementById('summary').value.trim();
     const content = document.getElementById('content').value;
 
+    const isDraft = status === 'draft';
+
     if (!title) {
-        showToast('请输入文章标题', 'error');
-        return;
+        if (!isDraft) {
+            showToast('请输入文章标题', 'error');
+            return;
+        }
+        title = '无标题草稿';
     }
 
-    const submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = true;
-    submitBtn.textContent = '提交中...';
+    const savingBtn = isDraft ? document.getElementById('draftBtn') : document.getElementById('submitBtn');
+    const originalText = savingBtn.textContent;
+    savingBtn.disabled = true;
+    savingBtn.textContent = isDraft ? '保存中...' : '提交中...';
 
     try {
         const url = editingId ? `${API_BASE}/posts/${editingId}` : `${API_BASE}/posts`;
         const method = editingId ? 'PUT' : 'POST';
-        const data = await apiRequest(url, method, { title, author, topic, summary, content });
+        const data = await apiRequest(url, method, { title, author, topic, summary, content, status });
 
         if (data.success) {
-            showToast(editingId ? '✏️ 文章已保存' : '✅ 文章发布成功');
-            setTimeout(() => {
-                window.location.href = `/post?id=${editingId || data.id}`;
-            }, 500);
+            if (editingId == null && data.id) editingId = data.id;
+
+            if (isDraft) {
+                showToast('📝 草稿已保存');
+                document.getElementById('editorTitle').textContent = '编辑文章';
+                document.getElementById('submitBtn').textContent = '保存';
+                document.title = `编辑 · ${title}`;
+                savingBtn.disabled = false;
+                savingBtn.textContent = originalText;
+            } else {
+                showToast('✅ 文章发布成功');
+                setTimeout(() => {
+                    window.location.href = `/post?id=${editingId || data.id}`;
+                }, 500);
+            }
         } else {
             showToast(data.message || '操作失败', 'error');
-            submitBtn.disabled = false;
-            submitBtn.textContent = editingId ? '保存' : '发布';
+            savingBtn.disabled = false;
+            savingBtn.textContent = originalText;
         }
     } catch (err) {
         showToast('提交失败，请检查服务是否运行', 'error');
-        submitBtn.disabled = false;
-        submitBtn.textContent = editingId ? '保存' : '发布';
+        savingBtn.disabled = false;
+        savingBtn.textContent = originalText;
     }
 }
 

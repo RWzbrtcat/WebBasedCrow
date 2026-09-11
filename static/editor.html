@@ -16,6 +16,7 @@
             </div>
             <nav class="nav">
                 <a href="/">首页</a>
+                <a href="/drafts">草稿</a>
                 <a href="/editor" class="btn-write">写文章</a>
             </nav>
         </div>
@@ -47,6 +48,9 @@
                 <div class="form-group">
                     <label for="content">正文（支持 Markdown 语法）</label>
                     <div class="markdown-toolbar" id="markdownToolbar">
+                        <button type="button" class="md-btn" data-action="undo" title="撤销 (Ctrl+Z)">撤销</button>
+                        <button type="button" class="md-btn" data-action="redo" title="重做 (Ctrl+Y)">重做</button>
+                        <span class="md-divider"></span>
                         <button type="button" class="md-btn md-btn-bold" data-action="bold" title="加粗">加粗</button>
                         <button type="button" class="md-btn md-btn-italic" data-action="italic" title="斜体">斜体</button>
                         <button type="button" class="md-btn" data-action="strike" title="删除线">删除线</button>
@@ -74,6 +78,7 @@
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary" id="submitBtn">发布</button>
+                    <button type="button" class="btn btn-secondary" id="draftBtn">保存草稿</button>
                     <a href="/" class="btn btn-secondary">取消</a>
                 </div>
             </form>

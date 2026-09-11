@@ -57,7 +57,7 @@ public:
 		mysql_options(conn_, MYSQL_SET_CHARSET_NAME, "utf8mb4");
 
 		// 建立连接
-		if (!mysql_real_connect(conn_, host_.c_str(), user_.c_str(), pass_.c_str(), db_.c_str(), port_, nullptr, 0))
+		if (!mysql_real_connect(conn_, host_.c_str(), user_.c_str(), pass_.c_str(), db_.c_str(), port_, nullptr, CLIENT_FOUND_ROWS))
 		{
 			std::string err = "MySQL 连接失败! ";
 			err += mysql_error(conn_);
@@ -91,6 +91,7 @@ public:
 				summary TEXT COMMENT '文章简介',
 				author VARCHAR(100) DEFAULT '匿名' COMMENT '作者',
 				topic VARCHAR(100) NOT NULL DEFAULT '' COMMENT '文章主题',
+				status VARCHAR(20) NOT NULL DEFAULT 'published' COMMENT '文章状态: published/draft',
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
 			)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -120,6 +121,16 @@ public:
 				throw std::runtime_error(std::string("补充 summary 列失败：") + mysql_error(conn_));
 			}
 		}
+
+		// 兼容旧表：若缺少 status 列，则补充
+		if (!columnExists("posts", "status"))
+		{
+			const char* alterSql = "ALTER TABLE posts ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'published' COMMENT '文章状态: published/draft' AFTER topic";
+			if (mysql_query(conn_, alterSql) != 0)
+			{
+				throw std::runtime_error(std::string("补充 status 列失败：") + mysql_error(conn_));
+			}
+		}
 	}
 
 	// 判断表中某列是否存在
@@ -147,8 +158,8 @@ public:
 		return exists;
 	}
 
-	// 获取所有文章
-	crow::json::wvalue getAllPosts()
+	// 按状态获取文章列表（published 已发布 / draft 草稿）
+	crow::json::wvalue getPosts(const std::string& status)
 	{
 		std::lock_guard<std::mutex> lock(mtx_);
 		checkConnection();
@@ -156,13 +167,10 @@ public:
 		crow::json::wvalue result;
 		std::vector<crow::json::wvalue> posts;
 
-		const char* sql = R"(
-			SELECT id, title, content, summary, author, topic, created_at, updated_at
-			FROM posts
-			ORDER BY id DESC
-		)";
+		std::string sql = "SELECT id, title, content, summary, author, topic, status, created_at, updated_at "
+			"FROM posts WHERE status='" + status + "' ORDER BY id DESC";
 
-		if (mysql_query(conn_, sql) != 0)
+		if (mysql_query(conn_, sql.c_str()) != 0)
 		{
 			result["success"] = false;
 			result["message"] = mysql_error(conn_);
@@ -182,8 +190,9 @@ public:
 				post["summary"] = row[3] ? row[3] : "";
 				post["author"] = row[4] ? row[4] : "";
 				post["topic"] = row[5] ? row[5] : "";
-				post["created_at"] = row[6] ? row[6] : "";
-				post["updated_at"] = row[7] ? row[7] : "";
+				post["status"] = row[6] ? row[6] : "";
+				post["created_at"] = row[7] ? row[7] : "";
+				post["updated_at"] = row[8] ? row[8] : "";
 				posts.push_back(std::move(post));
 			}
 			mysql_free_result(res);
@@ -201,7 +210,7 @@ public:
 		checkConnection();
 
 		crow::json::wvalue result;
-		std::string sql = "SELECT id, title, content, summary, author, topic, created_at, updated_at FROM posts WHERE id=" + std::to_string(id);
+		std::string sql = "SELECT id, title, content, summary, author, topic, status, created_at, updated_at FROM posts WHERE id=" + std::to_string(id);
 
 		if (mysql_query(conn_, sql.c_str()) != 0)
 		{
@@ -230,8 +239,9 @@ public:
 		post["summary"] = row[3] ? row[3] : "";
 		post["author"] = row[4] ? row[4] : "";
 		post["topic"] = row[5] ? row[5] : "";
-		post["created_at"] = row[6] ? row[6] : "";
-		post["updated_at"] = row[7] ? row[7] : "";
+		post["status"] = row[6] ? row[6] : "";
+		post["created_at"] = row[7] ? row[7] : "";
+		post["updated_at"] = row[8] ? row[8] : "";
 		mysql_free_result(res);
 
 		result["post"] = std::move(post);
@@ -240,7 +250,7 @@ public:
 	}
 
 	// 发布文章（使用预处理语句防止 SQL 注入）
-	crow::json::wvalue addPost(const std::string& title, const std::string& content, const std::string& summary, const std::string& author, const std::string& topic)
+	crow::json::wvalue addPost(const std::string& title, const std::string& content, const std::string& summary, const std::string& author, const std::string& topic, const std::string& status)
 	{
 		std::lock_guard<std::mutex> lock(mtx_);
 		checkConnection();
@@ -254,72 +264,7 @@ public:
 			return result;
 		}
 
-		const char* sql = "INSERT INTO posts (title, content, summary, author, topic) VALUES (?, ?, ?, ?, ?)";
-		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
-		{
-			result["success"] = false;
-			result["message"] = mysql_stmt_error(stmt);
-			mysql_stmt_close(stmt);
-			return result;
-		}
-
-		MYSQL_BIND bind[5];
-		std::memset(bind, 0, sizeof(bind));
-
-		bind[0].buffer_type = MYSQL_TYPE_STRING;
-		bind[0].buffer = (void*)title.c_str();
-		bind[0].buffer_length = title.length();
-
-		bind[1].buffer_type = MYSQL_TYPE_STRING;
-		bind[1].buffer = (void*)content.c_str();
-		bind[1].buffer_length = content.length();
-
-		bind[2].buffer_type = MYSQL_TYPE_STRING;
-		bind[2].buffer = (void*)summary.c_str();
-		bind[2].buffer_length = summary.length();
-
-		bind[3].buffer_type = MYSQL_TYPE_STRING;
-		bind[3].buffer = (void*)author.c_str();
-		bind[3].buffer_length = author.length();
-
-		bind[4].buffer_type = MYSQL_TYPE_STRING;
-		bind[4].buffer = (void*)topic.c_str();
-		bind[4].buffer_length = topic.length();
-
-		mysql_stmt_bind_param(stmt, bind);
-
-		if (mysql_stmt_execute(stmt) == 0)
-		{
-			int newID = static_cast<int>(mysql_stmt_insert_id(stmt));
-			result["success"] = true;
-			result["id"] = newID;
-			result["message"] = "文章发布成功";
-		}
-		else
-		{
-			result["success"] = false;
-			result["message"] = mysql_stmt_error(stmt);
-		}
-		mysql_stmt_close(stmt);
-		return result;
-	}
-
-	// 更新文章
-	crow::json::wvalue updatePost(int id, const std::string& title, const std::string& content, const std::string& summary, const std::string& author, const std::string& topic)
-	{
-		std::lock_guard<std::mutex> lock(mtx_);
-		checkConnection();
-
-		crow::json::wvalue result;
-		MYSQL_STMT* stmt = mysql_stmt_init(conn_);
-		if (!stmt)
-		{
-			result["success"] = false;
-			result["message"] = "mysql_stmt_init 失败";
-			return result;
-		}
-
-		const char* sql = "UPDATE posts SET title=?, content=?, summary=?, author=?, topic=? WHERE id=?";
+		const char* sql = "INSERT INTO posts (title, content, summary, author, topic, status) VALUES (?, ?, ?, ?, ?, ?)";
 		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
 		{
 			result["success"] = false;
@@ -351,8 +296,81 @@ public:
 		bind[4].buffer = (void*)topic.c_str();
 		bind[4].buffer_length = topic.length();
 
-		bind[5].buffer_type = MYSQL_TYPE_LONG;
-		bind[5].buffer = (void*)&id;
+		bind[5].buffer_type = MYSQL_TYPE_STRING;
+		bind[5].buffer = (void*)status.c_str();
+		bind[5].buffer_length = status.length();
+
+		mysql_stmt_bind_param(stmt, bind);
+
+		if (mysql_stmt_execute(stmt) == 0)
+		{
+			int newID = static_cast<int>(mysql_stmt_insert_id(stmt));
+			result["success"] = true;
+			result["id"] = newID;
+			result["message"] = "文章发布成功";
+		}
+		else
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+		}
+		mysql_stmt_close(stmt);
+		return result;
+	}
+
+	// 更新文章
+	crow::json::wvalue updatePost(int id, const std::string& title, const std::string& content, const std::string& summary, const std::string& author, const std::string& topic, const std::string& status)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		crow::json::wvalue result;
+		MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+		if (!stmt)
+		{
+			result["success"] = false;
+			result["message"] = "mysql_stmt_init 失败";
+			return result;
+		}
+
+		const char* sql = "UPDATE posts SET title=?, content=?, summary=?, author=?, topic=?, status=? WHERE id=?";
+		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+			mysql_stmt_close(stmt);
+			return result;
+		}
+
+		MYSQL_BIND bind[7];
+		std::memset(bind, 0, sizeof(bind));
+
+		bind[0].buffer_type = MYSQL_TYPE_STRING;
+		bind[0].buffer = (void*)title.c_str();
+		bind[0].buffer_length = title.length();
+
+		bind[1].buffer_type = MYSQL_TYPE_STRING;
+		bind[1].buffer = (void*)content.c_str();
+		bind[1].buffer_length = content.length();
+
+		bind[2].buffer_type = MYSQL_TYPE_STRING;
+		bind[2].buffer = (void*)summary.c_str();
+		bind[2].buffer_length = summary.length();
+
+		bind[3].buffer_type = MYSQL_TYPE_STRING;
+		bind[3].buffer = (void*)author.c_str();
+		bind[3].buffer_length = author.length();
+
+		bind[4].buffer_type = MYSQL_TYPE_STRING;
+		bind[4].buffer = (void*)topic.c_str();
+		bind[4].buffer_length = topic.length();
+
+		bind[5].buffer_type = MYSQL_TYPE_STRING;
+		bind[5].buffer = (void*)status.c_str();
+		bind[5].buffer_length = status.length();
+
+		bind[6].buffer_type = MYSQL_TYPE_LONG;
+		bind[6].buffer = (void*)&id;
 
 		mysql_stmt_bind_param(stmt, bind);
 
@@ -555,9 +573,16 @@ int main()
 
 		// ========== REST API 路由 ==========
 
-		// GET /api/posts - 获取所有文章
+		// GET /api/posts - 获取所有已发布文章
 		CROW_ROUTE(app, "/api/posts").methods("GET"_method)([&db](){
-			crow::response res(db.getAllPosts());
+			crow::response res(db.getPosts("published"));
+			addCorsHeaders(res);
+			return res;
+		});
+
+		// GET /api/drafts - 获取所有草稿
+		CROW_ROUTE(app, "/api/drafts").methods("GET"_method)([&db](){
+			crow::response res(db.getPosts("draft"));
 			addCorsHeaders(res);
 			return res;
 		});
@@ -578,7 +603,8 @@ int main()
 			std::string summary = body.has("summary") ? std::string(body["summary"].s()) : std::string("");
 			std::string author = body.has("author") ? std::string(body["author"].s()) : std::string("匿名");
 			std::string topic = body.has("topic") ? std::string(body["topic"].s()) : std::string("");
-			crow::response res(db.addPost(title, content, summary, author, topic));
+			std::string status = body.has("status") ? std::string(body["status"].s()) : std::string("published");
+			crow::response res(db.addPost(title, content, summary, author, topic, status));
 			addCorsHeaders(res);
 			return res;
 		});
@@ -606,7 +632,8 @@ int main()
 			std::string summary = body.has("summary") ? std::string(body["summary"].s()) : std::string("");
 			std::string author = body.has("author") ? std::string(body["author"].s()) : std::string("匿名");
 			std::string topic = body.has("topic") ? std::string(body["topic"].s()) : std::string("");
-			crow::response res(db.updatePost(id, title, content, summary, author, topic));
+			std::string status = body.has("status") ? std::string(body["status"].s()) : std::string("published");
+			crow::response res(db.updatePost(id, title, content, summary, author, topic, status));
 			addCorsHeaders(res);
 			return res;
 		});
@@ -697,6 +724,11 @@ int main()
 		// 文章详情页
 		CROW_ROUTE(app, "/post")([staticDir](){
 			return htmlResponse(readFile(staticDir + "/post.html"));
+		});
+
+		// 草稿页
+		CROW_ROUTE(app, "/drafts")([staticDir](){
+			return htmlResponse(readFile(staticDir + "/drafts.html"));
 		});
 
 		// 编辑器页（新建 / 编辑）

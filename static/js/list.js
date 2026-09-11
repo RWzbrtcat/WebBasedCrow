@@ -4,6 +4,9 @@
 
 const API_BASE = '/api';
 
+// 草稿页模式（body 上 data-mode="drafts"）
+const IS_DRAFTS = document.body.dataset.mode === 'drafts';
+
 // 全部文章数据 + 当前选中的专栏（'all' 表示全部）
 let allPosts = [];
 let currentTopic = 'all';
@@ -12,14 +15,17 @@ let topicsList = [];
 document.addEventListener('DOMContentLoaded', () => {
     loadPosts();
 
-    document.getElementById('topicTabs').addEventListener('click', (e) => {
-        const btn = e.target.closest('.topic-tab');
-        if (!btn) return;
-        const idx = btn.dataset.index;
-        currentTopic = idx === '-1' ? 'all' : topicsList[Number(idx)];
-        renderTopicTabs(allPosts);
-        renderPosts(allPosts);
-    });
+    const tabs = document.getElementById('topicTabs');
+    if (tabs) {
+        tabs.addEventListener('click', (e) => {
+            const btn = e.target.closest('.topic-tab');
+            if (!btn) return;
+            const idx = btn.dataset.index;
+            currentTopic = idx === '-1' ? 'all' : topicsList[Number(idx)];
+            renderTopicTabs(allPosts);
+            renderPosts(allPosts);
+        });
+    }
 });
 
 async function apiRequest(url, method = 'GET', body = null) {
@@ -35,11 +41,13 @@ async function loadPosts() {
     const list = document.getElementById('postList');
     list.innerHTML = '<div class="loading">加载中...</div>';
 
+    const url = IS_DRAFTS ? `${API_BASE}/drafts` : `${API_BASE}/posts`;
+
     try {
-        const data = await apiRequest(`${API_BASE}/posts`);
+        const data = await apiRequest(url);
         if (data.success) {
             allPosts = data.posts || [];
-            renderTopicTabs(allPosts);
+            if (!IS_DRAFTS) renderTopicTabs(allPosts);
             renderPosts(allPosts);
         } else {
             list.innerHTML = `<div class="empty-state"><p>❌ ${escapeHtml(data.message || '加载失败')}</p></div>`;
@@ -78,14 +86,22 @@ function renderTopicTabs(posts) {
 
 function renderPosts(posts) {
     const list = document.getElementById('postList');
-    document.getElementById('pageTitle').textContent = currentTopic === 'all' ? '全部文章' : currentTopic;
+    if (!IS_DRAFTS) {
+        document.getElementById('pageTitle').textContent = currentTopic === 'all' ? '全部文章' : currentTopic;
+    }
 
     const filtered = currentTopic === 'all'
         ? posts
         : posts.filter(p => (p.topic || '').trim() === currentTopic);
 
     if (!filtered.length) {
-        if (currentTopic === 'all') {
+        if (IS_DRAFTS) {
+            list.innerHTML = `
+                <div class="empty-state">
+                    <p>还没有草稿，点击右上角「写文章」开始创作吧！</p>
+                </div>
+            `;
+        } else if (currentTopic === 'all') {
             list.innerHTML = `
                 <div class="empty-state">
                     <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -112,17 +128,24 @@ function renderPosts(posts) {
         const topicBadge = topic
             ? `<span class="post-topic">${escapeHtml(topic)}</span>`
             : '';
+        const isDraft = post.status === 'draft';
+        const draftBadge = isDraft ? `<span class="post-draft">草稿</span>` : '';
+        const href = isDraft ? `/editor?id=${post.id}` : `/post?id=${post.id}`;
+        const actionLink = isDraft
+            ? `<a class="read-more" href="${href}">继续编辑 →</a>`
+            : `<a class="read-more" href="${href}">阅读全文 →</a>`;
         return `
             <article class="post-card">
-                <h2 class="post-title"><a href="/post?id=${post.id}">${escapeHtml(post.title)}</a></h2>
+                <h2 class="post-title"><a href="${href}">${escapeHtml(post.title)}</a></h2>
                 <div class="post-meta">
+                    ${draftBadge}
                     ${topicBadge}
                     <span>${escapeHtml(post.author || '匿名')}</span>
                     <span class="sep">·</span>
                     <span>${formatDate(post.created_at)}</span>
                 </div>
                 <p class="post-excerpt">${escapeHtml(makeExcerpt(post))}</p>
-                <a class="read-more" href="/post?id=${post.id}">阅读全文 →</a>
+                ${actionLink}
             </article>
         `;
     }).join('');

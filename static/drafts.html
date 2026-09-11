@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文章 · LazyCat's Blog</title>
+    <title>草稿 · LazyCat's Blog</title>
     <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="/css/highlight.css">
 </head>
-<body>
+<body data-mode="drafts">
     <!-- 站点头部 -->
     <header class="site-header">
         <div class="header-inner">
@@ -16,7 +15,7 @@
             </div>
             <nav class="nav">
                 <a href="/">首页</a>
-                <a href="/drafts">草稿</a>
+                <a href="/drafts" class="active">草稿</a>
                 <a href="/editor" class="btn-write">写文章</a>
             </nav>
         </div>
@@ -24,15 +23,14 @@
 
     <!-- 主体 -->
     <main class="container">
-        <div id="postDetail">
+        <h1 class="page-title" id="pageTitle">草稿</h1>
+        <p class="page-subtitle">未发布的文章草稿</p>
+
+        <div id="postList" class="post-list">
             <div class="loading">加载中...</div>
         </div>
     </main>
 
-    <script src="/js/marked.min.js"></script>
-    <script src="/js/purify.min.js"></script>
-    <script src="/js/highlight.min.js"></script>
-    <script src="/js/markdown.js"></script>
-    <script src="/js/post.js"></script>
+    <script src="/js/list.js"></script>
 </body>
 </html>
