@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     loadPost(id);
     bindDonateModal();
+    initHeaderScroll();
 });
 
 async function apiRequest(url, method = 'GET', body = null) {
@@ -71,11 +72,6 @@ function renderPost(post, authed) {
         ? `<span class="post-topic">${escapeHtml(topic)}</span>`
         : '';
 
-    const adminActions = authed
-        ? `<a class="btn btn-primary" href="/editor?id=${post.id}">编辑</a>
-           <button class="btn btn-danger" id="deleteBtn">删除</button>`
-        : '';
-
     document.getElementById('postDetail').innerHTML = `
         <article class="post-full">
             <h1 class="post-title">${escapeHtml(post.title)}</h1>
@@ -90,10 +86,6 @@ function renderPost(post, authed) {
             <div class="post-engagement">
                 <button class="btn btn-secondary like-btn" id="likeBtn">点赞</button>
                 <button class="btn btn-secondary" id="donateBtn">打赏</button>
-            </div>
-            <div class="post-actions">
-                <a class="btn btn-secondary" href="/">← 返回列表</a>
-                ${adminActions}
             </div>
             <section class="comments">
                 <h2 class="comments-title">评论 <span id="commentCount">0</span></h2>
@@ -111,11 +103,25 @@ function renderPost(post, authed) {
 
     renderMarkdownInto(document.getElementById('postContent'), post.content);
 
-    bindPostInteractions(post, authed);
+    renderPostAdminActions(post, authed);
+    bindPostInteractions();
     loadComments();
 }
 
-function bindPostInteractions(post, authed) {
+// 将编辑/删除按钮注入顶部灵动岛头部（仅登录后显示）
+function renderPostAdminActions(post, authed) {
+    const container = document.getElementById('postAdminActions');
+    if (!container) return;
+    container.innerHTML = authed
+        ? `<a class="pill-btn pill-btn-primary" href="/editor?id=${post.id}">编辑</a>
+           <button class="pill-btn pill-btn-danger" id="deleteBtn">删除</button>`
+        : '';
+    if (authed) {
+        document.getElementById('deleteBtn').addEventListener('click', () => deletePost(post.id));
+    }
+}
+
+function bindPostInteractions() {
     updateLikeButton();
 
     document.getElementById('likeBtn').addEventListener('click', handleLike);
@@ -123,10 +129,6 @@ function bindPostInteractions(post, authed) {
         document.getElementById('donateModal').hidden = false;
     });
     document.getElementById('commentForm').addEventListener('submit', handleCommentSubmit);
-
-    if (authed) {
-        document.getElementById('deleteBtn').addEventListener('click', () => deletePost(post.id));
-    }
 }
 
 // ===== 点赞 =====
@@ -277,11 +279,20 @@ function bindDonateModal() {
     });
 }
 
+// ===== 灵动岛头部：页面顶部矩形，下拉后椭圆 =====
+function initHeaderScroll() {
+    const header = document.querySelector('.site-header-pill');
+    if (!header) return;
+    const update = () => header.classList.toggle('scrolled', window.scrollY > 0);
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+}
+
 function showNotFound(msg) {
     document.getElementById('postDetail').innerHTML = `
         <div class="empty-state">
             <p>❌ ${escapeHtml(msg || '文章不存在')}</p>
-            <p style="margin-top:16px;"><a class="btn btn-secondary" href="/">← 返回列表</a></p>
+            <p style="margin-top:16px;"><a class="btn btn-secondary" href="/">← 返回主页面</a></p>
         </div>
     `;
 }

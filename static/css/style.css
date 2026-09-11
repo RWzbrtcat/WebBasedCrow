@@ -1090,3 +1090,80 @@ a {
     font-size: 0.85rem;
     padding: 24px 8px;
 }
+
+/* ========== 灵动岛式悬浮头部（文章详情页） ========== */
+.site-header-pill {
+    top: 16px;
+    width: calc(100% - 32px);
+    max-width: 760px;
+    margin: 16px auto 0;
+    background: var(--surface);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: none;
+    border: 1px solid transparent;
+    border-radius: 16px;
+    box-shadow: none;
+    transition:
+        border-radius 0.4s ease,
+        border-color 0.4s ease,
+        box-shadow 0.4s ease,
+        background-color 0.4s ease;
+}
+
+.site-header-pill .header-inner {
+    max-width: none;
+    margin: 0;
+    padding: 6px 8px 6px 20px;
+    gap: 12px;
+}
+
+.site-header-pill .site-title {
+    font-size: 1.2rem;
+}
+
+.site-header-pill .nav {
+    gap: 6px;
+}
+
+.site-header-pill.scrolled {
+    background: rgba(255, 255, 255, 0.88);
+    border-color: var(--border);
+    border-radius: 999px;
+    box-shadow: var(--shadow-md);
+}
+
+.site-header-pill .pill-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 16px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    line-height: 1.7;
+    transition: all 0.15s;
+}
+
+.site-header-pill .pill-btn-primary {
+    background: var(--accent);
+    color: #fff;
+}
+
+.site-header-pill .pill-btn-primary:hover {
+    background: var(--accent-dark);
+    color: #fff;
+}
+
+.site-header-pill .pill-btn-danger {
+    background: var(--surface);
+    color: var(--danger);
+    border-color: var(--danger-soft);
+}
+
+.site-header-pill .pill-btn-danger:hover {
+    background: var(--danger-soft);
+}
