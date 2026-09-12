@@ -16,6 +16,9 @@
     --accent: #c2410c;
     --accent-dark: #9a3412;
     --accent-soft: #fff1e6;
+    --card-bg: #fff7ed;
+    --card-border: #fed7aa;
+    --nav-bg: #fdf6ee;
     --danger: #dc2626;
     --danger-soft: #fee2e2;
     --serif: Georgia, 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
@@ -42,8 +45,8 @@ a {
 
 /* ========== 站点头部 ========== */
 .site-header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
+    background: var(--nav-bg);
+    border-bottom: 1px solid var(--card-border);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -111,6 +114,46 @@ a {
     color: #fff;
 }
 
+.nav .bg-change-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 7px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.nav .bg-change-btn:hover {
+    color: var(--text);
+    background: var(--bg);
+}
+
+.nav .bg-change-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.bg-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    z-index: 1000;
+    box-shadow: var(--shadow-md);
+}
+
+.bg-toast.error {
+    background: var(--danger);
+}
+
 /* ========== 容器 ========== */
 .container {
     max-width: 760px;
@@ -124,6 +167,7 @@ a {
     font-size: 1.8rem;
     font-weight: 700;
     margin-bottom: 6px;
+    color: var(--accent);
 }
 
 .page-subtitle {
@@ -174,17 +218,20 @@ a {
 .post-list {
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 16px;
 }
 
 .post-card {
-    padding: 28px 4px;
-    border-bottom: 1px solid var(--border);
-    transition: background 0.15s;
+    padding: 24px 28px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    transition: box-shadow 0.15s, transform 0.15s;
 }
 
 .post-card:hover {
-    background: var(--surface);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
 }
 
 .post-card .post-title {
@@ -193,10 +240,11 @@ a {
     font-weight: 700;
     line-height: 1.35;
     margin-bottom: 8px;
+    color: var(--accent);
 }
 
 .post-card .post-title a:hover {
-    color: var(--accent);
+    color: var(--accent-dark);
 }
 
 .post-meta {
@@ -255,8 +303,8 @@ a {
 
 /* ========== 文章详情页 ========== */
 .post-full {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
     border-radius: var(--radius);
     padding: 40px 36px;
     box-shadow: var(--shadow);
@@ -268,6 +316,7 @@ a {
     font-weight: 700;
     line-height: 1.3;
     margin-bottom: 14px;
+    color: var(--accent);
 }
 
 .post-full .post-meta {

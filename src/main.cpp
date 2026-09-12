@@ -159,6 +159,18 @@ public:
 		{
 			throw std::runtime_error(std::string("创建评论表失败：") + mysql_error(conn_));
 		}
+
+		// 配置表（键值对，用于存储站点背景图等全局设置）
+		const char* settingsSql = R"(
+			CREATE TABLE IF NOT EXISTS settings(
+				k VARCHAR(100) PRIMARY KEY COMMENT '配置键',
+				v TEXT COMMENT '配置值'
+			)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+		)";
+		if (mysql_query(conn_, settingsSql) != 0)
+		{
+			throw std::runtime_error(std::string("创建配置表失败：") + mysql_error(conn_));
+		}
 	}
 
 	// 判断表中某列是否存在
@@ -631,6 +643,82 @@ public:
 		mysql_stmt_close(stmt);
 		return result;
 	}
+
+	// 读取配置项（不存在时返回空字符串）
+	std::string getSetting(const std::string& key)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		std::vector<char> esc(key.length() * 2 + 1);
+		mysql_real_escape_string(conn_, esc.data(), key.c_str(), static_cast<unsigned long>(key.length()));
+		std::string sql = "SELECT v FROM settings WHERE k='" + std::string(esc.data()) + "'";
+
+		if (mysql_query(conn_, sql.c_str()) != 0)
+		{
+			return "";
+		}
+
+		std::string value;
+		MYSQL_RES* res = mysql_store_result(conn_);
+		if (res)
+		{
+			MYSQL_ROW row = mysql_fetch_row(res);
+			if (row && row[0]) value = row[0];
+			mysql_free_result(res);
+		}
+		return value;
+	}
+
+	// 写入配置项（不存在则插入，存在则更新）
+	crow::json::wvalue setSetting(const std::string& key, const std::string& value)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		crow::json::wvalue result;
+		MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+		if (!stmt)
+		{
+			result["success"] = false;
+			result["message"] = "mysql_stmt_init 失败";
+			return result;
+		}
+
+		const char* sql = "INSERT INTO settings (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v=VALUES(v)";
+		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+			mysql_stmt_close(stmt);
+			return result;
+		}
+
+		MYSQL_BIND bind[2];
+		std::memset(bind, 0, sizeof(bind));
+
+		bind[0].buffer_type = MYSQL_TYPE_STRING;
+		bind[0].buffer = (void*)key.c_str();
+		bind[0].buffer_length = key.length();
+
+		bind[1].buffer_type = MYSQL_TYPE_STRING;
+		bind[1].buffer = (void*)value.c_str();
+		bind[1].buffer_length = value.length();
+
+		mysql_stmt_bind_param(stmt, bind);
+
+		if (mysql_stmt_execute(stmt) == 0)
+		{
+			result["success"] = true;
+		}
+		else
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+		}
+		mysql_stmt_close(stmt);
+		return result;
+	}
 };
 
 
@@ -1092,6 +1180,48 @@ int main()
 				addCorsHeaders(res);
 				return res;
 			}
+		});
+
+		// GET /api/settings/background - 获取当前站点背景图（公开）
+		CROW_ROUTE(app, "/api/settings/background").methods("GET"_method)([&db](){
+			crow::json::wvalue out;
+			out["success"] = true;
+			out["url"] = db.getSetting("background");
+			crow::response res(out);
+			addCorsHeaders(res);
+			return res;
+		});
+
+		// POST /api/settings/background - 设置站点背景图（仅登录后可用）
+		CROW_ROUTE(app, "/api/settings/background").methods("POST"_method)([&db](const crow::request& req){
+			if (!isLoggedIn(req)) return unauthorizedResponse();
+
+			auto body = crow::json::load(req.body);
+			if (!body)
+			{
+				crow::json::wvalue err;
+				err["success"] = false;
+				err["message"] = "无效的 JSON 数据";
+				crow::response res(400, err);
+				addCorsHeaders(res);
+				return res;
+			}
+
+			std::string url = body.has("url") ? std::string(body["url"].s()) : std::string("");
+			url = trim(url);
+			if (url.empty() || url.rfind("/uploads/", 0) != 0)
+			{
+				crow::json::wvalue err;
+				err["success"] = false;
+				err["message"] = "背景地址无效，仅支持本站上传的图片";
+				crow::response res(400, err);
+				addCorsHeaders(res);
+				return res;
+			}
+
+			crow::response res(db.setSetting("background", url));
+			addCorsHeaders(res);
+			return res;
 		});
 
 		// ========== 静态文件服务 ==========
