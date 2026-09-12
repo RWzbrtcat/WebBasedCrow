@@ -208,7 +208,7 @@ public:
 		std::vector<crow::json::wvalue> posts;
 
 		std::string sql = "SELECT id, title, content, summary, author, topic, status, created_at, updated_at "
-			"FROM posts WHERE status='" + status + "' ORDER BY id DESC";
+			"FROM posts WHERE status='" + status + "' ORDER BY updated_at DESC";
 
 		if (mysql_query(conn_, sql.c_str()) != 0)
 		{

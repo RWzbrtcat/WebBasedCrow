@@ -360,7 +360,7 @@ async function loadForEdit(id) {
         document.getElementById('topic').value = post.topic || '';
         document.getElementById('summary').value = post.summary || '';
         document.getElementById('content').value = post.content || '';
-        document.getElementById('submitBtn').textContent = '保存';
+        document.getElementById('submitBtn').textContent = '发布';
         document.title = `编辑 · ${post.title}`;
         updatePreview();
     } catch (e) {
@@ -407,7 +407,7 @@ async function savePost(status) {
             if (isDraft) {
                 showToast('📝 草稿已保存');
                 document.getElementById('editorTitle').textContent = '编辑文章';
-                document.getElementById('submitBtn').textContent = '保存';
+                document.getElementById('submitBtn').textContent = '发布';
                 document.title = `编辑 · ${title}`;
                 savingBtn.disabled = false;
                 savingBtn.textContent = originalText;
