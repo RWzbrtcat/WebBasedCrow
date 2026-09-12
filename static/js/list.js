@@ -26,6 +26,67 @@ document.addEventListener('DOMContentLoaded', () => {
             renderPosts(allPosts);
         });
     }
+
+    // 整张卡片可点击进入文章（点击链接时由链接自身处理，避免重复跳转）
+    const list = document.getElementById('postList');
+    list.addEventListener('click', (e) => {
+        if (e.target.closest('a')) return;
+        const card = e.target.closest('.post-card');
+        if (!card || !card.dataset.href) return;
+        window.location.href = card.dataset.href;
+    });
+
+    // 鼠标跟随的悬停提示框（显示标题与简介）
+    const tooltip = document.createElement('div');
+    tooltip.className = 'post-card-tooltip';
+    tooltip.innerHTML = '<div class="post-card-tooltip-title"></div><div class="post-card-tooltip-summary"></div>';
+    document.body.appendChild(tooltip);
+
+    let hoverCard = null;
+
+    function showTooltip(card) {
+        const titleEl = card.querySelector('.post-title');
+        const summaryEl = card.querySelector('.post-excerpt');
+        tooltip.querySelector('.post-card-tooltip-title').textContent = titleEl ? titleEl.textContent.trim() : '';
+        const summaryNode = tooltip.querySelector('.post-card-tooltip-summary');
+        summaryNode.textContent = summaryEl ? summaryEl.textContent.trim() : '';
+        summaryNode.style.display = summaryNode.textContent ? '' : 'none';
+        tooltip.classList.add('visible');
+    }
+
+    function moveTooltip(x, y) {
+        const OFFSET = 16;
+        let left = x + OFFSET;
+        let top = y + OFFSET;
+        const rect = tooltip.getBoundingClientRect();
+        if (left + rect.width > window.innerWidth - 8) left = x - rect.width - OFFSET;
+        if (top + rect.height > window.innerHeight - 8) top = y - rect.height - OFFSET;
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = top + 'px';
+    }
+
+    function hideTooltip() {
+        tooltip.classList.remove('visible');
+    }
+
+    list.addEventListener('mouseover', (e) => {
+        const card = e.target.closest('.post-card');
+        if (card && card !== hoverCard) {
+            hoverCard = card;
+            showTooltip(card);
+            moveTooltip(e.clientX, e.clientY);
+        }
+    });
+    list.addEventListener('mousemove', (e) => {
+        if (hoverCard) moveTooltip(e.clientX, e.clientY);
+    });
+    list.addEventListener('mouseout', (e) => {
+        const card = e.target.closest('.post-card');
+        if (card && hoverCard === card && !card.contains(e.relatedTarget)) {
+            hoverCard = null;
+            hideTooltip();
+        }
+    });
 });
 
 async function apiRequest(url, method = 'GET', body = null) {
@@ -143,7 +204,7 @@ function renderPosts(posts) {
             ? `<span class="sep">·</span><span>更新于 ${formatDate(post.updated_at)}</span>`
             : '';
         return `
-            <article class="post-card">
+            <article class="post-card" data-href="${href}">
                 <h2 class="post-title"><a href="${href}">${escapeHtml(post.title)}</a></h2>
                 <div class="post-meta">
                     ${draftBadge}
