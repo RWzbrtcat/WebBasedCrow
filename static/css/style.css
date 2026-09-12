@@ -824,6 +824,10 @@ a {
     font-family: var(--serif);
 }
 
+.md-btn-strike {
+    text-decoration: line-through;
+}
+
 .md-divider {
     width: 1px;
     background: var(--border);
