@@ -1370,6 +1370,7 @@ int main()
 			}
 			crow::response res(content);
 			res.add_header("Content-Type", mimeTypeFromFilename(filename));
+			res.add_header("Cache-Control", "public, max-age=86400");
 			return res;
 		});
 

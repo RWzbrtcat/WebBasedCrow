@@ -3,6 +3,7 @@
 // ============================================
 (function () {
     const API_BASE = '/api';
+    const CACHE_KEY = 'blog:background';
 
     function applyBackground(url) {
         if (url) {
@@ -15,12 +16,31 @@
         }
     }
 
+    function cacheGet() {
+        try { return localStorage.getItem(CACHE_KEY); } catch (e) { return null; }
+    }
+
+    function cacheSet(url) {
+        try {
+            if (url) localStorage.setItem(CACHE_KEY, url);
+            else localStorage.removeItem(CACHE_KEY);
+        } catch (e) {}
+    }
+
+    // 先用本地缓存同步应用背景，避免等待接口返回导致背景出现慢
+    (function () {
+        const cached = cacheGet();
+        if (cached) applyBackground(cached);
+    })();
+
     async function loadBackground() {
         try {
             const r = await fetch(`${API_BASE}/settings/background`);
             const data = await r.json();
-            if (data && data.success && data.url) {
-                applyBackground(data.url);
+            if (data && data.success) {
+                const url = data.url || '';
+                applyBackground(url);
+                cacheSet(url);
             }
         } catch (e) {
             // 加载失败时保持默认背景
@@ -78,6 +98,7 @@
                 if (!saveData.success) throw new Error(saveData.message || '保存失败');
 
                 applyBackground(url);
+                cacheSet(url);
                 toast('背景已更新', 'success');
             } catch (e) {
                 toast(e.message || '更换背景失败', 'error');

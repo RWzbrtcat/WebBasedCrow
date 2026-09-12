@@ -3,6 +3,7 @@
 // ============================================
 (function () {
     const API_BASE = '/api';
+    const CACHE_KEY = 'blog:theme';
 
     // 预设配色方案：每套同时定义导航栏与内容主题的颜色
     const PRESETS = [
@@ -36,17 +37,33 @@
         }
     }
 
+    function cacheSetTheme(json) {
+        try {
+            if (json) localStorage.setItem(CACHE_KEY, json);
+            else localStorage.removeItem(CACHE_KEY);
+        } catch (e) {}
+    }
+
     async function loadTheme() {
         try {
             const r = await fetch(`${API_BASE}/settings/theme`);
             const data = await r.json();
             if (data && data.success && data.theme) {
                 applyTheme(JSON.parse(data.theme));
+                cacheSetTheme(data.theme);
             }
         } catch (e) {
             // 加载失败时保持默认配色
         }
     }
+
+    // 先用本地缓存同步应用主题，避免等待接口返回导致配色闪动
+    (function () {
+        try {
+            const cached = localStorage.getItem(CACHE_KEY);
+            if (cached) applyTheme(JSON.parse(cached));
+        } catch (e) {}
+    })();
 
     function toast(message, type) {
         document.querySelectorAll('.bg-toast').forEach((t) => t.remove());
@@ -156,6 +173,7 @@
             const data = await r.json();
             if (!data.success) throw new Error(data.message || '保存失败');
             applyTheme(colors);
+            cacheSetTheme(JSON.stringify(colors));
             highlightActive();
             toast(`已切换为「${preset.name}」主题`, 'success');
         } catch (e) {
