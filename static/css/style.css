@@ -154,6 +154,58 @@ a {
     background: var(--danger);
 }
 
+/* ========== 主题更换弹窗 ========== */
+.theme-modal {
+    max-width: 360px;
+}
+
+.theme-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.theme-preset {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.theme-preset:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+}
+
+.theme-preset.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.theme-swatch {
+    display: flex;
+    height: 22px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.theme-swatch span {
+    flex: 1;
+}
+
+.theme-name {
+    font-size: 0.85rem;
+    color: var(--text);
+    text-align: center;
+}
+
 /* ========== 容器 ========== */
 .container {
     max-width: 760px;

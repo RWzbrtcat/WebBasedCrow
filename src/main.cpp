@@ -775,6 +775,19 @@ std::string trim(const std::string& s)
 	return s.substr(first, last - first + 1);
 }
 
+// 校验是否为合法的十六进制颜色（#RRGGBB）
+bool isValidHexColor(const std::string& c)
+{
+	if (c.size() != 7 || c[0] != '#') return false;
+	for (size_t i = 1; i < c.size(); ++i)
+	{
+		char ch = c[i];
+		bool ok = (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F');
+		if (!ok) return false;
+	}
+	return true;
+}
+
 // 根据文件名返回 MIME 类型
 std::string mimeTypeFromFilename(const std::string& filename)
 {
@@ -1220,6 +1233,61 @@ int main()
 			}
 
 			crow::response res(db.setSetting("background", url));
+			addCorsHeaders(res);
+			return res;
+		});
+		// GET /api/settings/theme - 获取当前主题配色（公开）
+		CROW_ROUTE(app, "/api/settings/theme").methods("GET"_method)([&db](){
+			crow::json::wvalue out;
+			out["success"] = true;
+			out["theme"] = db.getSetting("theme");
+			crow::response res(out);
+			addCorsHeaders(res);
+			return res;
+		});
+
+		// POST /api/settings/theme - 设置主题配色（仅登录后可用）
+		CROW_ROUTE(app, "/api/settings/theme").methods("POST"_method)([&db](const crow::request& req){
+			if (!isLoggedIn(req)) return unauthorizedResponse();
+
+			auto body = crow::json::load(req.body);
+			if (!body)
+			{
+				crow::json::wvalue err;
+				err["success"] = false;
+				err["message"] = "无效的 JSON 数据";
+				crow::response res(400, err);
+				addCorsHeaders(res);
+				return res;
+			}
+
+			const char* keys[] = {"nav_bg", "card_bg", "card_border", "accent", "accent_dark", "accent_soft"};
+			crow::json::wvalue theme;
+			for (const char* key : keys)
+			{
+				if (!body.has(key))
+				{
+					crow::json::wvalue err;
+					err["success"] = false;
+					err["message"] = "主题配色字段不完整";
+					crow::response res(400, err);
+					addCorsHeaders(res);
+					return res;
+				}
+				std::string color = trim(std::string(body[key].s()));
+				if (!isValidHexColor(color))
+				{
+					crow::json::wvalue err;
+					err["success"] = false;
+					err["message"] = "颜色格式无效，需为 #RRGGBB";
+					crow::response res(400, err);
+					addCorsHeaders(res);
+					return res;
+				}
+				theme[key] = color;
+			}
+
+			crow::response res(db.setSetting("theme", theme.dump()));
 			addCorsHeaders(res);
 			return res;
 		});
