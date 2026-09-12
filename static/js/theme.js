@@ -1,5 +1,5 @@
 // ============================================
-// 站点主题配色：加载主题 + 登录后提供更换入口
+// 站点主题配色：加载主题 + 提供更换样式入口（由个性化下拉调用）
 // ============================================
 (function () {
     const API_BASE = '/api';
@@ -181,26 +181,82 @@
         }
     }
 
-    function injectButton() {
+    function openThemeModal() {
+        const modal = buildModal();
+        highlightActive();
+        modal.hidden = false;
+        modal.querySelectorAll('.theme-preset').forEach((presetBtn) => {
+            presetBtn.onclick = () => {
+                const preset = PRESETS.find((p) => p.id === presetBtn.dataset.id);
+                if (preset) saveTheme(preset);
+            };
+        });
+    }
+
+    // 暴露给个性化下拉调用
+    window.__blogPersonalize = window.__blogPersonalize || {};
+    window.__blogPersonalize.changeTheme = openThemeModal;
+
+    function injectPersonalize() {
         const nav = document.querySelector('.nav');
         if (!nav) return;
 
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'bg-change-btn';
-        btn.textContent = '更换样式';
-        nav.appendChild(btn);
+        const wrap = document.createElement('div');
+        wrap.className = 'nav-dropdown';
 
-        btn.addEventListener('click', () => {
-            const modal = buildModal();
-            highlightActive();
-            modal.hidden = false;
-            modal.querySelectorAll('.theme-preset').forEach((presetBtn) => {
-                presetBtn.onclick = () => {
-                    const preset = PRESETS.find((p) => p.id === presetBtn.dataset.id);
-                    if (preset) saveTheme(preset);
-                };
-            });
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'personalize-btn nav-dropdown-toggle';
+        toggle.innerHTML = '个性化<span class="nav-dropdown-caret"></span>';
+
+        const menu = document.createElement('div');
+        menu.className = 'nav-dropdown-menu';
+        menu.hidden = true;
+
+        const bgItem = document.createElement('button');
+        bgItem.type = 'button';
+        bgItem.className = 'nav-dropdown-item';
+        bgItem.textContent = '更换背景';
+
+        const themeItem = document.createElement('button');
+        themeItem.type = 'button';
+        themeItem.className = 'nav-dropdown-item';
+        themeItem.textContent = '更换样式';
+
+        menu.appendChild(bgItem);
+        menu.appendChild(themeItem);
+        wrap.appendChild(toggle);
+        wrap.appendChild(menu);
+        nav.appendChild(wrap);
+
+        function close() {
+            menu.hidden = true;
+            wrap.classList.remove('open');
+        }
+
+        toggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (menu.hidden) {
+                menu.hidden = false;
+                wrap.classList.add('open');
+            } else {
+                close();
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!wrap.contains(e.target)) close();
+        });
+
+        bgItem.addEventListener('click', () => {
+            close();
+            const fn = window.__blogPersonalize && window.__blogPersonalize.changeBackground;
+            if (fn) fn();
+        });
+
+        themeItem.addEventListener('click', () => {
+            close();
+            openThemeModal();
         });
     }
 
@@ -209,9 +265,9 @@
         try {
             const r = await fetch(`${API_BASE}/auth`);
             const data = await r.json();
-            if (data && data.authed) injectButton();
+            if (data && data.authed) injectPersonalize();
         } catch (e) {
-            // 未登录时不显示更换入口
+            // 未登录时不显示个性化入口
         }
     });
 })();

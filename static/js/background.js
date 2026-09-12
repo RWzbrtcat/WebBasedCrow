@@ -1,5 +1,5 @@
 // ============================================
-// 站点背景图：加载背景 + 登录后提供更换入口
+// 站点背景图：加载背景 + 提供更换背景入口（由个性化下拉调用）
 // ============================================
 (function () {
     const API_BASE = '/api';
@@ -56,31 +56,19 @@
         setTimeout(() => el.remove(), 2500);
     }
 
-    function injectButton() {
-        const nav = document.querySelector('.nav');
-        if (!nav) return;
+    let fileInput = null;
 
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'bg-change-btn';
-        btn.textContent = '更换背景';
-
-        const fileInput = document.createElement('input');
+    function ensureFileInput() {
+        if (fileInput) return fileInput;
+        fileInput = document.createElement('input');
         fileInput.type = 'file';
         fileInput.accept = 'image/*';
         fileInput.hidden = true;
-
-        nav.appendChild(btn);
-        nav.appendChild(fileInput);
-
-        btn.addEventListener('click', () => fileInput.click());
+        document.body.appendChild(fileInput);
 
         fileInput.addEventListener('change', async () => {
             const file = fileInput.files && fileInput.files[0];
             if (!file) return;
-
-            btn.disabled = true;
-            btn.textContent = '上传中...';
             try {
                 const fd = new FormData();
                 fd.append('image', file);
@@ -103,21 +91,20 @@
             } catch (e) {
                 toast(e.message || '更换背景失败', 'error');
             } finally {
-                btn.disabled = false;
-                btn.textContent = '更换背景';
                 fileInput.value = '';
             }
         });
+
+        return fileInput;
     }
+
+    // 暴露给个性化下拉调用
+    window.__blogPersonalize = window.__blogPersonalize || {};
+    window.__blogPersonalize.changeBackground = function () {
+        ensureFileInput().click();
+    };
 
     document.addEventListener('DOMContentLoaded', async () => {
         loadBackground();
-        try {
-            const r = await fetch(`${API_BASE}/auth`);
-            const data = await r.json();
-            if (data && data.authed) injectButton();
-        } catch (e) {
-            // 未登录时不显示更换入口
-        }
     });
 })();
