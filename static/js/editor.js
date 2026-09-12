@@ -87,14 +87,84 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 工具栏按钮
+    // 列表回车自动续接：有序列表数字递增、无序列表保持标记
+    contentInput.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.isComposing) return;
+        const ta = e.target;
+        const pos = ta.selectionStart;
+        const value = ta.value;
+        const lineStart = value.lastIndexOf('\n', pos - 1) + 1;
+        const before = value.slice(lineStart, pos);
+
+        let m = before.match(/^(\s*)([-*+])\s+(.*)$/);
+        if (m) {
+            const indent = m[1], marker = m[2], item = m[3];
+            e.preventDefault();
+            pushUndoState();
+            if (item.trim() === '') {
+                ta.value = value.slice(0, lineStart) + indent + value.slice(pos);
+                const caret = lineStart + indent.length;
+                ta.setSelectionRange(caret, caret);
+            } else {
+                const insert = '\n' + indent + marker + ' ';
+                ta.value = value.slice(0, pos) + insert + value.slice(pos);
+                const caret = pos + insert.length;
+                ta.setSelectionRange(caret, caret);
+            }
+            updatePreview();
+            return;
+        }
+
+        m = before.match(/^(\s*)(\d+)([.)])\s+(.*)$/);
+        if (m) {
+            const indent = m[1], num = parseInt(m[2], 10), delim = m[3], item = m[4];
+            e.preventDefault();
+            pushUndoState();
+            if (item.trim() === '') {
+                ta.value = value.slice(0, lineStart) + indent + value.slice(pos);
+                const caret = lineStart + indent.length;
+                ta.setSelectionRange(caret, caret);
+            } else {
+                const insert = '\n' + indent + (num + 1) + delim + ' ';
+                ta.value = value.slice(0, pos) + insert + value.slice(pos);
+                const caret = pos + insert.length;
+                ta.setSelectionRange(caret, caret);
+            }
+            updatePreview();
+        }
+    });
+
+    // 工具栏按钮（含下拉菜单）
     document.getElementById('markdownToolbar').addEventListener('click', (e) => {
+        const toggle = e.target.closest('.md-dropdown-toggle');
+        if (toggle) {
+            toggleDropdown(toggle.closest('.md-dropdown'));
+            return;
+        }
+
+        const item = e.target.closest('.md-dropdown-item');
+        if (item) {
+            const wrap = item.closest('.md-dropdown');
+            if (item.dataset.lang !== undefined) {
+                insertCodeBlock(item.dataset.lang);
+            } else if (item.dataset.action) {
+                applyMarkdown(item.dataset.action);
+            }
+            closeDropdown(wrap);
+            return;
+        }
+
         const btn = e.target.closest('.md-btn');
         if (!btn) return;
         const action = btn.dataset.action;
         if (action === 'undo') { undo(); return; }
         if (action === 'redo') { redo(); return; }
         applyMarkdown(action);
+    });
+
+    // 点击工具栏外时收起下拉
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.md-dropdown')) closeAllToolbarDropdowns();
     });
 
     // 双击右侧预览 → 定位到左侧对应编辑位置
@@ -249,6 +319,49 @@ function applyMarkdown(actionName) {
         toggleInline(ta, start, end, action.prefix, action.suffix, action.placeholder);
     }
 
+    ta.focus({ preventScroll: true });
+    updatePreview();
+}
+
+// 工具栏下拉（列表 / 代码块）相关
+function closeAllToolbarDropdowns() {
+    document.querySelectorAll('.md-dropdown.open').forEach((d) => {
+        d.classList.remove('open');
+        const menu = d.querySelector('.md-dropdown-menu');
+        if (menu) menu.hidden = true;
+    });
+}
+
+function toggleDropdown(wrap) {
+    if (!wrap) return;
+    const menu = wrap.querySelector('.md-dropdown-menu');
+    const isOpen = wrap.classList.contains('open');
+    closeAllToolbarDropdowns();
+    if (!isOpen) {
+        wrap.classList.add('open');
+        if (menu) menu.hidden = false;
+    }
+}
+
+function closeDropdown(wrap) {
+    if (!wrap) return;
+    wrap.classList.remove('open');
+    const menu = wrap.querySelector('.md-dropdown-menu');
+    if (menu) menu.hidden = true;
+}
+
+// 插入带语言标记的代码块
+function insertCodeBlock(lang) {
+    const ta = contentTextarea();
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = ta.value.slice(start, end);
+    const prefix = lang ? '```' + lang + '\n' : '```\n';
+    const suffix = '\n```';
+    pushUndoState();
+    const text = selected || '代码';
+    ta.value = ta.value.slice(0, start) + prefix + text + suffix + ta.value.slice(end);
+    ta.setSelectionRange(start + prefix.length, start + prefix.length + text.length);
     ta.focus({ preventScroll: true });
     updatePreview();
 }

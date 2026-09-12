@@ -64,11 +64,30 @@
                         <span class="md-divider"></span>
                         <button type="button" class="md-btn" data-action="heading" title="二级标题">标题</button>
                         <button type="button" class="md-btn" data-action="quote" title="引用">引用</button>
-                        <button type="button" class="md-btn" data-action="ul" title="无序列表">无序列表</button>
-                        <button type="button" class="md-btn" data-action="ol" title="有序列表">有序列表</button>
+                        <div class="md-dropdown">
+                            <button type="button" class="md-btn md-dropdown-toggle" title="列表">列表<span class="md-caret"></span></button>
+                            <div class="md-dropdown-menu" hidden>
+                                <button type="button" class="md-dropdown-item" data-action="ul">无序列表</button>
+                                <button type="button" class="md-dropdown-item" data-action="ol">有序列表</button>
+                            </div>
+                        </div>
                         <span class="md-divider"></span>
                         <button type="button" class="md-btn" data-action="code" title="行内代码">行内代码</button>
-                        <button type="button" class="md-btn" data-action="codeblock" title="代码块">代码块</button>
+                        <div class="md-dropdown">
+                            <button type="button" class="md-btn md-dropdown-toggle" title="代码块">代码块<span class="md-caret"></span></button>
+                            <div class="md-dropdown-menu" hidden>
+                                <button type="button" class="md-dropdown-item" data-lang="">纯文本</button>
+                                <button type="button" class="md-dropdown-item" data-lang="bash">Bash</button>
+                                <button type="button" class="md-dropdown-item" data-lang="c">C</button>
+                                <button type="button" class="md-dropdown-item" data-lang="cpp">C++</button>
+                                <button type="button" class="md-dropdown-item" data-lang="go">Go</button>
+                                <button type="button" class="md-dropdown-item" data-lang="java">Java</button>
+                                <button type="button" class="md-dropdown-item" data-lang="python">Python</button>
+                                <button type="button" class="md-dropdown-item" data-lang="html">HTML</button>
+                                <button type="button" class="md-dropdown-item" data-lang="xml">XML</button>
+                                <button type="button" class="md-dropdown-item" data-lang="sql">SQL</button>
+                            </div>
+                        </div>
                         <button type="button" class="md-btn" data-action="link" title="插入链接">链接</button>
                         <button type="button" class="md-btn" data-action="image" title="插入图片">插入图片</button>
                     </div>
