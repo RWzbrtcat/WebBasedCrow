@@ -170,6 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('imageUrlConfirmBtn').click();
         }
     });
+
+    initResizer();
 });
 
 async function apiRequest(url, method = 'GET', body = null) {
@@ -427,6 +429,39 @@ async function savePost(status) {
         savingBtn.disabled = false;
         savingBtn.textContent = originalText;
     }
+}
+
+// 左右分栏拖动调整宽度
+function initResizer() {
+    const editor = document.querySelector('.markdown-editor');
+    const input = document.querySelector('.markdown-editor-input');
+    const resizer = document.getElementById('markdownResizer');
+    if (!editor || !input || !resizer) return;
+
+    let dragging = false;
+
+    resizer.addEventListener('mousedown', (e) => {
+        dragging = true;
+        resizer.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        const rect = editor.getBoundingClientRect();
+        const pct = ((e.clientX - rect.left) / rect.width) * 100;
+        input.style.flexBasis = Math.min(80, Math.max(20, pct)) + '%';
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!dragging) return;
+        dragging = false;
+        resizer.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    });
 }
 
 function escapeHtml(text) {

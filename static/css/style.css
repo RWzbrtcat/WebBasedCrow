@@ -509,12 +509,38 @@ a {
     margin-bottom: 24px;
 }
 
-.form-row {
+.editor-meta {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+}
+
+.editor-meta-left,
+.editor-meta-right {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-meta-right .form-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0;
+}
+
+.editor-meta-right textarea {
+    flex: 1;
+    resize: vertical;
+}
+
+.editor-meta-row {
     display: flex;
     gap: 16px;
 }
 
-.form-row-item {
+.editor-meta-half {
     flex: 1;
     min-width: 0;
 }
@@ -753,7 +779,8 @@ a {
 
 /* ========== Markdown 编辑器（左右分栏） ========== */
 .container-editor {
-    max-width: 1200px;
+    max-width: none;
+    padding: 20px 20px 48px;
 }
 
 .markdown-toolbar {
@@ -814,7 +841,6 @@ a {
 }
 
 .markdown-editor-pane {
-    flex: 1;
     min-width: 0;
     min-height: 0;
     display: flex;
@@ -823,7 +849,19 @@ a {
 }
 
 .markdown-editor-input {
-    border-right: 1px solid var(--border);
+    flex: 0 0 50%;
+}
+
+.markdown-editor-resizer {
+    flex: 0 0 6px;
+    cursor: col-resize;
+    background: var(--border);
+    transition: background 0.15s;
+}
+
+.markdown-editor-resizer:hover,
+.markdown-editor-resizer.dragging {
+    background: var(--accent);
 }
 
 .pane-label {
@@ -857,6 +895,7 @@ a {
 }
 
 .markdown-editor-preview {
+    flex: 1 1 0;
     background: #fff;
 }
 
@@ -1024,8 +1063,14 @@ a {
         height: auto;
     }
     .markdown-editor-input {
-        border-right: none;
+        flex: none;
         border-bottom: 1px solid var(--border);
+    }
+    .markdown-editor-preview {
+        flex: none;
+    }
+    .markdown-editor-resizer {
+        display: none;
     }
     .markdown-editor-input textarea {
         min-height: 320px;
@@ -1054,9 +1099,28 @@ a {
     .editor-card {
         padding: 24px 20px;
     }
-    .form-row {
+    .editor-meta {
+        flex-direction: column;
+        gap: 18px;
+    }
+    .editor-meta-left,
+    .editor-meta-right {
+        flex: none;
+    }
+    .editor-meta-right .form-group {
+        flex: none;
+        display: block;
+        margin-bottom: 18px;
+    }
+    .editor-meta-right textarea {
+        flex: none;
+    }
+    .editor-meta-row {
         flex-direction: column;
         gap: 0;
+    }
+    .editor-meta-half {
+        flex: none;
     }
 }
 
@@ -1289,10 +1353,6 @@ a {
         border-color 0.4s ease,
         box-shadow 0.4s ease,
         background-color 0.4s ease;
-}
-
-.site-header-pill-wide {
-    max-width: 1200px;
 }
 
 .site-header-pill .header-inner {
