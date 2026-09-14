@@ -681,7 +681,9 @@ function initResizer() {
     document.addEventListener('mousemove', (e) => {
         if (!dragging) return;
         const rect = editor.getBoundingClientRect();
-        const pct = ((e.clientX - rect.left) / rect.width) * 100;
+        // 从输入区左边缘（目录右侧）起算，避免目录宽度导致拖拽瞬间跳变
+        const inputLeft = input.getBoundingClientRect().left;
+        const pct = ((e.clientX - inputLeft) / rect.width) * 100;
         input.style.flexBasis = Math.min(80, Math.max(20, pct)) + '%';
     });
 
