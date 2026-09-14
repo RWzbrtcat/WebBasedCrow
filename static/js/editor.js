@@ -372,7 +372,7 @@ function updateToc() {
     }).join('');
 }
 
-// 点击目录项：预览滚动到对应标题
+// 点击目录项：预览滚动到对应标题，并同步滚动左侧编辑区到源文本对应位置
 function jumpToHeading(index) {
     const preview = document.getElementById('preview');
     if (!preview) return;
@@ -382,6 +382,16 @@ function jumpToHeading(index) {
 
     const top = heading.getBoundingClientRect().top - preview.getBoundingClientRect().top + preview.scrollTop;
     preview.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' });
+
+    // 左侧编辑区：定位到该标题在源文本中的字符偏移
+    const block = heading.closest('[data-offset]');
+    if (!block) return;
+    const offset = Number(block.dataset.offset);
+    if (Number.isNaN(offset)) return;
+    const ta = contentTextarea();
+    ta.focus({ preventScroll: true });
+    ta.setSelectionRange(offset, offset);
+    scrollToOffset(ta, offset);
 }
 
 // 工具栏动作定义

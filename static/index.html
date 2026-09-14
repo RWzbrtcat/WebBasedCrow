@@ -23,20 +23,23 @@
     </header>
 
     <!-- 主体 -->
-    <main class="container">
-        <h1 class="page-title" id="pageTitle">全部文章</h1>
-        <p class="page-subtitle">记录技术 · 分享生活</p>
+    <main class="container container-home">
+        <aside class="home-sidebar" id="themeSidebar"></aside>
+        <div class="home-main">
+            <h1 class="page-title" id="pageTitle">全部文章</h1>
+            <p class="page-subtitle">记录技术 · 分享生活</p>
 
-        <nav id="topicTabs" class="topic-tabs"></nav>
+            <nav id="topicTabs" class="topic-tabs"></nav>
 
-        <div class="topic-add" id="topicAdd" hidden>
-            <input type="text" id="topicAddInput" placeholder="新专栏名称" maxlength="100">
-            <button type="button" class="btn btn-primary" id="topicAddConfirm">添加</button>
-            <button type="button" class="btn btn-secondary" id="topicAddCancel">取消</button>
-        </div>
+            <div class="topic-add" id="topicAdd" hidden>
+                <input type="text" id="topicAddInput" placeholder="新专栏名称" maxlength="100">
+                <button type="button" class="btn btn-primary" id="topicAddConfirm">添加</button>
+                <button type="button" class="btn btn-secondary" id="topicAddCancel">取消</button>
+            </div>
 
-        <div id="postList" class="post-list">
-            <div class="loading">加载中...</div>
+            <div id="postList" class="post-list">
+                <div class="loading">加载中...</div>
+            </div>
         </div>
     </main>
 

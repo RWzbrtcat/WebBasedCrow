@@ -10,6 +10,7 @@ const IS_DRAFTS = document.body.dataset.mode === 'drafts';
 // 全部文章数据 + 当前选中的专栏（'all' 表示全部）
 let allPosts = [];
 let currentTopic = 'all';
+let currentTheme = 'all';  // 当前选中的主题（'all' 表示未按主题筛选）
 let topicsData = [];   // 站长维护的专栏列表 [{ id, name }]
 let isAdmin = false;
 
@@ -39,8 +40,40 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!btn) return;
             const idx = btn.dataset.index;
             currentTopic = idx === '-1' ? 'all' : topicsData[Number(idx)].name;
+            currentTheme = 'all';
             renderTopicTabs();
+            renderThemeSidebar();
             renderPosts();
+        });
+    }
+
+    // 左侧主题侧边栏：点击专栏标题按专栏筛选，点击主题按主题筛选
+    const sidebar = document.getElementById('themeSidebar');
+    if (sidebar) {
+        sidebar.addEventListener('click', (e) => {
+            const theme = e.target.closest('.sidebar-theme');
+            if (theme) {
+                const topic = theme.dataset.topic;
+                const name = theme.dataset.name;
+                if (currentTopic === topic && currentTheme === name) {
+                    currentTheme = 'all';
+                } else {
+                    currentTopic = topic;
+                    currentTheme = name;
+                }
+                renderTopicTabs();
+                renderThemeSidebar();
+                renderPosts();
+                return;
+            }
+            const topicBtn = e.target.closest('.sidebar-topic');
+            if (topicBtn) {
+                currentTopic = topicBtn.dataset.name;
+                currentTheme = 'all';
+                renderTopicTabs();
+                renderThemeSidebar();
+                renderPosts();
+            }
         });
     }
 
@@ -158,7 +191,10 @@ async function loadPosts() {
         const data = await apiRequest(url);
         if (data.success) {
             allPosts = data.posts || [];
-            if (!IS_DRAFTS) renderTopicTabs();
+            if (!IS_DRAFTS) {
+                renderTopicTabs();
+                renderThemeSidebar();
+            }
             renderPosts();
         } else {
             list.innerHTML = `<div class="empty-state"><p>❌ ${escapeHtml(data.message || '加载失败')}</p></div>`;
@@ -202,15 +238,66 @@ function renderTopicTabs() {
     container.innerHTML = html;
 }
 
+// 左侧主题侧边栏：按专栏分组展示各专栏下的主题
+function renderThemeSidebar() {
+    const sidebar = document.getElementById('themeSidebar');
+    if (!sidebar) return;
+
+    // 按专栏收集主题（去重、保持文章出现顺序）
+    const groups = topicsData.map(t => {
+        const themes = [];
+        const seen = new Set();
+        allPosts.forEach(p => {
+            if ((p.topic || '').trim() !== t.name) return;
+            const theme = (p.theme || '').trim();
+            if (!theme || seen.has(theme)) return;
+            seen.add(theme);
+            themes.push(theme);
+        });
+        return { name: t.name, themes };
+    });
+
+    if (topicsData.length === 0 || !groups.some(g => g.themes.length > 0)) {
+        sidebar.innerHTML = '';
+        sidebar.style.display = 'none';
+        return;
+    }
+    sidebar.style.display = 'block';
+
+    let html = '<div class="home-sidebar-title">主题</div>';
+
+    groups.forEach(g => {
+        const topicActive = currentTopic === g.name && currentTheme === 'all';
+        html += `<div class="sidebar-group">
+            <div class="sidebar-topic${topicActive ? ' active' : ''}" data-name="${escapeAttr(g.name)}">${escapeHtml(g.name)}</div>`;
+        if (g.themes.length) {
+            html += '<ul class="sidebar-theme-list">';
+            g.themes.forEach(th => {
+                const active = currentTopic === g.name && currentTheme === th;
+                html += `<li class="sidebar-theme${active ? ' active' : ''}" data-topic="${escapeAttr(g.name)}" data-name="${escapeAttr(th)}">${escapeHtml(th)}</li>`;
+            });
+            html += '</ul>';
+        }
+        html += '</div>';
+    });
+
+    sidebar.innerHTML = html;
+}
+
 function renderPosts() {
     const list = document.getElementById('postList');
     if (!IS_DRAFTS) {
-        document.getElementById('pageTitle').textContent = currentTopic === 'all' ? '全部文章' : currentTopic;
+        let title = '全部文章';
+        if (currentTheme !== 'all') title = currentTheme;
+        else if (currentTopic !== 'all') title = currentTopic;
+        document.getElementById('pageTitle').textContent = title;
     }
 
-    const filtered = currentTopic === 'all'
-        ? allPosts
-        : allPosts.filter(p => (p.topic || '').trim() === currentTopic);
+    const filtered = allPosts.filter(p => {
+        if (currentTopic !== 'all' && (p.topic || '').trim() !== currentTopic) return false;
+        if (currentTheme !== 'all' && (p.theme || '').trim() !== currentTheme) return false;
+        return true;
+    });
 
     if (!filtered.length) {
         if (IS_DRAFTS) {
@@ -319,6 +406,7 @@ async function handleAddTopic() {
             hideTopicAdd();
             await loadTopics();
             renderTopicTabs();
+            renderThemeSidebar();
         } else {
             showToast(data.message || '添加失败', 'error');
         }
@@ -333,10 +421,14 @@ async function handleDeleteTopic(id) {
         const data = await apiRequest(`${API_BASE}/topics/${id}`, 'DELETE');
         if (data.success) {
             const deleted = topicsData.find(t => t.id === id);
-            if (deleted && currentTopic === deleted.name) currentTopic = 'all';
+            if (deleted && currentTopic === deleted.name) {
+                currentTopic = 'all';
+                currentTheme = 'all';
+            }
             showToast('专栏已删除');
             await loadTopics();
             renderTopicTabs();
+            renderThemeSidebar();
             renderPosts();
         } else {
             showToast(data.message || '删除失败', 'error');
@@ -350,6 +442,11 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text == null ? '' : String(text);
     return div.innerHTML;
+}
+
+// 转义用于 HTML 属性值（额外转义双引号，避免属性被截断）
+function escapeAttr(text) {
+    return escapeHtml(text).replace(/"/g, '&quot;');
 }
 
 function formatDate(dateStr) {
