@@ -26,13 +26,41 @@ function contentTextarea() {
     return document.getElementById('content');
 }
 
-// 滚动 textarea，使指定字符偏移所在行出现在可视区中间
+// 滚动 textarea，使指定字符偏移所在的字符出现在可视区中间。
+// 开启自动换行后，源文本的一行可能折成多个可视行，不能再按「换行符数 × 行高」估算；
+// 这里用一个与 textarea 同宽、同字体、同换行规则的隐藏镜像，测量目标偏移的真实 Y 位置。
 function scrollToOffset(ta, offset) {
+    const mirror = offsetMirror(ta);
+    mirror.style.width = ta.clientWidth + 'px';
+
+    mirror.textContent = ta.value.slice(0, offset);
+    const marker = document.createElement('span');
+    marker.textContent = String.fromCharCode(0x200B);
+    mirror.appendChild(marker);
+
+    const targetY = marker.getBoundingClientRect().top - mirror.getBoundingClientRect().top;
+    marker.remove();
+
+    ta.scrollTop = Math.max(0, targetY - ta.clientHeight / 2);
+}
+
+// 惰性创建测量用镜像层，样式与 textarea 完全一致（含自动换行规则）
+function offsetMirror(ta) {
+    if (ta._offsetMirror && ta._offsetMirror.isConnected) return ta._offsetMirror;
     const style = getComputedStyle(ta);
-    const lineHeight = parseFloat(style.lineHeight) || 20;
-    const paddingTop = parseFloat(style.paddingTop) || 0;
-    const lineIndex = ta.value.slice(0, offset).split('\n').length - 1;
-    ta.scrollTop = Math.max(0, paddingTop + lineIndex * lineHeight - ta.clientHeight / 2);
+    const mirror = document.createElement('div');
+    mirror.style.cssText = 'position:absolute;top:0;left:0;visibility:hidden;white-space:pre-wrap;overflow-wrap:break-word;box-sizing:border-box;margin:0;border:0;pointer-events:none;';
+    mirror.style.fontFamily = style.fontFamily;
+    mirror.style.fontSize = style.fontSize;
+    mirror.style.fontWeight = style.fontWeight;
+    mirror.style.fontStyle = style.fontStyle;
+    mirror.style.letterSpacing = style.letterSpacing;
+    mirror.style.lineHeight = style.lineHeight;
+    mirror.style.tabSize = style.tabSize;
+    mirror.style.padding = style.padding;
+    document.body.appendChild(mirror);
+    ta._offsetMirror = mirror;
+    return mirror;
 }
 
 // 记录当前状态到撤销栈（并清空重做栈、重置输入合并计时）
