@@ -1221,7 +1221,8 @@ a {
     font-size: 0.92rem;
     line-height: 1.7;
     padding: 16px 18px;
-    white-space: pre;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
     tab-size: 4;
 }
 
@@ -1237,7 +1238,7 @@ a {
     font: inherit;
     padding: 0;
     margin: 0;
-    white-space: pre;
+    white-space: pre-wrap;
     background: transparent;
     color: inherit;
 }
