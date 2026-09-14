@@ -10,6 +10,9 @@ let editingId = null;
 // 插入图片时的光标 / 选中上下文
 let imageInsertContext = null;
 
+// Tab 键插入的缩进宽度（空格）
+const TAB_INDENT = '    ';
+
 // ===== 撤销 / 重做 =====
 const MAX_HISTORY = 200;
 let undoStack = [];
@@ -96,6 +99,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const lineStart = value.lastIndexOf('\n', pos - 1) + 1;
         const before = value.slice(lineStart, pos);
 
+        // 代码块内回车：自动继承上一行缩进，行尾是 { ( [ 或 : 时额外缩进一级
+        if (isInsideCodeBlock(value, pos)) {
+            e.preventDefault();
+            pushUndoState();
+            const indent = before.match(/^[ \t]*/)[0];
+            let newIndent = indent;
+            const last = before.trim().slice(-1);
+            if (last === '{' || last === '(' || last === '[' || last === ':') {
+                newIndent += TAB_INDENT;
+            }
+            const insert = '\n' + newIndent;
+            ta.value = value.slice(0, pos) + insert + value.slice(pos);
+            const caret = pos + insert.length;
+            ta.setSelectionRange(caret, caret);
+            updatePreview();
+            return;
+        }
+
         let m = before.match(/^(\s*)([-*+])\s+(.*)$/);
         if (m) {
             const indent = m[1], marker = m[2], item = m[3];
@@ -133,6 +154,27 @@ document.addEventListener('DOMContentLoaded', () => {
             updatePreview();
         }
     });
+
+    // Tab 缩进 / Shift+Tab 反缩进（拦截 Tab 默认的焦点跳转）
+    contentInput.addEventListener('keydown', (e) => {
+        if (e.key !== 'Tab') return;
+        e.preventDefault();
+        const ta = e.target;
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        pushUndoState();
+
+        if (start === end && !e.shiftKey) {
+            ta.value = ta.value.slice(0, start) + TAB_INDENT + ta.value.slice(end);
+            ta.setSelectionRange(start + TAB_INDENT.length, start + TAB_INDENT.length);
+        } else {
+            indentBlock(ta, start, end, e.shiftKey);
+        }
+        updatePreview();
+    });
+
+    // 编辑器滚动时同步高亮层
+    contentInput.addEventListener('scroll', syncEditorScroll);
 
     // 工具栏按钮（含下拉菜单）
     document.getElementById('markdownToolbar').addEventListener('click', (e) => {
@@ -261,6 +303,8 @@ async function apiRequest(url, method = 'GET', body = null) {
 function updatePreview() {
     const text = document.getElementById('content').value;
     const preview = document.getElementById('preview');
+
+    updateEditorHighlight(text);
 
     if (!text.trim()) {
         preview.innerHTML = '<p class="empty-preview">暂无内容，开始输入以预览效果…</p>';
@@ -575,6 +619,110 @@ function initResizer() {
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
     });
+}
+
+// ===== 编辑器语法高亮（左侧代码框叠加层） =====
+function highlightLayerEl() {
+    return document.getElementById('highlightLayer');
+}
+
+// 将 Markdown 源码中的围栏代码块按语言高亮，其余文本原样转义，
+// 保证输出与输入逐字符对齐（供透明 textarea 下方的叠加层使用）。
+function highlightMarkdown(text) {
+    if (!text) return '';
+    const re = /(```[ \t]*([^\n`]*)[ \t]*\r?\n)([\s\S]*?)(```[ \t]*)(?=\r?\n|$)/g;
+    let html = '';
+    let last = 0;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+        html += escapeHtml(text.slice(last, m.index));
+        const lang = (m[2] || '').trim();
+        html += escapeHtml(m[1]);
+        html += '<span class="hljs-code-block">' + highlightCode(m[3], lang) + '</span>';
+        html += escapeHtml(m[4]);
+        last = m.index + m[0].length;
+    }
+    html += escapeHtml(text.slice(last));
+    return html;
+}
+
+function highlightCode(code, lang) {
+    if (!code) return '';
+    if (lang && window.hljs && window.hljs.getLanguage(lang)) {
+        try {
+            return window.hljs.highlight(code, { language: lang }).value;
+        } catch (e) {
+            return escapeHtml(code);
+        }
+    }
+    return escapeHtml(code);
+}
+
+function updateEditorHighlight(text) {
+    const layer = highlightLayerEl();
+    const ta = contentTextarea();
+    if (!layer) return;
+    const pre = layer.parentElement;
+
+    // 清除上次的底部补偿
+    if (pre) pre.style.paddingBottom = '';
+
+    const isEmpty = (text == null || text === '');
+    layer.innerHTML = isEmpty ? '' : highlightMarkdown(text);
+
+    // textarea 会把末尾换行渲染成额外一行，而 <pre> 会折叠尾部换行导致叠加层少一行；
+    // 不同浏览器对尾部换行的处理还不一致，这里直接用两者 scrollHeight 的差值补底部内边距，
+    // 保证叠加层与输入框的总高度完全一致，滚动同步和点击定位才不会错位。
+    if (pre && ta && !isEmpty) {
+        const diff = ta.scrollHeight - pre.scrollHeight;
+        if (diff > 0) {
+            const basePad = parseFloat(getComputedStyle(pre).paddingBottom) || 0;
+            pre.style.paddingBottom = (basePad + diff) + 'px';
+        }
+    }
+
+    syncEditorScroll();
+}
+
+function syncEditorScroll() {
+    const ta = contentTextarea();
+    const layer = highlightLayerEl();
+    if (!ta || !layer) return;
+    const pre = layer.parentElement;
+    if (!pre) return;
+    pre.scrollTop = ta.scrollTop;
+    pre.scrollLeft = ta.scrollLeft;
+}
+
+// Tab / Shift+Tab 对选区（或当前行）整体缩进、反缩进
+function indentBlock(ta, start, end, outdent) {
+    const value = ta.value;
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+    const lineEnd = value.indexOf('\n', end);
+    const blockEnd = lineEnd === -1 ? value.length : lineEnd;
+    const block = value.slice(lineStart, blockEnd);
+    const lines = block.split('\n');
+
+    let newBlock;
+    if (outdent) {
+        newBlock = lines.map((line) => {
+            let i = 0;
+            while (i < line.length && i < TAB_INDENT.length && line[i] === ' ') i++;
+            return line.slice(i);
+        }).join('\n');
+    } else {
+        newBlock = lines.map((line) => TAB_INDENT + line).join('\n');
+    }
+
+    ta.value = value.slice(0, lineStart) + newBlock + value.slice(blockEnd);
+    ta.setSelectionRange(lineStart, lineStart + newBlock.length);
+}
+
+// 判断光标是否位于围栏代码块（``` 之间）内
+function isInsideCodeBlock(text, pos) {
+    const before = text.slice(0, pos);
+    const fences = before.match(/^```[ \t]*/gm) || [];
+    return fences.length % 2 === 1;
 }
 
 function escapeHtml(text) {

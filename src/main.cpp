@@ -150,14 +150,36 @@ public:
 			CREATE TABLE IF NOT EXISTS comments(
 				id INT AUTO_INCREMENT PRIMARY KEY,
 				post_id INT NOT NULL COMMENT '所属文章 ID',
+				parent_id INT NOT NULL DEFAULT 0 COMMENT '父评论 ID（0 表示顶层评论）',
 				nickname VARCHAR(100) DEFAULT '匿名' COMMENT '昵称',
 				content TEXT NOT NULL COMMENT '评论内容',
+				hidden TINYINT NOT NULL DEFAULT 0 COMMENT '是否隐藏（0 显示 / 1 隐藏）',
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '评论时间'
 			)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 		)";
 		if (mysql_query(conn_, commentsSql) != 0)
 		{
 			throw std::runtime_error(std::string("创建评论表失败：") + mysql_error(conn_));
+		}
+
+		// 兼容旧表：若缺少 parent_id 列，则补充（用于评论回复）
+		if (!columnExists("comments", "parent_id"))
+		{
+			const char* alterSql = "ALTER TABLE comments ADD COLUMN parent_id INT NOT NULL DEFAULT 0 COMMENT '父评论 ID' AFTER post_id";
+			if (mysql_query(conn_, alterSql) != 0)
+			{
+				throw std::runtime_error(std::string("补充 parent_id 列失败：") + mysql_error(conn_));
+			}
+		}
+
+		// 兼容旧表：若缺少 hidden 列，则补充（用于站长隐藏评论）
+		if (!columnExists("comments", "hidden"))
+		{
+			const char* alterSql = "ALTER TABLE comments ADD COLUMN hidden TINYINT NOT NULL DEFAULT 0 COMMENT '是否隐藏' AFTER content";
+			if (mysql_query(conn_, alterSql) != 0)
+			{
+				throw std::runtime_error(std::string("补充 hidden 列失败：") + mysql_error(conn_));
+			}
 		}
 
 		// 配置表（键值对，用于存储站点背景图等全局设置）
@@ -207,8 +229,9 @@ public:
 		crow::json::wvalue result;
 		std::vector<crow::json::wvalue> posts;
 
-		std::string sql = "SELECT id, title, content, summary, author, topic, status, created_at, updated_at "
-			"FROM posts WHERE status='" + status + "' ORDER BY updated_at DESC";
+		std::string sql = "SELECT p.id, p.title, p.content, p.summary, p.author, p.topic, p.status, p.likes, p.created_at, p.updated_at, "
+			"(SELECT COUNT(*) FROM comments c WHERE c.post_id=p.id AND c.hidden=0) AS comment_count "
+			"FROM posts p WHERE p.status='" + status + "' ORDER BY p.updated_at DESC";
 
 		if (mysql_query(conn_, sql.c_str()) != 0)
 		{
@@ -231,8 +254,10 @@ public:
 				post["author"] = row[4] ? row[4] : "";
 				post["topic"] = row[5] ? row[5] : "";
 				post["status"] = row[6] ? row[6] : "";
-				post["created_at"] = row[7] ? row[7] : "";
-				post["updated_at"] = row[8] ? row[8] : "";
+				post["likes"] = row[7] ? std::stoi(row[7]) : 0;
+				post["created_at"] = row[8] ? row[8] : "";
+				post["updated_at"] = row[9] ? row[9] : "";
+				post["comment_count"] = row[10] ? std::stoi(row[10]) : 0;
 				posts.push_back(std::move(post));
 			}
 			mysql_free_result(res);
@@ -549,8 +574,8 @@ public:
 		return result;
 	}
 
-	// 获取某篇文章的所有评论（按时间正序）
-	crow::json::wvalue getComments(int postId)
+	// 获取某篇文章的所有评论（按时间正序；includeHidden 为 true 时包含被隐藏的评论，仅供站长）
+	crow::json::wvalue getComments(int postId, bool includeHidden)
 	{
 		std::lock_guard<std::mutex> lock(mtx_);
 		checkConnection();
@@ -558,7 +583,12 @@ public:
 		crow::json::wvalue result;
 		std::vector<crow::json::wvalue> comments;
 
-		std::string sql = "SELECT id, post_id, nickname, content, created_at FROM comments WHERE post_id=" + std::to_string(postId) + " ORDER BY id ASC";
+		std::string sql = "SELECT id, post_id, parent_id, nickname, content, hidden, created_at FROM comments WHERE post_id=" + std::to_string(postId);
+		if (!includeHidden)
+		{
+			sql += " AND hidden=0";
+		}
+		sql += " ORDER BY id ASC";
 
 		if (mysql_query(conn_, sql.c_str()) != 0)
 		{
@@ -576,9 +606,11 @@ public:
 				crow::json::wvalue c;
 				c["id"] = std::stoi(row[0]);
 				c["post_id"] = std::stoi(row[1]);
-				c["nickname"] = row[2] ? row[2] : "";
-				c["content"] = row[3] ? row[3] : "";
-				c["created_at"] = row[4] ? row[4] : "";
+				c["parent_id"] = row[2] ? std::stoi(row[2]) : 0;
+				c["nickname"] = row[3] ? row[3] : "";
+				c["content"] = row[4] ? row[4] : "";
+				c["hidden"] = (row[5] && std::stoi(row[5]) != 0);
+				c["created_at"] = row[6] ? row[6] : "";
 				comments.push_back(std::move(c));
 			}
 			mysql_free_result(res);
@@ -589,8 +621,8 @@ public:
 		return result;
 	}
 
-	// 新增评论
-	crow::json::wvalue addComment(int postId, const std::string& nickname, const std::string& content)
+	// 新增评论（parentId 为 0 表示顶层评论，否则为回复某条评论）
+	crow::json::wvalue addComment(int postId, int parentId, const std::string& nickname, const std::string& content)
 	{
 		std::lock_guard<std::mutex> lock(mtx_);
 		checkConnection();
@@ -604,7 +636,7 @@ public:
 			return result;
 		}
 
-		const char* sql = "INSERT INTO comments (post_id, nickname, content) VALUES (?, ?, ?)";
+		const char* sql = "INSERT INTO comments (post_id, parent_id, nickname, content) VALUES (?, ?, ?, ?)";
 		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
 		{
 			result["success"] = false;
@@ -613,19 +645,22 @@ public:
 			return result;
 		}
 
-		MYSQL_BIND bind[3];
+		MYSQL_BIND bind[4];
 		std::memset(bind, 0, sizeof(bind));
 
 		bind[0].buffer_type = MYSQL_TYPE_LONG;
 		bind[0].buffer = (void*)&postId;
 
-		bind[1].buffer_type = MYSQL_TYPE_STRING;
-		bind[1].buffer = (void*)nickname.c_str();
-		bind[1].buffer_length = nickname.length();
+		bind[1].buffer_type = MYSQL_TYPE_LONG;
+		bind[1].buffer = (void*)&parentId;
 
 		bind[2].buffer_type = MYSQL_TYPE_STRING;
-		bind[2].buffer = (void*)content.c_str();
-		bind[2].buffer_length = content.length();
+		bind[2].buffer = (void*)nickname.c_str();
+		bind[2].buffer_length = nickname.length();
+
+		bind[3].buffer_type = MYSQL_TYPE_STRING;
+		bind[3].buffer = (void*)content.c_str();
+		bind[3].buffer_length = content.length();
 
 		mysql_stmt_bind_param(stmt, bind);
 
@@ -634,6 +669,106 @@ public:
 			int newID = static_cast<int>(mysql_stmt_insert_id(stmt));
 			result["success"] = true;
 			result["id"] = newID;
+		}
+		else
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+		}
+		mysql_stmt_close(stmt);
+		return result;
+	}
+
+	// 隐藏 / 取消隐藏某条评论（站长）
+	crow::json::wvalue setCommentHidden(int id, int hidden)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		crow::json::wvalue result;
+		MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+		if (!stmt)
+		{
+			result["success"] = false;
+			result["message"] = "mysql_stmt_init 失败";
+			return result;
+		}
+
+		const char* sql = "UPDATE comments SET hidden=? WHERE id=?";
+		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+			mysql_stmt_close(stmt);
+			return result;
+		}
+
+		MYSQL_BIND bind[2];
+		std::memset(bind, 0, sizeof(bind));
+
+		bind[0].buffer_type = MYSQL_TYPE_LONG;
+		bind[0].buffer = (void*)&hidden;
+
+		bind[1].buffer_type = MYSQL_TYPE_LONG;
+		bind[1].buffer = (void*)&id;
+
+		mysql_stmt_bind_param(stmt, bind);
+
+		if (mysql_stmt_execute(stmt) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+		}
+		else
+		{
+			my_ulonglong affected = mysql_stmt_affected_rows(stmt);
+			result["success"] = (affected > 0);
+			result["message"] = (affected > 0) ? "操作成功" : "评论不存在";
+		}
+		mysql_stmt_close(stmt);
+		return result;
+	}
+
+	// 删除某条评论及其所有回复（站长）
+	crow::json::wvalue deleteComment(int id)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		crow::json::wvalue result;
+		MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+		if (!stmt)
+		{
+			result["success"] = false;
+			result["message"] = "mysql_stmt_init 失败";
+			return result;
+		}
+
+		const char* sql = "DELETE FROM comments WHERE id=? OR parent_id=?";
+		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+			mysql_stmt_close(stmt);
+			return result;
+		}
+
+		MYSQL_BIND bind[2];
+		std::memset(bind, 0, sizeof(bind));
+
+		bind[0].buffer_type = MYSQL_TYPE_LONG;
+		bind[0].buffer = (void*)&id;
+
+		bind[1].buffer_type = MYSQL_TYPE_LONG;
+		bind[1].buffer = (void*)&id;
+
+		mysql_stmt_bind_param(stmt, bind);
+
+		if (mysql_stmt_execute(stmt) == 0)
+		{
+			my_ulonglong affected = mysql_stmt_affected_rows(stmt);
+			result["success"] = (affected > 0);
+			result["message"] = (affected > 0) ? "删除成功" : "评论不存在";
 		}
 		else
 		{
@@ -1086,14 +1221,14 @@ int main()
 			return res;
 		});
 
-		// GET /api/posts/<id>/comments - 获取评论（公开）
-		CROW_ROUTE(app, "/api/posts/<int>/comments").methods("GET"_method)([&db](int id){
-			crow::response res(db.getComments(id));
+		// GET /api/posts/<id>/comments - 获取评论（公开；站长登录后额外包含被隐藏评论）
+		CROW_ROUTE(app, "/api/posts/<int>/comments").methods("GET"_method)([&db](const crow::request& req, int id){
+			crow::response res(db.getComments(id, isLoggedIn(req)));
 			addCorsHeaders(res);
 			return res;
 		});
 
-		// POST /api/posts/<id>/comments - 发表评论（公开，无需登录）
+		// POST /api/posts/<id>/comments - 发表评论 / 回复（公开，无需登录）
 		CROW_ROUTE(app, "/api/posts/<int>/comments").methods("POST"_method)([&db](const crow::request& req, int id){
 			auto body = crow::json::load(req.body);
 			if (!body)
@@ -1106,6 +1241,7 @@ int main()
 
 			std::string nickname = body.has("nickname") ? std::string(body["nickname"].s()) : std::string("");
 			std::string content = body.has("content") ? std::string(body["content"].s()) : std::string("");
+			int parentId = body.has("parent_id") ? static_cast<int>(body["parent_id"].i()) : 0;
 			nickname = trim(nickname);
 			content = trim(content);
 
@@ -1116,11 +1252,39 @@ int main()
 				err["message"] = "评论内容不能为空";
 				return crow::response(400, err);
 			}
+			if (parentId < 0) parentId = 0;
 			if (nickname.empty()) nickname = "匿名";
 			if (nickname.length() > 50) nickname = nickname.substr(0, 50);
 			if (content.length() > 2000) content = content.substr(0, 2000);
 
-			crow::response res(db.addComment(id, nickname, content));
+			crow::response res(db.addComment(id, parentId, nickname, content));
+			addCorsHeaders(res);
+			return res;
+		});
+
+		// PUT /api/comments/<int> - 隐藏 / 取消隐藏评论（仅登录）
+		CROW_ROUTE(app, "/api/comments/<int>").methods("PUT"_method)([&db](const crow::request& req, int id){
+			if (!isLoggedIn(req)) return unauthorizedResponse();
+			auto body = crow::json::load(req.body);
+			if (!body || !body.has("hidden"))
+			{
+				crow::json::wvalue err;
+				err["success"] = false;
+				err["message"] = "无效的 JSON 数据";
+				crow::response res(400, err);
+				addCorsHeaders(res);
+				return res;
+			}
+			bool hidden = body["hidden"].b();
+			crow::response res(db.setCommentHidden(id, hidden ? 1 : 0));
+			addCorsHeaders(res);
+			return res;
+		});
+
+		// DELETE /api/comments/<int> - 删除评论及其回复（仅登录）
+		CROW_ROUTE(app, "/api/comments/<int>").methods("DELETE"_method)([&db](const crow::request& req, int id){
+			if (!isLoggedIn(req)) return unauthorizedResponse();
+			crow::response res(db.deleteComment(id));
 			addCorsHeaders(res);
 			return res;
 		});

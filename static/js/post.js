@@ -7,6 +7,7 @@ const API_BASE = '/api';
 let currentPostId = null;
 let currentLikes = 0;
 let liked = false;
+let isAdmin = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     const id = new URLSearchParams(window.location.search).get('id');
@@ -62,6 +63,7 @@ function renderPost(post, authed) {
     currentPostId = post.id;
     currentLikes = Number(post.likes) || 0;
     liked = isLiked(post.id);
+    isAdmin = authed;
 
     const updated = post.updated_at && post.updated_at !== post.created_at
         ? `<span class="sep">·</span><span>更新于 ${formatDate(post.updated_at)}</span>`
@@ -83,27 +85,13 @@ function renderPost(post, authed) {
                 ${updated}
             </div>
             <div class="post-content markdown-body" id="postContent"></div>
-            <div class="post-engagement">
-                <button class="btn btn-secondary like-btn" id="likeBtn">点赞</button>
-                <button class="btn btn-secondary" id="donateBtn">打赏</button>
-            </div>
-            <section class="comments">
-                <h2 class="comments-title">评论 <span id="commentCount">0</span></h2>
-                <div class="comments-list" id="commentsList">
-                    <div class="loading">加载中...</div>
-                </div>
-                <form class="comment-form" id="commentForm">
-                    <input type="text" id="commentNickname" placeholder="昵称（可选，留空为匿名）" maxlength="50">
-                    <textarea id="commentContent" placeholder="写下你的评论..." required></textarea>
-                    <button type="submit" class="btn btn-primary">发表评论</button>
-                </form>
-            </section>
         </article>
     `;
 
     renderMarkdownInto(document.getElementById('postContent'), post.content);
 
     renderPostAdminActions(post, authed);
+    document.getElementById('floatingActions').hidden = false;
     bindPostInteractions();
     loadComments();
 }
@@ -125,10 +113,34 @@ function bindPostInteractions() {
     updateLikeButton();
 
     document.getElementById('likeBtn').addEventListener('click', handleLike);
+    document.getElementById('commentBtn').addEventListener('click', openCommentDrawer);
     document.getElementById('donateBtn').addEventListener('click', () => {
         document.getElementById('donateModal').hidden = false;
     });
     document.getElementById('commentForm').addEventListener('submit', handleCommentSubmit);
+
+    const drawer = document.getElementById('commentDrawer');
+    document.getElementById('commentDrawerClose').addEventListener('click', closeCommentDrawer);
+    drawer.addEventListener('click', (e) => {
+        if (e.target === drawer) closeCommentDrawer();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && drawer && !drawer.hidden) closeCommentDrawer();
+    });
+
+    const commentsList = document.getElementById('commentsList');
+    commentsList.addEventListener('click', onCommentsClick);
+    commentsList.addEventListener('submit', onCommentsSubmit);
+}
+
+function openCommentDrawer() {
+    const drawer = document.getElementById('commentDrawer');
+    if (drawer) drawer.hidden = false;
+}
+
+function closeCommentDrawer() {
+    const drawer = document.getElementById('commentDrawer');
+    if (drawer) drawer.hidden = true;
 }
 
 // ===== 点赞 =====
@@ -153,10 +165,9 @@ function setLiked(id, val) {
 function updateLikeButton() {
     const btn = document.getElementById('likeBtn');
     if (!btn) return;
-    btn.innerHTML = liked
-        ? `已点赞 · ${currentLikes}`
-        : `点赞 · ${currentLikes}`;
     btn.classList.toggle('liked', liked);
+    const text = document.getElementById('likeBtnText');
+    if (text) text.textContent = liked ? `已点赞 · ${currentLikes}` : `点赞 · ${currentLikes}`;
 }
 
 async function handleLike() {
@@ -197,21 +208,106 @@ async function loadComments() {
 function renderComments(comments) {
     const list = document.getElementById('commentsList');
     document.getElementById('commentCount').textContent = comments.length;
+    const commentBtnText = document.getElementById('commentBtnText');
+    if (commentBtnText) commentBtnText.textContent = `评论 · ${comments.length}`;
 
     if (!comments.length) {
         list.innerHTML = '<p class="comments-empty">还没有评论，来抢沙发吧～</p>';
         return;
     }
 
-    list.innerHTML = comments.map((c) => `
-        <div class="comment-item">
+    const childrenMap = new Map();
+    comments.forEach((c) => {
+        const pid = c.parent_id || 0;
+        if (!childrenMap.has(pid)) childrenMap.set(pid, []);
+        childrenMap.get(pid).push(c);
+    });
+
+    const renderThread = (c) => {
+        const replies = childrenMap.get(c.id);
+        const repliesHtml = replies && replies.length
+            ? `<div class="comment-replies">${replies.map(renderThread).join('')}</div>`
+            : '';
+        return `<div class="comment-thread">${renderCommentItem(c)}${repliesHtml}</div>`;
+    };
+
+    list.innerHTML = (childrenMap.get(0) || []).map(renderThread).join('');
+}
+
+function renderCommentItem(c) {
+    const hiddenBadge = c.hidden ? '<span class="comment-hidden-badge">已隐藏</span>' : '';
+    const replyBtn = `<button type="button" class="comment-reply-btn" data-id="${c.id}">回复</button>`;
+    const adminActions = isAdmin
+        ? `<button type="button" class="comment-action" data-action="hide" data-id="${c.id}">${c.hidden ? '显示' : '隐藏'}</button>
+           <button type="button" class="comment-action comment-action-danger" data-action="delete" data-id="${c.id}">删除</button>`
+        : '';
+    return `
+        <div class="comment-item${c.hidden ? ' comment-hidden' : ''}" data-id="${c.id}" data-hidden="${c.hidden ? '1' : '0'}">
             <div class="comment-head">
-                <span class="comment-nickname">${escapeHtml(c.nickname || '匿名')}</span>
+                <span class="comment-nickname">${escapeHtml(c.nickname || '匿名')}</span>${hiddenBadge}
                 <span class="comment-time">${formatDateTime(c.created_at)}</span>
             </div>
             <div class="comment-content">${escapeHtml(c.content)}</div>
+            <div class="comment-actions">${replyBtn}${adminActions}</div>
+            <div class="comment-reply-form" hidden></div>
         </div>
-    `).join('');
+    `;
+}
+
+function onCommentsClick(e) {
+    const replyBtn = e.target.closest('.comment-reply-btn');
+    if (replyBtn) {
+        const item = replyBtn.closest('.comment-item');
+        const nickname = item.querySelector('.comment-nickname').textContent.trim();
+        openReplyForm(item, replyBtn.dataset.id, nickname);
+        return;
+    }
+
+    const cancelBtn = e.target.closest('.reply-cancel');
+    if (cancelBtn) {
+        const form = cancelBtn.closest('.comment-reply-form');
+        if (form) {
+            form.hidden = true;
+            form.innerHTML = '';
+        }
+        return;
+    }
+
+    const actionBtn = e.target.closest('.comment-action');
+    if (!actionBtn) return;
+    const id = actionBtn.dataset.id;
+    if (actionBtn.dataset.action === 'hide') {
+        handleHideComment(id, actionBtn);
+    } else if (actionBtn.dataset.action === 'delete') {
+        handleDeleteComment(id);
+    }
+}
+
+function onCommentsSubmit(e) {
+    const form = e.target.closest('.comment-reply-form-inner');
+    if (!form) return;
+    e.preventDefault();
+    handleReplySubmit(form);
+}
+
+function openReplyForm(item, id, nickname) {
+    const formContainer = item.querySelector('.comment-reply-form');
+    if (!formContainer) return;
+    const placeholder = nickname && nickname !== '匿名'
+        ? `回复 @${nickname} ...`
+        : '写下你的回复...';
+    formContainer.innerHTML = `
+        <form class="comment-form comment-reply-form-inner" data-parent-id="${id}">
+            <input type="text" class="reply-nickname" placeholder="昵称（可选，留空为匿名）" maxlength="50">
+            <textarea class="reply-content" placeholder="${escapeHtml(placeholder)}" required></textarea>
+            <div class="comment-form-actions">
+                <button type="button" class="btn btn-secondary reply-cancel">取消</button>
+                <button type="submit" class="btn btn-primary">回复</button>
+            </div>
+        </form>
+    `;
+    formContainer.hidden = false;
+    formContainer.querySelector('.reply-content').focus();
 }
 
 async function handleCommentSubmit(e) {
@@ -229,7 +325,7 @@ async function handleCommentSubmit(e) {
     btn.textContent = '提交中...';
 
     try {
-        const data = await apiRequest(`${API_BASE}/posts/${currentPostId}/comments`, 'POST', { nickname, content });
+        const data = await postComment(nickname, content, 0);
         if (data.success) {
             document.getElementById('commentContent').value = '';
             showToast('评论成功');
@@ -242,6 +338,71 @@ async function handleCommentSubmit(e) {
     } finally {
         btn.disabled = false;
         btn.textContent = '发表评论';
+    }
+}
+
+async function handleReplySubmit(form) {
+    const parentId = Number(form.dataset.parentId);
+    const nickname = form.querySelector('.reply-nickname').value.trim();
+    const content = form.querySelector('.reply-content').value.trim();
+    if (!content) {
+        showToast('请输入回复内容', 'error');
+        return;
+    }
+
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = '提交中...';
+
+    try {
+        const data = await postComment(nickname, content, parentId);
+        if (data.success) {
+            showToast('回复成功');
+            loadComments();
+        } else {
+            showToast(data.message || '回复失败', 'error');
+        }
+    } catch (e) {
+        showToast('回复失败，请稍后重试', 'error');
+    }
+}
+
+async function postComment(nickname, content, parentId) {
+    return apiRequest(`${API_BASE}/posts/${currentPostId}/comments`, 'POST', {
+        nickname,
+        content,
+        parent_id: parentId
+    });
+}
+
+async function handleHideComment(id, btn) {
+    const item = btn.closest('.comment-item');
+    const hidden = item.dataset.hidden === '1';
+    try {
+        const data = await apiRequest(`${API_BASE}/comments/${id}`, 'PUT', { hidden: !hidden });
+        if (data.success) {
+            showToast(hidden ? '评论已显示' : '评论已隐藏');
+            loadComments();
+        } else {
+            showToast(data.message || '操作失败', 'error');
+        }
+    } catch (e) {
+        showToast('操作失败，请稍后重试', 'error');
+    }
+}
+
+async function handleDeleteComment(id) {
+    if (!confirm('确定要删除这条评论吗？其下所有回复也会一并删除。')) return;
+    try {
+        const data = await apiRequest(`${API_BASE}/comments/${id}`, 'DELETE');
+        if (data.success) {
+            showToast('评论已删除');
+            loadComments();
+        } else {
+            showToast(data.message || '删除失败', 'error');
+        }
+    } catch (e) {
+        showToast('删除失败，请稍后重试', 'error');
     }
 }
 

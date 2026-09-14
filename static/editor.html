@@ -88,13 +88,16 @@
                                 <button type="button" class="md-dropdown-item" data-lang="sql">SQL</button>
                             </div>
                         </div>
-                        <button type="button" class="md-btn" data-action="link" title="插入链接">链接</button>
-                        <button type="button" class="md-btn" data-action="image" title="插入图片">插入图片</button>
+                        <button type="button" class="md-btn md-btn-icon" data-action="link" title="插入链接"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+                        <button type="button" class="md-btn md-btn-icon" data-action="image" title="插入图片"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
                     </div>
                     <div class="markdown-editor">
                         <div class="markdown-editor-pane markdown-editor-input">
                             <div class="pane-label">Markdown 编辑</div>
-                            <textarea id="content" placeholder="使用 Markdown 语法写下你的内容，例如：# 标题、**加粗**、- 列表、```代码块```..."></textarea>
+                            <div class="code-editor">
+                                <pre class="code-editor-highlight" aria-hidden="true"><code id="highlightLayer"></code></pre>
+                                <textarea id="content" placeholder="使用 Markdown 语法写下你的内容，例如：# 标题、**加粗**、- 列表、```代码块```..."></textarea>
+                            </div>
                         </div>
                         <div class="markdown-editor-resizer" id="markdownResizer"></div>
                         <div class="markdown-editor-pane markdown-editor-preview">

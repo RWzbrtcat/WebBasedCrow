@@ -12,6 +12,10 @@ let allPosts = [];
 let currentTopic = 'all';
 let topicsList = [];
 
+// 点赞 / 评论统计小图标（内联 SVG，避免依赖 emoji 字体）
+const LIKE_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+const COMMENT_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+
 document.addEventListener('DOMContentLoaded', () => {
     loadPosts();
 
@@ -203,6 +207,11 @@ function renderPosts(posts) {
         const updatedHtml = post.updated_at && post.updated_at !== post.created_at
             ? `<span class="sep">·</span><span>更新于 ${formatDate(post.updated_at)}</span>`
             : '';
+        const statsHtml = IS_DRAFTS ? '' : `
+            <span class="sep">·</span>
+            <span class="post-stat post-stat-like">${LIKE_ICON}<span>${post.likes || 0}</span></span>
+            <span class="post-stat post-stat-comment">${COMMENT_ICON}<span>${post.comment_count || 0}</span></span>
+        `;
         return `
             <article class="post-card" data-href="${href}">
                 <h2 class="post-title"><a href="${href}">${escapeHtml(post.title)}</a></h2>
@@ -213,6 +222,7 @@ function renderPosts(posts) {
                     <span class="sep">·</span>
                     <span>${formatDate(post.created_at)}</span>
                     ${updatedHtml}
+                    ${statsHtml}
                 </div>
                 ${summary ? `<p class="post-excerpt">${escapeHtml(summary)}</p>` : ''}
                 ${actionLink}

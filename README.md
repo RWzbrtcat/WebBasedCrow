@@ -58,7 +58,7 @@ cd bin
 ./task_server
 ```
 
-运行成功后通过https://localhost::8080访问网站
+运行成功后通过http://localhost::8080访问网站
 
 
 
