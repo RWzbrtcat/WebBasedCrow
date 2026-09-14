@@ -279,6 +279,9 @@ a {
 }
 
 .topic-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     padding: 6px 14px;
     font-size: 0.85rem;
     font-family: var(--sans);
@@ -287,7 +290,77 @@ a {
     background: var(--surface);
     color: var(--text-secondary);
     cursor: pointer;
+    user-select: none;
     transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.topic-tab-add {
+    border-style: dashed;
+}
+
+.topic-tab-add:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.topic-tab-del {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-left: 2px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.12s, background 0.12s;
+}
+
+.topic-tab-del:hover {
+    color: #fff;
+    background: var(--danger);
+}
+
+/* 添加专栏行 */
+.topic-add {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: -8px 0 24px;
+}
+
+.topic-add[hidden] {
+    display: none;
+}
+
+.topic-add input {
+    flex: 1;
+    max-width: 260px;
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.topic-add input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: #fff;
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.topic-add .btn {
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    border-radius: 20px;
 }
 
 .topic-tab:hover {
@@ -365,6 +438,17 @@ a {
     line-height: 1.5;
     color: var(--accent);
     background: var(--accent-soft);
+    border-radius: 10px;
+}
+
+.post-theme {
+    display: inline-block;
+    padding: 1px 9px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.5;
+    color: #475569;
+    background: #f1f5f9;
     border-radius: 10px;
 }
 
@@ -578,7 +662,8 @@ a {
 }
 
 .form-group input,
-.form-group textarea {
+.form-group textarea,
+.form-group select {
     width: 100%;
     padding: 11px 14px;
     border: 1px solid var(--border);
@@ -591,7 +676,8 @@ a {
 }
 
 .form-group input:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.form-group select:focus {
     outline: none;
     border-color: var(--accent);
     background: #fff;

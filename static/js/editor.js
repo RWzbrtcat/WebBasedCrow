@@ -7,6 +7,9 @@ const API_BASE = '/api';
 // 编辑模式下的文章 id（null 表示新建）
 let editingId = null;
 
+// 站长维护的专栏列表 [{ id, name }]
+let topicsData = [];
+
 // 插入图片时的光标 / 选中上下文
 let imageInsertContext = null;
 
@@ -222,12 +225,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const id = new URLSearchParams(window.location.search).get('id');
-    if (id) {
-        editingId = id;
-        loadForEdit(id);
-    } else {
-        updatePreview();
-    }
+    loadTopics().then(() => {
+        if (id) {
+            editingId = id;
+            loadForEdit(id);
+        } else {
+            updatePreview();
+        }
+    });
 
     document.getElementById('postForm').addEventListener('submit', handleSubmit);
     document.getElementById('draftBtn').addEventListener('click', () => savePost('draft'));
@@ -297,6 +302,32 @@ async function apiRequest(url, method = 'GET', body = null) {
     }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.json();
+}
+
+// 加载专栏列表并填充下拉框
+async function loadTopics() {
+    try {
+        const data = await apiRequest(`${API_BASE}/topics`);
+        if (data.success) topicsData = data.topics || [];
+    } catch (e) {
+        topicsData = [];
+    }
+    populateTopicSelect('');
+}
+
+// 填充专栏下拉框（selected 为当前值，若不在列表内则额外补一个选项）
+function populateTopicSelect(selected) {
+    const select = document.getElementById('topic');
+    if (!select) return;
+    let html = '<option value="">无专栏</option>';
+    topicsData.forEach(t => {
+        html += `<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`;
+    });
+    if (selected && !topicsData.some(t => t.name === selected)) {
+        html += `<option value="${escapeHtml(selected)}">${escapeHtml(selected)}</option>`;
+    }
+    select.innerHTML = html;
+    select.value = selected || '';
 }
 
 // 刷新右侧预览
@@ -516,7 +547,8 @@ async function loadForEdit(id) {
         document.getElementById('editorTitle').textContent = '编辑文章';
         document.getElementById('title').value = post.title;
         document.getElementById('author').value = post.author || '';
-        document.getElementById('topic').value = post.topic || '';
+        populateTopicSelect(post.topic || '');
+        document.getElementById('theme').value = post.theme || '';
         document.getElementById('summary').value = post.summary || '';
         document.getElementById('content').value = post.content || '';
         document.getElementById('submitBtn').textContent = '发布';
@@ -537,6 +569,7 @@ async function savePost(status) {
     let title = document.getElementById('title').value.trim();
     const author = document.getElementById('author').value.trim() || '匿名';
     const topic = document.getElementById('topic').value.trim();
+    const theme = document.getElementById('theme').value.trim();
     const summary = document.getElementById('summary').value.trim();
     const content = document.getElementById('content').value;
 
@@ -558,7 +591,7 @@ async function savePost(status) {
     try {
         const url = editingId ? `${API_BASE}/posts/${editingId}` : `${API_BASE}/posts`;
         const method = editingId ? 'PUT' : 'POST';
-        const data = await apiRequest(url, method, { title, author, topic, summary, content, status });
+        const data = await apiRequest(url, method, { title, author, topic, theme, summary, content, status });
 
         if (data.success) {
             if (editingId == null && data.id) editingId = data.id;

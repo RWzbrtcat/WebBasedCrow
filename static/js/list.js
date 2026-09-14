@@ -10,24 +10,48 @@ const IS_DRAFTS = document.body.dataset.mode === 'drafts';
 // 全部文章数据 + 当前选中的专栏（'all' 表示全部）
 let allPosts = [];
 let currentTopic = 'all';
-let topicsList = [];
+let topicsData = [];   // 站长维护的专栏列表 [{ id, name }]
+let isAdmin = false;
 
 // 点赞 / 评论统计小图标（内联 SVG，避免依赖 emoji 字体）
 const LIKE_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
 const COMMENT_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadPosts();
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadAuth();
+    if (!IS_DRAFTS) await loadTopics();
+    await loadPosts();
 
     const tabs = document.getElementById('topicTabs');
     if (tabs) {
         tabs.addEventListener('click', (e) => {
+            const del = e.target.closest('.topic-tab-del');
+            if (del) {
+                handleDeleteTopic(Number(del.dataset.id));
+                return;
+            }
+            const addBtn = e.target.closest('.topic-tab-add');
+            if (addBtn) {
+                showTopicAdd();
+                return;
+            }
             const btn = e.target.closest('.topic-tab');
             if (!btn) return;
             const idx = btn.dataset.index;
-            currentTopic = idx === '-1' ? 'all' : topicsList[Number(idx)];
-            renderTopicTabs(allPosts);
-            renderPosts(allPosts);
+            currentTopic = idx === '-1' ? 'all' : topicsData[Number(idx)].name;
+            renderTopicTabs();
+            renderPosts();
+        });
+    }
+
+    if (!IS_DRAFTS) {
+        document.getElementById('topicAddConfirm').addEventListener('click', handleAddTopic);
+        document.getElementById('topicAddCancel').addEventListener('click', hideTopicAdd);
+        document.getElementById('topicAddInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddTopic();
+            }
         });
     }
 
@@ -106,6 +130,24 @@ async function apiRequest(url, method = 'GET', body = null) {
     return await response.json();
 }
 
+async function loadAuth() {
+    try {
+        const data = await apiRequest(`${API_BASE}/auth`);
+        isAdmin = !!(data && data.authed);
+    } catch (e) {
+        isAdmin = false;
+    }
+}
+
+async function loadTopics() {
+    try {
+        const data = await apiRequest(`${API_BASE}/topics`);
+        if (data.success) topicsData = data.topics || [];
+    } catch (e) {
+        topicsData = [];
+    }
+}
+
 async function loadPosts() {
     const list = document.getElementById('postList');
     list.innerHTML = '<div class="loading">加载中...</div>';
@@ -116,8 +158,8 @@ async function loadPosts() {
         const data = await apiRequest(url);
         if (data.success) {
             allPosts = data.posts || [];
-            if (!IS_DRAFTS) renderTopicTabs(allPosts);
-            renderPosts(allPosts);
+            if (!IS_DRAFTS) renderTopicTabs();
+            renderPosts();
         } else {
             list.innerHTML = `<div class="empty-state"><p>❌ ${escapeHtml(data.message || '加载失败')}</p></div>`;
         }
@@ -131,37 +173,44 @@ async function loadPosts() {
     }
 }
 
-// 顶部专栏标签页
-function renderTopicTabs(posts) {
+// 顶部专栏标签页（数据来源：站长维护的专栏列表）
+function renderTopicTabs() {
     const container = document.getElementById('topicTabs');
-    topicsList = [...new Set(posts.map(p => (p.topic || '').trim()).filter(Boolean))];
+    if (!container) return;
 
-    if (topicsList.length === 0) {
+    if (topicsData.length === 0 && !isAdmin) {
         container.innerHTML = '';
         container.style.display = 'none';
         return;
     }
     container.style.display = 'flex';
 
-    let html = `<button class="topic-tab${currentTopic === 'all' ? ' active' : ''}" data-index="-1">全部文章 <span class="topic-count">${posts.length}</span></button>`;
+    let html = `<span class="topic-tab${currentTopic === 'all' ? ' active' : ''}" data-index="-1">全部文章 <span class="topic-count">${allPosts.length}</span></span>`;
 
-    topicsList.forEach((t, i) => {
-        const count = posts.filter(p => (p.topic || '').trim() === t).length;
-        html += `<button class="topic-tab${currentTopic === t ? ' active' : ''}" data-index="${i}">${escapeHtml(t)} <span class="topic-count">${count}</span></button>`;
+    topicsData.forEach((t, i) => {
+        const count = allPosts.filter(p => (p.topic || '').trim() === t.name).length;
+        const delBtn = isAdmin
+            ? `<button type="button" class="topic-tab-del" data-id="${t.id}" title="删除专栏">×</button>`
+            : '';
+        html += `<span class="topic-tab${currentTopic === t.name ? ' active' : ''}" data-index="${i}">${escapeHtml(t.name)} <span class="topic-count">${count}</span>${delBtn}</span>`;
     });
+
+    if (isAdmin) {
+        html += `<span class="topic-tab topic-tab-add" id="addTopicToggle">＋ 专栏</span>`;
+    }
 
     container.innerHTML = html;
 }
 
-function renderPosts(posts) {
+function renderPosts() {
     const list = document.getElementById('postList');
     if (!IS_DRAFTS) {
         document.getElementById('pageTitle').textContent = currentTopic === 'all' ? '全部文章' : currentTopic;
     }
 
     const filtered = currentTopic === 'all'
-        ? posts
-        : posts.filter(p => (p.topic || '').trim() === currentTopic);
+        ? allPosts
+        : allPosts.filter(p => (p.topic || '').trim() === currentTopic);
 
     if (!filtered.length) {
         if (IS_DRAFTS) {
@@ -194,8 +243,12 @@ function renderPosts(posts) {
 
     list.innerHTML = filtered.map(post => {
         const topic = (post.topic || '').trim();
+        const theme = (post.theme || '').trim();
         const topicBadge = topic
             ? `<span class="post-topic">${escapeHtml(topic)}</span>`
+            : '';
+        const themeBadge = theme
+            ? `<span class="post-theme">${escapeHtml(theme)}</span>`
             : '';
         const isDraft = post.status === 'draft';
         const draftBadge = isDraft ? `<span class="post-draft">草稿</span>` : '';
@@ -218,6 +271,7 @@ function renderPosts(posts) {
                 <div class="post-meta">
                     ${draftBadge}
                     ${topicBadge}
+                    ${themeBadge}
                     <span>${escapeHtml(post.author || '匿名')}</span>
                     <span class="sep">·</span>
                     <span>${formatDate(post.created_at)}</span>
@@ -235,6 +289,63 @@ function makeExcerpt(post) {
     return (post.summary || '').trim();
 }
 
+// ===== 专栏管理（仅站长） =====
+function showTopicAdd() {
+    const add = document.getElementById('topicAdd');
+    if (add) add.hidden = false;
+    const input = document.getElementById('topicAddInput');
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
+}
+
+function hideTopicAdd() {
+    const add = document.getElementById('topicAdd');
+    if (add) add.hidden = true;
+}
+
+async function handleAddTopic() {
+    const input = document.getElementById('topicAddInput');
+    const name = input.value.trim();
+    if (!name) {
+        showToast('请输入专栏名称', 'error');
+        return;
+    }
+    try {
+        const data = await apiRequest(`${API_BASE}/topics`, 'POST', { name });
+        if (data.success) {
+            showToast('专栏已添加');
+            hideTopicAdd();
+            await loadTopics();
+            renderTopicTabs();
+        } else {
+            showToast(data.message || '添加失败', 'error');
+        }
+    } catch (e) {
+        showToast('添加失败，请稍后重试', 'error');
+    }
+}
+
+async function handleDeleteTopic(id) {
+    if (!confirm('确定要删除这个专栏吗？已有文章不会受到影响。')) return;
+    try {
+        const data = await apiRequest(`${API_BASE}/topics/${id}`, 'DELETE');
+        if (data.success) {
+            const deleted = topicsData.find(t => t.id === id);
+            if (deleted && currentTopic === deleted.name) currentTopic = 'all';
+            showToast('专栏已删除');
+            await loadTopics();
+            renderTopicTabs();
+            renderPosts();
+        } else {
+            showToast(data.message || '删除失败', 'error');
+        }
+    } catch (e) {
+        showToast('删除失败，请稍后重试', 'error');
+    }
+}
+
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text == null ? '' : String(text);
@@ -248,4 +359,20 @@ function formatDate(dateStr) {
     return date.toLocaleDateString('zh-CN', {
         year: 'numeric', month: 'long', day: 'numeric'
     });
+}
+
+function showToast(message, type = 'success') {
+    document.querySelectorAll('.toast').forEach(t => t.remove());
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = type === 'success'
+        ? `<span>✓</span> ${escapeHtml(message)}`
+        : `<span>✗</span> ${escapeHtml(message)}`;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.animation = 'toastIn 0.25s ease-out reverse';
+        setTimeout(() => toast.remove(), 250);
+    }, 2500);
 }
