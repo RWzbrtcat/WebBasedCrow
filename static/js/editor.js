@@ -224,6 +224,13 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollToOffset(ta, offset);
     });
 
+    // 目录：点击标题跳转到预览对应位置
+    document.getElementById('tocList').addEventListener('click', (e) => {
+        const item = e.target.closest('.toc-item');
+        if (!item) return;
+        jumpToHeading(Number(item.dataset.index));
+    });
+
     const id = new URLSearchParams(window.location.search).get('id');
     loadTopics().then(() => {
         if (id) {
@@ -339,9 +346,42 @@ function updatePreview() {
 
     if (!text.trim()) {
         preview.innerHTML = '<p class="empty-preview">暂无内容，开始输入以预览效果…</p>';
+        updateToc();
         return;
     }
     renderMarkdownInto(preview, text);
+    updateToc();
+}
+
+// 根据预览中渲染出的标题，重建左侧目录
+function updateToc() {
+    const tocList = document.getElementById('tocList');
+    const preview = document.getElementById('preview');
+    if (!tocList || !preview) return;
+
+    const headings = preview.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    if (!headings.length) {
+        tocList.innerHTML = '<p class="toc-empty">暂无标题</p>';
+        return;
+    }
+
+    tocList.innerHTML = Array.from(headings).map((h, i) => {
+        const level = parseInt(h.tagName.slice(1), 10);
+        const text = h.textContent.trim();
+        return `<button type="button" class="toc-item" data-index="${i}" style="padding-left:${10 + (level - 1) * 14}px">${escapeHtml(text)}</button>`;
+    }).join('');
+}
+
+// 点击目录项：预览滚动到对应标题
+function jumpToHeading(index) {
+    const preview = document.getElementById('preview');
+    if (!preview) return;
+    const headings = preview.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    const heading = headings[index];
+    if (!heading) return;
+
+    const top = heading.getBoundingClientRect().top - preview.getBoundingClientRect().top + preview.scrollTop;
+    preview.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' });
 }
 
 // 工具栏动作定义
