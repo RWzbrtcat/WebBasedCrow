@@ -24,6 +24,7 @@ function renderMarkdownInto(el, text) {
             hljs.highlightElement(block);
         });
     }
+    attachHeadingIds(el);
     attachSourceOffsets(el, text);
 }
 
@@ -84,5 +85,48 @@ function attachListOffsets(listEl, listToken, baseOffset) {
             }
         }
         itemOffset += raw.length;
+    });
+}
+
+// GitHub 风格标题锚点：转小写、把空格与标点折叠成连字符、保留中文等非 ASCII 字符，
+// 与文章内部链接 `[文字](#锚点)` 的书写规则保持一致。
+function slugify(text) {
+    return String(text == null ? '' : text)
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim()
+        .replace(/[\s~`!@#$%^&*()\-_+=[\]{}|\\;:"'“”‘’<>,.?/]+/g, '-')
+        .replace(/-{2,}/g, '-')
+        .replace(/^-|-$/g, '');
+}
+
+// 为渲染出的标题添加 id，使文章内部链接 [文字](#锚点) 可跳转；同名标题按 -1、-2 去重
+function attachHeadingIds(el) {
+    const used = new Map();
+    el.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((h) => {
+        const base = slugify(h.textContent);
+        if (!base) return;
+        let id = base;
+        const n = used.get(base) || 0;
+        if (n > 0) id = `${base}-${n}`;
+        used.set(base, n + 1);
+        h.id = id;
+    });
+}
+
+// 拦截文章内部锚点链接（href 以 # 开头），改为平滑滚动到对应标题，
+// 避免浏览器原生 hash 跳转的瞬时定位；rootEl 内部每次渲染只绑定一次即可。
+function bindInternalLinks(rootEl) {
+    if (!rootEl) return;
+    rootEl.addEventListener('click', (e) => {
+        const a = e.target.closest('a[href^="#"]');
+        if (!a) return;
+        const href = a.getAttribute('href');
+        if (!href || href === '#') return;
+        const target = document.getElementById(href.slice(1));
+        if (!target) return;
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 }

@@ -94,6 +94,7 @@ function renderPost(post, authed) {
     `;
 
     renderMarkdownInto(document.getElementById('postContent'), post.content);
+    bindInternalLinks(document.getElementById('postContent'));
 
     renderPostAdminActions(post, authed);
     document.getElementById('floatingActions').hidden = false;

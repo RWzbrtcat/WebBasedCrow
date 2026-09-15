@@ -211,14 +211,18 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('markdownToolbar').addEventListener('click', (e) => {
         const toggle = e.target.closest('.md-dropdown-toggle');
         if (toggle) {
-            toggleDropdown(toggle.closest('.md-dropdown'));
+            const wrap = toggle.closest('.md-dropdown');
+            if (wrap && wrap.id === 'anchorDropdown') populateAnchorMenu();
+            toggleDropdown(wrap);
             return;
         }
 
         const item = e.target.closest('.md-dropdown-item');
         if (item) {
             const wrap = item.closest('.md-dropdown');
-            if (item.dataset.lang !== undefined) {
+            if (item.dataset.anchor !== undefined) {
+                insertAnchorLink(item.dataset.anchor);
+            } else if (item.dataset.lang !== undefined) {
                 insertCodeBlock(item.dataset.lang);
             } else if (item.dataset.action) {
                 applyMarkdown(item.dataset.action);
@@ -251,6 +255,9 @@ document.addEventListener('DOMContentLoaded', () => {
         ta.setSelectionRange(offset, offset);
         scrollToOffset(ta, offset);
     });
+
+    // 预览中的内部链接：平滑滚动到对应标题（不触发原生 hash 跳转）
+    bindInternalLinks(document.getElementById('preview'));
 
     // 目录：点击标题跳转到预览对应位置
     document.getElementById('tocList').addEventListener('click', (e) => {
@@ -515,6 +522,40 @@ function insertCodeBlock(lang) {
     const text = selected || '代码';
     ta.value = ta.value.slice(0, start) + prefix + text + suffix + ta.value.slice(end);
     ta.setSelectionRange(start + prefix.length, start + prefix.length + text.length);
+    ta.focus({ preventScroll: true });
+    updatePreview();
+}
+
+// 填充「内部链接」下拉：列出预览中所有标题及其锚点
+function populateAnchorMenu() {
+    const menu = document.getElementById('anchorMenu');
+    const preview = document.getElementById('preview');
+    if (!menu) return;
+    const headings = preview
+        ? Array.from(preview.querySelectorAll('h1, h2, h3, h4, h5, h6')).filter((h) => h.id)
+        : [];
+    if (!headings.length) {
+        menu.innerHTML = '<div class="md-dropdown-empty">当前没有标题</div>';
+        return;
+    }
+    menu.innerHTML = headings.map((h) => {
+        const level = parseInt(h.tagName.slice(1), 10);
+        const label = '#'.repeat(level) + ' ' + h.textContent.trim();
+        return `<button type="button" class="md-dropdown-item" data-anchor="${escapeHtml(h.id)}">${escapeHtml(label)}</button>`;
+    }).join('');
+}
+
+// 在光标处插入指向某标题锚点的内部链接 [文字](#锚点)
+function insertAnchorLink(slug) {
+    const ta = contentTextarea();
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = ta.value.slice(start, end);
+    const text = selected || '跳转到此处';
+    pushUndoState();
+    const markdown = `[${text}](#${slug})`;
+    ta.value = ta.value.slice(0, start) + markdown + ta.value.slice(end);
+    ta.setSelectionRange(start + 1, start + 1 + text.length);
     ta.focus({ preventScroll: true });
     updatePreview();
 }

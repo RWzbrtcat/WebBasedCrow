@@ -22,7 +22,7 @@
     --danger: #dc2626;
     --danger-soft: #fee2e2;
     --serif: Georgia, 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
-    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
     --radius: 10px;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
@@ -1102,6 +1102,17 @@ a {
     background: var(--accent-soft);
 }
 
+.md-dropdown-menu-wide {
+    min-width: 220px;
+    max-width: 340px;
+}
+
+.md-dropdown-empty {
+    padding: 10px 12px;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
 .md-divider {
     width: 1px;
     background: var(--border);
@@ -1217,7 +1228,7 @@ a {
     border: none;
     border-radius: 0;
     box-sizing: border-box;
-    font-family: 'SF Mono', 'JetBrains Mono', Consolas, 'Courier New', monospace;
+    font-family: 'SFMono-Regular', 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
     font-size: 0.92rem;
     line-height: 1.7;
     padding: 16px 18px;
@@ -1333,7 +1344,7 @@ a {
 
 /* ========== Markdown 渲染排版 ========== */
 .markdown-body {
-    font-family: var(--serif);
+    font-family: var(--sans);
     font-size: 1.02rem;
     line-height: 1.85;
     color: #2b2f36;
@@ -1375,6 +1386,16 @@ a {
 .markdown-body h5 { font-size: 1rem; }
 .markdown-body h6 { font-size: 0.9rem; color: var(--text-secondary); }
 
+/* 文章详情页锚点跳转时避开吸顶头部（编辑器预览无需此间距） */
+body.post-page .markdown-body h1,
+body.post-page .markdown-body h2,
+body.post-page .markdown-body h3,
+body.post-page .markdown-body h4,
+body.post-page .markdown-body h5,
+body.post-page .markdown-body h6 {
+    scroll-margin-top: 88px;
+}
+
 .markdown-body p { margin: 0.8em 0; }
 
 .markdown-body a {
@@ -1407,7 +1428,7 @@ a {
 .markdown-body blockquote p { margin: 0.4em 0; }
 
 .markdown-body code {
-    font-family: 'SF Mono', 'JetBrains Mono', Consolas, 'Courier New', monospace;
+    font-family: 'SFMono-Regular', 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
     font-size: 0.88em;
     background: #f3f4f6;
     padding: 0.15em 0.4em;
