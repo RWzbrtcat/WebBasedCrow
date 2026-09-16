@@ -26,10 +26,10 @@ function contentTextarea() {
     return document.getElementById('content');
 }
 
-// 滚动 textarea，使指定字符偏移所在的字符出现在可视区中间。
+// 测量 textarea 中指定字符偏移所在的字符在内容区内的真实 Y 坐标。
 // 开启自动换行后，源文本的一行可能折成多个可视行，不能再按「换行符数 × 行高」估算；
-// 这里用一个与 textarea 同宽、同字体、同换行规则的隐藏镜像，测量目标偏移的真实 Y 位置。
-function scrollToOffset(ta, offset) {
+// 这里用一个与 textarea 同宽、同字体、同换行规则的隐藏镜像来测量。
+function caretY(ta, offset) {
     const mirror = offsetMirror(ta);
     mirror.style.width = ta.clientWidth + 'px';
 
@@ -38,10 +38,33 @@ function scrollToOffset(ta, offset) {
     marker.textContent = String.fromCharCode(0x200B);
     mirror.appendChild(marker);
 
-    const targetY = marker.getBoundingClientRect().top - mirror.getBoundingClientRect().top;
+    const y = marker.getBoundingClientRect().top - mirror.getBoundingClientRect().top;
     marker.remove();
+    return y;
+}
 
-    ta.scrollTop = Math.max(0, targetY - ta.clientHeight / 2);
+// 滚动 textarea，使指定字符偏移所在的字符出现在可视区中间。
+function scrollToOffset(ta, offset) {
+    ta.scrollTop = Math.max(0, caretY(ta, offset) - ta.clientHeight / 2);
+}
+
+// 输入 / 插入内容后，把光标滚动到可视区内（向上或向下只滚到刚好露出光标）。
+// 原生自动滚动只覆盖了普通输入，程序化插入（列表/代码块回车、Tab 缩进、工具栏等）
+// 直接改写 value，setSelectionRange 又不会可靠地把光标滚进可视区，这里手动补齐。
+function scrollCaretIntoView(ta) {
+    if (!ta || ta !== document.activeElement) return;
+    if (ta.scrollHeight <= ta.clientHeight) return; // 内容未超出可视区，无需滚动
+    const caret = ta.selectionEnd;
+    if (caret == null) return;
+
+    const y = caretY(ta, caret);
+    const margin = 24; // 距底部留余量，避免光标紧贴边缘
+    if (y < ta.scrollTop) {
+        ta.scrollTop = Math.max(0, y - margin);
+    } else if (y > ta.scrollTop + ta.clientHeight - margin) {
+        ta.scrollTop = y - ta.clientHeight + margin;
+    }
+    syncEditorScroll();
 }
 
 // 惰性创建测量用镜像层，样式与 textarea 完全一致（含自动换行规则）
@@ -381,11 +404,11 @@ function updatePreview() {
 
     if (!text.trim()) {
         preview.innerHTML = '<p class="empty-preview">暂无内容，开始输入以预览效果…</p>';
-        updateToc();
-        return;
+    } else {
+        renderMarkdownInto(preview, text);
     }
-    renderMarkdownInto(preview, text);
     updateToc();
+    scrollCaretIntoView(contentTextarea());
 }
 
 // 根据预览中渲染出的标题，重建左侧目录
