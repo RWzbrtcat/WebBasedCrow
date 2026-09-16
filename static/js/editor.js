@@ -153,17 +153,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const lineStart = value.lastIndexOf('\n', pos - 1) + 1;
         const before = value.slice(lineStart, pos);
 
-        // 代码块内回车：自动继承上一行缩进，行尾是 { ( [ 或 : 时额外缩进一级
+        // 代码块内回车：按 markdown 规则，仅继承上一行缩进，不针对 { ( [ : 额外缩进
         if (isInsideCodeBlock(value, pos)) {
             e.preventDefault();
             pushUndoState();
             const indent = before.match(/^[ \t]*/)[0];
-            let newIndent = indent;
-            const last = before.trim().slice(-1);
-            if (last === '{' || last === '(' || last === '[' || last === ':') {
-                newIndent += TAB_INDENT;
-            }
-            const insert = '\n' + newIndent;
+            const insert = '\n' + indent;
             ta.value = value.slice(0, pos) + insert + value.slice(pos);
             const caret = pos + insert.length;
             ta.setSelectionRange(caret, caret);
@@ -408,7 +403,20 @@ function updatePreview() {
         renderMarkdownInto(preview, text);
     }
     updateToc();
+    updateStats(text);
     scrollCaretIntoView(contentTextarea());
+}
+
+// 更新左下角的行数 / 字数 / 词数统计
+function updateStats(text) {
+    const statsEl = document.getElementById('editorStats');
+    if (!statsEl) return;
+
+    const lines = text === '' ? 0 : text.split('\n').length;
+    const chars = text.replace(/\s/g, '').length;
+    const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+
+    statsEl.textContent = `行数 ${lines} · 字数 ${chars} · 词数 ${words}`;
 }
 
 // 根据预览中渲染出的标题，重建左侧目录
