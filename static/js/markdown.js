@@ -9,6 +9,19 @@ marked.setOptions({
     breaks: true
 });
 
+// 修补 marked v12 的强调定界符正则：当包裹内容以括号等标点结尾、后面紧跟文字时
+// （如 **加粗）**后面），闭合的 ** 会被误判为「仅左边界」而无法闭合，导致加粗失效。
+// 这里把「标点 + 定界符 + 文字」从「左边界」改为「可左可右」，使其能正常闭合。
+(function patchEmphasisDelimiters() {
+    const inline = marked.Lexer.rules.inline;
+    const emStrongRDelimAst = /^[^_*]*?__[^_*]*?\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\*)[\p{P}\p{S}](\*+)(?=[\s]|$)|[^\p{P}\p{S}\s](\*+)(?!\*)(?=[\p{P}\p{S}\s]|$)|(?!\*)[\s](\*+)(?=[^\p{P}\p{S}\s])|[\s](\*+)(?!\*)(?=[\p{P}\p{S}])|(?!\*)[\p{P}\p{S}](\*+)(?!\*)(?=[\p{P}\p{S}]|[^\p{P}\p{S}\s])|[^\p{P}\p{S}\s](\*+)(?=[^\p{P}\p{S}\s])/gu;
+    const emStrongRDelimUnd = /^[^_*]*?\*\*[^_*]*?_[^_*]*?(?=\*\*)|[^_]+(?=[^_])|(?!_)[\p{P}\p{S}](_+)(?=[\s]|$)|[^\p{P}\p{S}\s](_+)(?!_)(?=[\p{P}\p{S}\s]|$)|(?!_)[\s](_+)(?=[^\p{P}\p{S}\s])|[\s](_+)(?!_)(?=[\p{P}\p{S}])|(?!_)[\p{P}\p{S}](_+)(?!_)(?=[\p{P}\p{S}]|[^\p{P}\p{S}\s])/gu;
+    ['normal', 'gfm', 'breaks', 'pedantic'].forEach((variant) => {
+        inline[variant].emStrongRDelimAst = emStrongRDelimAst;
+        inline[variant].emStrongRDelimUnd = emStrongRDelimUnd;
+    });
+})();
+
 // 将 Markdown 文本渲染为安全的 HTML 字符串
 function renderMarkdown(text) {
     if (!text || !text.trim()) return '';

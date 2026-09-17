@@ -17,6 +17,30 @@
 #include <random>
 
 
+// 主管理员账号（首次启动时若 admins 表为空会自动创建；修改后重新编译生效）
+const std::string MAIN_ADMIN_EMAIL = "admin@lazycat.com";
+const std::string MAIN_ADMIN_PASSWORD = "admin123";
+
+// 生成指定字节数的随机十六进制字符串（用作密码盐值）
+std::string randomHex(size_t bytes)
+{
+    static thread_local std::mt19937_64 rng(std::random_device{}());
+    static const char hex[] = "0123456789abcdef";
+    std::uniform_int_distribution<unsigned long long> dist;
+    std::string out;
+    out.reserve(bytes * 2);
+    while (out.size() < bytes * 2)
+    {
+        unsigned long long v = dist(rng);
+        for (int i = 0; i < 16 && out.size() < bytes * 2; ++i)
+        {
+            out.push_back(hex[(v >> (i * 4)) & 0xFULL]);
+        }
+    }
+    return out;
+}
+
+
 // DataBase 类：封装所有 MySQL 操作
 // 使用 RAII 管理连接，使用 mutex 保证线程安全
 class DataBase
@@ -238,6 +262,41 @@ public:
 		if (mysql_query(conn_, settingsSql) != 0)
 		{
 			throw std::runtime_error(std::string("创建配置表失败：") + mysql_error(conn_));
+		}
+
+		// 管理员表：邮箱账号 + 密码哈希（SHA2(salt+password,256)）
+		const char* adminsSql = R"(
+			CREATE TABLE IF NOT EXISTS admins(
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				email VARCHAR(255) NOT NULL UNIQUE COMMENT '管理员邮箱',
+				salt VARCHAR(64) NOT NULL COMMENT '密码盐值',
+				password_hash VARCHAR(64) NOT NULL COMMENT 'SHA2(salt+password) 哈希',
+				is_main TINYINT NOT NULL DEFAULT 0 COMMENT '是否主管理员',
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'
+			)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+		)";
+		if (mysql_query(conn_, adminsSql) != 0)
+		{
+			throw std::runtime_error(std::string("创建管理员表失败：") + mysql_error(conn_));
+		}
+
+		// 首次初始化：admins 表为空时，创建默认主管理员账号
+		if (mysql_query(conn_, "SELECT COUNT(*) FROM admins") != 0)
+		{
+			throw std::runtime_error(std::string("查询管理员表失败：") + mysql_error(conn_));
+		}
+		{
+			MYSQL_RES* res = mysql_store_result(conn_);
+			if (res)
+			{
+				MYSQL_ROW row = mysql_fetch_row(res);
+				bool empty = !row || !row[0] || std::string(row[0]) == "0";
+				mysql_free_result(res);
+				if (empty)
+				{
+					seedMainAdmin();
+				}
+			}
 		}
 	}
 
@@ -1039,6 +1098,217 @@ public:
 		mysql_stmt_close(stmt);
 		return result;
 	}
+
+	// ===== 管理员账号 =====
+
+	// 插入管理员记录：密码用 MySQL SHA2(CONCAT(salt, ':', password), 256) 哈希后入库
+	bool insertAdmin(const std::string& email, const std::string& password, int isMain, std::string& errMsg, int& outId)
+	{
+		MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+		if (!stmt)
+		{
+			errMsg = "mysql_stmt_init 失败";
+			return false;
+		}
+
+		std::string salt = randomHex(16);
+		const char* sql = "INSERT INTO admins (email, salt, password_hash, is_main) VALUES (?, ?, SHA2(CONCAT(?, ':', ?), 256), ?)";
+		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+		{
+			errMsg = mysql_stmt_error(stmt);
+			mysql_stmt_close(stmt);
+			return false;
+		}
+
+		MYSQL_BIND bind[5];
+		std::memset(bind, 0, sizeof(bind));
+		bind[0].buffer_type = MYSQL_TYPE_STRING;
+		bind[0].buffer = (void*)email.c_str();
+		bind[0].buffer_length = email.length();
+		bind[1].buffer_type = MYSQL_TYPE_STRING;
+		bind[1].buffer = (void*)salt.c_str();
+		bind[1].buffer_length = salt.length();
+		bind[2].buffer_type = MYSQL_TYPE_STRING;
+		bind[2].buffer = (void*)salt.c_str();
+		bind[2].buffer_length = salt.length();
+		bind[3].buffer_type = MYSQL_TYPE_STRING;
+		bind[3].buffer = (void*)password.c_str();
+		bind[3].buffer_length = password.length();
+		bind[4].buffer_type = MYSQL_TYPE_LONG;
+		bind[4].buffer = (void*)&isMain;
+		mysql_stmt_bind_param(stmt, bind);
+
+		bool ok = (mysql_stmt_execute(stmt) == 0);
+		if (ok)
+		{
+			outId = static_cast<int>(mysql_stmt_insert_id(stmt));
+		}
+		else
+		{
+			unsigned int errNo = mysql_stmt_errno(stmt);
+			errMsg = (errNo == 1062) ? "该邮箱已被注册" : mysql_stmt_error(stmt);
+		}
+		mysql_stmt_close(stmt);
+		return ok;
+	}
+
+	// 首次初始化时创建主管理员账号
+	void seedMainAdmin()
+	{
+		std::string err;
+		int id = 0;
+		if (!insertAdmin(MAIN_ADMIN_EMAIL, MAIN_ADMIN_PASSWORD, 1, err, id))
+		{
+			throw std::runtime_error("创建主管理员失败：" + err);
+		}
+	}
+
+	// 登录校验：邮箱 + 密码匹配则返回 true，并通过出参返回 id / is_main
+	bool loginAdmin(const std::string& email, const std::string& password, int& outId, bool& outIsMain, std::string& errMsg)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		std::vector<char> emailEsc(email.length() * 2 + 1);
+		std::vector<char> passEsc(password.length() * 2 + 1);
+		mysql_real_escape_string(conn_, emailEsc.data(), email.c_str(), static_cast<unsigned long>(email.length()));
+		mysql_real_escape_string(conn_, passEsc.data(), password.c_str(), static_cast<unsigned long>(password.length()));
+
+		std::string sql = "SELECT id, is_main FROM admins WHERE email='" + std::string(emailEsc.data()) +
+			"' AND password_hash=SHA2(CONCAT(salt, ':', '" + std::string(passEsc.data()) + "'), 256)";
+
+		if (mysql_query(conn_, sql.c_str()) != 0)
+		{
+			errMsg = mysql_error(conn_);
+			return false;
+		}
+
+		MYSQL_RES* res = mysql_store_result(conn_);
+		if (!res)
+		{
+			errMsg = "邮箱或密码错误";
+			return false;
+		}
+
+		MYSQL_ROW row = mysql_fetch_row(res);
+		if (!row)
+		{
+			mysql_free_result(res);
+			errMsg = "邮箱或密码错误";
+			return false;
+		}
+
+		outId = std::stoi(row[0]);
+		outIsMain = (row[1] && std::stoi(row[1]) != 0);
+		mysql_free_result(res);
+		return true;
+	}
+
+	// 新增普通管理员
+	crow::json::wvalue addAdmin(const std::string& email, const std::string& password)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		crow::json::wvalue result;
+		std::string err;
+		int id = 0;
+		if (insertAdmin(email, password, 0, err, id))
+		{
+			result["success"] = true;
+			result["id"] = id;
+			result["message"] = "管理员添加成功";
+		}
+		else
+		{
+			result["success"] = false;
+			result["message"] = err;
+		}
+		return result;
+	}
+
+	// 管理员列表
+	crow::json::wvalue getAdmins()
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		crow::json::wvalue result;
+		std::vector<crow::json::wvalue> admins;
+
+		const char* sql = "SELECT id, email, is_main, created_at FROM admins ORDER BY is_main DESC, id ASC";
+		if (mysql_query(conn_, sql) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_error(conn_);
+			return result;
+		}
+
+		MYSQL_RES* res = mysql_store_result(conn_);
+		if (res)
+		{
+			MYSQL_ROW row;
+			while ((row = mysql_fetch_row(res)))
+			{
+				crow::json::wvalue a;
+				a["id"] = std::stoi(row[0]);
+				a["email"] = row[1] ? row[1] : "";
+				a["is_main"] = (row[2] && std::stoi(row[2]) != 0);
+				a["created_at"] = row[3] ? row[3] : "";
+				admins.push_back(std::move(a));
+			}
+			mysql_free_result(res);
+		}
+
+		result["admins"] = std::move(admins);
+		result["success"] = true;
+		return result;
+	}
+
+	// 删除管理员（主管理员 is_main=1 不可删除，SQL 层再兜底）
+	crow::json::wvalue deleteAdmin(int id)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		crow::json::wvalue result;
+		MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+		if (!stmt)
+		{
+			result["success"] = false;
+			result["message"] = "mysql_stmt_init 失败";
+			return result;
+		}
+
+		const char* sql = "DELETE FROM admins WHERE id=? AND is_main=0";
+		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+			mysql_stmt_close(stmt);
+			return result;
+		}
+
+		MYSQL_BIND bind[1];
+		std::memset(bind, 0, sizeof(bind));
+		bind[0].buffer_type = MYSQL_TYPE_LONG;
+		bind[0].buffer = (void*)&id;
+		mysql_stmt_bind_param(stmt, bind);
+
+		if (mysql_stmt_execute(stmt) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+		}
+		else
+		{
+			my_ulonglong affected = mysql_stmt_affected_rows(stmt);
+			result["success"] = (affected > 0);
+			result["message"] = (affected > 0) ? "管理员已删除" : "管理员不存在或不可删除";
+		}
+		mysql_stmt_close(stmt);
+		return result;
+	}
 };
 
 
@@ -1178,12 +1448,15 @@ crow::response htmlResponse(const std::string& content)
 
 
 // ===== 管理员登录认证 =====
-// 修改这里设置管理员密码（重新编译后生效）
-const std::string ADMIN_PASSWORD = "admin123";
 const std::string SESSION_COOKIE = "blog_session";
 
-// 内存会话表（token -> 已登录）。个人博客用内存会话即可，服务重启后需重新登录
-std::unordered_set<std::string> g_sessions;
+// 内存会话表（token -> 会话信息）。个人博客用内存会话即可，服务重启后需重新登录
+struct Session
+{
+    int adminId = 0;
+    bool isMain = false;
+};
+std::unordered_map<std::string, Session> g_sessions;
 std::mutex g_sessionsMtx;
 
 // 生成随机会话 token（十六进制）
@@ -1194,15 +1467,6 @@ std::string generateToken()
 	std::ostringstream oss;
 	oss << std::hex << dist(rng) << dist(rng);
 	return oss.str();
-}
-
-// 常量时间比较，避免时序侧信道
-bool constantTimeEquals(const std::string& a, const std::string& b)
-{
-	if (a.size() != b.size()) return false;
-	unsigned char diff = 0;
-	for (size_t i = 0; i < a.size(); ++i) diff |= static_cast<unsigned char>(a[i] ^ b[i]);
-	return diff == 0;
 }
 
 // 从 Cookie 请求头中解析指定名称的值
@@ -1236,6 +1500,16 @@ bool isLoggedIn(const crow::request& req)
 	return g_sessions.count(token) > 0;
 }
 
+// 判断请求是否为已登录的主管理员
+bool isMainAdmin(const crow::request& req)
+{
+	std::string token = getCookie(req, SESSION_COOKIE);
+	if (token.empty()) return false;
+	std::lock_guard<std::mutex> lock(g_sessionsMtx);
+	auto it = g_sessions.find(token);
+	return it != g_sessions.end() && it->second.isMain;
+}
+
 // 未登录时返回的 401 响应
 crow::response unauthorizedResponse()
 {
@@ -1243,6 +1517,17 @@ crow::response unauthorizedResponse()
 	err["success"] = false;
 	err["message"] = "未登录";
 	crow::response res(401, err);
+	addCorsHeaders(res);
+	return res;
+}
+
+// 非主管理员访问时的 403 响应
+crow::response forbiddenResponse()
+{
+	crow::json::wvalue err;
+	err["success"] = false;
+	err["message"] = "仅主管理员可执行此操作";
+	crow::response res(403, err);
 	addCorsHeaders(res);
 	return res;
 }
@@ -1270,8 +1555,8 @@ int main()
 
 		// ========== 登录认证路由 ==========
 
-		// POST /api/login - 管理员登录，成功后设置会话 Cookie
-		CROW_ROUTE(app, "/api/login").methods("POST"_method)([](const crow::request& req){
+		// POST /api/login - 管理员登录（邮箱 + 密码），成功后设置会话 Cookie
+		CROW_ROUTE(app, "/api/login").methods("POST"_method)([&db](const crow::request& req){
 			auto body = crow::json::load(req.body);
 			crow::json::wvalue result;
 			if (!body)
@@ -1281,35 +1566,106 @@ int main()
 				return crow::response(400, result);
 			}
 
+			std::string email = trim(body.has("email") ? std::string(body["email"].s()) : std::string(""));
 			std::string password = body.has("password") ? std::string(body["password"].s()) : std::string("");
-			if (!constantTimeEquals(password, ADMIN_PASSWORD))
+
+			if (email.empty() || password.empty())
 			{
 				result["success"] = false;
-				result["message"] = "密码错误";
-				crow::response res(401, result);
+				result["message"] = "请输入邮箱和密码";
+				crow::response res(400, result);
+				addCorsHeaders(res);
+				return res;
+			}
+
+			int adminId = 0;
+			bool isMain = false;
+			std::string errMsg;
+			if (!db.loginAdmin(email, password, adminId, isMain, errMsg))
+			{
+				crow::json::wvalue err;
+				err["success"] = false;
+				err["message"] = errMsg;
+				crow::response res(401, err);
 				addCorsHeaders(res);
 				return res;
 			}
 
 			std::string token = generateToken();
+			Session s;
+			s.adminId = adminId;
+			s.isMain = isMain;
 			{
 				std::lock_guard<std::mutex> lock(g_sessionsMtx);
-				g_sessions.insert(token);
+				g_sessions[token] = s;
 			}
 
 			result["success"] = true;
+			result["is_main"] = s.isMain;
 			crow::response res(200, result);
 			res.add_header("Set-Cookie", SESSION_COOKIE + "=" + token + "; HttpOnly; Path=/; SameSite=Lax; Max-Age=2592000");
 			addCorsHeaders(res);
 			return res;
 		});
 
-		// GET /api/auth - 查询当前是否已登录
+		// GET /api/auth - 查询当前登录态（是否登录、是否主管理员）
 		CROW_ROUTE(app, "/api/auth").methods("GET"_method)([](const crow::request& req){
 			crow::json::wvalue result;
 			result["success"] = true;
 			result["authed"] = isLoggedIn(req);
+			result["is_main"] = isMainAdmin(req);
 			crow::response res(result);
+			addCorsHeaders(res);
+			return res;
+		});
+
+		// ========== 管理员管理 API（仅主管理员可用） ==========
+
+		// GET /api/admins - 管理员列表
+		CROW_ROUTE(app, "/api/admins").methods("GET"_method)([&db](const crow::request& req){
+			if (!isLoggedIn(req)) return unauthorizedResponse();
+			if (!isMainAdmin(req)) return forbiddenResponse();
+			crow::response res(db.getAdmins());
+			addCorsHeaders(res);
+			return res;
+		});
+
+		// POST /api/admins - 新增管理员
+		CROW_ROUTE(app, "/api/admins").methods("POST"_method)([&db](const crow::request& req){
+			if (!isLoggedIn(req)) return unauthorizedResponse();
+			if (!isMainAdmin(req)) return forbiddenResponse();
+
+			auto body = crow::json::load(req.body);
+			if (!body)
+			{
+				crow::json::wvalue err;
+				err["success"] = false;
+				err["message"] = "无效的 JSON 数据";
+				return crow::response(400, err);
+			}
+
+			std::string email = trim(body.has("email") ? std::string(body["email"].s()) : std::string(""));
+			std::string password = body.has("password") ? std::string(body["password"].s()) : std::string("");
+
+			if (email.empty() || password.empty())
+			{
+				crow::json::wvalue err;
+				err["success"] = false;
+				err["message"] = "邮箱和密码不能为空";
+				return crow::response(400, err);
+			}
+			if (email.length() > 255) email = email.substr(0, 255);
+
+			crow::response res(db.addAdmin(email, password));
+			addCorsHeaders(res);
+			return res;
+		});
+
+		// DELETE /api/admins/<int> - 删除管理员
+		CROW_ROUTE(app, "/api/admins/<int>").methods("DELETE"_method)([&db](const crow::request& req, int id){
+			if (!isLoggedIn(req)) return unauthorizedResponse();
+			if (!isMainAdmin(req)) return forbiddenResponse();
+			crow::response res(db.deleteAdmin(id));
 			addCorsHeaders(res);
 			return res;
 		});
@@ -1734,6 +2090,23 @@ int main()
 				return res;
 			}
 			return htmlResponse(readFile(staticDir + "/editor.html"));
+		});
+
+		// 管理员管理页（仅主管理员可访问）
+		CROW_ROUTE(app, "/admin")([staticDir](const crow::request& req){
+			if (!isLoggedIn(req))
+			{
+				crow::response res;
+				res.moved("/login");
+				return res;
+			}
+			if (!isMainAdmin(req))
+			{
+				crow::response res;
+				res.moved("/");
+				return res;
+			}
+			return htmlResponse(readFile(staticDir + "/admin.html"));
 		});
 
 		// CSS 文件

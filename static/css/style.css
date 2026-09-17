@@ -1632,6 +1632,65 @@ body.post-page .markdown-body h6 {
     text-align: center;
 }
 
+/* ========== 管理员管理页 ========== */
+.admin-list {
+    margin-top: 28px;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+}
+
+.admin-list-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.admin-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background: var(--bg);
+}
+
+.admin-item-email {
+    font-size: 0.92rem;
+    color: var(--text);
+    word-break: break-all;
+}
+
+.admin-item-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    margin-left: 8px;
+    white-space: nowrap;
+}
+
+.admin-item-del {
+    padding: 5px 12px;
+    font-size: 0.82rem;
+    border-radius: 6px;
+    border: 1px solid var(--danger-soft);
+    background: var(--surface);
+    color: var(--danger);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+}
+
+.admin-item-del:hover {
+    background: var(--danger-soft);
+}
+
 /* ========== 文章互动（点赞 / 打赏） ========== */
 .post-engagement {
     display: flex;
