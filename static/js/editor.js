@@ -13,6 +13,9 @@ let topicsData = [];
 // 插入图片时的光标 / 选中上下文
 let imageInsertContext = null;
 
+// 当前登录管理员的昵称（作者字段只读，自动填充）
+let currentNickname = '';
+
 // Tab 键插入的缩进宽度（空格）
 const TAB_INDENT = '    ';
 
@@ -119,6 +122,9 @@ function redo() {
 
 document.addEventListener('DOMContentLoaded', () => {
     const contentInput = document.getElementById('content');
+
+    // 获取当前登录管理员的昵称，用于只读作者字段
+    loadCurrentAuthor();
 
     // 输入时实时刷新预览
     contentInput.addEventListener('input', updatePreview);
@@ -360,7 +366,14 @@ async function apiRequest(url, method = 'GET', body = null) {
         window.location.href = '/login';
         throw new Error('未登录');
     }
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) {
+        let msg = `HTTP ${response.status}`;
+        try {
+            const data = await response.json();
+            if (data && data.message) msg = data.message;
+        } catch (e) { /* 忽略解析错误 */ }
+        throw new Error(msg);
+    }
     return await response.json();
 }
 
@@ -686,6 +699,21 @@ async function uploadImage(file) {
     return data.url;
 }
 
+// 从登录态读取当前管理员的昵称，并填充只读作者字段
+// （编辑模式会由 loadForEdit 用文章原作者覆盖，故仅当作者字段为空时填充）
+async function loadCurrentAuthor() {
+    try {
+        const data = await apiRequest(`${API_BASE}/auth`);
+        if (data && data.authed) {
+            currentNickname = data.nickname || '';
+            const authorInput = document.getElementById('author');
+            if (authorInput && !authorInput.value) {
+                authorInput.value = currentNickname;
+            }
+        }
+    } catch (e) { /* 未登录或网络异常时忽略 */ }
+}
+
 async function loadForEdit(id) {
     try {
         const data = await apiRequest(`${API_BASE}/posts/${id}`);
@@ -696,7 +724,7 @@ async function loadForEdit(id) {
         const post = data.post;
         document.getElementById('editorTitle').textContent = '编辑文章';
         document.getElementById('title').value = post.title;
-        document.getElementById('author').value = post.author || '';
+        document.getElementById('author').value = post.author || currentNickname || '';
         populateTopicSelect(post.topic || '');
         document.getElementById('theme').value = post.theme || '';
         document.getElementById('summary').value = post.summary || '';
@@ -765,7 +793,7 @@ async function savePost(status) {
             savingBtn.textContent = originalText;
         }
     } catch (err) {
-        showToast('提交失败，请检查服务是否运行', 'error');
+        showToast(err.message || '提交失败，请检查服务是否运行', 'error');
         savingBtn.disabled = false;
         savingBtn.textContent = originalText;
     }

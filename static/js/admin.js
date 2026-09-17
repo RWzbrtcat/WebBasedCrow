@@ -92,8 +92,18 @@ async function loadAdmins() {
                 const delBtn = a.is_main
                     ? ''
                     : `<button type="button" class="admin-item-del" data-id="${a.id}">删除</button>`;
+                const initial = (a.nickname || a.email || '?').charAt(0).toUpperCase();
+                const avatarHtml = a.avatar
+                    ? `<img class="admin-item-avatar" src="${escapeAttr(a.avatar)}" alt="">`
+                    : `<span class="admin-item-avatar admin-item-avatar-empty">${escapeHtml(initial)}</span>`;
                 return `<div class="admin-item">
-                    <span class="admin-item-email">${escapeHtml(a.email)}${badge}</span>
+                    <div class="admin-item-info">
+                        ${avatarHtml}
+                        <div class="admin-item-text">
+                            <span class="admin-item-nickname">${escapeHtml(a.nickname || a.email)}${badge}</span>
+                            <span class="admin-item-email">${escapeHtml(a.email)}</span>
+                        </div>
+                    </div>
                     ${delBtn}
                 </div>`;
             }).join('')}
@@ -107,4 +117,8 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text == null ? '' : String(text);
     return div.innerHTML;
+}
+
+function escapeAttr(text) {
+    return escapeHtml(text).replace(/"/g, '&quot;');
 }

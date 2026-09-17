@@ -42,8 +42,10 @@ async function loadPost(id) {
             apiRequest(`${API_BASE}/auth`).catch(() => ({ authed: false }))
         ]);
         const authed = !!(authData && authData.authed);
+        const isMain = !!(authData && authData.is_main);
+        const adminId = Number(authData && authData.admin_id) || 0;
         if (postData.success) {
-            renderPost(postData.post, authed);
+            renderPost(postData.post, authed, isMain, adminId);
         } else {
             showNotFound(postData.message || '文章不存在');
         }
@@ -57,7 +59,7 @@ async function loadPost(id) {
     }
 }
 
-function renderPost(post, authed) {
+function renderPost(post, authed, isMain, adminId) {
     document.title = `${post.title} · LazyCat's Blog`;
 
     currentPostId = post.id;
@@ -96,21 +98,22 @@ function renderPost(post, authed) {
     renderMarkdownInto(document.getElementById('postContent'), post.content);
     bindInternalLinks(document.getElementById('postContent'));
 
-    renderPostAdminActions(post, authed);
+    const canEdit = authed && (isMain || Number(post.author_id) === adminId);
+    renderPostAdminActions(post, canEdit);
     document.getElementById('floatingActions').hidden = false;
     bindPostInteractions();
     loadComments();
 }
 
-// 将编辑/删除按钮注入顶部灵动岛头部（仅登录后显示）
-function renderPostAdminActions(post, authed) {
+// 将编辑/删除按钮注入顶部灵动岛头部（仅文章作者本人或主管理员可见）
+function renderPostAdminActions(post, canEdit) {
     const container = document.getElementById('postAdminActions');
     if (!container) return;
-    container.innerHTML = authed
+    container.innerHTML = canEdit
         ? `<a class="pill-btn pill-btn-primary" href="/editor?id=${post.id}">编辑</a>
            <button class="pill-btn pill-btn-danger" id="deleteBtn">删除</button>`
         : '';
-    if (authed) {
+    if (canEdit) {
         document.getElementById('deleteBtn').addEventListener('click', () => deletePost(post.id));
     }
 }

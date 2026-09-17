@@ -41,6 +41,9 @@ std::string randomHex(size_t bytes)
 }
 
 
+// 去除字符串首尾空白（实现见文件下方；此处前置声明供 DataBase 内部使用）
+std::string trim(const std::string& s);
+
 // DataBase 类：封装所有 MySQL 操作
 // 使用 RAII 管理连接，使用 mutex 保证线程安全
 class DataBase
@@ -264,11 +267,13 @@ public:
 			throw std::runtime_error(std::string("创建配置表失败：") + mysql_error(conn_));
 		}
 
-		// 管理员表：邮箱账号 + 密码哈希（SHA2(salt+password,256)）
+		// 管理员表：邮箱账号 + 密码哈希（SHA2(salt+password,256)）+ 昵称 + 头像
 		const char* adminsSql = R"(
 			CREATE TABLE IF NOT EXISTS admins(
 				id INT AUTO_INCREMENT PRIMARY KEY,
 				email VARCHAR(255) NOT NULL UNIQUE COMMENT '管理员邮箱',
+				nickname VARCHAR(100) NOT NULL DEFAULT '' COMMENT '昵称（默认等于邮箱）',
+				avatar VARCHAR(500) NOT NULL DEFAULT '' COMMENT '头像 URL',
 				salt VARCHAR(64) NOT NULL COMMENT '密码盐值',
 				password_hash VARCHAR(64) NOT NULL COMMENT 'SHA2(salt+password) 哈希',
 				is_main TINYINT NOT NULL DEFAULT 0 COMMENT '是否主管理员',
@@ -278,6 +283,32 @@ public:
 		if (mysql_query(conn_, adminsSql) != 0)
 		{
 			throw std::runtime_error(std::string("创建管理员表失败：") + mysql_error(conn_));
+		}
+
+		// 兼容旧表：若缺少 nickname 列，则补充
+		if (!columnExists("admins", "nickname"))
+		{
+			const char* alterSql = "ALTER TABLE admins ADD COLUMN nickname VARCHAR(100) NOT NULL DEFAULT '' COMMENT '昵称' AFTER email";
+			if (mysql_query(conn_, alterSql) != 0)
+			{
+				throw std::runtime_error(std::string("补充 nickname 列失败：") + mysql_error(conn_));
+			}
+		}
+
+		// 兼容旧表：若缺少 avatar 列，则补充
+		if (!columnExists("admins", "avatar"))
+		{
+			const char* alterSql = "ALTER TABLE admins ADD COLUMN avatar VARCHAR(500) NOT NULL DEFAULT '' COMMENT '头像 URL' AFTER nickname";
+			if (mysql_query(conn_, alterSql) != 0)
+			{
+				throw std::runtime_error(std::string("补充 avatar 列失败：") + mysql_error(conn_));
+			}
+		}
+
+		// 昵称兜底：未设置昵称的账号默认用邮箱作为昵称
+		if (mysql_query(conn_, "UPDATE admins SET nickname = email WHERE nickname = ''") != 0)
+		{
+			throw std::runtime_error(std::string("初始化管理员昵称失败：") + mysql_error(conn_));
 		}
 
 		// 首次初始化：admins 表为空时，创建默认主管理员账号
@@ -298,6 +329,19 @@ public:
 				}
 			}
 		}
+
+		// 兼容旧表：若 posts 缺少 author_id 列，则补充（记录文章归属的管理员）
+		if (!columnExists("posts", "author_id"))
+		{
+			const char* alterSql = "ALTER TABLE posts ADD COLUMN author_id INT NOT NULL DEFAULT 0 COMMENT '作者管理员 ID' AFTER author";
+			if (mysql_query(conn_, alterSql) != 0)
+			{
+				throw std::runtime_error(std::string("补充 author_id 列失败：") + mysql_error(conn_));
+			}
+		}
+
+		// 历史文章（author_id=0）一律归到主管理员，作者显示名同步为主管理员昵称
+		backfillLegacyPosts();
 	}
 
 	// 判断表中某列是否存在
@@ -334,7 +378,7 @@ public:
 		crow::json::wvalue result;
 		std::vector<crow::json::wvalue> posts;
 
-		std::string sql = "SELECT p.id, p.title, p.content, p.summary, p.author, p.topic, p.theme, p.status, p.likes, p.created_at, p.updated_at, "
+		std::string sql = "SELECT p.id, p.title, p.content, p.summary, p.author, p.author_id, p.topic, p.theme, p.status, p.likes, p.created_at, p.updated_at, "
 			"(SELECT COUNT(*) FROM comments c WHERE c.post_id=p.id AND c.hidden=0) AS comment_count "
 			"FROM posts p WHERE p.status='" + status + "' ORDER BY p.updated_at DESC";
 
@@ -357,13 +401,14 @@ public:
 				post["content"] = row[2] ? row[2] : "";
 				post["summary"] = row[3] ? row[3] : "";
 				post["author"] = row[4] ? row[4] : "";
-				post["topic"] = row[5] ? row[5] : "";
-				post["theme"] = row[6] ? row[6] : "";
-				post["status"] = row[7] ? row[7] : "";
-				post["likes"] = row[8] ? std::stoi(row[8]) : 0;
-				post["created_at"] = row[9] ? row[9] : "";
-				post["updated_at"] = row[10] ? row[10] : "";
-				post["comment_count"] = row[11] ? std::stoi(row[11]) : 0;
+				post["author_id"] = row[5] ? std::stoi(row[5]) : 0;
+				post["topic"] = row[6] ? row[6] : "";
+				post["theme"] = row[7] ? row[7] : "";
+				post["status"] = row[8] ? row[8] : "";
+				post["likes"] = row[9] ? std::stoi(row[9]) : 0;
+				post["created_at"] = row[10] ? row[10] : "";
+				post["updated_at"] = row[11] ? row[11] : "";
+				post["comment_count"] = row[12] ? std::stoi(row[12]) : 0;
 				posts.push_back(std::move(post));
 			}
 			mysql_free_result(res);
@@ -381,7 +426,7 @@ public:
 		checkConnection();
 
 		crow::json::wvalue result;
-		std::string sql = "SELECT id, title, content, summary, author, topic, theme, status, likes, created_at, updated_at FROM posts WHERE id=" + std::to_string(id);
+		std::string sql = "SELECT id, title, content, summary, author, author_id, topic, theme, status, likes, created_at, updated_at FROM posts WHERE id=" + std::to_string(id);
 
 		if (mysql_query(conn_, sql.c_str()) != 0)
 		{
@@ -409,12 +454,13 @@ public:
 		post["content"] = row[2] ? row[2] : "";
 		post["summary"] = row[3] ? row[3] : "";
 		post["author"] = row[4] ? row[4] : "";
-		post["topic"] = row[5] ? row[5] : "";
-		post["theme"] = row[6] ? row[6] : "";
-		post["status"] = row[7] ? row[7] : "";
-		post["likes"] = row[8] ? std::stoi(row[8]) : 0;
-		post["created_at"] = row[9] ? row[9] : "";
-		post["updated_at"] = row[10] ? row[10] : "";
+		post["author_id"] = row[5] ? std::stoi(row[5]) : 0;
+		post["topic"] = row[6] ? row[6] : "";
+		post["theme"] = row[7] ? row[7] : "";
+		post["status"] = row[8] ? row[8] : "";
+		post["likes"] = row[9] ? std::stoi(row[9]) : 0;
+		post["created_at"] = row[10] ? row[10] : "";
+		post["updated_at"] = row[11] ? row[11] : "";
 		mysql_free_result(res);
 
 		result["post"] = std::move(post);
@@ -423,7 +469,7 @@ public:
 	}
 
 	// 发布文章（使用预处理语句防止 SQL 注入）
-	crow::json::wvalue addPost(const std::string& title, const std::string& content, const std::string& summary, const std::string& author, const std::string& topic, const std::string& theme, const std::string& status)
+	crow::json::wvalue addPost(const std::string& title, const std::string& content, const std::string& summary, const std::string& author, const std::string& topic, const std::string& theme, const std::string& status, int authorId)
 	{
 		std::lock_guard<std::mutex> lock(mtx_);
 		checkConnection();
@@ -437,80 +483,7 @@ public:
 			return result;
 		}
 
-		const char* sql = "INSERT INTO posts (title, content, summary, author, topic, theme, status) VALUES (?, ?, ?, ?, ?, ?, ?)";
-		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
-		{
-			result["success"] = false;
-			result["message"] = mysql_stmt_error(stmt);
-			mysql_stmt_close(stmt);
-			return result;
-		}
-
-		MYSQL_BIND bind[7];
-		std::memset(bind, 0, sizeof(bind));
-
-		bind[0].buffer_type = MYSQL_TYPE_STRING;
-		bind[0].buffer = (void*)title.c_str();
-		bind[0].buffer_length = title.length();
-
-		bind[1].buffer_type = MYSQL_TYPE_STRING;
-		bind[1].buffer = (void*)content.c_str();
-		bind[1].buffer_length = content.length();
-
-		bind[2].buffer_type = MYSQL_TYPE_STRING;
-		bind[2].buffer = (void*)summary.c_str();
-		bind[2].buffer_length = summary.length();
-
-		bind[3].buffer_type = MYSQL_TYPE_STRING;
-		bind[3].buffer = (void*)author.c_str();
-		bind[3].buffer_length = author.length();
-
-		bind[4].buffer_type = MYSQL_TYPE_STRING;
-		bind[4].buffer = (void*)topic.c_str();
-		bind[4].buffer_length = topic.length();
-
-		bind[5].buffer_type = MYSQL_TYPE_STRING;
-		bind[5].buffer = (void*)theme.c_str();
-		bind[5].buffer_length = theme.length();
-
-		bind[6].buffer_type = MYSQL_TYPE_STRING;
-		bind[6].buffer = (void*)status.c_str();
-		bind[6].buffer_length = status.length();
-
-		mysql_stmt_bind_param(stmt, bind);
-
-		if (mysql_stmt_execute(stmt) == 0)
-		{
-			int newID = static_cast<int>(mysql_stmt_insert_id(stmt));
-			result["success"] = true;
-			result["id"] = newID;
-			result["message"] = "文章发布成功";
-		}
-		else
-		{
-			result["success"] = false;
-			result["message"] = mysql_stmt_error(stmt);
-		}
-		mysql_stmt_close(stmt);
-		return result;
-	}
-
-	// 更新文章
-	crow::json::wvalue updatePost(int id, const std::string& title, const std::string& content, const std::string& summary, const std::string& author, const std::string& topic, const std::string& theme, const std::string& status)
-	{
-		std::lock_guard<std::mutex> lock(mtx_);
-		checkConnection();
-
-		crow::json::wvalue result;
-		MYSQL_STMT* stmt = mysql_stmt_init(conn_);
-		if (!stmt)
-		{
-			result["success"] = false;
-			result["message"] = "mysql_stmt_init 失败";
-			return result;
-		}
-
-		const char* sql = "UPDATE posts SET title=?, content=?, summary=?, author=?, topic=?, theme=?, status=? WHERE id=?";
+		const char* sql = "INSERT INTO posts (title, content, summary, author, topic, theme, status, author_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
 		{
 			result["success"] = false;
@@ -551,7 +524,79 @@ public:
 		bind[6].buffer_length = status.length();
 
 		bind[7].buffer_type = MYSQL_TYPE_LONG;
-		bind[7].buffer = (void*)&id;
+		bind[7].buffer = (void*)&authorId;
+
+		mysql_stmt_bind_param(stmt, bind);
+
+		if (mysql_stmt_execute(stmt) == 0)
+		{
+			int newID = static_cast<int>(mysql_stmt_insert_id(stmt));
+			result["success"] = true;
+			result["id"] = newID;
+			result["message"] = "文章发布成功";
+		}
+		else
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+		}
+		mysql_stmt_close(stmt);
+		return result;
+	}
+
+	// 更新文章（作者与归属保持不变，由调用方先做归属校验）
+	crow::json::wvalue updatePost(int id, const std::string& title, const std::string& content, const std::string& summary, const std::string& topic, const std::string& theme, const std::string& status)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		crow::json::wvalue result;
+		MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+		if (!stmt)
+		{
+			result["success"] = false;
+			result["message"] = "mysql_stmt_init 失败";
+			return result;
+		}
+
+		const char* sql = "UPDATE posts SET title=?, content=?, summary=?, topic=?, theme=?, status=? WHERE id=?";
+		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+			mysql_stmt_close(stmt);
+			return result;
+		}
+
+		MYSQL_BIND bind[7];
+		std::memset(bind, 0, sizeof(bind));
+
+		bind[0].buffer_type = MYSQL_TYPE_STRING;
+		bind[0].buffer = (void*)title.c_str();
+		bind[0].buffer_length = title.length();
+
+		bind[1].buffer_type = MYSQL_TYPE_STRING;
+		bind[1].buffer = (void*)content.c_str();
+		bind[1].buffer_length = content.length();
+
+		bind[2].buffer_type = MYSQL_TYPE_STRING;
+		bind[2].buffer = (void*)summary.c_str();
+		bind[2].buffer_length = summary.length();
+
+		bind[3].buffer_type = MYSQL_TYPE_STRING;
+		bind[3].buffer = (void*)topic.c_str();
+		bind[3].buffer_length = topic.length();
+
+		bind[4].buffer_type = MYSQL_TYPE_STRING;
+		bind[4].buffer = (void*)theme.c_str();
+		bind[4].buffer_length = theme.length();
+
+		bind[5].buffer_type = MYSQL_TYPE_STRING;
+		bind[5].buffer = (void*)status.c_str();
+		bind[5].buffer_length = status.length();
+
+		bind[6].buffer_type = MYSQL_TYPE_LONG;
+		bind[6].buffer = (void*)&id;
 
 		mysql_stmt_bind_param(stmt, bind);
 
@@ -1112,7 +1157,7 @@ public:
 		}
 
 		std::string salt = randomHex(16);
-		const char* sql = "INSERT INTO admins (email, salt, password_hash, is_main) VALUES (?, ?, SHA2(CONCAT(?, ':', ?), 256), ?)";
+		const char* sql = "INSERT INTO admins (email, nickname, salt, password_hash, is_main) VALUES (?, ?, ?, SHA2(CONCAT(?, ':', ?), 256), ?)";
 		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
 		{
 			errMsg = mysql_stmt_error(stmt);
@@ -1120,22 +1165,25 @@ public:
 			return false;
 		}
 
-		MYSQL_BIND bind[5];
+		MYSQL_BIND bind[6];
 		std::memset(bind, 0, sizeof(bind));
 		bind[0].buffer_type = MYSQL_TYPE_STRING;
 		bind[0].buffer = (void*)email.c_str();
 		bind[0].buffer_length = email.length();
 		bind[1].buffer_type = MYSQL_TYPE_STRING;
-		bind[1].buffer = (void*)salt.c_str();
-		bind[1].buffer_length = salt.length();
+		bind[1].buffer = (void*)email.c_str();
+		bind[1].buffer_length = email.length();
 		bind[2].buffer_type = MYSQL_TYPE_STRING;
 		bind[2].buffer = (void*)salt.c_str();
 		bind[2].buffer_length = salt.length();
 		bind[3].buffer_type = MYSQL_TYPE_STRING;
-		bind[3].buffer = (void*)password.c_str();
-		bind[3].buffer_length = password.length();
-		bind[4].buffer_type = MYSQL_TYPE_LONG;
-		bind[4].buffer = (void*)&isMain;
+		bind[3].buffer = (void*)salt.c_str();
+		bind[3].buffer_length = salt.length();
+		bind[4].buffer_type = MYSQL_TYPE_STRING;
+		bind[4].buffer = (void*)password.c_str();
+		bind[4].buffer_length = password.length();
+		bind[5].buffer_type = MYSQL_TYPE_LONG;
+		bind[5].buffer = (void*)&isMain;
 		mysql_stmt_bind_param(stmt, bind);
 
 		bool ok = (mysql_stmt_execute(stmt) == 0);
@@ -1161,6 +1209,211 @@ public:
 		{
 			throw std::runtime_error("创建主管理员失败：" + err);
 		}
+	}
+
+	// 获取主管理员（is_main=1）的 id 与昵称，不存在返回 false
+	// 说明：仅在 initTable（单线程构造）或已持有 mtx_ 锁的调用中执行，不加锁
+	bool getMainAdmin(int& outId, std::string& outNickname)
+	{
+		if (mysql_query(conn_, "SELECT id, nickname FROM admins WHERE is_main=1 ORDER BY id ASC LIMIT 1") != 0)
+		{
+			return false;
+		}
+		MYSQL_RES* res = mysql_store_result(conn_);
+		if (!res) return false;
+		MYSQL_ROW row = mysql_fetch_row(res);
+		bool ok = (row != nullptr);
+		if (ok)
+		{
+			outId = std::stoi(row[0]);
+			outNickname = row[1] ? row[1] : "";
+		}
+		mysql_free_result(res);
+		return ok;
+	}
+
+	// 历史文章（author_id=0）归到主管理员，并把作者显示名同步为主管理员昵称
+	void backfillLegacyPosts()
+	{
+		int mainId = 0;
+		std::string mainNick;
+		if (!getMainAdmin(mainId, mainNick))
+		{
+			return;
+		}
+
+		std::vector<char> nickEsc(mainNick.length() * 2 + 1);
+		mysql_real_escape_string(conn_, nickEsc.data(), mainNick.c_str(), static_cast<unsigned long>(mainNick.length()));
+		std::string sql = "UPDATE posts SET author_id=" + std::to_string(mainId) +
+			", author='" + std::string(nickEsc.data()) + "' WHERE author_id=0";
+		if (mysql_query(conn_, sql.c_str()) != 0)
+		{
+			throw std::runtime_error(std::string("历史文章归属主管理员失败：") + mysql_error(conn_));
+		}
+	}
+
+	// 获取管理员昵称（昵称为空时回退到邮箱）
+	std::string getAdminNickname(int id)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		std::string sql = "SELECT nickname, email FROM admins WHERE id=" + std::to_string(id);
+		if (mysql_query(conn_, sql.c_str()) != 0)
+		{
+			return "";
+		}
+		std::string nick;
+		MYSQL_RES* res = mysql_store_result(conn_);
+		if (res)
+		{
+			MYSQL_ROW row = mysql_fetch_row(res);
+			if (row)
+			{
+				nick = (row[0] && row[0][0]) ? row[0] : (row[1] ? row[1] : "");
+			}
+			mysql_free_result(res);
+		}
+		return nick;
+	}
+
+	// 获取单个管理员的资料（邮箱、昵称、头像、是否主管理员）
+	bool getAdminProfile(int id, std::string& outEmail, std::string& outNickname, std::string& outAvatar, bool& outIsMain)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		std::string sql = "SELECT email, nickname, avatar, is_main FROM admins WHERE id=" + std::to_string(id);
+		if (mysql_query(conn_, sql.c_str()) != 0)
+		{
+			return false;
+		}
+		MYSQL_RES* res = mysql_store_result(conn_);
+		if (!res) return false;
+		MYSQL_ROW row = mysql_fetch_row(res);
+		bool ok = (row != nullptr);
+		if (ok)
+		{
+			outEmail = row[0] ? row[0] : "";
+			outNickname = row[1] ? row[1] : "";
+			outAvatar = row[2] ? row[2] : "";
+			outIsMain = (row[3] && std::stoi(row[3]) != 0);
+		}
+		mysql_free_result(res);
+		return ok;
+	}
+
+	// 更新管理员自己的昵称与头像，并把其名下文章的作者名同步为新昵称
+	crow::json::wvalue updateProfile(int adminId, const std::string& nickname, const std::string& avatar)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		crow::json::wvalue result;
+		std::string nick = trim(nickname);
+		if (nick.empty())
+		{
+			result["success"] = false;
+			result["message"] = "昵称不能为空";
+			return result;
+		}
+		if (nick.length() > 100) nick = nick.substr(0, 100);
+
+		std::string av = trim(avatar);
+		if (av.length() > 500) av = av.substr(0, 500);
+		if (!av.empty() && av.rfind("/uploads/", 0) != 0 &&
+			av.rfind("http://", 0) != 0 && av.rfind("https://", 0) != 0)
+		{
+			result["success"] = false;
+			result["message"] = "头像地址无效";
+			return result;
+		}
+
+		MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+		if (!stmt)
+		{
+			result["success"] = false;
+			result["message"] = "mysql_stmt_init 失败";
+			return result;
+		}
+		const char* sql = "UPDATE admins SET nickname=?, avatar=? WHERE id=?";
+		if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+			mysql_stmt_close(stmt);
+			return result;
+		}
+
+		MYSQL_BIND bind[3];
+		std::memset(bind, 0, sizeof(bind));
+		bind[0].buffer_type = MYSQL_TYPE_STRING;
+		bind[0].buffer = (void*)nick.c_str();
+		bind[0].buffer_length = nick.length();
+		bind[1].buffer_type = MYSQL_TYPE_STRING;
+		bind[1].buffer = (void*)av.c_str();
+		bind[1].buffer_length = av.length();
+		bind[2].buffer_type = MYSQL_TYPE_LONG;
+		bind[2].buffer = (void*)&adminId;
+		mysql_stmt_bind_param(stmt, bind);
+
+		if (mysql_stmt_execute(stmt) != 0)
+		{
+			result["success"] = false;
+			result["message"] = mysql_stmt_error(stmt);
+			mysql_stmt_close(stmt);
+			return result;
+		}
+		mysql_stmt_close(stmt);
+
+		// 同步该管理员名下所有文章的作者名
+		MYSQL_STMT* stmt2 = mysql_stmt_init(conn_);
+		if (stmt2)
+		{
+			const char* sql2 = "UPDATE posts SET author=? WHERE author_id=?";
+			if (mysql_stmt_prepare(stmt2, sql2, std::strlen(sql2)) == 0)
+			{
+				MYSQL_BIND b2[2];
+				std::memset(b2, 0, sizeof(b2));
+				b2[0].buffer_type = MYSQL_TYPE_STRING;
+				b2[0].buffer = (void*)nick.c_str();
+				b2[0].buffer_length = nick.length();
+				b2[1].buffer_type = MYSQL_TYPE_LONG;
+				b2[1].buffer = (void*)&adminId;
+				mysql_stmt_bind_param(stmt2, b2);
+				mysql_stmt_execute(stmt2);
+			}
+			mysql_stmt_close(stmt2);
+		}
+
+		result["success"] = true;
+		result["nickname"] = nick;
+		result["message"] = "资料已更新";
+		return result;
+	}
+
+	// 获取文章归属（author_id 与作者显示名），不存在返回 false
+	bool getPostAuthor(int id, int& outAuthorId, std::string& outAuthor)
+	{
+		std::lock_guard<std::mutex> lock(mtx_);
+		checkConnection();
+
+		std::string sql = "SELECT author_id, author FROM posts WHERE id=" + std::to_string(id);
+		if (mysql_query(conn_, sql.c_str()) != 0)
+		{
+			return false;
+		}
+		MYSQL_RES* res = mysql_store_result(conn_);
+		if (!res) return false;
+		MYSQL_ROW row = mysql_fetch_row(res);
+		bool ok = (row != nullptr);
+		if (ok)
+		{
+			outAuthorId = row[0] ? std::stoi(row[0]) : 0;
+			outAuthor = row[1] ? row[1] : "";
+		}
+		mysql_free_result(res);
+		return ok;
 	}
 
 	// 登录校验：邮箱 + 密码匹配则返回 true，并通过出参返回 id / is_main
@@ -1236,7 +1489,7 @@ public:
 		crow::json::wvalue result;
 		std::vector<crow::json::wvalue> admins;
 
-		const char* sql = "SELECT id, email, is_main, created_at FROM admins ORDER BY is_main DESC, id ASC";
+		const char* sql = "SELECT id, email, nickname, avatar, is_main, created_at FROM admins ORDER BY is_main DESC, id ASC";
 		if (mysql_query(conn_, sql) != 0)
 		{
 			result["success"] = false;
@@ -1253,8 +1506,10 @@ public:
 				crow::json::wvalue a;
 				a["id"] = std::stoi(row[0]);
 				a["email"] = row[1] ? row[1] : "";
-				a["is_main"] = (row[2] && std::stoi(row[2]) != 0);
-				a["created_at"] = row[3] ? row[3] : "";
+				a["nickname"] = row[2] ? row[2] : "";
+				a["avatar"] = row[3] ? row[3] : "";
+				a["is_main"] = (row[4] && std::stoi(row[4]) != 0);
+				a["created_at"] = row[5] ? row[5] : "";
 				admins.push_back(std::move(a));
 			}
 			mysql_free_result(res);
@@ -1272,6 +1527,21 @@ public:
 		checkConnection();
 
 		crow::json::wvalue result;
+
+		// 删除前把其名下文章转给主管理员，避免出现无主文章
+		{
+			int mainId = 0;
+			std::string mainNick;
+			if (getMainAdmin(mainId, mainNick) && mainId != id)
+			{
+				std::vector<char> nickEsc(mainNick.length() * 2 + 1);
+				mysql_real_escape_string(conn_, nickEsc.data(), mainNick.c_str(), static_cast<unsigned long>(mainNick.length()));
+				std::string upd = "UPDATE posts SET author_id=" + std::to_string(mainId) +
+					", author='" + std::string(nickEsc.data()) + "' WHERE author_id=" + std::to_string(id);
+				mysql_query(conn_, upd.c_str());
+			}
+		}
+
 		MYSQL_STMT* stmt = mysql_stmt_init(conn_);
 		if (!stmt)
 		{
@@ -1510,6 +1780,18 @@ bool isMainAdmin(const crow::request& req)
 	return it != g_sessions.end() && it->second.isMain;
 }
 
+// 读取当前会话（未登录返回 false），供需要管理员身份的接口使用
+bool getSession(const crow::request& req, Session& out)
+{
+	std::string token = getCookie(req, SESSION_COOKIE);
+	if (token.empty()) return false;
+	std::lock_guard<std::mutex> lock(g_sessionsMtx);
+	auto it = g_sessions.find(token);
+	if (it == g_sessions.end()) return false;
+	out = it->second;
+	return true;
+}
+
 // 未登录时返回的 401 响应
 crow::response unauthorizedResponse()
 {
@@ -1608,13 +1890,48 @@ int main()
 			return res;
 		});
 
-		// GET /api/auth - 查询当前登录态（是否登录、是否主管理员）
-		CROW_ROUTE(app, "/api/auth").methods("GET"_method)([](const crow::request& req){
+		// GET /api/auth - 查询当前登录态（是否登录、是否主管理员、个人资料）
+		CROW_ROUTE(app, "/api/auth").methods("GET"_method)([&db](const crow::request& req){
 			crow::json::wvalue result;
 			result["success"] = true;
-			result["authed"] = isLoggedIn(req);
-			result["is_main"] = isMainAdmin(req);
+			Session s;
+			bool authed = getSession(req, s);
+			result["authed"] = authed;
+			result["is_main"] = authed && s.isMain;
+			if (authed)
+			{
+				std::string email, nickname, avatar;
+				bool isMain = false;
+				if (db.getAdminProfile(s.adminId, email, nickname, avatar, isMain))
+				{
+					result["admin_id"] = s.adminId;
+					result["email"] = email;
+					result["nickname"] = nickname.empty() ? email : nickname;
+					result["avatar"] = avatar;
+				}
+			}
 			crow::response res(result);
+			addCorsHeaders(res);
+			return res;
+		});
+
+		// PUT /api/profile - 更新当前登录管理员的昵称与头像（登录后可用）
+		CROW_ROUTE(app, "/api/profile").methods("PUT"_method)([&db](const crow::request& req){
+			Session s;
+			if (!getSession(req, s)) return unauthorizedResponse();
+
+			auto body = crow::json::load(req.body);
+			if (!body)
+			{
+				crow::json::wvalue err;
+				err["success"] = false;
+				err["message"] = "无效的 JSON 数据";
+				return crow::response(400, err);
+			}
+
+			std::string nickname = body.has("nickname") ? std::string(body["nickname"].s()) : std::string("");
+			std::string avatar = body.has("avatar") ? std::string(body["avatar"].s()) : std::string("");
+			crow::response res(db.updateProfile(s.adminId, nickname, avatar));
 			addCorsHeaders(res);
 			return res;
 		});
@@ -1727,9 +2044,10 @@ int main()
 			return res;
 		});
 
-		// POST /api/posts - 发布文章（仅登录后可用）
+		// POST /api/posts - 发布文章（仅登录后可用；作者自动取账号昵称）
 		CROW_ROUTE(app, "/api/posts").methods("POST"_method)([&db](const crow::request& req){
-			if (!isLoggedIn(req)) return unauthorizedResponse();
+			Session s;
+			if (!getSession(req, s)) return unauthorizedResponse();
 			auto body = crow::json::load(req.body);
 			if (!body)
 			{
@@ -1742,11 +2060,14 @@ int main()
 			std::string title = body["title"].s();
 			std::string content = body.has("content") ? std::string(body["content"].s()) : std::string("");
 			std::string summary = body.has("summary") ? std::string(body["summary"].s()) : std::string("");
-			std::string author = body.has("author") ? std::string(body["author"].s()) : std::string("匿名");
 			std::string topic = body.has("topic") ? std::string(body["topic"].s()) : std::string("");
 			std::string theme = body.has("theme") ? std::string(body["theme"].s()) : std::string("");
 			std::string status = body.has("status") ? std::string(body["status"].s()) : std::string("published");
-			crow::response res(db.addPost(title, content, summary, author, topic, theme, status));
+
+			std::string author = db.getAdminNickname(s.adminId);
+			if (author.empty()) author = "匿名";
+
+			crow::response res(db.addPost(title, content, summary, author, topic, theme, status, s.adminId));
 			addCorsHeaders(res);
 			return res;
 		});
@@ -1758,9 +2079,32 @@ int main()
 			return res;
 		});
 
-		// PUT /api/posts/<id> - 更新文章（仅登录后可用）
+		// PUT /api/posts/<id> - 更新文章（仅登录后可用；非主管理员只能改自己的文章）
 		CROW_ROUTE(app, "/api/posts/<int>").methods("PUT"_method)([&db](const crow::request& req, int id){
-			if (!isLoggedIn(req)) return unauthorizedResponse();
+			Session s;
+			if (!getSession(req, s)) return unauthorizedResponse();
+
+			int ownerId = 0;
+			std::string ownerAuthor;
+			if (!db.getPostAuthor(id, ownerId, ownerAuthor))
+			{
+				crow::json::wvalue err;
+				err["success"] = false;
+				err["message"] = "文章不存在";
+				crow::response res(404, err);
+				addCorsHeaders(res);
+				return res;
+			}
+			if (!s.isMain && ownerId != s.adminId)
+			{
+				crow::json::wvalue err;
+				err["success"] = false;
+				err["message"] = "不能修改他人的文章";
+				crow::response res(403, err);
+				addCorsHeaders(res);
+				return res;
+			}
+
 			auto body = crow::json::load(req.body);
 			if (!body)
 			{
@@ -1773,18 +2117,31 @@ int main()
 			std::string title = body["title"].s();
 			std::string content = body.has("content") ? std::string(body["content"].s()) : std::string("");
 			std::string summary = body.has("summary") ? std::string(body["summary"].s()) : std::string("");
-			std::string author = body.has("author") ? std::string(body["author"].s()) : std::string("匿名");
 			std::string topic = body.has("topic") ? std::string(body["topic"].s()) : std::string("");
 			std::string theme = body.has("theme") ? std::string(body["theme"].s()) : std::string("");
 			std::string status = body.has("status") ? std::string(body["status"].s()) : std::string("published");
-			crow::response res(db.updatePost(id, title, content, summary, author, topic, theme, status));
+			crow::response res(db.updatePost(id, title, content, summary, topic, theme, status));
 			addCorsHeaders(res);
 			return res;
 		});
 
-		// DELETE /api/posts/<id> - 删除文章（仅登录后可用）
+		// DELETE /api/posts/<id> - 删除文章（仅登录后可用；非主管理员只能删自己的文章）
 		CROW_ROUTE(app, "/api/posts/<int>").methods("DELETE"_method)([&db](const crow::request& req, int id){
-			if (!isLoggedIn(req)) return unauthorizedResponse();
+			Session s;
+			if (!getSession(req, s)) return unauthorizedResponse();
+
+			int ownerId = 0;
+			std::string ownerAuthor;
+			if (db.getPostAuthor(id, ownerId, ownerAuthor) && !s.isMain && ownerId != s.adminId)
+			{
+				crow::json::wvalue err;
+				err["success"] = false;
+				err["message"] = "不能删除他人的文章";
+				crow::response res(403, err);
+				addCorsHeaders(res);
+				return res;
+			}
+
 			crow::response res(db.deletePost(id));
 			addCorsHeaders(res);
 			return res;
@@ -2107,6 +2464,17 @@ int main()
 				return res;
 			}
 			return htmlResponse(readFile(staticDir + "/admin.html"));
+		});
+
+		// 个人资料页（登录后可访问）
+		CROW_ROUTE(app, "/profile")([staticDir](const crow::request& req){
+			if (!isLoggedIn(req))
+			{
+				crow::response res;
+				res.moved("/login");
+				return res;
+			}
+			return htmlResponse(readFile(staticDir + "/profile.html"));
 		});
 
 		// CSS 文件

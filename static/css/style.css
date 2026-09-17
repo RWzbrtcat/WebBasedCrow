@@ -1658,9 +1658,49 @@ body.post-page .markdown-body h6 {
     background: var(--bg);
 }
 
-.admin-item-email {
-    font-size: 0.92rem;
+.admin-item-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.admin-item-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.admin-item-avatar-empty {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.admin-item-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.admin-item-nickname {
+    font-size: 0.95rem;
     color: var(--text);
+    font-weight: 600;
+    word-break: break-all;
+}
+
+.admin-item-email {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
     word-break: break-all;
 }
 
@@ -1689,6 +1729,44 @@ body.post-page .markdown-body h6 {
 
 .admin-item-del:hover {
     background: var(--danger-soft);
+}
+
+/* ========== 个人资料页 ========== */
+.profile-avatar-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.profile-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.profile-avatar-actions {
+    flex: 1;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.profile-avatar-actions input {
+    flex: 1;
+}
+
+.profile-avatar-actions .btn {
+    flex-shrink: 0;
+}
+
+/* 编辑器只读作者字段的视觉提示 */
+input[readonly] {
+    cursor: default;
+    background: var(--surface);
 }
 
 /* ========== 文章互动（点赞 / 打赏） ========== */

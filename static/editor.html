@@ -19,6 +19,7 @@
                 <a href="/drafts">草稿</a>
                 <a href="/editor" class="active">创作</a>
                 <a href="/admin" data-auth-role="main" hidden>管理员</a>
+                <a href="/profile">个人</a>
                 <a href="/logout">退出</a>
             </nav>
         </div>
@@ -38,7 +39,7 @@
                             </div>
                             <div class="form-group editor-meta-half">
                                 <label for="author">作者</label>
-                                <input type="text" id="author" placeholder="作者名（留空默认为「匿名」）">
+                                <input type="text" id="author" readonly placeholder="自动使用你的账号昵称" title="作者由账号昵称自动生成，不可修改">
                             </div>
                         </div>
                         <div class="editor-meta-row">
