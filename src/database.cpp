@@ -1,0 +1,1543 @@
+#include "database.h"
+
+#include <cstring>
+#include <iostream>
+#include <stdexcept>
+
+#include "config.h"
+#include "utils.h"
+
+// ===== 连接管理 =====
+
+DataBase::DataBase(const std::string& host, const std::string& user, const std::string& pass,
+                   const std::string db, unsigned int port)
+    : host_(host), user_(user), pass_(pass), db_(db), port_(port)
+{
+    connect();   // 建立连接
+    initTable(); // 创建表（如果表不存在）
+}
+
+DataBase::~DataBase()
+{
+    if (conn_)
+    {
+        mysql_close(conn_);
+    }
+}
+
+// 建立 MySQL 连接
+void DataBase::connect()
+{
+    conn_ = mysql_init(nullptr);
+
+    if (!conn_)
+    {
+        throw std::runtime_error("mysql_init 失败!");
+    }
+
+    // 设置字符集为 utf8mb4，支持中文和 emoji
+    mysql_options(conn_, MYSQL_SET_CHARSET_NAME, "utf8mb4");
+
+    // 建立连接
+    if (!mysql_real_connect(conn_, host_.c_str(), user_.c_str(), pass_.c_str(), db_.c_str(), port_, nullptr, CLIENT_FOUND_ROWS))
+    {
+        std::string err = "MySQL 连接失败! ";
+        err += mysql_error(conn_);
+        mysql_close(conn_);
+        conn_ = nullptr;
+        throw std::runtime_error(err);
+    }
+
+    std::cout << "[DB] 已连接到 Mysql: " << host_ << ":" << port_ << std::endl;
+}
+
+// 检查连接是否存活，如果断开则重连
+void DataBase::checkConnection()
+{
+    if (mysql_ping(conn_) != 0)
+    {
+        std::cerr << "[DB] 连接断开，正在重连..." << std::endl;
+        mysql_close(conn_);
+        connect();
+    }
+}
+
+// 初始化数据表
+void DataBase::initTable()
+{
+    const char* sql = R"(
+        CREATE TABLE IF NOT EXISTS posts(
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(255) NOT NULL COMMENT '文章标题',
+            content TEXT COMMENT '文章正文',
+            summary TEXT COMMENT '文章简介',
+            author VARCHAR(100) DEFAULT '匿名' COMMENT '作者',
+            topic VARCHAR(100) NOT NULL DEFAULT '' COMMENT '文章主题',
+            status VARCHAR(20) NOT NULL DEFAULT 'published' COMMENT '文章状态: published/draft',
+            likes INT NOT NULL DEFAULT 0 COMMENT '点赞数',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+        )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    )";
+
+    if (mysql_query(conn_, sql) != 0)
+    {
+        throw std::runtime_error(std::string("创建表失败：") + mysql_error(conn_));
+    }
+
+    // 兼容旧表：若已存在 posts 表但缺少 topic 列，则补充
+    if (!columnExists("posts", "topic"))
+    {
+        const char* alterSql = "ALTER TABLE posts ADD COLUMN topic VARCHAR(100) NOT NULL DEFAULT '' COMMENT '文章主题' AFTER author";
+        if (mysql_query(conn_, alterSql) != 0)
+        {
+            throw std::runtime_error(std::string("补充 topic 列失败：") + mysql_error(conn_));
+        }
+    }
+
+    // 兼容旧表：若缺少 summary 列，则补充
+    if (!columnExists("posts", "summary"))
+    {
+        const char* alterSql = "ALTER TABLE posts ADD COLUMN summary TEXT COMMENT '文章简介' AFTER content";
+        if (mysql_query(conn_, alterSql) != 0)
+        {
+            throw std::runtime_error(std::string("补充 summary 列失败：") + mysql_error(conn_));
+        }
+    }
+
+    // 兼容旧表：若缺少 status 列，则补充
+    if (!columnExists("posts", "status"))
+    {
+        const char* alterSql = "ALTER TABLE posts ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'published' COMMENT '文章状态: published/draft' AFTER topic";
+        if (mysql_query(conn_, alterSql) != 0)
+        {
+            throw std::runtime_error(std::string("补充 status 列失败：") + mysql_error(conn_));
+        }
+    }
+
+    // 兼容旧表：若缺少 likes 列，则补充
+    if (!columnExists("posts", "likes"))
+    {
+        const char* alterSql = "ALTER TABLE posts ADD COLUMN likes INT NOT NULL DEFAULT 0 COMMENT '点赞数' AFTER status";
+        if (mysql_query(conn_, alterSql) != 0)
+        {
+            throw std::runtime_error(std::string("补充 likes 列失败：") + mysql_error(conn_));
+        }
+    }
+
+    // 专栏表：站长在主页维护的专栏列表
+    const char* topicsSql = R"(
+        CREATE TABLE IF NOT EXISTS topics(
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(100) NOT NULL UNIQUE COMMENT '专栏名称',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'
+        )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    )";
+    if (mysql_query(conn_, topicsSql) != 0)
+    {
+        throw std::runtime_error(std::string("创建专栏表失败：") + mysql_error(conn_));
+    }
+
+    // 首次初始化：专栏表为空时，用已有文章的 topic 填充专栏列表
+    if (mysql_query(conn_, "SELECT COUNT(*) FROM topics") != 0)
+    {
+        throw std::runtime_error(std::string("查询专栏表失败：") + mysql_error(conn_));
+    }
+    {
+        MYSQL_RES* res = mysql_store_result(conn_);
+        if (res)
+        {
+            MYSQL_ROW row = mysql_fetch_row(res);
+            bool empty = !row || !row[0] || std::string(row[0]) == "0";
+            mysql_free_result(res);
+            if (empty)
+            {
+                const char* seedSql = "INSERT INTO topics (name) SELECT DISTINCT topic FROM posts WHERE topic <> ''";
+                if (mysql_query(conn_, seedSql) != 0)
+                {
+                    throw std::runtime_error(std::string("初始化专栏列表失败：") + mysql_error(conn_));
+                }
+            }
+        }
+    }
+
+    // 兼容旧表：若缺少 theme 列，则补充（文章主题，区别于站点配色主题）
+    if (!columnExists("posts", "theme"))
+    {
+        const char* alterSql = "ALTER TABLE posts ADD COLUMN theme VARCHAR(100) NOT NULL DEFAULT '' COMMENT '文章主题' AFTER topic";
+        if (mysql_query(conn_, alterSql) != 0)
+        {
+            throw std::runtime_error(std::string("补充 theme 列失败：") + mysql_error(conn_));
+        }
+    }
+
+    // 评论表
+    const char* commentsSql = R"(
+        CREATE TABLE IF NOT EXISTS comments(
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            post_id INT NOT NULL COMMENT '所属文章 ID',
+            parent_id INT NOT NULL DEFAULT 0 COMMENT '父评论 ID（0 表示顶层评论）',
+            nickname VARCHAR(100) DEFAULT '匿名' COMMENT '昵称',
+            content TEXT NOT NULL COMMENT '评论内容',
+            hidden TINYINT NOT NULL DEFAULT 0 COMMENT '是否隐藏（0 显示 / 1 隐藏）',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '评论时间'
+        )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    )";
+    if (mysql_query(conn_, commentsSql) != 0)
+    {
+        throw std::runtime_error(std::string("创建评论表失败：") + mysql_error(conn_));
+    }
+
+    // 兼容旧表：若缺少 parent_id 列，则补充（用于评论回复）
+    if (!columnExists("comments", "parent_id"))
+    {
+        const char* alterSql = "ALTER TABLE comments ADD COLUMN parent_id INT NOT NULL DEFAULT 0 COMMENT '父评论 ID' AFTER post_id";
+        if (mysql_query(conn_, alterSql) != 0)
+        {
+            throw std::runtime_error(std::string("补充 parent_id 列失败：") + mysql_error(conn_));
+        }
+    }
+
+    // 兼容旧表：若缺少 hidden 列，则补充（用于站长隐藏评论）
+    if (!columnExists("comments", "hidden"))
+    {
+        const char* alterSql = "ALTER TABLE comments ADD COLUMN hidden TINYINT NOT NULL DEFAULT 0 COMMENT '是否隐藏' AFTER content";
+        if (mysql_query(conn_, alterSql) != 0)
+        {
+            throw std::runtime_error(std::string("补充 hidden 列失败：") + mysql_error(conn_));
+        }
+    }
+
+    // 配置表（键值对，用于存储站点背景图等全局设置）
+    const char* settingsSql = R"(
+        CREATE TABLE IF NOT EXISTS settings(
+            k VARCHAR(100) PRIMARY KEY COMMENT '配置键',
+            v TEXT COMMENT '配置值'
+        )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    )";
+    if (mysql_query(conn_, settingsSql) != 0)
+    {
+        throw std::runtime_error(std::string("创建配置表失败：") + mysql_error(conn_));
+    }
+
+    // 管理员表：邮箱账号 + 密码哈希（SHA2(salt+password,256)）+ 昵称 + 头像
+    const char* adminsSql = R"(
+        CREATE TABLE IF NOT EXISTS admins(
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            email VARCHAR(255) NOT NULL UNIQUE COMMENT '管理员邮箱',
+            nickname VARCHAR(100) NOT NULL DEFAULT '' COMMENT '昵称（默认等于邮箱）',
+            avatar VARCHAR(500) NOT NULL DEFAULT '' COMMENT '头像 URL',
+            salt VARCHAR(64) NOT NULL COMMENT '密码盐值',
+            password_hash VARCHAR(64) NOT NULL COMMENT 'SHA2(salt+password) 哈希',
+            is_main TINYINT NOT NULL DEFAULT 0 COMMENT '是否主管理员',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'
+        )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    )";
+    if (mysql_query(conn_, adminsSql) != 0)
+    {
+        throw std::runtime_error(std::string("创建管理员表失败：") + mysql_error(conn_));
+    }
+
+    // 兼容旧表：若缺少 nickname 列，则补充
+    if (!columnExists("admins", "nickname"))
+    {
+        const char* alterSql = "ALTER TABLE admins ADD COLUMN nickname VARCHAR(100) NOT NULL DEFAULT '' COMMENT '昵称' AFTER email";
+        if (mysql_query(conn_, alterSql) != 0)
+        {
+            throw std::runtime_error(std::string("补充 nickname 列失败：") + mysql_error(conn_));
+        }
+    }
+
+    // 兼容旧表：若缺少 avatar 列，则补充
+    if (!columnExists("admins", "avatar"))
+    {
+        const char* alterSql = "ALTER TABLE admins ADD COLUMN avatar VARCHAR(500) NOT NULL DEFAULT '' COMMENT '头像 URL' AFTER nickname";
+        if (mysql_query(conn_, alterSql) != 0)
+        {
+            throw std::runtime_error(std::string("补充 avatar 列失败：") + mysql_error(conn_));
+        }
+    }
+
+    // 昵称兜底：未设置昵称的账号默认用邮箱作为昵称
+    if (mysql_query(conn_, "UPDATE admins SET nickname = email WHERE nickname = ''") != 0)
+    {
+        throw std::runtime_error(std::string("初始化管理员昵称失败：") + mysql_error(conn_));
+    }
+
+    // 首次初始化：admins 表为空时，创建默认主管理员账号
+    if (mysql_query(conn_, "SELECT COUNT(*) FROM admins") != 0)
+    {
+        throw std::runtime_error(std::string("查询管理员表失败：") + mysql_error(conn_));
+    }
+    {
+        MYSQL_RES* res = mysql_store_result(conn_);
+        if (res)
+        {
+            MYSQL_ROW row = mysql_fetch_row(res);
+            bool empty = !row || !row[0] || std::string(row[0]) == "0";
+            mysql_free_result(res);
+            if (empty)
+            {
+                seedMainAdmin();
+            }
+        }
+    }
+
+    // 兼容旧表：若 posts 缺少 author_id 列，则补充（记录文章归属的管理员）
+    if (!columnExists("posts", "author_id"))
+    {
+        const char* alterSql = "ALTER TABLE posts ADD COLUMN author_id INT NOT NULL DEFAULT 0 COMMENT '作者管理员 ID' AFTER author";
+        if (mysql_query(conn_, alterSql) != 0)
+        {
+            throw std::runtime_error(std::string("补充 author_id 列失败：") + mysql_error(conn_));
+        }
+    }
+
+    // 历史文章（author_id=0）一律归到主管理员，作者显示名同步为主管理员昵称
+    backfillLegacyPosts();
+}
+
+// 判断表中某列是否存在
+bool DataBase::columnExists(const std::string& table, const std::string& column)
+{
+    std::string sql =
+        "SELECT COUNT(*) FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '" + table +
+        "' AND COLUMN_NAME = '" + column + "'";
+
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res)
+    {
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(res);
+    bool exists = row && row[0] && std::string(row[0]) != "0";
+    mysql_free_result(res);
+    return exists;
+}
+
+// ===== 文章 =====
+
+// 按状态获取文章列表（published 已发布 / draft 草稿）
+crow::json::wvalue DataBase::getPosts(const std::string& status)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    std::vector<crow::json::wvalue> posts;
+
+    std::string sql = "SELECT p.id, p.title, p.content, p.summary, p.author, p.author_id, p.topic, p.theme, p.status, p.likes, p.created_at, p.updated_at, "
+        "(SELECT COUNT(*) FROM comments c WHERE c.post_id=p.id AND c.hidden=0) AS comment_count "
+        "FROM posts p WHERE p.status='" + status + "' ORDER BY p.updated_at DESC";
+
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_error(conn_);
+        return result;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (res)
+    {
+        MYSQL_ROW row;
+        while ((row = mysql_fetch_row(res)))
+        {
+            crow::json::wvalue post;
+            post["id"] = std::stoi(row[0]);
+            post["title"] = row[1] ? row[1] : "";
+            post["content"] = row[2] ? row[2] : "";
+            post["summary"] = row[3] ? row[3] : "";
+            post["author"] = row[4] ? row[4] : "";
+            post["author_id"] = row[5] ? std::stoi(row[5]) : 0;
+            post["topic"] = row[6] ? row[6] : "";
+            post["theme"] = row[7] ? row[7] : "";
+            post["status"] = row[8] ? row[8] : "";
+            post["likes"] = row[9] ? std::stoi(row[9]) : 0;
+            post["created_at"] = row[10] ? row[10] : "";
+            post["updated_at"] = row[11] ? row[11] : "";
+            post["comment_count"] = row[12] ? std::stoi(row[12]) : 0;
+            posts.push_back(std::move(post));
+        }
+        mysql_free_result(res);
+    }
+
+    result["posts"] = std::move(posts);
+    result["success"] = true;
+    return result;
+}
+
+// 获取单篇文章
+crow::json::wvalue DataBase::getPostById(int id)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    std::string sql = "SELECT id, title, content, summary, author, author_id, topic, theme, status, likes, created_at, updated_at FROM posts WHERE id=" + std::to_string(id);
+
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_error(conn_);
+        return result;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res || mysql_num_rows(res) == 0)
+    {
+        if (res)
+        {
+            mysql_free_result(res);
+        }
+        result["success"] = false;
+        result["message"] = "文章不存在";
+        return result;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(res);
+    crow::json::wvalue post;
+    post["id"] = std::stoi(row[0]);
+    post["title"] = row[1] ? row[1] : "";
+    post["content"] = row[2] ? row[2] : "";
+    post["summary"] = row[3] ? row[3] : "";
+    post["author"] = row[4] ? row[4] : "";
+    post["author_id"] = row[5] ? std::stoi(row[5]) : 0;
+    post["topic"] = row[6] ? row[6] : "";
+    post["theme"] = row[7] ? row[7] : "";
+    post["status"] = row[8] ? row[8] : "";
+    post["likes"] = row[9] ? std::stoi(row[9]) : 0;
+    post["created_at"] = row[10] ? row[10] : "";
+    post["updated_at"] = row[11] ? row[11] : "";
+    mysql_free_result(res);
+
+    result["post"] = std::move(post);
+    result["success"] = true;
+    return result;
+}
+
+// 发布文章（使用预处理语句防止 SQL 注入）
+crow::json::wvalue DataBase::addPost(const std::string& title, const std::string& content, const std::string& summary, const std::string& author, const std::string& topic, const std::string& theme, const std::string& status, int authorId)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = "INSERT INTO posts (title, content, summary, author, topic, theme, status, author_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    MYSQL_BIND bind[8];
+    std::memset(bind, 0, sizeof(bind));
+
+    bind[0].buffer_type = MYSQL_TYPE_STRING;
+    bind[0].buffer = (void*)title.c_str();
+    bind[0].buffer_length = title.length();
+
+    bind[1].buffer_type = MYSQL_TYPE_STRING;
+    bind[1].buffer = (void*)content.c_str();
+    bind[1].buffer_length = content.length();
+
+    bind[2].buffer_type = MYSQL_TYPE_STRING;
+    bind[2].buffer = (void*)summary.c_str();
+    bind[2].buffer_length = summary.length();
+
+    bind[3].buffer_type = MYSQL_TYPE_STRING;
+    bind[3].buffer = (void*)author.c_str();
+    bind[3].buffer_length = author.length();
+
+    bind[4].buffer_type = MYSQL_TYPE_STRING;
+    bind[4].buffer = (void*)topic.c_str();
+    bind[4].buffer_length = topic.length();
+
+    bind[5].buffer_type = MYSQL_TYPE_STRING;
+    bind[5].buffer = (void*)theme.c_str();
+    bind[5].buffer_length = theme.length();
+
+    bind[6].buffer_type = MYSQL_TYPE_STRING;
+    bind[6].buffer = (void*)status.c_str();
+    bind[6].buffer_length = status.length();
+
+    bind[7].buffer_type = MYSQL_TYPE_LONG;
+    bind[7].buffer = (void*)&authorId;
+
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) == 0)
+    {
+        int newID = static_cast<int>(mysql_stmt_insert_id(stmt));
+        result["success"] = true;
+        result["id"] = newID;
+        result["message"] = "文章发布成功";
+    }
+    else
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+    }
+    mysql_stmt_close(stmt);
+    return result;
+}
+
+// 更新文章（作者与归属保持不变，由调用方先做归属校验）
+crow::json::wvalue DataBase::updatePost(int id, const std::string& title, const std::string& content, const std::string& summary, const std::string& topic, const std::string& theme, const std::string& status)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = "UPDATE posts SET title=?, content=?, summary=?, topic=?, theme=?, status=? WHERE id=?";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    MYSQL_BIND bind[7];
+    std::memset(bind, 0, sizeof(bind));
+
+    bind[0].buffer_type = MYSQL_TYPE_STRING;
+    bind[0].buffer = (void*)title.c_str();
+    bind[0].buffer_length = title.length();
+
+    bind[1].buffer_type = MYSQL_TYPE_STRING;
+    bind[1].buffer = (void*)content.c_str();
+    bind[1].buffer_length = content.length();
+
+    bind[2].buffer_type = MYSQL_TYPE_STRING;
+    bind[2].buffer = (void*)summary.c_str();
+    bind[2].buffer_length = summary.length();
+
+    bind[3].buffer_type = MYSQL_TYPE_STRING;
+    bind[3].buffer = (void*)topic.c_str();
+    bind[3].buffer_length = topic.length();
+
+    bind[4].buffer_type = MYSQL_TYPE_STRING;
+    bind[4].buffer = (void*)theme.c_str();
+    bind[4].buffer_length = theme.length();
+
+    bind[5].buffer_type = MYSQL_TYPE_STRING;
+    bind[5].buffer = (void*)status.c_str();
+    bind[5].buffer_length = status.length();
+
+    bind[6].buffer_type = MYSQL_TYPE_LONG;
+    bind[6].buffer = (void*)&id;
+
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+    }
+    else
+    {
+        my_ulonglong affected = mysql_stmt_affected_rows(stmt);
+        result["success"] = (affected > 0);
+        result["message"] = (affected > 0) ? "更新成功" : "文章不存在";
+    }
+    mysql_stmt_close(stmt);
+    return result;
+}
+
+// 删除文章
+crow::json::wvalue DataBase::deletePost(int id)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = "DELETE FROM posts WHERE id=?";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    MYSQL_BIND bind[1];
+    std::memset(bind, 0, sizeof(bind));
+
+    bind[0].buffer_type = MYSQL_TYPE_LONG;
+    bind[0].buffer = (void*)&id;
+
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) == 0)
+    {
+        my_ulonglong affected = mysql_stmt_affected_rows(stmt);
+        result["success"] = (affected > 0);
+        result["message"] = (affected > 0) ? "删除成功" : "文章不存在";
+    }
+    else
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+    }
+    mysql_stmt_close(stmt);
+    return result;
+}
+
+// 点赞/取消点赞：likes 计数增减（delta 为 +1/-1），返回最新点赞数
+crow::json::wvalue DataBase::changeLikes(int id, int delta)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = "UPDATE posts SET likes = GREATEST(likes + ?, 0) WHERE id=?";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    MYSQL_BIND bind[2];
+    std::memset(bind, 0, sizeof(bind));
+
+    bind[0].buffer_type = MYSQL_TYPE_LONG;
+    bind[0].buffer = (void*)&delta;
+
+    bind[1].buffer_type = MYSQL_TYPE_LONG;
+    bind[1].buffer = (void*)&id;
+
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+    }
+    else
+    {
+        my_ulonglong affected = mysql_stmt_affected_rows(stmt);
+        if (affected == 0)
+        {
+            result["success"] = false;
+            result["message"] = "文章不存在";
+        }
+        else
+        {
+            // 查询最新点赞数
+            std::string sel = "SELECT likes FROM posts WHERE id=" + std::to_string(id);
+            if (mysql_query(conn_, sel.c_str()) == 0)
+            {
+                MYSQL_RES* res = mysql_store_result(conn_);
+                if (res)
+                {
+                    MYSQL_ROW row = mysql_fetch_row(res);
+                    if (row && row[0])
+                    {
+                        result["likes"] = std::stoi(row[0]);
+                    }
+                    mysql_free_result(res);
+                }
+            }
+            result["success"] = true;
+        }
+    }
+    mysql_stmt_close(stmt);
+    return result;
+}
+
+// 获取文章归属（author_id 与作者显示名），不存在返回 false
+bool DataBase::getPostAuthor(int id, int& outAuthorId, std::string& outAuthor)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    std::string sql = "SELECT author_id, author FROM posts WHERE id=" + std::to_string(id);
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        return false;
+    }
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res) return false;
+    MYSQL_ROW row = mysql_fetch_row(res);
+    bool ok = (row != nullptr);
+    if (ok)
+    {
+        outAuthorId = row[0] ? std::stoi(row[0]) : 0;
+        outAuthor = row[1] ? row[1] : "";
+    }
+    mysql_free_result(res);
+    return ok;
+}
+
+// ===== 评论 =====
+
+// 获取某篇文章的所有评论（按时间正序；includeHidden 为 true 时包含被隐藏的评论，仅供站长）
+crow::json::wvalue DataBase::getComments(int postId, bool includeHidden)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    std::vector<crow::json::wvalue> comments;
+
+    std::string sql = "SELECT id, post_id, parent_id, nickname, content, hidden, created_at FROM comments WHERE post_id=" + std::to_string(postId);
+    if (!includeHidden)
+    {
+        sql += " AND hidden=0";
+    }
+    sql += " ORDER BY id ASC";
+
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_error(conn_);
+        return result;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (res)
+    {
+        MYSQL_ROW row;
+        while ((row = mysql_fetch_row(res)))
+        {
+            crow::json::wvalue c;
+            c["id"] = std::stoi(row[0]);
+            c["post_id"] = std::stoi(row[1]);
+            c["parent_id"] = row[2] ? std::stoi(row[2]) : 0;
+            c["nickname"] = row[3] ? row[3] : "";
+            c["content"] = row[4] ? row[4] : "";
+            c["hidden"] = (row[5] && std::stoi(row[5]) != 0);
+            c["created_at"] = row[6] ? row[6] : "";
+            comments.push_back(std::move(c));
+        }
+        mysql_free_result(res);
+    }
+
+    result["comments"] = std::move(comments);
+    result["success"] = true;
+    return result;
+}
+
+// 新增评论（parentId 为 0 表示顶层评论，否则为回复某条评论）
+crow::json::wvalue DataBase::addComment(int postId, int parentId, const std::string& nickname, const std::string& content)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = "INSERT INTO comments (post_id, parent_id, nickname, content) VALUES (?, ?, ?, ?)";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    MYSQL_BIND bind[4];
+    std::memset(bind, 0, sizeof(bind));
+
+    bind[0].buffer_type = MYSQL_TYPE_LONG;
+    bind[0].buffer = (void*)&postId;
+
+    bind[1].buffer_type = MYSQL_TYPE_LONG;
+    bind[1].buffer = (void*)&parentId;
+
+    bind[2].buffer_type = MYSQL_TYPE_STRING;
+    bind[2].buffer = (void*)nickname.c_str();
+    bind[2].buffer_length = nickname.length();
+
+    bind[3].buffer_type = MYSQL_TYPE_STRING;
+    bind[3].buffer = (void*)content.c_str();
+    bind[3].buffer_length = content.length();
+
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) == 0)
+    {
+        int newID = static_cast<int>(mysql_stmt_insert_id(stmt));
+        result["success"] = true;
+        result["id"] = newID;
+    }
+    else
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+    }
+    mysql_stmt_close(stmt);
+    return result;
+}
+
+// 隐藏 / 取消隐藏某条评论（站长）
+crow::json::wvalue DataBase::setCommentHidden(int id, int hidden)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = "UPDATE comments SET hidden=? WHERE id=?";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    MYSQL_BIND bind[2];
+    std::memset(bind, 0, sizeof(bind));
+
+    bind[0].buffer_type = MYSQL_TYPE_LONG;
+    bind[0].buffer = (void*)&hidden;
+
+    bind[1].buffer_type = MYSQL_TYPE_LONG;
+    bind[1].buffer = (void*)&id;
+
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+    }
+    else
+    {
+        my_ulonglong affected = mysql_stmt_affected_rows(stmt);
+        result["success"] = (affected > 0);
+        result["message"] = (affected > 0) ? "操作成功" : "评论不存在";
+    }
+    mysql_stmt_close(stmt);
+    return result;
+}
+
+// 删除某条评论及其所有回复（站长）
+crow::json::wvalue DataBase::deleteComment(int id)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = "DELETE FROM comments WHERE id=? OR parent_id=?";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    MYSQL_BIND bind[2];
+    std::memset(bind, 0, sizeof(bind));
+
+    bind[0].buffer_type = MYSQL_TYPE_LONG;
+    bind[0].buffer = (void*)&id;
+
+    bind[1].buffer_type = MYSQL_TYPE_LONG;
+    bind[1].buffer = (void*)&id;
+
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) == 0)
+    {
+        my_ulonglong affected = mysql_stmt_affected_rows(stmt);
+        result["success"] = (affected > 0);
+        result["message"] = (affected > 0) ? "删除成功" : "评论不存在";
+    }
+    else
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+    }
+    mysql_stmt_close(stmt);
+    return result;
+}
+
+// ===== 配置 =====
+
+// 读取配置项（不存在时返回空字符串）
+std::string DataBase::getSetting(const std::string& key)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    std::vector<char> esc(key.length() * 2 + 1);
+    mysql_real_escape_string(conn_, esc.data(), key.c_str(), static_cast<unsigned long>(key.length()));
+    std::string sql = "SELECT v FROM settings WHERE k='" + std::string(esc.data()) + "'";
+
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        return "";
+    }
+
+    std::string value;
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (res)
+    {
+        MYSQL_ROW row = mysql_fetch_row(res);
+        if (row && row[0]) value = row[0];
+        mysql_free_result(res);
+    }
+    return value;
+}
+
+// 写入配置项（不存在则插入，存在则更新）
+crow::json::wvalue DataBase::setSetting(const std::string& key, const std::string& value)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = "INSERT INTO settings (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v=VALUES(v)";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    MYSQL_BIND bind[2];
+    std::memset(bind, 0, sizeof(bind));
+
+    bind[0].buffer_type = MYSQL_TYPE_STRING;
+    bind[0].buffer = (void*)key.c_str();
+    bind[0].buffer_length = key.length();
+
+    bind[1].buffer_type = MYSQL_TYPE_STRING;
+    bind[1].buffer = (void*)value.c_str();
+    bind[1].buffer_length = value.length();
+
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) == 0)
+    {
+        result["success"] = true;
+    }
+    else
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+    }
+    mysql_stmt_close(stmt);
+    return result;
+}
+
+// ===== 专栏 =====
+
+// 获取专栏列表
+crow::json::wvalue DataBase::getTopics()
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    std::vector<crow::json::wvalue> topics;
+
+    const char* sql = "SELECT id, name FROM topics ORDER BY id ASC";
+    if (mysql_query(conn_, sql) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_error(conn_);
+        return result;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (res)
+    {
+        MYSQL_ROW row;
+        while ((row = mysql_fetch_row(res)))
+        {
+            crow::json::wvalue t;
+            t["id"] = std::stoi(row[0]);
+            t["name"] = row[1] ? row[1] : "";
+            topics.push_back(std::move(t));
+        }
+        mysql_free_result(res);
+    }
+
+    result["topics"] = std::move(topics);
+    result["success"] = true;
+    return result;
+}
+
+// 添加专栏（name 唯一）
+crow::json::wvalue DataBase::addTopic(const std::string& name)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = "INSERT INTO topics (name) VALUES (?)";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    MYSQL_BIND bind[1];
+    std::memset(bind, 0, sizeof(bind));
+    bind[0].buffer_type = MYSQL_TYPE_STRING;
+    bind[0].buffer = (void*)name.c_str();
+    bind[0].buffer_length = name.length();
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) == 0)
+    {
+        int newID = static_cast<int>(mysql_stmt_insert_id(stmt));
+        result["success"] = true;
+        result["id"] = newID;
+        result["message"] = "专栏添加成功";
+    }
+    else
+    {
+        result["success"] = false;
+        unsigned int errNo = mysql_stmt_errno(stmt);
+        result["message"] = (errNo == 1062) ? "专栏已存在" : mysql_stmt_error(stmt);
+    }
+    mysql_stmt_close(stmt);
+    return result;
+}
+
+// 删除专栏（仅删除专栏本身，不影响已有文章）
+crow::json::wvalue DataBase::deleteTopic(int id)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = "DELETE FROM topics WHERE id=?";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    MYSQL_BIND bind[1];
+    std::memset(bind, 0, sizeof(bind));
+    bind[0].buffer_type = MYSQL_TYPE_LONG;
+    bind[0].buffer = (void*)&id;
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) == 0)
+    {
+        my_ulonglong affected = mysql_stmt_affected_rows(stmt);
+        result["success"] = (affected > 0);
+        result["message"] = (affected > 0) ? "专栏已删除" : "专栏不存在";
+    }
+    else
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+    }
+    mysql_stmt_close(stmt);
+    return result;
+}
+
+// ===== 管理员账号 =====
+
+// 插入管理员记录：密码用 MySQL SHA2(CONCAT(salt, ':', password), 256) 哈希后入库
+// 注意：本方法不主动加锁，调用方需已持有 mtx_
+bool DataBase::insertAdmin(const std::string& email, const std::string& password, int isMain, std::string& errMsg, int& outId)
+{
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        errMsg = "mysql_stmt_init 失败";
+        return false;
+    }
+
+    std::string salt = randomHex(16);
+    const char* sql = "INSERT INTO admins (email, nickname, salt, password_hash, is_main) VALUES (?, ?, ?, SHA2(CONCAT(?, ':', ?), 256), ?)";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        errMsg = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return false;
+    }
+
+    MYSQL_BIND bind[6];
+    std::memset(bind, 0, sizeof(bind));
+    bind[0].buffer_type = MYSQL_TYPE_STRING;
+    bind[0].buffer = (void*)email.c_str();
+    bind[0].buffer_length = email.length();
+    bind[1].buffer_type = MYSQL_TYPE_STRING;
+    bind[1].buffer = (void*)email.c_str();
+    bind[1].buffer_length = email.length();
+    bind[2].buffer_type = MYSQL_TYPE_STRING;
+    bind[2].buffer = (void*)salt.c_str();
+    bind[2].buffer_length = salt.length();
+    bind[3].buffer_type = MYSQL_TYPE_STRING;
+    bind[3].buffer = (void*)salt.c_str();
+    bind[3].buffer_length = salt.length();
+    bind[4].buffer_type = MYSQL_TYPE_STRING;
+    bind[4].buffer = (void*)password.c_str();
+    bind[4].buffer_length = password.length();
+    bind[5].buffer_type = MYSQL_TYPE_LONG;
+    bind[5].buffer = (void*)&isMain;
+    mysql_stmt_bind_param(stmt, bind);
+
+    bool ok = (mysql_stmt_execute(stmt) == 0);
+    if (ok)
+    {
+        outId = static_cast<int>(mysql_stmt_insert_id(stmt));
+    }
+    else
+    {
+        unsigned int errNo = mysql_stmt_errno(stmt);
+        errMsg = (errNo == 1062) ? "该邮箱已被注册" : mysql_stmt_error(stmt);
+    }
+    mysql_stmt_close(stmt);
+    return ok;
+}
+
+// 首次初始化时创建主管理员账号
+void DataBase::seedMainAdmin()
+{
+    std::string err;
+    int id = 0;
+    if (!insertAdmin(MAIN_ADMIN_EMAIL, MAIN_ADMIN_PASSWORD, 1, err, id))
+    {
+        throw std::runtime_error("创建主管理员失败：" + err);
+    }
+}
+
+// 获取主管理员（is_main=1）的 id 与昵称，不存在返回 false
+// 说明：仅在 initTable（单线程构造）或已持有 mtx_ 锁的调用中执行，不加锁
+bool DataBase::getMainAdmin(int& outId, std::string& outNickname)
+{
+    if (mysql_query(conn_, "SELECT id, nickname FROM admins WHERE is_main=1 ORDER BY id ASC LIMIT 1") != 0)
+    {
+        return false;
+    }
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res) return false;
+    MYSQL_ROW row = mysql_fetch_row(res);
+    bool ok = (row != nullptr);
+    if (ok)
+    {
+        outId = std::stoi(row[0]);
+        outNickname = row[1] ? row[1] : "";
+    }
+    mysql_free_result(res);
+    return ok;
+}
+
+// 历史文章（author_id=0）归到主管理员，并把作者显示名同步为主管理员昵称
+void DataBase::backfillLegacyPosts()
+{
+    int mainId = 0;
+    std::string mainNick;
+    if (!getMainAdmin(mainId, mainNick))
+    {
+        return;
+    }
+
+    std::vector<char> nickEsc(mainNick.length() * 2 + 1);
+    mysql_real_escape_string(conn_, nickEsc.data(), mainNick.c_str(), static_cast<unsigned long>(mainNick.length()));
+    std::string sql = "UPDATE posts SET author_id=" + std::to_string(mainId) +
+        ", author='" + std::string(nickEsc.data()) + "' WHERE author_id=0";
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        throw std::runtime_error(std::string("历史文章归属主管理员失败：") + mysql_error(conn_));
+    }
+}
+
+// 新增普通管理员
+crow::json::wvalue DataBase::addAdmin(const std::string& email, const std::string& password)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    std::string err;
+    int id = 0;
+    if (insertAdmin(email, password, 0, err, id))
+    {
+        result["success"] = true;
+        result["id"] = id;
+        result["message"] = "管理员添加成功";
+    }
+    else
+    {
+        result["success"] = false;
+        result["message"] = err;
+    }
+    return result;
+}
+
+// 管理员列表
+crow::json::wvalue DataBase::getAdmins()
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    std::vector<crow::json::wvalue> admins;
+
+    const char* sql = "SELECT id, email, nickname, avatar, is_main, created_at FROM admins ORDER BY is_main DESC, id ASC";
+    if (mysql_query(conn_, sql) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_error(conn_);
+        return result;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (res)
+    {
+        MYSQL_ROW row;
+        while ((row = mysql_fetch_row(res)))
+        {
+            crow::json::wvalue a;
+            a["id"] = std::stoi(row[0]);
+            a["email"] = row[1] ? row[1] : "";
+            a["nickname"] = row[2] ? row[2] : "";
+            a["avatar"] = row[3] ? row[3] : "";
+            a["is_main"] = (row[4] && std::stoi(row[4]) != 0);
+            a["created_at"] = row[5] ? row[5] : "";
+            admins.push_back(std::move(a));
+        }
+        mysql_free_result(res);
+    }
+
+    result["admins"] = std::move(admins);
+    result["success"] = true;
+    return result;
+}
+
+// 删除管理员（主管理员 is_main=1 不可删除，SQL 层再兜底）
+crow::json::wvalue DataBase::deleteAdmin(int id)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+
+    // 删除前把其名下文章转给主管理员，避免出现无主文章
+    {
+        int mainId = 0;
+        std::string mainNick;
+        if (getMainAdmin(mainId, mainNick) && mainId != id)
+        {
+            std::vector<char> nickEsc(mainNick.length() * 2 + 1);
+            mysql_real_escape_string(conn_, nickEsc.data(), mainNick.c_str(), static_cast<unsigned long>(mainNick.length()));
+            std::string upd = "UPDATE posts SET author_id=" + std::to_string(mainId) +
+                ", author='" + std::string(nickEsc.data()) + "' WHERE author_id=" + std::to_string(id);
+            mysql_query(conn_, upd.c_str());
+        }
+    }
+
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = "DELETE FROM admins WHERE id=? AND is_main=0";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    MYSQL_BIND bind[1];
+    std::memset(bind, 0, sizeof(bind));
+    bind[0].buffer_type = MYSQL_TYPE_LONG;
+    bind[0].buffer = (void*)&id;
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+    }
+    else
+    {
+        my_ulonglong affected = mysql_stmt_affected_rows(stmt);
+        result["success"] = (affected > 0);
+        result["message"] = (affected > 0) ? "管理员已删除" : "管理员不存在或不可删除";
+    }
+    mysql_stmt_close(stmt);
+    return result;
+}
+
+// 获取管理员昵称（昵称为空时回退到邮箱）
+std::string DataBase::getAdminNickname(int id)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    std::string sql = "SELECT nickname, email FROM admins WHERE id=" + std::to_string(id);
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        return "";
+    }
+    std::string nick;
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (res)
+    {
+        MYSQL_ROW row = mysql_fetch_row(res);
+        if (row)
+        {
+            nick = (row[0] && row[0][0]) ? row[0] : (row[1] ? row[1] : "");
+        }
+        mysql_free_result(res);
+    }
+    return nick;
+}
+
+// 获取单个管理员的资料（邮箱、昵称、头像、是否主管理员）
+bool DataBase::getAdminProfile(int id, std::string& outEmail, std::string& outNickname, std::string& outAvatar, bool& outIsMain)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    std::string sql = "SELECT email, nickname, avatar, is_main FROM admins WHERE id=" + std::to_string(id);
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        return false;
+    }
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res) return false;
+    MYSQL_ROW row = mysql_fetch_row(res);
+    bool ok = (row != nullptr);
+    if (ok)
+    {
+        outEmail = row[0] ? row[0] : "";
+        outNickname = row[1] ? row[1] : "";
+        outAvatar = row[2] ? row[2] : "";
+        outIsMain = (row[3] && std::stoi(row[3]) != 0);
+    }
+    mysql_free_result(res);
+    return ok;
+}
+
+// 更新管理员自己的昵称与头像，并把其名下文章的作者名同步为新昵称
+crow::json::wvalue DataBase::updateProfile(int adminId, const std::string& nickname, const std::string& avatar)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    std::string nick = trim(nickname);
+    if (nick.empty())
+    {
+        result["success"] = false;
+        result["message"] = "昵称不能为空";
+        return result;
+    }
+    if (nick.length() > 100) nick = nick.substr(0, 100);
+
+    std::string av = trim(avatar);
+    if (av.length() > 500) av = av.substr(0, 500);
+    if (!av.empty() && av.rfind("/uploads/", 0) != 0 &&
+        av.rfind("http://", 0) != 0 && av.rfind("https://", 0) != 0)
+    {
+        result["success"] = false;
+        result["message"] = "头像地址无效";
+        return result;
+    }
+
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+    const char* sql = "UPDATE admins SET nickname=?, avatar=? WHERE id=?";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    MYSQL_BIND bind[3];
+    std::memset(bind, 0, sizeof(bind));
+    bind[0].buffer_type = MYSQL_TYPE_STRING;
+    bind[0].buffer = (void*)nick.c_str();
+    bind[0].buffer_length = nick.length();
+    bind[1].buffer_type = MYSQL_TYPE_STRING;
+    bind[1].buffer = (void*)av.c_str();
+    bind[1].buffer_length = av.length();
+    bind[2].buffer_type = MYSQL_TYPE_LONG;
+    bind[2].buffer = (void*)&adminId;
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+    mysql_stmt_close(stmt);
+
+    // 同步该管理员名下所有文章的作者名
+    MYSQL_STMT* stmt2 = mysql_stmt_init(conn_);
+    if (stmt2)
+    {
+        const char* sql2 = "UPDATE posts SET author=? WHERE author_id=?";
+        if (mysql_stmt_prepare(stmt2, sql2, std::strlen(sql2)) == 0)
+        {
+            MYSQL_BIND b2[2];
+            std::memset(b2, 0, sizeof(b2));
+            b2[0].buffer_type = MYSQL_TYPE_STRING;
+            b2[0].buffer = (void*)nick.c_str();
+            b2[0].buffer_length = nick.length();
+            b2[1].buffer_type = MYSQL_TYPE_LONG;
+            b2[1].buffer = (void*)&adminId;
+            mysql_stmt_bind_param(stmt2, b2);
+            mysql_stmt_execute(stmt2);
+        }
+        mysql_stmt_close(stmt2);
+    }
+
+    result["success"] = true;
+    result["nickname"] = nick;
+    result["message"] = "资料已更新";
+    return result;
+}
+
+// 登录校验：邮箱 + 密码匹配则返回 true，并通过出参返回 id / is_main
+bool DataBase::loginAdmin(const std::string& email, const std::string& password, int& outId, bool& outIsMain, std::string& errMsg)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    std::vector<char> emailEsc(email.length() * 2 + 1);
+    std::vector<char> passEsc(password.length() * 2 + 1);
+    mysql_real_escape_string(conn_, emailEsc.data(), email.c_str(), static_cast<unsigned long>(email.length()));
+    mysql_real_escape_string(conn_, passEsc.data(), password.c_str(), static_cast<unsigned long>(password.length()));
+
+    std::string sql = "SELECT id, is_main FROM admins WHERE email='" + std::string(emailEsc.data()) +
+        "' AND password_hash=SHA2(CONCAT(salt, ':', '" + std::string(passEsc.data()) + "'), 256)";
+
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        errMsg = mysql_error(conn_);
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res)
+    {
+        errMsg = "邮箱或密码错误";
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (!row)
+    {
+        mysql_free_result(res);
+        errMsg = "邮箱或密码错误";
+        return false;
+    }
+
+    outId = std::stoi(row[0]);
+    outIsMain = (row[1] && std::stoi(row[1]) != 0);
+    mysql_free_result(res);
+    return true;
+}

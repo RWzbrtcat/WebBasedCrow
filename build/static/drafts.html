@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>草稿 · LazyCat's Blog</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-mode="drafts">
+    <!-- 站点头部 -->
+    <header class="site-header site-header-pill">
+        <div class="header-inner">
+            <div class="brand">
+                <a class="site-title" href="/">LazyCat</a>
+            </div>
+            <nav class="nav">
+                <a href="/">首页</a>
+                <a href="/drafts" class="active">草稿</a>
+                <a href="/editor">创作</a>
+                <a href="/admin" data-auth-role="main" hidden>管理员</a>
+                <a href="/profile">个人</a>
+                <a href="/logout">退出</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 主体 -->
+    <main class="container">
+        <h1 class="page-title" id="pageTitle">草稿</h1>
+        <p class="page-subtitle">未发布的文章草稿</p>
+
+        <div id="postList" class="post-list">
+            <div class="loading">加载中...</div>
+        </div>
+    </main>
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/list.js"></script>
+    <script src="/js/header.js"></script>
+    <script src="/js/background.js"></script>
+    <script src="/js/theme.js"></script>
+</body>
+</html>

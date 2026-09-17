@@ -54,7 +54,13 @@ endif()
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 # 编译
-add_executable(task_server src/main.cpp)
+add_executable(task_server
+    src/main.cpp
+    src/utils.cpp
+    src/database.cpp
+    src/auth.cpp
+    src/routes.cpp
+)
 
 
 

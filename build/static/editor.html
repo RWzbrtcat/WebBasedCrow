@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>写文章 · LazyCat's Blog</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/highlight.css">
+</head>
+<body>
+    <!-- 站点头部 -->
+    <header class="site-header site-header-pill">
+        <div class="header-inner">
+            <div class="brand">
+                <a class="site-title" href="/">LazyCat</a>
+            </div>
+            <nav class="nav">
+                <a href="/">首页</a>
+                <a href="/drafts">草稿</a>
+                <a href="/editor" class="active">创作</a>
+                <a href="/admin" data-auth-role="main" hidden>管理员</a>
+                <a href="/profile">个人</a>
+                <a href="/logout">退出</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 主体 -->
+    <main class="container container-editor">
+        <div class="editor-card">
+            <h1 id="editorTitle">写文章</h1>
+            <form id="postForm">
+                <div class="editor-meta">
+                    <div class="editor-meta-left">
+                        <div class="editor-meta-row">
+                            <div class="form-group editor-meta-half">
+                                <label for="title">标题 *</label>
+                                <input type="text" id="title" placeholder="输入文章标题..." required>
+                            </div>
+                            <div class="form-group editor-meta-half">
+                                <label for="author">作者</label>
+                                <input type="text" id="author" readonly placeholder="自动使用你的账号昵称" title="作者由账号昵称自动生成，不可修改">
+                            </div>
+                        </div>
+                        <div class="editor-meta-row">
+                            <div class="form-group editor-meta-half">
+                                <label for="topic">专栏</label>
+                                <select id="topic"></select>
+                            </div>
+                            <div class="form-group editor-meta-half">
+                                <label for="theme">主题</label>
+                                <input type="text" id="theme" placeholder="自定义主题，如：智能指针详解">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="editor-meta-right">
+                        <div class="form-group">
+                            <label for="summary">内容简介</label>
+                            <textarea id="summary" rows="3" placeholder="一句话概括这篇文章（可选，会显示在文章列表中）"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="content">正文（支持 Markdown 语法）</label>
+                    <div class="markdown-toolbar" id="markdownToolbar">
+                        <button type="button" class="md-btn" data-action="undo" title="撤销 (Ctrl+Z)">撤销</button>
+                        <button type="button" class="md-btn" data-action="redo" title="重做 (Ctrl+Y)">重做</button>
+                        <span class="md-divider"></span>
+                        <button type="button" class="md-btn md-btn-bold" data-action="bold" title="加粗">B</button>
+                        <button type="button" class="md-btn md-btn-italic" data-action="italic" title="斜体">I</button>
+                        <button type="button" class="md-btn md-btn-strike" data-action="strike" title="删除线">S</button>
+                        <span class="md-divider"></span>
+                        <button type="button" class="md-btn" data-action="heading" title="二级标题">标题</button>
+                        <button type="button" class="md-btn" data-action="quote" title="引用">引用</button>
+                        <div class="md-dropdown">
+                            <button type="button" class="md-btn md-dropdown-toggle" title="列表">列表<span class="md-caret"></span></button>
+                            <div class="md-dropdown-menu" hidden>
+                                <button type="button" class="md-dropdown-item" data-action="ul">无序列表</button>
+                                <button type="button" class="md-dropdown-item" data-action="ol">有序列表</button>
+                            </div>
+                        </div>
+                        <span class="md-divider"></span>
+                        <button type="button" class="md-btn" data-action="code" title="行内代码">行内代码</button>
+                        <div class="md-dropdown">
+                            <button type="button" class="md-btn md-dropdown-toggle" title="代码块">代码块<span class="md-caret"></span></button>
+                            <div class="md-dropdown-menu" hidden>
+                                <button type="button" class="md-dropdown-item" data-lang="">纯文本</button>
+                                <button type="button" class="md-dropdown-item" data-lang="bash">Bash</button>
+                                <button type="button" class="md-dropdown-item" data-lang="c">C</button>
+                                <button type="button" class="md-dropdown-item" data-lang="cpp">C++</button>
+                                <button type="button" class="md-dropdown-item" data-lang="go">Go</button>
+                                <button type="button" class="md-dropdown-item" data-lang="java">Java</button>
+                                <button type="button" class="md-dropdown-item" data-lang="python">Python</button>
+                                <button type="button" class="md-dropdown-item" data-lang="html">HTML</button>
+                                <button type="button" class="md-dropdown-item" data-lang="xml">XML</button>
+                                <button type="button" class="md-dropdown-item" data-lang="sql">SQL</button>
+                            </div>
+                        </div>
+                        <button type="button" class="md-btn md-btn-icon" data-action="link" title="插入链接"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+                        <button type="button" class="md-btn md-btn-icon" data-action="image" title="插入图片"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
+                        <div class="md-dropdown" id="anchorDropdown">
+                            <button type="button" class="md-btn md-dropdown-toggle" title="插入文章内部链接（跳转到某标题）">内部链接<span class="md-caret"></span></button>
+                            <div class="md-dropdown-menu md-dropdown-menu-wide" hidden id="anchorMenu">
+                                <div class="md-dropdown-empty">当前没有标题</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="markdown-editor">
+                        <div class="markdown-editor-toc">
+                            <div class="pane-label">目录</div>
+                            <nav class="toc-list" id="tocList"></nav>
+                        </div>
+                        <div class="markdown-editor-pane markdown-editor-input">
+                            <div class="pane-label">Markdown 编辑</div>
+                            <div class="code-editor">
+                                <pre class="code-editor-highlight" aria-hidden="true"><code id="highlightLayer"></code></pre>
+                                <textarea id="content" placeholder="使用 Markdown 语法写下你的内容，例如：# 标题、**加粗**、- 列表、```代码块```..."></textarea>
+                            </div>
+                        </div>
+                        <div class="markdown-editor-resizer" id="markdownResizer"></div>
+                        <div class="markdown-editor-pane markdown-editor-preview">
+                            <div class="pane-label">预览</div>
+                            <div id="preview" class="markdown-body"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="editor-footer">
+                    <div class="editor-stats" id="editorStats">行数 0 · 字数 0 · 词数 0</div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">发布</button>
+                        <button type="button" class="btn btn-secondary" id="draftBtn">保存</button>
+                        <a href="/" class="btn btn-secondary">取消</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <!-- 插入图片弹窗 -->
+    <div class="image-modal-overlay" id="imageModal" hidden>
+        <div class="image-modal" role="dialog" aria-modal="true" aria-labelledby="imageModalTitle">
+            <div class="image-modal-header">
+                <h3 id="imageModalTitle">插入图片</h3>
+                <button type="button" class="image-modal-close" id="imageModalClose" aria-label="关闭">&times;</button>
+            </div>
+            <div class="image-modal-body">
+                <button type="button" class="btn btn-primary btn-block" id="imageUploadBtn">上传本地图片</button>
+                <div class="image-modal-divider"><span>或使用图片链接</span></div>
+                <input type="text" id="imageUrlInput" class="image-url-input" placeholder="https://example.com/pic.png">
+                <button type="button" class="btn btn-secondary btn-block" id="imageUrlConfirmBtn">插入链接</button>
+            </div>
+        </div>
+        <input type="file" id="imageFileInput" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" hidden>
+    </div>
+
+    <script src="/js/marked.min.js"></script>
+    <script src="/js/purify.min.js"></script>
+    <script src="/js/highlight.min.js"></script>
+    <script src="/js/markdown.js"></script>
+    <script src="/js/editor.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/header.js"></script>
+    <script src="/js/background.js"></script>
+    <script src="/js/theme.js"></script>
+</body>
+</html>

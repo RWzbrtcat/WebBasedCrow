@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人资料 · LazyCat's Blog</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <!-- 站点头部 -->
+    <header class="site-header site-header-pill">
+        <div class="header-inner">
+            <div class="brand">
+                <a class="site-title" href="/">LazyCat</a>
+            </div>
+            <nav class="nav">
+                <a href="/">首页</a>
+                <a href="/drafts">草稿</a>
+                <a href="/editor">创作</a>
+                <a href="/admin" data-auth-role="main" hidden>管理员</a>
+                <a href="/profile" class="active">个人</a>
+                <a href="/logout">退出</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 主体 -->
+    <main class="container container-login">
+        <div class="login-card">
+            <h1 class="login-title">个人资料</h1>
+            <p class="login-subtitle">昵称会作为你文章的作者名显示，修改后历史文章作者也会同步更新</p>
+
+            <form id="profileForm">
+                <div class="form-group">
+                    <label for="email">邮箱（不可修改）</label>
+                    <input type="email" id="email" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="nickname">昵称</label>
+                    <input type="text" id="nickname" placeholder="默认等于邮箱" maxlength="100" required>
+                </div>
+                <div class="form-group">
+                    <label>头像</label>
+                    <div class="profile-avatar-row">
+                        <img id="avatarPreview" class="profile-avatar" alt="头像预览" hidden>
+                        <div class="profile-avatar-actions">
+                            <input type="text" id="avatar" placeholder="头像图片链接（可留空）" maxlength="500">
+                            <button type="button" class="btn btn-secondary" id="avatarUploadBtn">上传图片</button>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">保存</button>
+                <p class="login-error" id="profileError" hidden></p>
+            </form>
+        </div>
+    </main>
+
+    <input type="file" id="avatarFileInput" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" hidden>
+
+    <script src="/js/profile.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/header.js"></script>
+    <script src="/js/background.js"></script>
+    <script src="/js/theme.js"></script>
+</body>
+</html>

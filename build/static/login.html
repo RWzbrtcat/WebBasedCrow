@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 · LazyCat's Blog</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <!-- 站点头部 -->
+    <header class="site-header site-header-pill">
+        <div class="header-inner">
+            <div class="brand">
+                <a class="site-title" href="/">LazyCat</a>
+            </div>
+            <nav class="nav">
+                <a href="/">首页</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 主体 -->
+    <main class="container container-login">
+        <div class="login-card">
+            <h1 class="login-title">管理员登录</h1>
+            <p class="login-subtitle">仅限作者本人登录后撰写文章</p>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">邮箱</label>
+                    <input type="email" id="email" placeholder="请输入管理员邮箱" autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <input type="password" id="password" placeholder="请输入管理员密码" autocomplete="current-password" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">登录</button>
+                <p class="login-error" id="loginError" hidden></p>
+            </form>
+        </div>
+    </main>
+
+    <script src="/js/login.js"></script>
+    <script src="/js/header.js"></script>
+    <script src="/js/background.js"></script>
+    <script src="/js/theme.js"></script>
+</body>
+</html>

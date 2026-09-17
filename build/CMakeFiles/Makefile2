@@ -98,12 +98,12 @@ Crow/clean: Crow/CMakeFiles/uninstall.dir/clean
 CMakeFiles/task_server.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/task_server.dir/build.make CMakeFiles/task_server.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/task_server.dir/build.make CMakeFiles/task_server.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/wb/projects/WebBasedCrow/build/CMakeFiles --progress-num=1,2 "Built target task_server"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/wb/projects/WebBasedCrow/build/CMakeFiles --progress-num=1,2,3,4,5,6 "Built target task_server"
 .PHONY : CMakeFiles/task_server.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/task_server.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/wb/projects/WebBasedCrow/build/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/wb/projects/WebBasedCrow/build/CMakeFiles 6
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/task_server.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/wb/projects/WebBasedCrow/build/CMakeFiles 0
 .PHONY : CMakeFiles/task_server.dir/rule

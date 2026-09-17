@@ -8,7 +8,11 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
+  "/home/wb/projects/WebBasedCrow/src/auth.cpp" "CMakeFiles/task_server.dir/src/auth.cpp.o" "gcc" "CMakeFiles/task_server.dir/src/auth.cpp.o.d"
+  "/home/wb/projects/WebBasedCrow/src/database.cpp" "CMakeFiles/task_server.dir/src/database.cpp.o" "gcc" "CMakeFiles/task_server.dir/src/database.cpp.o.d"
   "/home/wb/projects/WebBasedCrow/src/main.cpp" "CMakeFiles/task_server.dir/src/main.cpp.o" "gcc" "CMakeFiles/task_server.dir/src/main.cpp.o.d"
+  "/home/wb/projects/WebBasedCrow/src/routes.cpp" "CMakeFiles/task_server.dir/src/routes.cpp.o" "gcc" "CMakeFiles/task_server.dir/src/routes.cpp.o.d"
+  "/home/wb/projects/WebBasedCrow/src/utils.cpp" "CMakeFiles/task_server.dir/src/utils.cpp.o" "gcc" "CMakeFiles/task_server.dir/src/utils.cpp.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

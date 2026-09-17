@@ -207,6 +207,54 @@ uninstall/fast:
 	$(MAKE) $(MAKESILENT) -f Crow/CMakeFiles/uninstall.dir/build.make Crow/CMakeFiles/uninstall.dir/build
 .PHONY : uninstall/fast
 
+src/auth.o: src/auth.cpp.o
+.PHONY : src/auth.o
+
+# target to build an object file
+src/auth.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/task_server.dir/build.make CMakeFiles/task_server.dir/src/auth.cpp.o
+.PHONY : src/auth.cpp.o
+
+src/auth.i: src/auth.cpp.i
+.PHONY : src/auth.i
+
+# target to preprocess a source file
+src/auth.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/task_server.dir/build.make CMakeFiles/task_server.dir/src/auth.cpp.i
+.PHONY : src/auth.cpp.i
+
+src/auth.s: src/auth.cpp.s
+.PHONY : src/auth.s
+
+# target to generate assembly for a file
+src/auth.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/task_server.dir/build.make CMakeFiles/task_server.dir/src/auth.cpp.s
+.PHONY : src/auth.cpp.s
+
+src/database.o: src/database.cpp.o
+.PHONY : src/database.o
+
+# target to build an object file
+src/database.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/task_server.dir/build.make CMakeFiles/task_server.dir/src/database.cpp.o
+.PHONY : src/database.cpp.o
+
+src/database.i: src/database.cpp.i
+.PHONY : src/database.i
+
+# target to preprocess a source file
+src/database.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/task_server.dir/build.make CMakeFiles/task_server.dir/src/database.cpp.i
+.PHONY : src/database.cpp.i
+
+src/database.s: src/database.cpp.s
+.PHONY : src/database.s
+
+# target to generate assembly for a file
+src/database.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/task_server.dir/build.make CMakeFiles/task_server.dir/src/database.cpp.s
+.PHONY : src/database.cpp.s
+
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
 
@@ -231,6 +279,54 @@ src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/task_server.dir/build.make CMakeFiles/task_server.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
+src/routes.o: src/routes.cpp.o
+.PHONY : src/routes.o
+
+# target to build an object file
+src/routes.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/task_server.dir/build.make CMakeFiles/task_server.dir/src/routes.cpp.o
+.PHONY : src/routes.cpp.o
+
+src/routes.i: src/routes.cpp.i
+.PHONY : src/routes.i
+
+# target to preprocess a source file
+src/routes.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/task_server.dir/build.make CMakeFiles/task_server.dir/src/routes.cpp.i
+.PHONY : src/routes.cpp.i
+
+src/routes.s: src/routes.cpp.s
+.PHONY : src/routes.s
+
+# target to generate assembly for a file
+src/routes.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/task_server.dir/build.make CMakeFiles/task_server.dir/src/routes.cpp.s
+.PHONY : src/routes.cpp.s
+
+src/utils.o: src/utils.cpp.o
+.PHONY : src/utils.o
+
+# target to build an object file
+src/utils.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/task_server.dir/build.make CMakeFiles/task_server.dir/src/utils.cpp.o
+.PHONY : src/utils.cpp.o
+
+src/utils.i: src/utils.cpp.i
+.PHONY : src/utils.i
+
+# target to preprocess a source file
+src/utils.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/task_server.dir/build.make CMakeFiles/task_server.dir/src/utils.cpp.i
+.PHONY : src/utils.cpp.i
+
+src/utils.s: src/utils.cpp.s
+.PHONY : src/utils.s
+
+# target to generate assembly for a file
+src/utils.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/task_server.dir/build.make CMakeFiles/task_server.dir/src/utils.cpp.s
+.PHONY : src/utils.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -247,9 +343,21 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... uninstall"
 	@echo "... task_server"
+	@echo "... src/auth.o"
+	@echo "... src/auth.i"
+	@echo "... src/auth.s"
+	@echo "... src/database.o"
+	@echo "... src/database.i"
+	@echo "... src/database.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/routes.o"
+	@echo "... src/routes.i"
+	@echo "... src/routes.s"
+	@echo "... src/utils.o"
+	@echo "... src/utils.i"
+	@echo "... src/utils.s"
 .PHONY : help
 
 

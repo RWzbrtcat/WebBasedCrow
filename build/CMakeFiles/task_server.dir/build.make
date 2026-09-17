@@ -83,18 +83,82 @@ CMakeFiles/task_server.dir/src/main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/task_server.dir/src/main.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/wb/projects/WebBasedCrow/src/main.cpp -o CMakeFiles/task_server.dir/src/main.cpp.s
 
+CMakeFiles/task_server.dir/src/utils.cpp.o: CMakeFiles/task_server.dir/flags.make
+CMakeFiles/task_server.dir/src/utils.cpp.o: /home/wb/projects/WebBasedCrow/src/utils.cpp
+CMakeFiles/task_server.dir/src/utils.cpp.o: CMakeFiles/task_server.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/wb/projects/WebBasedCrow/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/task_server.dir/src/utils.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/task_server.dir/src/utils.cpp.o -MF CMakeFiles/task_server.dir/src/utils.cpp.o.d -o CMakeFiles/task_server.dir/src/utils.cpp.o -c /home/wb/projects/WebBasedCrow/src/utils.cpp
+
+CMakeFiles/task_server.dir/src/utils.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/task_server.dir/src/utils.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/wb/projects/WebBasedCrow/src/utils.cpp > CMakeFiles/task_server.dir/src/utils.cpp.i
+
+CMakeFiles/task_server.dir/src/utils.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/task_server.dir/src/utils.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/wb/projects/WebBasedCrow/src/utils.cpp -o CMakeFiles/task_server.dir/src/utils.cpp.s
+
+CMakeFiles/task_server.dir/src/database.cpp.o: CMakeFiles/task_server.dir/flags.make
+CMakeFiles/task_server.dir/src/database.cpp.o: /home/wb/projects/WebBasedCrow/src/database.cpp
+CMakeFiles/task_server.dir/src/database.cpp.o: CMakeFiles/task_server.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/wb/projects/WebBasedCrow/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/task_server.dir/src/database.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/task_server.dir/src/database.cpp.o -MF CMakeFiles/task_server.dir/src/database.cpp.o.d -o CMakeFiles/task_server.dir/src/database.cpp.o -c /home/wb/projects/WebBasedCrow/src/database.cpp
+
+CMakeFiles/task_server.dir/src/database.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/task_server.dir/src/database.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/wb/projects/WebBasedCrow/src/database.cpp > CMakeFiles/task_server.dir/src/database.cpp.i
+
+CMakeFiles/task_server.dir/src/database.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/task_server.dir/src/database.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/wb/projects/WebBasedCrow/src/database.cpp -o CMakeFiles/task_server.dir/src/database.cpp.s
+
+CMakeFiles/task_server.dir/src/auth.cpp.o: CMakeFiles/task_server.dir/flags.make
+CMakeFiles/task_server.dir/src/auth.cpp.o: /home/wb/projects/WebBasedCrow/src/auth.cpp
+CMakeFiles/task_server.dir/src/auth.cpp.o: CMakeFiles/task_server.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/wb/projects/WebBasedCrow/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/task_server.dir/src/auth.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/task_server.dir/src/auth.cpp.o -MF CMakeFiles/task_server.dir/src/auth.cpp.o.d -o CMakeFiles/task_server.dir/src/auth.cpp.o -c /home/wb/projects/WebBasedCrow/src/auth.cpp
+
+CMakeFiles/task_server.dir/src/auth.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/task_server.dir/src/auth.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/wb/projects/WebBasedCrow/src/auth.cpp > CMakeFiles/task_server.dir/src/auth.cpp.i
+
+CMakeFiles/task_server.dir/src/auth.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/task_server.dir/src/auth.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/wb/projects/WebBasedCrow/src/auth.cpp -o CMakeFiles/task_server.dir/src/auth.cpp.s
+
+CMakeFiles/task_server.dir/src/routes.cpp.o: CMakeFiles/task_server.dir/flags.make
+CMakeFiles/task_server.dir/src/routes.cpp.o: /home/wb/projects/WebBasedCrow/src/routes.cpp
+CMakeFiles/task_server.dir/src/routes.cpp.o: CMakeFiles/task_server.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/wb/projects/WebBasedCrow/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/task_server.dir/src/routes.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/task_server.dir/src/routes.cpp.o -MF CMakeFiles/task_server.dir/src/routes.cpp.o.d -o CMakeFiles/task_server.dir/src/routes.cpp.o -c /home/wb/projects/WebBasedCrow/src/routes.cpp
+
+CMakeFiles/task_server.dir/src/routes.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/task_server.dir/src/routes.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/wb/projects/WebBasedCrow/src/routes.cpp > CMakeFiles/task_server.dir/src/routes.cpp.i
+
+CMakeFiles/task_server.dir/src/routes.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/task_server.dir/src/routes.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/wb/projects/WebBasedCrow/src/routes.cpp -o CMakeFiles/task_server.dir/src/routes.cpp.s
+
 # Object files for target task_server
 task_server_OBJECTS = \
-"CMakeFiles/task_server.dir/src/main.cpp.o"
+"CMakeFiles/task_server.dir/src/main.cpp.o" \
+"CMakeFiles/task_server.dir/src/utils.cpp.o" \
+"CMakeFiles/task_server.dir/src/database.cpp.o" \
+"CMakeFiles/task_server.dir/src/auth.cpp.o" \
+"CMakeFiles/task_server.dir/src/routes.cpp.o"
 
 # External object files for target task_server
 task_server_EXTERNAL_OBJECTS =
 
 /home/wb/projects/WebBasedCrow/bin/task_server: CMakeFiles/task_server.dir/src/main.cpp.o
+/home/wb/projects/WebBasedCrow/bin/task_server: CMakeFiles/task_server.dir/src/utils.cpp.o
+/home/wb/projects/WebBasedCrow/bin/task_server: CMakeFiles/task_server.dir/src/database.cpp.o
+/home/wb/projects/WebBasedCrow/bin/task_server: CMakeFiles/task_server.dir/src/auth.cpp.o
+/home/wb/projects/WebBasedCrow/bin/task_server: CMakeFiles/task_server.dir/src/routes.cpp.o
 /home/wb/projects/WebBasedCrow/bin/task_server: CMakeFiles/task_server.dir/build.make
 /home/wb/projects/WebBasedCrow/bin/task_server: /usr/lib64/mysql/libmysqlclient.so
 /home/wb/projects/WebBasedCrow/bin/task_server: CMakeFiles/task_server.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/wb/projects/WebBasedCrow/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable /home/wb/projects/WebBasedCrow/bin/task_server"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/wb/projects/WebBasedCrow/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Linking CXX executable /home/wb/projects/WebBasedCrow/bin/task_server"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/task_server.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

@@ -1,1 +1,1 @@
-/usr/bin/c++ CMakeFiles/task_server.dir/src/main.cpp.o -o /home/wb/projects/WebBasedCrow/bin/task_server  -Wl,-rpath,/usr/lib64/mysql /usr/lib64/mysql/libmysqlclient.so 
+/usr/bin/c++ CMakeFiles/task_server.dir/src/main.cpp.o CMakeFiles/task_server.dir/src/utils.cpp.o CMakeFiles/task_server.dir/src/database.cpp.o CMakeFiles/task_server.dir/src/auth.cpp.o CMakeFiles/task_server.dir/src/routes.cpp.o -o /home/wb/projects/WebBasedCrow/bin/task_server  -Wl,-rpath,/usr/lib64/mysql /usr/lib64/mysql/libmysqlclient.so 
