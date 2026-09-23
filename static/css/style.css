@@ -2238,3 +2238,19 @@ input[readonly] {
 .site-header-pill .pill-btn-danger:hover {
     background: var(--danger-soft);
 }
+
+.site-footer {
+    text-align: center;
+    padding: 24px 16px 32px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.site-footer a {
+    color: var(--text-muted);
+    text-decoration: none;
+}
+
+.site-footer a:hover {
+    color: var(--text-secondary);
+}
