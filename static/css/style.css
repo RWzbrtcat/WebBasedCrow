@@ -5,6 +5,11 @@
     box-sizing: border-box;
 }
 
+/* 确保 hidden 属性始终生效，避免被 class 的 display 覆盖 */
+[hidden] {
+    display: none !important;
+}
+
 /* ========== CSS 变量定义 ========== */
 :root {
     --bg: #faf9f7;
