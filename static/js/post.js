@@ -111,9 +111,9 @@ function renderPostAdminActions(post, canEdit) {
     const container = document.getElementById('postAdminActions');
     if (!container) return;
     container.innerHTML = canEdit
-        ? `<a class="pill-btn pill-btn-primary" href="/editor?id=${post.id}">编辑</a>
+        ? `<a class="pill-btn" href="/editor?id=${post.id}">编辑</a>
            <button class="pill-btn" id="hideBtn">${post.hidden ? '取消隐藏' : '隐藏'}</button>
-           <button class="pill-btn pill-btn-danger" id="deleteBtn">删除</button>`
+           <button class="pill-btn" id="deleteBtn">删除</button>`
         : '';
     if (canEdit) {
         document.getElementById('hideBtn').addEventListener('click', () => togglePostHidden(post));
