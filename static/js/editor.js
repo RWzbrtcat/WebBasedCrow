@@ -260,6 +260,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const action = btn.dataset.action;
         if (action === 'undo') { undo(); return; }
         if (action === 'redo') { redo(); return; }
+        if (action === 'import') { importMarkdown(); return; }
+        if (action === 'export') { exportMarkdown(); return; }
         applyMarkdown(action);
     });
 
@@ -352,6 +354,35 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             document.getElementById('imageUrlConfirmBtn').click();
         }
+    });
+
+    // 导入 Markdown 文件：读取本地文件并覆盖正文
+    document.getElementById('markdownFileInput').addEventListener('change', (e) => {
+        const input = e.target;
+        const file = input.files && input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            const text = String(reader.result || '');
+            const ta = contentTextarea();
+            if (ta.value.trim() && !confirm('导入将覆盖当前正文内容，是否继续？')) {
+                input.value = '';
+                return;
+            }
+            pushUndoState();
+            ta.value = text;
+            ta.focus({ preventScroll: true });
+            ta.setSelectionRange(0, 0);
+            updatePreview();
+            showToast('已导入 Markdown 文件');
+            input.value = '';
+        };
+        reader.onerror = () => {
+            showToast('读取文件失败', 'error');
+            input.value = '';
+        };
+        reader.readAsText(file, 'utf-8');
     });
 
     initResizer();
@@ -678,6 +709,34 @@ function insertImageMarkdown(url) {
     ta.setSelectionRange(caret, caret);
     updatePreview();
     closeImageModal();
+}
+
+// 打开本地文件选择框，导入 Markdown 文件
+function importMarkdown() {
+    document.getElementById('markdownFileInput').click();
+}
+
+// 将当前正文导出为 .md 文件（文件名取自标题）
+function exportMarkdown() {
+    const content = document.getElementById('content').value;
+    if (!content.trim()) {
+        showToast('正文内容为空，无法导出', 'error');
+        return;
+    }
+
+    const title = document.getElementById('title').value.trim() || 'untitled';
+    const filename = title.replace(/[\\/:*?"<>|]/g, '_') + '.md';
+
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('已导出 Markdown 文件');
 }
 
 // 上传图片到服务器，返回可访问的 URL

@@ -104,6 +104,9 @@
                                 <div class="md-dropdown-empty">当前没有标题</div>
                             </div>
                         </div>
+                        <span class="md-divider"></span>
+                        <button type="button" class="md-btn" data-action="import" title="从本地导入 Markdown 文件">导入</button>
+                        <button type="button" class="md-btn" data-action="export" title="导出为 Markdown 文件">导出</button>
                     </div>
                     <div class="markdown-editor">
                         <div class="markdown-editor-toc">
@@ -152,6 +155,9 @@
         </div>
         <input type="file" id="imageFileInput" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" hidden>
     </div>
+
+    <!-- 导入 Markdown 文件的隐藏输入框 -->
+    <input type="file" id="markdownFileInput" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden>
 
     <script src="/js/marked.min.js"></script>
     <script src="/js/purify.min.js"></script>
