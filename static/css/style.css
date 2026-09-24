@@ -599,6 +599,24 @@ a {
     border-radius: 10px;
 }
 
+.post-hidden {
+    display: inline-block;
+    padding: 1px 9px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--danger);
+    background: var(--danger-soft);
+    border-radius: 10px;
+}
+
+.hidden-section-title {
+    margin-top: 40px;
+    margin-bottom: 4px;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
 .post-stat {
     display: inline-flex;
     align-items: center;
@@ -704,6 +722,16 @@ a {
     line-height: 1.9;
     color: #2b2f36;
     word-break: break-word;
+}
+
+.post-hidden-banner {
+    margin-bottom: 20px;
+    padding: 10px 14px;
+    border: 1px solid var(--danger-soft);
+    border-radius: 8px;
+    background: var(--danger-soft);
+    color: var(--danger);
+    font-size: 0.9rem;
 }
 
 .post-actions {

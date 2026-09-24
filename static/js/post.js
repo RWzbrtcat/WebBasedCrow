@@ -91,6 +91,7 @@ function renderPost(post, authed, isMain, adminId) {
                 <span>${formatDate(post.created_at)}</span>
                 ${updated}
             </div>
+            ${post.hidden ? '<div class="post-hidden-banner">此文章已隐藏，仅作者与管理员可见</div>' : ''}
             <div class="post-content markdown-body" id="postContent"></div>
         </article>
     `;
@@ -105,16 +106,57 @@ function renderPost(post, authed, isMain, adminId) {
     loadComments();
 }
 
-// 将编辑/删除按钮注入顶部灵动岛头部（仅文章作者本人或主管理员可见）
+// 将编辑/隐藏/删除按钮注入顶部灵动岛头部（仅文章作者本人或主管理员可见）
 function renderPostAdminActions(post, canEdit) {
     const container = document.getElementById('postAdminActions');
     if (!container) return;
     container.innerHTML = canEdit
         ? `<a class="pill-btn pill-btn-primary" href="/editor?id=${post.id}">编辑</a>
+           <button class="pill-btn" id="hideBtn">${post.hidden ? '取消隐藏' : '隐藏'}</button>
            <button class="pill-btn pill-btn-danger" id="deleteBtn">删除</button>`
         : '';
     if (canEdit) {
+        document.getElementById('hideBtn').addEventListener('click', () => togglePostHidden(post));
         document.getElementById('deleteBtn').addEventListener('click', () => deletePost(post.id));
+    }
+}
+
+// 隐藏 / 取消隐藏文章（作者本人或主管理员）
+async function togglePostHidden(post) {
+    const targetHidden = !post.hidden;
+    if (targetHidden && !confirm('隐藏后，普通访客将无法看到这篇文章，确定要隐藏吗？')) return;
+
+    try {
+        const data = await apiRequest(`${API_BASE}/posts/${post.id}/hidden`, 'PUT', { hidden: targetHidden });
+        if (data.success) {
+            post.hidden = targetHidden;
+            showToast(targetHidden ? '文章已隐藏' : '文章已显示');
+            renderPostAdminActions(post, true);
+            updateHiddenBanner(post);
+        } else {
+            showToast(data.message || '操作失败', 'error');
+        }
+    } catch (e) {
+        showToast('操作失败，请稍后重试', 'error');
+    }
+}
+
+// 根据隐藏状态插入或移除正文上方的隐藏提示条
+function updateHiddenBanner(post) {
+    const detail = document.getElementById('postDetail');
+    const article = detail ? detail.querySelector('.post-full') : null;
+    if (!article) return;
+    let banner = article.querySelector('.post-hidden-banner');
+    if (post.hidden) {
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.className = 'post-hidden-banner';
+            const content = article.querySelector('.post-content');
+            article.insertBefore(banner, content);
+        }
+        banner.textContent = '此文章已隐藏，仅作者与管理员可见';
+    } else if (banner) {
+        banner.remove();
     }
 }
 

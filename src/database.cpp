@@ -75,6 +75,7 @@ void DataBase::initTable()
             topic VARCHAR(100) NOT NULL DEFAULT '' COMMENT '文章主题',
             status VARCHAR(20) NOT NULL DEFAULT 'published' COMMENT '文章状态: published/draft',
             likes INT NOT NULL DEFAULT 0 COMMENT '点赞数',
+            hidden TINYINT NOT NULL DEFAULT 0 COMMENT '是否隐藏（0 显示 / 1 隐藏）',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
         )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -293,6 +294,16 @@ void DataBase::initTable()
         }
     }
 
+    // 兼容旧表：若 posts 缺少 hidden 列，则补充（用于管理员隐藏文章）
+    if (!columnExists("posts", "hidden"))
+    {
+        const char* alterSql = "ALTER TABLE posts ADD COLUMN hidden TINYINT NOT NULL DEFAULT 0 COMMENT '是否隐藏（0 显示 / 1 隐藏）' AFTER likes";
+        if (mysql_query(conn_, alterSql) != 0)
+        {
+            throw std::runtime_error(std::string("补充 hidden 列失败：") + mysql_error(conn_));
+        }
+    }
+
     // 历史文章（author_id=0）一律归到主管理员，作者显示名同步为主管理员昵称
     backfillLegacyPosts();
 }
@@ -335,7 +346,7 @@ crow::json::wvalue DataBase::getPosts(const std::string& status)
 
     std::string sql = "SELECT p.id, p.title, p.content, p.summary, p.author, p.author_id, p.topic, p.theme, p.status, p.likes, p.created_at, p.updated_at, "
         "(SELECT COUNT(*) FROM comments c WHERE c.post_id=p.id AND c.hidden=0) AS comment_count "
-        "FROM posts p WHERE p.status='" + status + "' ORDER BY p.updated_at DESC";
+        "FROM posts p WHERE p.status='" + status + "' AND p.hidden=0 ORDER BY p.updated_at DESC";
 
     if (mysql_query(conn_, sql.c_str()) != 0)
     {
@@ -374,14 +385,68 @@ crow::json::wvalue DataBase::getPosts(const std::string& status)
     return result;
 }
 
-// 获取单篇文章
-crow::json::wvalue DataBase::getPostById(int id)
+// 获取已隐藏文章列表（主管理员看全部，普通管理员只看自己的）
+crow::json::wvalue DataBase::getHiddenPosts(bool isMain, int adminId)
 {
     std::lock_guard<std::mutex> lock(mtx_);
     checkConnection();
 
     crow::json::wvalue result;
-    std::string sql = "SELECT id, title, content, summary, author, author_id, topic, theme, status, likes, created_at, updated_at FROM posts WHERE id=" + std::to_string(id);
+    std::vector<crow::json::wvalue> posts;
+
+    std::string sql = "SELECT id, title, content, summary, author, author_id, topic, theme, status, likes, hidden, created_at, updated_at "
+        "FROM posts WHERE hidden=1";
+    if (!isMain)
+    {
+        sql += " AND author_id=" + std::to_string(adminId);
+    }
+    sql += " ORDER BY updated_at DESC";
+
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_error(conn_);
+        return result;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (res)
+    {
+        MYSQL_ROW row;
+        while ((row = mysql_fetch_row(res)))
+        {
+            crow::json::wvalue post;
+            post["id"] = std::stoi(row[0]);
+            post["title"] = row[1] ? row[1] : "";
+            post["content"] = row[2] ? row[2] : "";
+            post["summary"] = row[3] ? row[3] : "";
+            post["author"] = row[4] ? row[4] : "";
+            post["author_id"] = row[5] ? std::stoi(row[5]) : 0;
+            post["topic"] = row[6] ? row[6] : "";
+            post["theme"] = row[7] ? row[7] : "";
+            post["status"] = row[8] ? row[8] : "";
+            post["likes"] = row[9] ? std::stoi(row[9]) : 0;
+            post["hidden"] = (row[10] && std::stoi(row[10]) != 0);
+            post["created_at"] = row[11] ? row[11] : "";
+            post["updated_at"] = row[12] ? row[12] : "";
+            posts.push_back(std::move(post));
+        }
+        mysql_free_result(res);
+    }
+
+    result["posts"] = std::move(posts);
+    result["success"] = true;
+    return result;
+}
+
+// 获取单篇文章（隐藏文章仅作者本人或主管理员可见，其余视为不存在）
+crow::json::wvalue DataBase::getPostById(int id, bool isMain, int adminId)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    std::string sql = "SELECT id, title, content, summary, author, author_id, topic, theme, status, likes, hidden, created_at, updated_at FROM posts WHERE id=" + std::to_string(id);
 
     if (mysql_query(conn_, sql.c_str()) != 0)
     {
@@ -403,19 +468,32 @@ crow::json::wvalue DataBase::getPostById(int id)
     }
 
     MYSQL_ROW row = mysql_fetch_row(res);
+    int authorId = row[5] ? std::stoi(row[5]) : 0;
+    bool hidden = row[10] && std::stoi(row[10]) != 0;
+
+    // 隐藏的文章，仅作者本人或主管理员可见
+    if (hidden && !(isMain || (adminId > 0 && adminId == authorId)))
+    {
+        mysql_free_result(res);
+        result["success"] = false;
+        result["message"] = "文章不存在";
+        return result;
+    }
+
     crow::json::wvalue post;
     post["id"] = std::stoi(row[0]);
     post["title"] = row[1] ? row[1] : "";
     post["content"] = row[2] ? row[2] : "";
     post["summary"] = row[3] ? row[3] : "";
     post["author"] = row[4] ? row[4] : "";
-    post["author_id"] = row[5] ? std::stoi(row[5]) : 0;
+    post["author_id"] = authorId;
     post["topic"] = row[6] ? row[6] : "";
     post["theme"] = row[7] ? row[7] : "";
     post["status"] = row[8] ? row[8] : "";
     post["likes"] = row[9] ? std::stoi(row[9]) : 0;
-    post["created_at"] = row[10] ? row[10] : "";
-    post["updated_at"] = row[11] ? row[11] : "";
+    post["hidden"] = hidden;
+    post["created_at"] = row[11] ? row[11] : "";
+    post["updated_at"] = row[12] ? row[12] : "";
     mysql_free_result(res);
 
     result["post"] = std::move(post);
@@ -612,6 +690,57 @@ crow::json::wvalue DataBase::deletePost(int id)
     {
         result["success"] = false;
         result["message"] = mysql_stmt_error(stmt);
+    }
+    mysql_stmt_close(stmt);
+    return result;
+}
+
+// 隐藏 / 取消隐藏文章（作者本人或主管理员，由调用方先做归属校验）
+crow::json::wvalue DataBase::setPostHidden(int id, int hidden)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = "UPDATE posts SET hidden=? WHERE id=?";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    MYSQL_BIND bind[2];
+    std::memset(bind, 0, sizeof(bind));
+
+    bind[0].buffer_type = MYSQL_TYPE_LONG;
+    bind[0].buffer = (void*)&hidden;
+
+    bind[1].buffer_type = MYSQL_TYPE_LONG;
+    bind[1].buffer = (void*)&id;
+
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+    }
+    else
+    {
+        // 幂等操作：即使目标状态与当前一致（affected=0）也视为成功
+        result["success"] = true;
+        result["hidden"] = (hidden != 0);
+        result["message"] = "操作成功";
     }
     mysql_stmt_close(stmt);
     return result;

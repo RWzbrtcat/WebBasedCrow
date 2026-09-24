@@ -36,10 +36,12 @@ public:
 
     // ===== 文章 =====
     crow::json::wvalue getPosts(const std::string& status);
-    crow::json::wvalue getPostById(int id);
+    crow::json::wvalue getHiddenPosts(bool isMain, int adminId);
+    crow::json::wvalue getPostById(int id, bool isMain, int adminId);
     crow::json::wvalue addPost(const std::string& title, const std::string& content, const std::string& summary, const std::string& author, const std::string& topic, const std::string& theme, const std::string& status, int authorId);
     crow::json::wvalue updatePost(int id, const std::string& title, const std::string& content, const std::string& summary, const std::string& topic, const std::string& theme, const std::string& status);
     crow::json::wvalue deletePost(int id);
+    crow::json::wvalue setPostHidden(int id, int hidden);
     crow::json::wvalue changeLikes(int id, int delta);
     bool getPostAuthor(int id, int& outAuthorId, std::string& outAuthor);
 

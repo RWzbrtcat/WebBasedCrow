@@ -23,6 +23,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!IS_DRAFTS) await loadTopics();
     await loadPosts();
 
+    if (IS_DRAFTS) {
+        await loadHiddenPosts();
+        const hiddenList = document.getElementById('hiddenList');
+        if (hiddenList) hiddenList.addEventListener('click', onHiddenListClick);
+    }
+
     const tabs = document.getElementById('topicTabs');
     if (tabs) {
         tabs.addEventListener('click', (e) => {
@@ -207,6 +213,65 @@ async function loadPosts() {
             </div>
         `;
     }
+}
+
+// 草稿页：加载已隐藏文章列表（主管理员看全部，普通管理员看自己的）
+async function loadHiddenPosts() {
+    const section = document.getElementById('hiddenSection');
+    const list = document.getElementById('hiddenList');
+    if (!section || !list) return;
+    try {
+        const data = await apiRequest(`${API_BASE}/hidden`);
+        const posts = (data && data.success) ? (data.posts || []) : [];
+        if (!posts.length) {
+            section.hidden = true;
+            return;
+        }
+        section.hidden = false;
+        list.innerHTML = posts.map(post => {
+            const href = post.status === 'draft' ? `/editor?id=${post.id}` : `/post?id=${post.id}`;
+            return `
+            <article class="post-card" data-href="${href}">
+                <h2 class="post-title"><a href="${href}">${escapeHtml(post.title)}</a></h2>
+                <div class="post-meta">
+                    <span class="post-hidden">已隐藏</span>
+                    <span>${escapeHtml(post.author || '匿名')}</span>
+                    <span class="sep">·</span>
+                    <span>${formatDate(post.created_at)}</span>
+                </div>
+                <button type="button" class="btn btn-secondary hidden-restore-btn" data-id="${post.id}">取消隐藏</button>
+            </article>
+        `;
+        }).join('');
+    } catch (e) {
+        section.hidden = true;
+    }
+}
+
+// 草稿页：处理「取消隐藏」按钮点击，以及隐藏卡片整卡跳转
+async function onHiddenListClick(e) {
+    const btn = e.target.closest('.hidden-restore-btn');
+    if (btn) {
+        const id = Number(btn.dataset.id);
+        btn.disabled = true;
+        try {
+            const data = await apiRequest(`${API_BASE}/posts/${id}/hidden`, 'PUT', { hidden: false });
+            if (data.success) {
+                showToast('文章已恢复显示');
+                await loadHiddenPosts();
+            } else {
+                showToast(data.message || '操作失败', 'error');
+                btn.disabled = false;
+            }
+        } catch (err) {
+            showToast('操作失败，请稍后重试', 'error');
+            btn.disabled = false;
+        }
+        return;
+    }
+    if (e.target.closest('a')) return;
+    const card = e.target.closest('.post-card');
+    if (card && card.dataset.href) window.location.href = card.dataset.href;
 }
 
 // 顶部专栏标签页（数据来源：站长维护的专栏列表）

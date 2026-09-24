@@ -177,6 +177,15 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
         return res;
     });
 
+    // GET /api/hidden - 获取已隐藏文章列表（仅登录；主管理员看全部，普通管理员看自己的）
+    CROW_ROUTE(app, "/api/hidden").methods("GET"_method)([&db](const crow::request& req){
+        Session s;
+        if (!getSession(req, s)) return unauthorizedResponse();
+        crow::response res(db.getHiddenPosts(s.isMain, s.adminId));
+        addCorsHeaders(res);
+        return res;
+    });
+
     // GET /api/topics - 获取专栏列表（公开）
     CROW_ROUTE(app, "/api/topics").methods("GET"_method)([&db](){
         crow::response res(db.getTopics());
@@ -245,9 +254,11 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
         return res;
     });
 
-    // GET /api/posts/<id> - 获取单篇文章
-    CROW_ROUTE(app, "/api/posts/<int>").methods("GET"_method)([&db](int id){
-        crow::response res(db.getPostById(id));
+    // GET /api/posts/<id> - 获取单篇文章（隐藏文章仅作者本人或主管理员可见）
+    CROW_ROUTE(app, "/api/posts/<int>").methods("GET"_method)([&db](const crow::request& req, int id){
+        Session s;
+        bool authed = getSession(req, s);
+        crow::response res(db.getPostById(id, authed && s.isMain, authed ? s.adminId : 0));
         addCorsHeaders(res);
         return res;
     });
@@ -316,6 +327,48 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
         }
 
         crow::response res(db.deletePost(id));
+        addCorsHeaders(res);
+        return res;
+    });
+
+    // PUT /api/posts/<id>/hidden - 隐藏 / 取消隐藏文章（仅作者本人或主管理员）
+    CROW_ROUTE(app, "/api/posts/<int>/hidden").methods("PUT"_method)([&db](const crow::request& req, int id){
+        Session s;
+        if (!getSession(req, s)) return unauthorizedResponse();
+
+        int ownerId = 0;
+        std::string ownerAuthor;
+        if (!db.getPostAuthor(id, ownerId, ownerAuthor))
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["message"] = "文章不存在";
+            crow::response res(404, err);
+            addCorsHeaders(res);
+            return res;
+        }
+        if (!s.isMain && ownerId != s.adminId)
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["message"] = "不能操作他人的文章";
+            crow::response res(403, err);
+            addCorsHeaders(res);
+            return res;
+        }
+
+        auto body = crow::json::load(req.body);
+        if (!body || !body.has("hidden"))
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["message"] = "无效的 JSON 数据";
+            crow::response res(400, err);
+            addCorsHeaders(res);
+            return res;
+        }
+        bool hidden = body["hidden"].b();
+        crow::response res(db.setPostHidden(id, hidden ? 1 : 0));
         addCorsHeaders(res);
         return res;
     });
