@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>草稿 · LazyCat's Blog</title>
+    <title>隐藏文章 · LazyCat's Blog</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
-<body data-mode="drafts">
+<body data-mode="hidden">
     <!-- 站点头部 -->
     <header class="site-header site-header-pill">
         <div class="header-inner">
@@ -15,8 +15,8 @@
             </div>
             <nav class="nav">
                 <a href="/">首页</a>
-                <a href="/drafts" class="active">草稿</a>
-                <a href="/hidden">隐藏</a>
+                <a href="/drafts">草稿</a>
+                <a href="/hidden" class="active">隐藏</a>
                 <a href="/editor">创作</a>
                 <a href="/admin" data-auth-role="main" hidden>管理员</a>
                 <a href="/profile">个人</a>
@@ -27,18 +27,12 @@
 
     <!-- 主体 -->
     <main class="container">
-        <h1 class="page-title" id="pageTitle">草稿</h1>
-        <p class="page-subtitle">未发布的文章草稿</p>
+        <h1 class="page-title" id="pageTitle">隐藏文章</h1>
+        <p class="page-subtitle">已隐藏的文章对访客不可见，可在此恢复显示</p>
 
         <div id="postList" class="post-list">
             <div class="loading">加载中...</div>
         </div>
-
-        <section id="hiddenSection" hidden>
-            <h2 class="hidden-section-title">已隐藏文章</h2>
-            <p class="page-subtitle">已隐藏的文章对访客不可见，可在此恢复显示</p>
-            <div id="hiddenList" class="post-list"></div>
-        </section>
     </main>
 
     <script src="/js/auth.js"></script>

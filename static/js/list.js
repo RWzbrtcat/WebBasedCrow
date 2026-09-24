@@ -6,6 +6,8 @@ const API_BASE = '/api';
 
 // 草稿页模式（body 上 data-mode="drafts"）
 const IS_DRAFTS = document.body.dataset.mode === 'drafts';
+// 隐藏文章页模式（body 上 data-mode="hidden"）
+const IS_HIDDEN = document.body.dataset.mode === 'hidden';
 
 // 全部文章数据 + 当前选中的专栏（'all' 表示全部）
 let allPosts = [];
@@ -20,6 +22,14 @@ const COMMENT_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadAuth();
+
+    if (IS_HIDDEN) {
+        await loadHiddenPage();
+        const hiddenList = document.getElementById('postList');
+        if (hiddenList) hiddenList.addEventListener('click', onHiddenListClick);
+        return;
+    }
+
     if (!IS_DRAFTS) await loadTopics();
     await loadPosts();
 
@@ -215,6 +225,25 @@ async function loadPosts() {
     }
 }
 
+// 渲染隐藏文章卡片列表
+function renderHiddenPosts(posts, list) {
+    list.innerHTML = posts.map(post => {
+        const href = post.status === 'draft' ? `/editor?id=${post.id}` : `/post?id=${post.id}`;
+        return `
+        <article class="post-card" data-href="${href}">
+            <h2 class="post-title"><a href="${href}">${escapeHtml(post.title)}</a></h2>
+            <div class="post-meta">
+                <span class="post-hidden">已隐藏</span>
+                <span>${escapeHtml(post.author || '匿名')}</span>
+                <span class="sep">·</span>
+                <span>${formatDate(post.created_at)}</span>
+            </div>
+            <button type="button" class="btn btn-secondary hidden-restore-btn" data-id="${post.id}">取消隐藏</button>
+        </article>
+    `;
+    }).join('');
+}
+
 // 草稿页：加载已隐藏文章列表（主管理员看全部，普通管理员看自己的）
 async function loadHiddenPosts() {
     const section = document.getElementById('hiddenSection');
@@ -228,23 +257,32 @@ async function loadHiddenPosts() {
             return;
         }
         section.hidden = false;
-        list.innerHTML = posts.map(post => {
-            const href = post.status === 'draft' ? `/editor?id=${post.id}` : `/post?id=${post.id}`;
-            return `
-            <article class="post-card" data-href="${href}">
-                <h2 class="post-title"><a href="${href}">${escapeHtml(post.title)}</a></h2>
-                <div class="post-meta">
-                    <span class="post-hidden">已隐藏</span>
-                    <span>${escapeHtml(post.author || '匿名')}</span>
-                    <span class="sep">·</span>
-                    <span>${formatDate(post.created_at)}</span>
-                </div>
-                <button type="button" class="btn btn-secondary hidden-restore-btn" data-id="${post.id}">取消隐藏</button>
-            </article>
-        `;
-        }).join('');
+        renderHiddenPosts(posts, list);
     } catch (e) {
         section.hidden = true;
+    }
+}
+
+// 隐藏文章页：加载并渲染到主列表
+async function loadHiddenPage() {
+    const list = document.getElementById('postList');
+    if (!list) return;
+    list.innerHTML = '<div class="loading">加载中...</div>';
+    try {
+        const data = await apiRequest(`${API_BASE}/hidden`);
+        const posts = (data && data.success) ? (data.posts || []) : [];
+        if (!posts.length) {
+            list.innerHTML = `<div class="empty-state"><p>暂无隐藏的文章</p></div>`;
+            return;
+        }
+        renderHiddenPosts(posts, list);
+    } catch (e) {
+        list.innerHTML = `
+            <div class="empty-state">
+                <p>❌ 无法连接到服务器</p>
+                <p style="font-size:0.85rem;margin-top:8px;">请确保 C++ 服务正在运行</p>
+            </div>
+        `;
     }
 }
 
@@ -258,7 +296,8 @@ async function onHiddenListClick(e) {
             const data = await apiRequest(`${API_BASE}/posts/${id}/hidden`, 'PUT', { hidden: false });
             if (data.success) {
                 showToast('文章已恢复显示');
-                await loadHiddenPosts();
+                if (IS_HIDDEN) await loadHiddenPage();
+                else await loadHiddenPosts();
             } else {
                 showToast(data.message || '操作失败', 'error');
                 btn.disabled = false;

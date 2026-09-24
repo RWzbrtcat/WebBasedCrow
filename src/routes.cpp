@@ -664,6 +664,17 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
         return htmlResponse(readFile(staticDir + "/drafts.html"));
     });
 
+    // 隐藏文章列表页（仅登录后可访问；主管理员看全部，普通作者看自己的）
+    CROW_ROUTE(app, "/hidden")([staticDir](const crow::request& req){
+        if (!isLoggedIn(req))
+        {
+            crow::response res;
+            res.moved("/login");
+            return res;
+        }
+        return htmlResponse(readFile(staticDir + "/hidden.html"));
+    });
+
     // 编辑器页（新建 / 编辑，仅登录后可访问）
     CROW_ROUTE(app, "/editor")([staticDir](const crow::request& req){
         if (!isLoggedIn(req))
