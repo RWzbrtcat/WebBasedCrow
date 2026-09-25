@@ -25,34 +25,72 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 });
 
-// 把导航栏里的「个人」链接替换为头像：有头像图则显示图片，否则显示灰色人形图标。
-// 若页面没有「个人」链接（如文章页），则在导航栏末尾新建一个头像入口。
+// 在导航栏末尾渲染「头像 + 下拉菜单」：
+// - 有头像图则显示图片，否则显示灰色人形图标。
+// - 点击头像弹出下拉菜单，内含「个人资料」和「退出」两个选项。
 function renderNavAvatar(data, authed) {
     const nav = document.querySelector('.site-header .nav');
     if (!nav) return;
 
-    let avatar = nav.querySelector('a.nav-avatar');
-    if (!avatar) {
-        const profileLink = nav.querySelector('a[href="/profile"]');
-        if (profileLink) {
-            avatar = profileLink;
-            avatar.className = 'nav-avatar';
-        } else {
-            avatar = document.createElement('a');
-            avatar.href = '/profile';
-            avatar.className = 'nav-avatar';
-            nav.appendChild(avatar);
-        }
+    let wrap = nav.querySelector('.nav-avatar-wrap');
+    if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.className = 'nav-avatar-wrap';
+        nav.appendChild(wrap);
     }
-    avatar.title = '个人资料';
-    avatar.setAttribute('aria-label', '个人资料');
 
     if (!authed) {
-        avatar.hidden = true;
+        wrap.hidden = true;
         return;
     }
-    avatar.hidden = false;
+    wrap.hidden = false;
 
+    // 头像按钮
+    let avatar = wrap.querySelector('.nav-avatar');
+    if (!avatar) {
+        avatar = document.createElement('button');
+        avatar.type = 'button';
+        avatar.className = 'nav-avatar';
+        avatar.title = '个人资料';
+        avatar.setAttribute('aria-label', '个人资料');
+        avatar.setAttribute('aria-haspopup', 'true');
+        avatar.setAttribute('aria-expanded', 'false');
+        wrap.appendChild(avatar);
+    }
+
+    // 下拉菜单
+    let menu = wrap.querySelector('.nav-avatar-menu');
+    if (!menu) {
+        menu = document.createElement('div');
+        menu.className = 'nav-avatar-menu';
+        menu.hidden = true;
+
+        const profileItem = document.createElement('a');
+        profileItem.href = '/profile';
+        profileItem.textContent = '个人资料';
+
+        const logoutItem = document.createElement('a');
+        logoutItem.href = '/logout';
+        logoutItem.textContent = '退出';
+
+        menu.appendChild(profileItem);
+        menu.appendChild(logoutItem);
+        wrap.appendChild(menu);
+    }
+
+    // 绑定点击切换（仅一次）
+    if (!avatar.dataset.bound) {
+        avatar.dataset.bound = '1';
+        avatar.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const willOpen = menu.hidden;
+            menu.hidden = !menu.hidden;
+            avatar.setAttribute('aria-expanded', String(willOpen));
+        });
+    }
+
+    // 渲染头像图片 / 占位图标
     const url = data && data.avatar ? String(data.avatar).trim() : '';
 
     if (url) {
@@ -71,8 +109,22 @@ function renderNavAvatar(data, authed) {
 function hideNavAvatar() {
     const nav = document.querySelector('.site-header .nav');
     if (!nav) return;
-    nav.querySelectorAll('a[href="/profile"], .nav-avatar').forEach((el) => { el.hidden = true; });
+    const wrap = nav.querySelector('.nav-avatar-wrap');
+    if (wrap) wrap.hidden = true;
 }
+
+// 点击头像菜单以外的区域时收起菜单
+document.addEventListener('click', (e) => {
+    document.querySelectorAll('.nav-avatar-wrap').forEach((wrap) => {
+        if (wrap.hidden || wrap.contains(e.target)) return;
+        const menu = wrap.querySelector('.nav-avatar-menu');
+        const avatar = wrap.querySelector('.nav-avatar');
+        if (menu && !menu.hidden) {
+            menu.hidden = true;
+            avatar.setAttribute('aria-expanded', 'false');
+        }
+    });
+});
 
 // 默认的灰色人形占位图标（Material Design person）
 function defaultAvatarSvg() {

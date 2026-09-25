@@ -93,7 +93,13 @@ html = '''<!DOCTYPE html>
                 <a href="#">草稿</a>
                 <a href="#">创作</a>
                 <button type="button" class="personalize-btn nav-dropdown-toggle">个性化<span class="nav-dropdown-caret"></span></button>
-                <a href="#" class="nav-avatar" title="个人资料" aria-label="个人资料"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></a>
+                <div class="nav-avatar-wrap">
+                    <button type="button" class="nav-avatar" title="个人资料" aria-label="个人资料" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></button>
+                    <div class="nav-avatar-menu" hidden>
+                        <a href="#">个人资料</a>
+                        <a href="#">退出</a>
+                    </div>
+                </div>
             </nav>
         </div>
     </header>
@@ -142,6 +148,26 @@ html = '''<!DOCTYPE html>
         var update = function () { h.classList.toggle('scrolled', window.scrollY > 0); };
         update();
         window.addEventListener('scroll', update, { passive: true });
+    })();
+    (function () {
+        var avatar = document.querySelector('.nav-avatar');
+        var menu = document.querySelector('.nav-avatar-menu');
+        if (avatar && menu) {
+            avatar.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var willOpen = menu.hidden;
+                menu.hidden = !menu.hidden;
+                avatar.setAttribute('aria-expanded', String(willOpen));
+            });
+        }
+        document.addEventListener('click', function (e) {
+            var wrap = document.querySelector('.nav-avatar-wrap');
+            if (wrap && !wrap.contains(e.target) && menu && !menu.hidden) {
+                menu.hidden = true;
+                avatar.setAttribute('aria-expanded', 'false');
+            }
+        });
     })();
     </script>
 </body>
