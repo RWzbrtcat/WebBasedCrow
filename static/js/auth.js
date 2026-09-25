@@ -1,7 +1,8 @@
 // ============================================
 // 导航栏登录态控制：根据登录状态显示/隐藏入口
 // 带有 data-auth-role="admin" 的链接仅登录后可见。
-// 带有 data-auth-role="main"  的链接仅主管理员可见。
+// 「个人资料」「退出」「管理员」已整合进头像下拉菜单（renderNavAvatar），
+// 其中「管理员」仅主管理员（站长）可见。
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -27,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 在导航栏末尾渲染「头像 + 下拉菜单」：
 // - 有头像图则显示图片，否则显示灰色人形图标。
-// - 点击头像弹出下拉菜单，内含「个人资料」和「退出」两个选项。
+// - 点击头像弹出下拉菜单，内含「个人资料」「退出」，站长额外含「管理员」。
 function renderNavAvatar(data, authed) {
     const nav = document.querySelector('.site-header .nav');
     if (!nav) return;
@@ -74,6 +75,15 @@ function renderNavAvatar(data, authed) {
         logoutItem.textContent = '退出';
 
         menu.appendChild(profileItem);
+
+        // 管理员入口：仅主管理员（站长）可见
+        if (data && data.is_main) {
+            const adminItem = document.createElement('a');
+            adminItem.href = '/admin';
+            adminItem.textContent = '管理员';
+            menu.appendChild(adminItem);
+        }
+
         menu.appendChild(logoutItem);
         wrap.appendChild(menu);
     }
