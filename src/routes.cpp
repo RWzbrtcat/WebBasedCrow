@@ -109,6 +109,27 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
         return res;
     });
 
+    // PUT /api/password - 修改当前登录管理员的密码（登录后可用）
+    CROW_ROUTE(app, "/api/password").methods("PUT"_method)([&db](const crow::request& req){
+        Session s;
+        if (!getSession(req, s)) return unauthorizedResponse();
+
+        auto body = crow::json::load(req.body);
+        if (!body)
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["message"] = "无效的 JSON 数据";
+            return crow::response(400, err);
+        }
+
+        std::string oldPassword = body.has("old_password") ? std::string(body["old_password"].s()) : std::string("");
+        std::string newPassword = body.has("new_password") ? std::string(body["new_password"].s()) : std::string("");
+        crow::response res(db.changePassword(s.adminId, oldPassword, newPassword));
+        addCorsHeaders(res);
+        return res;
+    });
+
     // ========== 管理员管理 API（仅主管理员可用） ==========
 
     // GET /api/admins - 管理员列表

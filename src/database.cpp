@@ -1678,3 +1678,85 @@ bool DataBase::loginAdmin(const std::string& email, const std::string& password,
     mysql_free_result(res);
     return true;
 }
+
+// 修改管理员密码：校验旧密码正确后，重新生成盐并更新哈希
+crow::json::wvalue DataBase::changePassword(int adminId, const std::string& oldPassword, const std::string& newPassword)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    if (oldPassword.empty())
+    {
+        result["success"] = false;
+        result["message"] = "请输入旧密码";
+        return result;
+    }
+    if (newPassword.length() < 6)
+    {
+        result["success"] = false;
+        result["message"] = "新密码至少 6 位";
+        return result;
+    }
+
+    std::string salt = randomHex(16);
+
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    // 仅当旧密码匹配时才更新（WHERE 里校验 SHA2(salt:旧密码, 256)）
+    const char* sql = "UPDATE admins SET salt=?, password_hash=SHA2(CONCAT(?, ':', ?), 256) "
+                      "WHERE id=? AND password_hash=SHA2(CONCAT(salt, ':', ?), 256)";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    MYSQL_BIND bind[5];
+    std::memset(bind, 0, sizeof(bind));
+    bind[0].buffer_type = MYSQL_TYPE_STRING;
+    bind[0].buffer = (void*)salt.c_str();
+    bind[0].buffer_length = salt.length();
+    bind[1].buffer_type = MYSQL_TYPE_STRING;
+    bind[1].buffer = (void*)salt.c_str();
+    bind[1].buffer_length = salt.length();
+    bind[2].buffer_type = MYSQL_TYPE_STRING;
+    bind[2].buffer = (void*)newPassword.c_str();
+    bind[2].buffer_length = newPassword.length();
+    bind[3].buffer_type = MYSQL_TYPE_LONG;
+    bind[3].buffer = (void*)&adminId;
+    bind[4].buffer_type = MYSQL_TYPE_STRING;
+    bind[4].buffer = (void*)oldPassword.c_str();
+    bind[4].buffer_length = oldPassword.length();
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    my_ulonglong affected = mysql_stmt_affected_rows(stmt);
+    mysql_stmt_close(stmt);
+
+    if (affected == 0)
+    {
+        result["success"] = false;
+        result["message"] = "旧密码错误";
+        return result;
+    }
+
+    result["success"] = true;
+    result["message"] = "密码修改成功";
+    return result;
+}

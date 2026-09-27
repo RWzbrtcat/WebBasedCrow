@@ -68,6 +68,7 @@ public:
     std::string getAdminNickname(int id);
     bool getAdminProfile(int id, std::string& outEmail, std::string& outNickname, std::string& outAvatar, bool& outIsMain);
     bool loginAdmin(const std::string& email, const std::string& password, int& outId, bool& outIsMain, std::string& errMsg);
+    crow::json::wvalue changePassword(int adminId, const std::string& oldPassword, const std::string& newPassword);
 
 private:
     // 判断表中某列是否存在

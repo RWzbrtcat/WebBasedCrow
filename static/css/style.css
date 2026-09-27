@@ -1845,6 +1845,10 @@ body.post-page .markdown-body h6 {
     box-shadow: var(--shadow);
 }
 
+.login-card + .login-card {
+    margin-top: 24px;
+}
+
 .login-title {
     font-family: var(--serif);
     font-size: 1.5rem;

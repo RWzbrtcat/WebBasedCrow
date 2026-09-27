@@ -87,6 +87,61 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.textContent = '保存';
         }
     });
+
+    const passwordForm = document.getElementById('passwordForm');
+    const passwordError = document.getElementById('passwordError');
+
+    passwordForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        passwordError.hidden = true;
+
+        const oldPassword = document.getElementById('oldPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (!oldPassword || !newPassword || !confirmPassword) {
+            passwordError.textContent = '请填写所有字段';
+            passwordError.hidden = false;
+            return;
+        }
+        if (newPassword.length < 6) {
+            passwordError.textContent = '新密码至少 6 位';
+            passwordError.hidden = false;
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            passwordError.textContent = '两次输入的新密码不一致';
+            passwordError.hidden = false;
+            return;
+        }
+
+        const btn = passwordForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.textContent = '提交中...';
+
+        try {
+            const res = await fetch(`${API_BASE}/password`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
+            });
+            if (res.status === 401) { window.location.href = '/login'; return; }
+            const data = await res.json();
+            if (data.success) {
+                showToast('密码修改成功');
+                passwordForm.reset();
+            } else {
+                passwordError.textContent = data.message || '修改失败';
+                passwordError.hidden = false;
+            }
+        } catch (err) {
+            passwordError.textContent = '无法连接到服务器';
+            passwordError.hidden = false;
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '修改密码';
+        }
+    });
 });
 
 async function loadProfile() {
