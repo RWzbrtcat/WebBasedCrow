@@ -128,8 +128,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.status === 401) { window.location.href = '/login'; return; }
             const data = await res.json();
             if (data.success) {
-                showToast('密码修改成功');
-                passwordForm.reset();
+                showToast('密码修改成功，请重新登录');
+                setTimeout(() => { window.location.href = '/login'; }, 800);
             } else {
                 passwordError.textContent = data.message || '修改失败';
                 passwordError.hidden = false;

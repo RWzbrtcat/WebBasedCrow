@@ -1680,23 +1680,20 @@ bool DataBase::loginAdmin(const std::string& email, const std::string& password,
 }
 
 // 修改管理员密码：校验旧密码正确后，重新生成盐并更新哈希
-crow::json::wvalue DataBase::changePassword(int adminId, const std::string& oldPassword, const std::string& newPassword)
+bool DataBase::changePassword(int adminId, const std::string& oldPassword, const std::string& newPassword, std::string& errMsg)
 {
     std::lock_guard<std::mutex> lock(mtx_);
     checkConnection();
 
-    crow::json::wvalue result;
     if (oldPassword.empty())
     {
-        result["success"] = false;
-        result["message"] = "请输入旧密码";
-        return result;
+        errMsg = "请输入旧密码";
+        return false;
     }
     if (newPassword.length() < 6)
     {
-        result["success"] = false;
-        result["message"] = "新密码至少 6 位";
-        return result;
+        errMsg = "新密码至少 6 位";
+        return false;
     }
 
     std::string salt = randomHex(16);
@@ -1704,9 +1701,8 @@ crow::json::wvalue DataBase::changePassword(int adminId, const std::string& oldP
     MYSQL_STMT* stmt = mysql_stmt_init(conn_);
     if (!stmt)
     {
-        result["success"] = false;
-        result["message"] = "mysql_stmt_init 失败";
-        return result;
+        errMsg = "mysql_stmt_init 失败";
+        return false;
     }
 
     // 仅当旧密码匹配时才更新（WHERE 里校验 SHA2(salt:旧密码, 256)）
@@ -1714,10 +1710,9 @@ crow::json::wvalue DataBase::changePassword(int adminId, const std::string& oldP
                       "WHERE id=? AND password_hash=SHA2(CONCAT(salt, ':', ?), 256)";
     if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
     {
-        result["success"] = false;
-        result["message"] = mysql_stmt_error(stmt);
+        errMsg = mysql_stmt_error(stmt);
         mysql_stmt_close(stmt);
-        return result;
+        return false;
     }
 
     MYSQL_BIND bind[5];
@@ -1740,10 +1735,9 @@ crow::json::wvalue DataBase::changePassword(int adminId, const std::string& oldP
 
     if (mysql_stmt_execute(stmt) != 0)
     {
-        result["success"] = false;
-        result["message"] = mysql_stmt_error(stmt);
+        errMsg = mysql_stmt_error(stmt);
         mysql_stmt_close(stmt);
-        return result;
+        return false;
     }
 
     my_ulonglong affected = mysql_stmt_affected_rows(stmt);
@@ -1751,12 +1745,9 @@ crow::json::wvalue DataBase::changePassword(int adminId, const std::string& oldP
 
     if (affected == 0)
     {
-        result["success"] = false;
-        result["message"] = "旧密码错误";
-        return result;
+        errMsg = "旧密码错误";
+        return false;
     }
 
-    result["success"] = true;
-    result["message"] = "密码修改成功";
-    return result;
+    return true;
 }

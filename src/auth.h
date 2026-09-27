@@ -20,6 +20,9 @@ std::string createSession(int adminId, bool isMain);
 // 销毁指定 token 的会话
 void destroySession(const std::string& token);
 
+// 销毁指定管理员的全部会话（改密后强制下线）
+void destroySessionsForAdmin(int adminId);
+
 // 从 Cookie 请求头中解析指定名称的值
 std::string getCookie(const crow::request& req, const std::string& name);
 

@@ -44,6 +44,19 @@ void destroySession(const std::string& token)
     g_sessions.erase(token);
 }
 
+// 销毁指定管理员的全部会话（改密后强制下线）
+void destroySessionsForAdmin(int adminId)
+{
+    std::lock_guard<std::mutex> lock(g_sessionsMtx);
+    for (auto it = g_sessions.begin(); it != g_sessions.end(); )
+    {
+        if (it->second.adminId == adminId)
+            it = g_sessions.erase(it);
+        else
+            ++it;
+    }
+}
+
 // 从 Cookie 请求头中解析指定名称的值
 std::string getCookie(const crow::request& req, const std::string& name)
 {

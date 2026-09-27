@@ -125,7 +125,24 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
 
         std::string oldPassword = body.has("old_password") ? std::string(body["old_password"].s()) : std::string("");
         std::string newPassword = body.has("new_password") ? std::string(body["new_password"].s()) : std::string("");
-        crow::response res(db.changePassword(s.adminId, oldPassword, newPassword));
+
+        std::string errMsg;
+        if (db.changePassword(s.adminId, oldPassword, newPassword, errMsg))
+        {
+            // 改密成功后强制下线，销毁该管理员的全部会话
+            destroySessionsForAdmin(s.adminId);
+            crow::json::wvalue result;
+            result["success"] = true;
+            result["message"] = "密码修改成功，请重新登录";
+            crow::response res(result);
+            addCorsHeaders(res);
+            return res;
+        }
+
+        crow::json::wvalue err;
+        err["success"] = false;
+        err["message"] = errMsg;
+        crow::response res(400, err);
         addCorsHeaders(res);
         return res;
     });
