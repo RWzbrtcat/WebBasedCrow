@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <exception>
 #include <iostream>
 #include <string>
@@ -6,13 +7,34 @@
 #include "routes.h"
 #include "utils.h"
 
+namespace
+{
+std::string envStr(const char* name, const std::string& def)
+{
+    const char* v = std::getenv(name);
+    return (v && *v) ? std::string(v) : def;
+}
+
+unsigned int envUInt(const char* name, unsigned int def)
+{
+    const char* v = std::getenv(name);
+    if (!v || !*v) return def;
+    return static_cast<unsigned int>(std::strtoul(v, nullptr, 10));
+}
+} // namespace
+
 int main()
 {
     try
     {
-        // 数据库配置
-        // 生产环境使用配置文件或环境变量传入
-        DataBase db("localhost", "root", "123456", "blogdb", 3306);
+        // 数据库连接配置：通过环境变量传入，源码中不出现真实密码
+        std::string dbHost = envStr("MYSQL_HOST", "localhost");
+        std::string dbUser = envStr("MYSQL_USER", "root");
+        std::string dbPass = envStr("MYSQL_PASSWORD", "");
+        std::string dbName = envStr("MYSQL_DB", "blogdb");
+        unsigned int dbPort = envUInt("MYSQL_PORT", 3306);
+
+        DataBase db(dbHost, dbUser, dbPass, dbName, dbPort);
 
         crow::SimpleApp app;
 

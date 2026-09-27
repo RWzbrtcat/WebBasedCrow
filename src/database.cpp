@@ -4,7 +4,6 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "config.h"
 #include "utils.h"
 
 // ===== 连接管理 =====
@@ -1315,15 +1314,24 @@ bool DataBase::insertAdmin(const std::string& email, const std::string& password
     return ok;
 }
 
-// 首次初始化时创建主管理员账号
+// 首次初始化时创建主管理员账号：随机生成密码并打印一次
 void DataBase::seedMainAdmin()
 {
+    const std::string email = "admin@localhost";
+    std::string password = randomHex(12);
     std::string err;
     int id = 0;
-    if (!insertAdmin(MAIN_ADMIN_EMAIL, MAIN_ADMIN_PASSWORD, 1, err, id))
+    if (!insertAdmin(email, password, 1, err, id))
     {
         throw std::runtime_error("创建主管理员失败：" + err);
     }
+    std::cout << std::endl;
+    std::cout << "========================================" << std::endl;
+    std::cout << "  已创建初始管理员账号（仅显示这一次）" << std::endl;
+    std::cout << "  邮箱: " << email << std::endl;
+    std::cout << "  密码: " << password << std::endl;
+    std::cout << "========================================" << std::endl;
+    std::cout << std::endl;
 }
 
 // 获取主管理员（is_main=1）的 id 与昵称，不存在返回 false

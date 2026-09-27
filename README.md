@@ -54,11 +54,25 @@ make
 ```bash
 # 进入子目录中
 cd bin
-# 运行即可
-./task_server
+# 通过环境变量指定数据库连接（不传则用默认值）
+MYSQL_HOST=localhost MYSQL_USER=root MYSQL_PASSWORD=你的数据库密码 ./task_server
 ```
 
-运行成功后通过http://localhost::8080访问网站
+运行成功后通过 http://localhost:8080 访问网站。
+
+首次启动（`admins` 表为空）时，会自动创建主管理员账号 `admin@localhost`，并**随机生成密码打印到控制台一次**，请立即登录并妥善保存。
+
+## 环境变量
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `MYSQL_HOST` | `localhost` | 数据库地址 |
+| `MYSQL_PORT` | `3306` | 数据库端口 |
+| `MYSQL_USER` | `root` | 数据库账号 |
+| `MYSQL_PASSWORD` | （空） | 数据库密码 |
+| `MYSQL_DB` | `blogdb` | 数据库名 |
+
+> 管理员账号与密码全部保存在数据库 `admins` 表中，密码使用「随机盐 + SHA2 哈希」存储，不存明文。
 
 
 

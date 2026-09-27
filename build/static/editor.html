@@ -17,10 +17,8 @@
             <nav class="nav">
                 <a href="/">首页</a>
                 <a href="/drafts">草稿</a>
+                <a href="/hidden">隐藏</a>
                 <a href="/editor" class="active">创作</a>
-                <a href="/admin" data-auth-role="main" hidden>管理员</a>
-                <a href="/profile">个人</a>
-                <a href="/logout">退出</a>
             </nav>
         </div>
     </header>
@@ -104,6 +102,9 @@
                                 <div class="md-dropdown-empty">当前没有标题</div>
                             </div>
                         </div>
+                        <span class="md-divider"></span>
+                        <button type="button" class="md-btn" data-action="import" title="从本地导入 Markdown 文件">导入</button>
+                        <button type="button" class="md-btn" data-action="export" title="导出为 Markdown 文件">导出</button>
                     </div>
                     <div class="markdown-editor">
                         <div class="markdown-editor-toc">
@@ -153,6 +154,9 @@
         <input type="file" id="imageFileInput" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" hidden>
     </div>
 
+    <!-- 导入 Markdown 文件的隐藏输入框 -->
+    <input type="file" id="markdownFileInput" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden>
+
     <script src="/js/marked.min.js"></script>
     <script src="/js/purify.min.js"></script>
     <script src="/js/highlight.min.js"></script>
@@ -162,5 +166,9 @@
     <script src="/js/header.js"></script>
     <script src="/js/background.js"></script>
     <script src="/js/theme.js"></script>
+
+    <footer class="site-footer">
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">冀ICP备2026039047号</a>
+    </footer>
 </body>
 </html>
