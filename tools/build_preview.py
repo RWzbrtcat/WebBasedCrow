@@ -257,6 +257,12 @@ profile_html = '''<!DOCTYPE html>
 
     <main class="container container-login">
         <div class="profile-card">
+            <div class="profile-avatar-block">
+                <button type="button" class="profile-avatar-picker" aria-label="更改头像">
+                    <img class="profile-avatar-lg" alt="头像预览" src="{avatar}">
+                    <span class="profile-avatar-overlay">更改头像</span>
+                </button>
+            </div>
             <h1 class="profile-heading">个人资料</h1>
 
             <section class="profile-section">
@@ -269,16 +275,6 @@ profile_html = '''<!DOCTYPE html>
                     <div class="form-group">
                         <label for="nickname">昵称</label>
                         <input type="text" id="nickname" value="LazyCat" maxlength="100" required>
-                    </div>
-                    <div class="form-group">
-                        <label>头像</label>
-                        <div class="profile-avatar-row">
-                            <img class="profile-avatar" alt="头像预览" src="{avatar}">
-                            <div class="profile-avatar-actions">
-                                <input type="text" placeholder="头像图片链接" maxlength="500">
-                                <button type="button" class="btn btn-secondary">上传图片</button>
-                            </div>
-                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary">保存</button>
                 </form>

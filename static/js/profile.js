@@ -9,9 +9,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const nicknameInput = document.getElementById('nickname');
     const avatarInput = document.getElementById('avatar');
     const previewEl = document.getElementById('avatarPreview');
+    const placeholderEl = document.getElementById('avatarPlaceholder');
+    const pickerEl = document.getElementById('avatarPicker');
+    const overlayEl = document.getElementById('avatarOverlay');
     const errorEl = document.getElementById('profileError');
-    const uploadBtn = document.getElementById('avatarUploadBtn');
     const fileInput = document.getElementById('avatarFileInput');
+
+    const OVERLAY_TEXT = '更改头像';
+    const UPLOADING_TEXT = '上传中...';
 
     loadProfile();
 
@@ -19,69 +24,88 @@ document.addEventListener('DOMContentLoaded', () => {
         if (url) {
             previewEl.src = url;
             previewEl.hidden = false;
+            placeholderEl.hidden = true;
         } else {
             previewEl.removeAttribute('src');
             previewEl.hidden = true;
+            placeholderEl.hidden = false;
         }
     }
 
-    avatarInput.addEventListener('input', () => renderAvatar(avatarInput.value.trim()));
+    // 点击头像直接选择图片上传（不再显示图片链接输入框与上传按钮）
+    pickerEl.addEventListener('click', () => {
+        if (pickerEl.disabled) return;
+        fileInput.click();
+    });
 
-    uploadBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', async (e) => {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
-        uploadBtn.disabled = true;
-        uploadBtn.textContent = '上传中...';
+
+        pickerEl.disabled = true;
+        pickerEl.classList.add('is-uploading');
+        overlayEl.textContent = UPLOADING_TEXT;
+
         try {
             const url = await uploadImage(file);
             avatarInput.value = url;
             renderAvatar(url);
-            showToast('头像上传成功');
+            // 上传后立即保存，避免用户找不到保存入口
+            const ok = await saveProfile();
+            showToast(ok ? '头像已更新' : '头像已上传，但保存失败');
         } catch (err) {
             showToast(err.message || '上传失败', 'error');
         } finally {
             e.target.value = '';
-            uploadBtn.disabled = false;
-            uploadBtn.textContent = '上传图片';
+            pickerEl.disabled = false;
+            pickerEl.classList.remove('is-uploading');
+            overlayEl.textContent = OVERLAY_TEXT;
+            pickerEl.blur();
         }
     });
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    // 提交资料（昵称 + 头像）；silent 为 true 时不提示成功 toast
+    async function saveProfile(silent = false) {
         errorEl.hidden = true;
 
         const nickname = nicknameInput.value.trim();
-        const avatar = avatarInput.value.trim();
-
         if (!nickname) {
             errorEl.textContent = '昵称不能为空';
             errorEl.hidden = false;
-            return;
+            return false;
         }
-
-        const btn = form.querySelector('button[type="submit"]');
-        btn.disabled = true;
-        btn.textContent = '保存中...';
 
         try {
             const res = await fetch(`${API_BASE}/profile`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nickname, avatar })
+                body: JSON.stringify({ nickname, avatar: avatarInput.value.trim() })
             });
-            if (res.status === 401) { window.location.href = '/login'; return; }
+            if (res.status === 401) { window.location.href = '/login'; return false; }
             const data = await res.json();
             if (data.success) {
-                showToast('资料已保存');
+                if (!silent) showToast('资料已保存');
                 if (data.nickname) nicknameInput.value = data.nickname;
-            } else {
-                errorEl.textContent = data.message || '保存失败';
-                errorEl.hidden = false;
+                return true;
             }
+            errorEl.textContent = data.message || '保存失败';
+            errorEl.hidden = false;
+            return false;
         } catch (err) {
             errorEl.textContent = '无法连接到服务器';
             errorEl.hidden = false;
+            return false;
+        }
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.textContent = '保存中...';
+        try {
+            await saveProfile();
         } finally {
             btn.disabled = false;
             btn.textContent = '保存';
@@ -154,9 +178,11 @@ async function loadProfile() {
         document.getElementById('nickname').value = data.nickname || '';
         document.getElementById('avatar').value = data.avatar || '';
         const preview = document.getElementById('avatarPreview');
+        const placeholder = document.getElementById('avatarPlaceholder');
         if (data.avatar) {
             preview.src = data.avatar;
             preview.hidden = false;
+            if (placeholder) placeholder.hidden = true;
         }
     } catch (err) {
         document.getElementById('profileError').textContent = '无法连接到服务器';
