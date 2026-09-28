@@ -114,6 +114,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const passwordForm = document.getElementById('passwordForm');
     const passwordError = document.getElementById('passwordError');
+    const passwordModal = document.getElementById('passwordModal');
+    const openPasswordBtn = document.getElementById('openPasswordBtn');
+
+    // 修改密码弹窗：点击右下角按钮打开，支持关闭按钮 / 取消 / 点击遮罩 / Esc
+    function openPasswordModal() {
+        passwordForm.reset();
+        passwordError.hidden = true;
+        passwordModal.hidden = false;
+        document.body.style.overflow = 'hidden';
+        document.getElementById('oldPassword').focus();
+    }
+
+    function closePasswordModal() {
+        passwordModal.hidden = true;
+        passwordError.hidden = true;
+        document.body.style.overflow = '';
+    }
+
+    openPasswordBtn.addEventListener('click', openPasswordModal);
+    document.getElementById('passwordModalClose').addEventListener('click', closePasswordModal);
+    document.getElementById('passwordCancelBtn').addEventListener('click', closePasswordModal);
+    passwordModal.addEventListener('click', (e) => {
+        if (e.target === passwordModal) closePasswordModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !passwordModal.hidden) closePasswordModal();
+    });
 
     passwordForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -163,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
             passwordError.hidden = false;
         } finally {
             btn.disabled = false;
-            btn.textContent = '修改密码';
+            btn.textContent = '确认修改';
         }
     });
 });

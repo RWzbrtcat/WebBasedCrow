@@ -276,30 +276,58 @@ profile_html = '''<!DOCTYPE html>
                         <label for="nickname">昵称</label>
                         <input type="text" id="nickname" value="LazyCat" maxlength="100" required>
                     </div>
-                    <button type="submit" class="btn btn-primary">保存</button>
-                </form>
-            </section>
-
-            <section class="profile-section">
-                <h2 class="profile-section-title">账号安全</h2>
-                <form>
-                    <div class="form-group">
-                        <label for="oldPassword">当前密码</label>
-                        <input type="password" id="oldPassword" required>
+                    <div class="profile-actions">
+                        <button type="button" class="btn btn-secondary" id="openPasswordBtn">修改密码</button>
+                        <button type="submit" class="btn btn-primary">保存</button>
                     </div>
-                    <div class="form-group">
-                        <label for="newPassword">新密码</label>
-                        <input type="password" id="newPassword" placeholder="至少 6 位" minlength="6" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="confirmPassword">确认新密码</label>
-                        <input type="password" id="confirmPassword" minlength="6" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">修改密码</button>
                 </form>
             </section>
         </div>
     </main>
+
+    <div class="image-modal-overlay" id="passwordModal">
+        <div class="image-modal password-modal" role="dialog" aria-modal="true" aria-labelledby="passwordModalTitle">
+            <div class="image-modal-header">
+                <h3 id="passwordModalTitle">修改密码</h3>
+                <button type="button" class="image-modal-close" aria-label="关闭">&times;</button>
+            </div>
+            <form class="image-modal-body">
+                <div class="form-group">
+                    <label for="oldPassword">当前密码</label>
+                    <input type="password" id="oldPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">新密码</label>
+                    <input type="password" id="newPassword" placeholder="至少 6 位" minlength="6" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">确认新密码</label>
+                    <input type="password" id="confirmPassword" minlength="6" required>
+                </div>
+                <div class="password-modal-actions">
+                    <button type="button" class="btn btn-secondary" id="passwordCancelBtn">取消</button>
+                    <button type="submit" class="btn btn-primary">确认修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        var modal = document.getElementById('passwordModal');
+        var openBtn = document.getElementById('openPasswordBtn');
+        if (!modal || !openBtn) return;
+        var close = function () { modal.hidden = true; document.body.style.overflow = ''; };
+        openBtn.addEventListener('click', function () {
+            modal.hidden = false;
+            document.body.style.overflow = 'hidden';
+        });
+        modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+        document.getElementById('passwordCancelBtn').addEventListener('click', close);
+        modal.querySelector('.image-modal-close').addEventListener('click', close);
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    })();
+    </script>
 
     <footer class="site-footer">
         <a href="#">冀ICP备2026039047号</a>

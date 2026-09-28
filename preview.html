@@ -2117,6 +2117,14 @@ body.post-page .markdown-body h6 {
     margin-bottom: 16px;
 }
 
+.profile-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 .profile-error {
     color: var(--danger);
     font-size: 0.88rem;
@@ -2127,6 +2135,26 @@ body.post-page .markdown-body h6 {
     background: var(--surface);
     color: var(--text-muted);
     cursor: not-allowed;
+}
+
+/* 修改密码弹窗（复用站内弹窗样式） */
+.password-modal {
+    max-width: 380px;
+}
+
+.password-modal .image-modal-body {
+    gap: 0;
+}
+
+.password-modal .form-group:last-of-type {
+    margin-bottom: 0;
+}
+
+.password-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
 }
 
 /* 编辑器只读作者字段的视觉提示 */
