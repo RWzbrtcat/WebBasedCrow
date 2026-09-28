@@ -24,12 +24,15 @@
 
     <!-- 主体 -->
     <main class="container container-home">
-        <aside class="home-sidebar" id="themeSidebar"></aside>
         <div class="home-main">
             <h1 class="page-title" id="pageTitle">全部文章</h1>
             <p class="page-subtitle">记录技术 · 分享生活</p>
 
-            <nav id="topicTabs" class="topic-tabs"></nav>
+            <!-- 顶部双层筛选条：第一层专栏，第二层主题 -->
+            <div class="filter-bar">
+                <div class="filter-row" id="topicTabs"></div>
+                <div class="filter-row filter-row-theme" id="themeTabs" hidden></div>
+            </div>
 
             <div class="topic-add" id="topicAdd" hidden>
                 <input type="text" id="topicAddInput" placeholder="新专栏名称" maxlength="100">

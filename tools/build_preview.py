@@ -112,38 +112,26 @@ html = '''<!DOCTYPE html>
     </header>
 
     <main class="container container-home">
-        <aside class="home-sidebar">
-            <div class="home-sidebar-title">专栏 · 主题</div>
-            <button type="button" class="sidebar-collapse" id="sidebarCollapse" aria-expanded="false" aria-controls="sidebarBody">
-                <span>专栏 · 主题</span><span class="sidebar-collapse-caret"></span>
-            </button>
-            <div class="sidebar-body open" id="sidebarBody">
-                <div class="sidebar-all active">全部文章<span class="sidebar-count">4</span></div>
-                <div class="sidebar-group">
-                    <div class="sidebar-topic-row">
-                        <button type="button" class="sidebar-caret open" aria-label="展开主题"></button>
-                        <span class="sidebar-topic">C++ 技术<span class="sidebar-count">3</span></span>
-                    </div>
-                    <ul class="sidebar-theme-list">
-                        <li class="sidebar-theme">智能指针<span class="sidebar-count">1</span></li>
-                        <li class="sidebar-theme active">Crow 框架<span class="sidebar-count">1</span></li>
-                        <li class="sidebar-theme">并发编程<span class="sidebar-count">1</span></li>
-                    </ul>
-                </div>
-                <div class="sidebar-group">
-                    <div class="sidebar-topic-row">
-                        <button type="button" class="sidebar-caret" aria-label="展开主题"></button>
-                        <span class="sidebar-topic">生活随笔<span class="sidebar-count">1</span></span>
-                    </div>
-                </div>
-            </div>
-        </aside>
         <div class="home-main">
             <h1 class="page-title">全部文章</h1>
             <p class="page-subtitle">记录技术 · 分享生活</p>
-            <nav class="topic-tabs">
-                <span class="topic-tab topic-tab-add">＋ 专栏</span>
-            </nav>
+            <div class="filter-bar">
+                <div class="filter-row">
+                    <span class="filter-label">专栏</span>
+                    <span class="filter-tab active" data-name="all">全部文章<span class="filter-count">4</span></span>
+                    <span class="filter-tab" data-name="cpp">C++ 技术<span class="filter-count">3</span><button type="button" class="filter-tab-del" title="删除专栏">×</button></span>
+                    <span class="filter-tab" data-name="life">生活随笔<span class="filter-count">1</span><button type="button" class="filter-tab-del" title="删除专栏">×</button></span>
+                    <span class="filter-tab filter-tab-add">＋ 专栏</span>
+                </div>
+                <div class="filter-row filter-row-theme">
+                    <span class="filter-label">主题</span>
+                    <span class="filter-tab active" data-name="all">全部<span class="filter-count">4</span></span>
+                    <span class="filter-tab" data-name="t1">智能指针<span class="filter-count">1</span></span>
+                    <span class="filter-tab" data-name="t2">Crow 框架<span class="filter-count">1</span></span>
+                    <span class="filter-tab" data-name="t3">并发编程<span class="filter-count">1</span></span>
+                    <span class="filter-tab" data-name="t4">旅行<span class="filter-count">1</span></span>
+                </div>
+            </div>
             <div class="post-list">
 {cards}
             </div>
@@ -201,38 +189,13 @@ html = '''<!DOCTYPE html>
         });
     })();
     (function () {
-        var sidebar = document.querySelector('.home-sidebar');
-        if (!sidebar) return;
-        var collapse = document.getElementById('sidebarCollapse');
-        var body = document.getElementById('sidebarBody');
-        collapse.addEventListener('click', function () {
-            var open = collapse.getAttribute('aria-expanded') === 'true';
-            collapse.setAttribute('aria-expanded', open ? 'false' : 'true');
-            body.classList.toggle('open', !open);
-        });
-        sidebar.addEventListener('click', function (e) {
-            var caret = e.target.closest('.sidebar-caret');
-            if (caret) { caret.classList.toggle('open'); return; }
-            var topic = e.target.closest('.sidebar-topic');
-            if (topic) {
-                sidebar.querySelectorAll('.sidebar-all').forEach(function (n) { n.classList.remove('active'); });
-                sidebar.querySelectorAll('.sidebar-theme').forEach(function (n) { n.classList.remove('active'); });
-                sidebar.querySelectorAll('.sidebar-topic').forEach(function (n) { n.classList.remove('active'); });
-                topic.classList.add('active');
-                return;
-            }
-            var theme = e.target.closest('.sidebar-theme');
-            if (theme) {
-                sidebar.querySelectorAll('.sidebar-all').forEach(function (n) { n.classList.remove('active'); });
-                sidebar.querySelectorAll('.sidebar-theme').forEach(function (n) { n.classList.remove('active'); });
-                theme.classList.add('active');
-                return;
-            }
-            var all = e.target.closest('.sidebar-all');
-            if (all) {
-                sidebar.querySelectorAll('.sidebar-topic, .sidebar-theme').forEach(function (n) { n.classList.remove('active'); });
-                all.classList.add('active');
-            }
+        document.querySelectorAll('.filter-row').forEach(function (row) {
+            row.addEventListener('click', function (e) {
+                var tab = e.target.closest('.filter-tab');
+                if (!tab || tab.classList.contains('filter-tab-add')) return;
+                row.querySelectorAll('.filter-tab').forEach(function (n) { n.classList.remove('active'); });
+                tab.classList.add('active');
+            });
         });
     })();
     </script>

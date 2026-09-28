@@ -15,7 +15,6 @@ let currentTopic = 'all';
 let currentTheme = 'all';  // 当前选中的主题（'all' 表示未按主题筛选）
 let topicsData = [];   // 站长维护的专栏列表 [{ id, name }]
 let isAdmin = false;
-let expandedTopics = new Set();  // 左侧分类树中已展开的专栏名
 
 // 点赞 / 评论统计小图标（内联 SVG，避免依赖 emoji 字体）
 const LIKE_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
@@ -40,77 +39,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (hiddenList) hiddenList.addEventListener('click', onHiddenListClick);
     }
 
-    // 左侧分类树：专栏可展开主题，点击按专栏 / 主题筛选
-    const sidebar = document.getElementById('themeSidebar');
-    if (sidebar) {
-        sidebar.addEventListener('click', (e) => {
-            // 窄屏折叠开关
-            const collapse = e.target.closest('.sidebar-collapse');
-            if (collapse) {
-                const body = document.getElementById('sidebarBody');
-                const open = collapse.getAttribute('aria-expanded') === 'true';
-                collapse.setAttribute('aria-expanded', open ? 'false' : 'true');
-                if (body) body.classList.toggle('open', !open);
-                return;
-            }
-
-            // 展开 / 收起专栏下的主题
-            const caret = e.target.closest('.sidebar-caret');
-            if (caret) {
-                const name = caret.dataset.toggle;
-                if (expandedTopics.has(name)) expandedTopics.delete(name);
-                else expandedTopics.add(name);
-                renderThemeSidebar();
-                return;
-            }
-
+    // 顶部双层筛选条：第一行选专栏，第二行选主题
+    const topicRow = document.getElementById('topicTabs');
+    if (topicRow) {
+        topicRow.addEventListener('click', (e) => {
             // 删除专栏（仅站长）
-            const del = e.target.closest('.sidebar-del');
+            const del = e.target.closest('.filter-tab-del');
             if (del) {
                 handleDeleteTopic(Number(del.dataset.id));
                 return;
             }
-
-            const allBtn = e.target.closest('.sidebar-all');
-            if (allBtn) {
-                currentTopic = 'all';
-                currentTheme = 'all';
-                renderThemeSidebar();
-                renderPosts();
+            // 新增专栏（仅站长）
+            if (e.target.closest('.filter-tab-add')) {
+                showTopicAdd();
                 return;
             }
-
-            const theme = e.target.closest('.sidebar-theme');
-            if (theme) {
-                const topic = theme.dataset.topic;
-                const name = theme.dataset.name;
-                if (currentTopic === topic && currentTheme === name) {
-                    currentTheme = 'all';
-                } else {
-                    currentTopic = topic;
-                    currentTheme = name;
-                }
-                renderThemeSidebar();
-                renderPosts();
-                return;
-            }
-
-            const topicBtn = e.target.closest('.sidebar-topic');
-            if (topicBtn) {
-                currentTopic = topicBtn.dataset.name;
-                currentTheme = 'all';
-                expandedTopics.add(currentTopic);
-                renderThemeSidebar();
-                renderPosts();
-            }
+            const tab = e.target.closest('.filter-tab');
+            if (!tab) return;
+            currentTopic = tab.dataset.name;
+            currentTheme = 'all';
+            renderTopicTabs();
+            renderThemeTabs();
+            renderPosts();
         });
     }
 
-    const tabs = document.getElementById('topicTabs');
-    if (tabs) {
-        tabs.addEventListener('click', (e) => {
-            const addBtn = e.target.closest('.topic-tab-add');
-            if (addBtn) showTopicAdd();
+    const themeRow = document.getElementById('themeTabs');
+    if (themeRow) {
+        themeRow.addEventListener('click', (e) => {
+            const tab = e.target.closest('.filter-tab');
+            if (!tab) return;
+            const name = tab.dataset.name;
+            // 再次点击已选中的主题可取消，回到该专栏全部
+            currentTheme = (currentTheme === name && name !== 'all') ? 'all' : name;
+            renderThemeTabs();
+            renderPosts();
         });
     }
 
@@ -230,7 +193,7 @@ async function loadPosts() {
             allPosts = data.posts || [];
             if (!IS_DRAFTS) {
                 renderTopicTabs();
-                renderThemeSidebar();
+                renderThemeTabs();
             }
             renderPosts();
         } else {
@@ -334,88 +297,74 @@ async function onHiddenListClick(e) {
     if (card && card.dataset.href) window.location.href = card.dataset.href;
 }
 
-// 顶部标签区：专栏筛选已统一到左侧分类树，这里只保留站长的「新增专栏」入口
+// 筛选条第一层：专栏（全部文章 + 各专栏 + 站长的「＋ 专栏」）
 function renderTopicTabs() {
     const container = document.getElementById('topicTabs');
     if (!container) return;
 
-    if (!isAdmin) {
+    // 非站长且一个专栏都没有时，整行没必要出现
+    if (!isAdmin && topicsData.length === 0) {
         container.innerHTML = '';
-        container.style.display = 'none';
+        container.hidden = true;
         return;
     }
-    container.style.display = 'flex';
-    container.innerHTML = '<span class="topic-tab topic-tab-add" id="addTopicToggle">＋ 专栏</span>';
+    container.hidden = false;
+
+    let html = '<span class="filter-label">专栏</span>';
+    html += `<span class="filter-tab${currentTopic === 'all' ? ' active' : ''}" data-name="all">全部文章<span class="filter-count">${allPosts.length}</span></span>`;
+
+    topicsData.forEach(t => {
+        const count = allPosts.filter(p => (p.topic || '').trim() === t.name).length;
+        const delBtn = isAdmin
+            ? `<button type="button" class="filter-tab-del" data-id="${t.id}" title="删除专栏">×</button>`
+            : '';
+        html += `<span class="filter-tab${currentTopic === t.name ? ' active' : ''}" data-name="${escapeAttr(t.name)}">${escapeHtml(t.name)}<span class="filter-count">${count}</span>${delBtn}</span>`;
+    });
+
+    if (isAdmin) {
+        html += '<span class="filter-tab filter-tab-add" id="addTopicToggle">＋ 专栏</span>';
+    }
+
+    container.innerHTML = html;
 }
 
-// 左侧分类树：专栏（可展开主题）+ 主题，默认展开当前选中专栏
-function renderThemeSidebar() {
-    const sidebar = document.getElementById('themeSidebar');
-    if (!sidebar) return;
+// 筛选条第二层：主题（随选中专栏变化；选中「全部文章」时列出所有主题）
+function renderThemeTabs() {
+    const container = document.getElementById('themeTabs');
+    if (!container) return;
 
-    // 按专栏收集主题（去重、保持文章出现顺序）
-    const groups = topicsData.map(t => {
-        const themes = [];
-        const seen = new Set();
-        allPosts.forEach(p => {
-            if ((p.topic || '').trim() !== t.name) return;
-            const theme = (p.theme || '').trim();
-            if (!theme || seen.has(theme)) return;
-            seen.add(theme);
-            themes.push(theme);
-        });
-        return { id: t.id, name: t.name, themes };
+    const inTopic = (p) => currentTopic === 'all' || (p.topic || '').trim() === currentTopic;
+
+    const themes = [];
+    const seen = new Set();
+    allPosts.forEach(p => {
+        if (!inTopic(p)) return;
+        const th = (p.theme || '').trim();
+        if (!th || seen.has(th)) return;
+        seen.add(th);
+        themes.push(th);
     });
 
-    if (topicsData.length === 0) {
-        sidebar.innerHTML = '';
-        sidebar.style.display = 'none';
+    // 没有主题时整行隐藏，只留一层筛选
+    if (!themes.length) {
+        container.innerHTML = '';
+        container.hidden = true;
         return;
     }
-    sidebar.style.display = 'block';
+    container.hidden = false;
 
-    // 选中某专栏时自动展开它
-    if (currentTopic !== 'all') expandedTopics.add(currentTopic);
-
-    const countOf = (topic, theme) => allPosts.filter(p =>
-        (p.topic || '').trim() === topic &&
-        (!theme || (p.theme || '').trim() === theme)
+    const countOf = (th) => allPosts.filter(p =>
+        inTopic(p) && (p.theme || '').trim() === th
     ).length;
+    const totalInTopic = allPosts.filter(inTopic).length;
 
-    let html = `
-        <div class="home-sidebar-title">专栏 · 主题</div>
-        <button type="button" class="sidebar-collapse" id="sidebarCollapse" aria-expanded="false" aria-controls="sidebarBody">
-            <span>专栏 · 主题</span><span class="sidebar-collapse-caret"></span>
-        </button>
-        <div class="sidebar-body" id="sidebarBody">
-            <div class="sidebar-all${currentTopic === 'all' ? ' active' : ''}" data-name="all">全部文章<span class="sidebar-count">${allPosts.length}</span></div>
-    `;
-
-    groups.forEach(g => {
-        const expanded = expandedTopics.has(g.name);
-        const topicActive = currentTopic === g.name && currentTheme === 'all';
-        const delBtn = isAdmin
-            ? `<button type="button" class="sidebar-del" data-id="${g.id}" title="删除专栏">×</button>`
-            : '';
-        html += `<div class="sidebar-group">
-            <div class="sidebar-topic-row">
-                <button type="button" class="sidebar-caret${expanded ? ' open' : ''}" data-toggle="${escapeAttr(g.name)}" aria-label="展开主题" aria-expanded="${expanded}"></button>
-                <span class="sidebar-topic${topicActive ? ' active' : ''}" data-name="${escapeAttr(g.name)}">${escapeHtml(g.name)}<span class="sidebar-count">${countOf(g.name)}</span></span>
-                ${delBtn}
-            </div>`;
-        if (expanded && g.themes.length) {
-            html += '<ul class="sidebar-theme-list">';
-            g.themes.forEach(th => {
-                const active = currentTopic === g.name && currentTheme === th;
-                html += `<li class="sidebar-theme${active ? ' active' : ''}" data-topic="${escapeAttr(g.name)}" data-name="${escapeAttr(th)}">${escapeHtml(th)}<span class="sidebar-count">${countOf(g.name, th)}</span></li>`;
-            });
-            html += '</ul>';
-        }
-        html += '</div>';
+    let html = '<span class="filter-label">主题</span>';
+    html += `<span class="filter-tab${currentTheme === 'all' ? ' active' : ''}" data-name="all">全部<span class="filter-count">${totalInTopic}</span></span>`;
+    themes.forEach(th => {
+        html += `<span class="filter-tab${currentTheme === th ? ' active' : ''}" data-name="${escapeAttr(th)}">${escapeHtml(th)}<span class="filter-count">${countOf(th)}</span></span>`;
     });
 
-    html += '</div>';
-    sidebar.innerHTML = html;
+    container.innerHTML = html;
 }
 
 function renderPosts() {
@@ -539,9 +488,8 @@ async function handleAddTopic() {
             showToast('专栏已添加');
             hideTopicAdd();
             await loadTopics();
-            expandedTopics.add(name);
             renderTopicTabs();
-            renderThemeSidebar();
+            renderThemeTabs();
         } else {
             showToast(data.message || '添加失败', 'error');
         }
@@ -556,17 +504,14 @@ async function handleDeleteTopic(id) {
         const data = await apiRequest(`${API_BASE}/topics/${id}`, 'DELETE');
         if (data.success) {
             const deleted = topicsData.find(t => t.id === id);
-            if (deleted) {
-                expandedTopics.delete(deleted.name);
-                if (currentTopic === deleted.name) {
-                    currentTopic = 'all';
-                    currentTheme = 'all';
-                }
+            if (deleted && currentTopic === deleted.name) {
+                currentTopic = 'all';
+                currentTheme = 'all';
             }
             showToast('专栏已删除');
             await loadTopics();
             renderTopicTabs();
-            renderThemeSidebar();
+            renderThemeTabs();
             renderPosts();
         } else {
             showToast(data.message || '删除失败', 'error');
