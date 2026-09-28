@@ -418,12 +418,17 @@ html {
 }
 
 .home-sidebar {
-    flex: 0 0 200px;
+    flex: 0 0 220px;
     position: sticky;
     top: 80px;
     max-height: calc(100vh - 104px);
     overflow-y: auto;
     padding-right: 4px;
+}
+
+/* 窄屏折叠开关（桌面隐藏） */
+.sidebar-collapse {
+    display: none;
 }
 
 .home-sidebar-title {
@@ -440,11 +445,14 @@ html {
 }
 
 .sidebar-topic {
+    flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 6px;
-    padding: 4px 10px;
-    margin-bottom: 4px;
+    padding: 4px 8px;
+    margin-bottom: 0;
     font-size: 0.86rem;
     font-weight: 600;
     color: var(--text);
@@ -454,6 +462,106 @@ html {
     transition: background 0.12s, color 0.12s;
 }
 
+.sidebar-topic-row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.sidebar-caret {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+.sidebar-caret::before {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 6px;
+    width: 0;
+    height: 0;
+    border-left: 5px solid var(--text-muted);
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    transition: transform var(--transition);
+}
+
+.sidebar-caret.open::before {
+    transform: rotate(90deg);
+}
+
+.sidebar-caret:hover::before {
+    border-left-color: var(--accent);
+}
+
+.sidebar-all {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 5px 8px;
+    margin-bottom: 6px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--text);
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.12s, color 0.12s;
+}
+
+.sidebar-all:hover {
+    background: var(--bg);
+}
+
+.sidebar-all.active {
+    background: var(--accent);
+    color: #fff;
+}
+
+.sidebar-count {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg);
+    border-radius: 999px;
+    padding: 1px 6px;
+}
+
+.sidebar-all.active .sidebar-count,
+.sidebar-theme.active .sidebar-count {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.sidebar-del {
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0 4px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+}
+
+.sidebar-group:hover .sidebar-del {
+    opacity: 1;
+}
+
+.sidebar-del:hover {
+    color: var(--danger);
+}
+
 .sidebar-topic:hover {
     background: var(--accent-soft);
     color: var(--accent);
@@ -461,6 +569,7 @@ html {
 
 .sidebar-topic.active {
     color: var(--accent);
+    background: var(--accent-soft);
 }
 
 .sidebar-theme-list {
@@ -471,6 +580,10 @@ html {
 }
 
 .sidebar-theme {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
     padding: 3px 10px;
     font-size: 0.82rem;
     color: var(--text-secondary);
@@ -501,8 +614,52 @@ html {
     .container-home {
         display: block;
     }
+    /* 窄屏不再隐藏分类树，改为可折叠面板，保证主题筛选仍可用 */
     .home-sidebar {
+        position: static;
+        max-height: none;
+        overflow: visible;
+        width: 100%;
+        margin-bottom: 20px;
+        padding: 12px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+    }
+    .home-sidebar-title {
         display: none;
+    }
+    .sidebar-collapse {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 0;
+        border: none;
+        background: none;
+        font-family: inherit;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        cursor: pointer;
+    }
+    .sidebar-collapse-caret {
+        width: 0;
+        height: 0;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 5px solid currentColor;
+        transition: transform var(--transition);
+    }
+    .sidebar-collapse[aria-expanded="true"] .sidebar-collapse-caret {
+        transform: rotate(180deg);
+    }
+    .sidebar-body {
+        display: none;
+        margin-top: 12px;
+    }
+    .sidebar-body.open {
+        display: block;
     }
 }
 

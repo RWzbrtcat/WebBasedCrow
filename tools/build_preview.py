@@ -113,30 +113,36 @@ html = '''<!DOCTYPE html>
 
     <main class="container container-home">
         <aside class="home-sidebar">
-            <div class="home-sidebar-title">主题</div>
-            <div class="sidebar-group">
-                <div class="sidebar-topic active">C++ 技术</div>
-                <ul class="sidebar-theme-list">
-                    <li class="sidebar-theme">智能指针</li>
-                    <li class="sidebar-theme active">Crow 框架</li>
-                    <li class="sidebar-theme">并发编程</li>
-                </ul>
-            </div>
-            <div class="sidebar-group">
-                <div class="sidebar-topic">生活随笔</div>
-                <ul class="sidebar-theme-list">
-                    <li class="sidebar-theme">旅行</li>
-                    <li class="sidebar-theme">读书</li>
-                </ul>
+            <div class="home-sidebar-title">专栏 · 主题</div>
+            <button type="button" class="sidebar-collapse" id="sidebarCollapse" aria-expanded="false" aria-controls="sidebarBody">
+                <span>专栏 · 主题</span><span class="sidebar-collapse-caret"></span>
+            </button>
+            <div class="sidebar-body open" id="sidebarBody">
+                <div class="sidebar-all active">全部文章<span class="sidebar-count">4</span></div>
+                <div class="sidebar-group">
+                    <div class="sidebar-topic-row">
+                        <button type="button" class="sidebar-caret open" aria-label="展开主题"></button>
+                        <span class="sidebar-topic">C++ 技术<span class="sidebar-count">3</span></span>
+                    </div>
+                    <ul class="sidebar-theme-list">
+                        <li class="sidebar-theme">智能指针<span class="sidebar-count">1</span></li>
+                        <li class="sidebar-theme active">Crow 框架<span class="sidebar-count">1</span></li>
+                        <li class="sidebar-theme">并发编程<span class="sidebar-count">1</span></li>
+                    </ul>
+                </div>
+                <div class="sidebar-group">
+                    <div class="sidebar-topic-row">
+                        <button type="button" class="sidebar-caret" aria-label="展开主题"></button>
+                        <span class="sidebar-topic">生活随笔<span class="sidebar-count">1</span></span>
+                    </div>
+                </div>
             </div>
         </aside>
         <div class="home-main">
             <h1 class="page-title">全部文章</h1>
             <p class="page-subtitle">记录技术 · 分享生活</p>
             <nav class="topic-tabs">
-                <span class="topic-tab active">全部文章 <span class="topic-count">4</span></span>
-                <span class="topic-tab">C++ 技术 <span class="topic-count">3</span></span>
-                <span class="topic-tab">生活随笔 <span class="topic-count">1</span></span>
+                <span class="topic-tab topic-tab-add">＋ 专栏</span>
             </nav>
             <div class="post-list">
 {cards}
@@ -191,6 +197,41 @@ html = '''<!DOCTYPE html>
             if (!dWrap.contains(e.target)) {
                 dMenu.hidden = true;
                 dWrap.classList.remove('open');
+            }
+        });
+    })();
+    (function () {
+        var sidebar = document.querySelector('.home-sidebar');
+        if (!sidebar) return;
+        var collapse = document.getElementById('sidebarCollapse');
+        var body = document.getElementById('sidebarBody');
+        collapse.addEventListener('click', function () {
+            var open = collapse.getAttribute('aria-expanded') === 'true';
+            collapse.setAttribute('aria-expanded', open ? 'false' : 'true');
+            body.classList.toggle('open', !open);
+        });
+        sidebar.addEventListener('click', function (e) {
+            var caret = e.target.closest('.sidebar-caret');
+            if (caret) { caret.classList.toggle('open'); return; }
+            var topic = e.target.closest('.sidebar-topic');
+            if (topic) {
+                sidebar.querySelectorAll('.sidebar-all').forEach(function (n) { n.classList.remove('active'); });
+                sidebar.querySelectorAll('.sidebar-theme').forEach(function (n) { n.classList.remove('active'); });
+                sidebar.querySelectorAll('.sidebar-topic').forEach(function (n) { n.classList.remove('active'); });
+                topic.classList.add('active');
+                return;
+            }
+            var theme = e.target.closest('.sidebar-theme');
+            if (theme) {
+                sidebar.querySelectorAll('.sidebar-all').forEach(function (n) { n.classList.remove('active'); });
+                sidebar.querySelectorAll('.sidebar-theme').forEach(function (n) { n.classList.remove('active'); });
+                theme.classList.add('active');
+                return;
+            }
+            var all = e.target.closest('.sidebar-all');
+            if (all) {
+                sidebar.querySelectorAll('.sidebar-topic, .sidebar-theme').forEach(function (n) { n.classList.remove('active'); });
+                all.classList.add('active');
             }
         });
     })();

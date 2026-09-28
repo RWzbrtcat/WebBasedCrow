@@ -418,12 +418,17 @@ html {
 }
 
 .home-sidebar {
-    flex: 0 0 200px;
+    flex: 0 0 220px;
     position: sticky;
     top: 80px;
     max-height: calc(100vh - 104px);
     overflow-y: auto;
     padding-right: 4px;
+}
+
+/* 窄屏折叠开关（桌面隐藏） */
+.sidebar-collapse {
+    display: none;
 }
 
 .home-sidebar-title {
@@ -440,11 +445,14 @@ html {
 }
 
 .sidebar-topic {
+    flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 6px;
-    padding: 4px 10px;
-    margin-bottom: 4px;
+    padding: 4px 8px;
+    margin-bottom: 0;
     font-size: 0.86rem;
     font-weight: 600;
     color: var(--text);
@@ -454,6 +462,106 @@ html {
     transition: background 0.12s, color 0.12s;
 }
 
+.sidebar-topic-row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.sidebar-caret {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+.sidebar-caret::before {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 6px;
+    width: 0;
+    height: 0;
+    border-left: 5px solid var(--text-muted);
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    transition: transform var(--transition);
+}
+
+.sidebar-caret.open::before {
+    transform: rotate(90deg);
+}
+
+.sidebar-caret:hover::before {
+    border-left-color: var(--accent);
+}
+
+.sidebar-all {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 5px 8px;
+    margin-bottom: 6px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--text);
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.12s, color 0.12s;
+}
+
+.sidebar-all:hover {
+    background: var(--bg);
+}
+
+.sidebar-all.active {
+    background: var(--accent);
+    color: #fff;
+}
+
+.sidebar-count {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg);
+    border-radius: 999px;
+    padding: 1px 6px;
+}
+
+.sidebar-all.active .sidebar-count,
+.sidebar-theme.active .sidebar-count {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.sidebar-del {
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0 4px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+}
+
+.sidebar-group:hover .sidebar-del {
+    opacity: 1;
+}
+
+.sidebar-del:hover {
+    color: var(--danger);
+}
+
 .sidebar-topic:hover {
     background: var(--accent-soft);
     color: var(--accent);
@@ -461,6 +569,7 @@ html {
 
 .sidebar-topic.active {
     color: var(--accent);
+    background: var(--accent-soft);
 }
 
 .sidebar-theme-list {
@@ -471,6 +580,10 @@ html {
 }
 
 .sidebar-theme {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
     padding: 3px 10px;
     font-size: 0.82rem;
     color: var(--text-secondary);
@@ -501,8 +614,52 @@ html {
     .container-home {
         display: block;
     }
+    /* 窄屏不再隐藏分类树，改为可折叠面板，保证主题筛选仍可用 */
     .home-sidebar {
+        position: static;
+        max-height: none;
+        overflow: visible;
+        width: 100%;
+        margin-bottom: 20px;
+        padding: 12px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+    }
+    .home-sidebar-title {
         display: none;
+    }
+    .sidebar-collapse {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 0;
+        border: none;
+        background: none;
+        font-family: inherit;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        cursor: pointer;
+    }
+    .sidebar-collapse-caret {
+        width: 0;
+        height: 0;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 5px solid currentColor;
+        transition: transform var(--transition);
+    }
+    .sidebar-collapse[aria-expanded="true"] .sidebar-collapse-caret {
+        transform: rotate(180deg);
+    }
+    .sidebar-body {
+        display: none;
+        margin-top: 12px;
+    }
+    .sidebar-body.open {
+        display: block;
     }
 }
 
@@ -2804,30 +2961,36 @@ input[readonly] {
 
     <main class="container container-home">
         <aside class="home-sidebar">
-            <div class="home-sidebar-title">主题</div>
-            <div class="sidebar-group">
-                <div class="sidebar-topic active">C++ 技术</div>
-                <ul class="sidebar-theme-list">
-                    <li class="sidebar-theme">智能指针</li>
-                    <li class="sidebar-theme active">Crow 框架</li>
-                    <li class="sidebar-theme">并发编程</li>
-                </ul>
-            </div>
-            <div class="sidebar-group">
-                <div class="sidebar-topic">生活随笔</div>
-                <ul class="sidebar-theme-list">
-                    <li class="sidebar-theme">旅行</li>
-                    <li class="sidebar-theme">读书</li>
-                </ul>
+            <div class="home-sidebar-title">专栏 · 主题</div>
+            <button type="button" class="sidebar-collapse" id="sidebarCollapse" aria-expanded="false" aria-controls="sidebarBody">
+                <span>专栏 · 主题</span><span class="sidebar-collapse-caret"></span>
+            </button>
+            <div class="sidebar-body open" id="sidebarBody">
+                <div class="sidebar-all active">全部文章<span class="sidebar-count">4</span></div>
+                <div class="sidebar-group">
+                    <div class="sidebar-topic-row">
+                        <button type="button" class="sidebar-caret open" aria-label="展开主题"></button>
+                        <span class="sidebar-topic">C++ 技术<span class="sidebar-count">3</span></span>
+                    </div>
+                    <ul class="sidebar-theme-list">
+                        <li class="sidebar-theme">智能指针<span class="sidebar-count">1</span></li>
+                        <li class="sidebar-theme active">Crow 框架<span class="sidebar-count">1</span></li>
+                        <li class="sidebar-theme">并发编程<span class="sidebar-count">1</span></li>
+                    </ul>
+                </div>
+                <div class="sidebar-group">
+                    <div class="sidebar-topic-row">
+                        <button type="button" class="sidebar-caret" aria-label="展开主题"></button>
+                        <span class="sidebar-topic">生活随笔<span class="sidebar-count">1</span></span>
+                    </div>
+                </div>
             </div>
         </aside>
         <div class="home-main">
             <h1 class="page-title">全部文章</h1>
             <p class="page-subtitle">记录技术 · 分享生活</p>
             <nav class="topic-tabs">
-                <span class="topic-tab active">全部文章 <span class="topic-count">4</span></span>
-                <span class="topic-tab">C++ 技术 <span class="topic-count">3</span></span>
-                <span class="topic-tab">生活随笔 <span class="topic-count">1</span></span>
+                <span class="topic-tab topic-tab-add">＋ 专栏</span>
             </nav>
             <div class="post-list">
 <article class="post-card">
@@ -2972,6 +3135,41 @@ input[readonly] {
             if (!dWrap.contains(e.target)) {
                 dMenu.hidden = true;
                 dWrap.classList.remove('open');
+            }
+        });
+    })();
+    (function () {
+        var sidebar = document.querySelector('.home-sidebar');
+        if (!sidebar) return;
+        var collapse = document.getElementById('sidebarCollapse');
+        var body = document.getElementById('sidebarBody');
+        collapse.addEventListener('click', function () {
+            var open = collapse.getAttribute('aria-expanded') === 'true';
+            collapse.setAttribute('aria-expanded', open ? 'false' : 'true');
+            body.classList.toggle('open', !open);
+        });
+        sidebar.addEventListener('click', function (e) {
+            var caret = e.target.closest('.sidebar-caret');
+            if (caret) { caret.classList.toggle('open'); return; }
+            var topic = e.target.closest('.sidebar-topic');
+            if (topic) {
+                sidebar.querySelectorAll('.sidebar-all').forEach(function (n) { n.classList.remove('active'); });
+                sidebar.querySelectorAll('.sidebar-theme').forEach(function (n) { n.classList.remove('active'); });
+                sidebar.querySelectorAll('.sidebar-topic').forEach(function (n) { n.classList.remove('active'); });
+                topic.classList.add('active');
+                return;
+            }
+            var theme = e.target.closest('.sidebar-theme');
+            if (theme) {
+                sidebar.querySelectorAll('.sidebar-all').forEach(function (n) { n.classList.remove('active'); });
+                sidebar.querySelectorAll('.sidebar-theme').forEach(function (n) { n.classList.remove('active'); });
+                theme.classList.add('active');
+                return;
+            }
+            var all = e.target.closest('.sidebar-all');
+            if (all) {
+                sidebar.querySelectorAll('.sidebar-topic, .sidebar-theme').forEach(function (n) { n.classList.remove('active'); });
+                all.classList.add('active');
             }
         });
     })();
