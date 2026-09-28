@@ -12,6 +12,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorEl = document.getElementById('adminError');
     const listEl = document.getElementById('adminList');
     const countEl = document.getElementById('adminCount');
+    const toggleEl = document.getElementById('adminToggle');
+
+    // 已有管理员列表默认折叠，点击「查看已有管理员」展开 / 收起
+    toggleEl.addEventListener('click', () => {
+        const expanded = toggleEl.getAttribute('aria-expanded') === 'true';
+        toggleEl.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        listEl.hidden = expanded;
+    });
 
     loadAdmins();
 

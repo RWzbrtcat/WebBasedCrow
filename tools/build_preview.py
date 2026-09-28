@@ -439,8 +439,12 @@ admin_html = '''<!DOCTYPE html>
             </section>
 
             <section class="admin-panel">
-                <h2 class="admin-title-sm">已有管理员<span class="admin-count">3</span></h2>
-                <div class="admin-list">
+                <button type="button" class="admin-toggle" id="adminToggle" aria-expanded="false" aria-controls="adminList">
+                    <span>查看已有管理员</span>
+                    <span class="admin-count">3</span>
+                    <span class="admin-toggle-caret"></span>
+                </button>
+                <div class="admin-list" id="adminList" hidden>
 {items}
                 </div>
             </section>
@@ -450,6 +454,19 @@ admin_html = '''<!DOCTYPE html>
     <footer class="site-footer">
         <a href="#">冀ICP备2026039047号</a>
     </footer>
+
+    <script>
+    (function () {
+        var toggle = document.getElementById('adminToggle');
+        var list = document.getElementById('adminList');
+        if (!toggle || !list) return;
+        toggle.addEventListener('click', function () {
+            var expanded = toggle.getAttribute('aria-expanded') === 'true';
+            toggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+            list.hidden = expanded;
+        });
+    })();
+    </script>
 </body>
 </html>'''
 

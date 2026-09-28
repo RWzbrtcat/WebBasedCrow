@@ -45,8 +45,12 @@
             </section>
 
             <section class="admin-panel">
-                <h2 class="admin-title-sm">已有管理员<span class="admin-count" id="adminCount"></span></h2>
-                <div class="admin-list" id="adminList">
+                <button type="button" class="admin-toggle" id="adminToggle" aria-expanded="false" aria-controls="adminList">
+                    <span>查看已有管理员</span>
+                    <span class="admin-count" id="adminCount"></span>
+                    <span class="admin-toggle-caret"></span>
+                </button>
+                <div class="admin-list" id="adminList" hidden>
                     <div class="admin-loading">加载中...</div>
                 </div>
             </section>
