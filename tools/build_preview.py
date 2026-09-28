@@ -118,18 +118,18 @@ html = '''<!DOCTYPE html>
             <div class="filter-bar">
                 <div class="filter-row">
                     <span class="filter-label">专栏</span>
-                    <span class="filter-tab active" data-name="all">全部文章<span class="filter-count">4</span></span>
-                    <span class="filter-tab" data-name="cpp">C++ 技术<span class="filter-count">3</span><button type="button" class="filter-tab-del" title="删除专栏">×</button></span>
-                    <span class="filter-tab" data-name="life">生活随笔<span class="filter-count">1</span><button type="button" class="filter-tab-del" title="删除专栏">×</button></span>
+                    <span class="filter-tab active" data-name="all">全部文章</span>
+                    <span class="filter-tab" data-name="cpp">C++ 技术<button type="button" class="filter-tab-del" title="删除专栏">×</button></span>
+                    <span class="filter-tab" data-name="life">生活随笔<button type="button" class="filter-tab-del" title="删除专栏">×</button></span>
                     <span class="filter-tab filter-tab-add">＋ 专栏</span>
                 </div>
                 <div class="filter-row filter-row-theme">
                     <span class="filter-label">主题</span>
-                    <span class="filter-tab active" data-name="all">全部<span class="filter-count">4</span></span>
-                    <span class="filter-tab" data-name="t1">智能指针<span class="filter-count">1</span></span>
-                    <span class="filter-tab" data-name="t2">Crow 框架<span class="filter-count">1</span></span>
-                    <span class="filter-tab" data-name="t3">并发编程<span class="filter-count">1</span></span>
-                    <span class="filter-tab" data-name="t4">旅行<span class="filter-count">1</span></span>
+                    <span class="filter-tab active" data-name="all">全部</span>
+                    <span class="filter-tab" data-name="t1">智能指针</span>
+                    <span class="filter-tab" data-name="t2">Crow 框架</span>
+                    <span class="filter-tab" data-name="t3">并发编程</span>
+                    <span class="filter-tab" data-name="t4">旅行</span>
                 </div>
             </div>
             <div class="post-list">

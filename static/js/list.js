@@ -311,14 +311,13 @@ function renderTopicTabs() {
     container.hidden = false;
 
     let html = '<span class="filter-label">专栏</span>';
-    html += `<span class="filter-tab${currentTopic === 'all' ? ' active' : ''}" data-name="all">全部文章<span class="filter-count">${allPosts.length}</span></span>`;
+    html += `<span class="filter-tab${currentTopic === 'all' ? ' active' : ''}" data-name="all">全部文章</span>`;
 
     topicsData.forEach(t => {
-        const count = allPosts.filter(p => (p.topic || '').trim() === t.name).length;
         const delBtn = isAdmin
             ? `<button type="button" class="filter-tab-del" data-id="${t.id}" title="删除专栏">×</button>`
             : '';
-        html += `<span class="filter-tab${currentTopic === t.name ? ' active' : ''}" data-name="${escapeAttr(t.name)}">${escapeHtml(t.name)}<span class="filter-count">${count}</span>${delBtn}</span>`;
+        html += `<span class="filter-tab${currentTopic === t.name ? ' active' : ''}" data-name="${escapeAttr(t.name)}">${escapeHtml(t.name)}${delBtn}</span>`;
     });
 
     if (isAdmin) {
@@ -353,15 +352,8 @@ function renderThemeTabs() {
     }
     container.hidden = false;
 
-    const countOf = (th) => allPosts.filter(p =>
-        inTopic(p) && (p.theme || '').trim() === th
-    ).length;
-    const totalInTopic = allPosts.filter(inTopic).length;
-
-    let html = '<span class="filter-label">主题</span>';
-    html += `<span class="filter-tab${currentTheme === 'all' ? ' active' : ''}" data-name="all">全部<span class="filter-count">${totalInTopic}</span></span>`;
     themes.forEach(th => {
-        html += `<span class="filter-tab${currentTheme === th ? ' active' : ''}" data-name="${escapeAttr(th)}">${escapeHtml(th)}<span class="filter-count">${countOf(th)}</span></span>`;
+        html += `<span class="filter-tab${currentTheme === th ? ' active' : ''}" data-name="${escapeAttr(th)}">${escapeHtml(th)}</span>`;
     });
 
     container.innerHTML = html;
