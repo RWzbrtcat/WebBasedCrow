@@ -207,3 +207,113 @@ with io.open(OUT_PATH, "w", encoding="utf-8") as f:
     f.write(out)
 
 print("written:", OUT_PATH, len(out), "chars")
+
+# ---------------- 个人资料页预览 ----------------
+PROFILE_OUT = os.path.join(ROOT, "preview_profile.html")
+
+AVATAR_PLACEHOLDER = (
+    "data:image/svg+xml;utf8,"
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239ca3af'>"
+    "<path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>"
+)
+
+profile_html = '''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>个人资料预览 · LazyCat's Blog</title>
+<style>
+{css}
+</style>
+</head>
+<body>
+    <header class="site-header site-header-pill scrolled">
+        <div class="header-inner">
+            <div class="brand"><a class="site-title" href="#">LazyCat</a></div>
+            <nav class="nav">
+                <a href="#">首页</a>
+                <a href="#">草稿</a>
+                <a href="#">隐藏</a>
+                <a href="#">创作</a>
+                <div class="nav-avatar-wrap">
+                    <button type="button" class="nav-avatar" title="个人资料" aria-label="个人资料" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></button>
+                    <div class="nav-avatar-menu" hidden>
+                        <a href="#">个人资料</a>
+                        <a href="#">管理员</a>
+                        <a href="#">退出</a>
+                    </div>
+                </div>
+                <div class="nav-dropdown">
+                    <button type="button" class="personalize-btn nav-dropdown-toggle">个性化<span class="nav-dropdown-caret"></span></button>
+                    <div class="nav-dropdown-menu" hidden>
+                        <button type="button" class="nav-dropdown-item">更换背景</button>
+                        <button type="button" class="nav-dropdown-item">更换样式</button>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container container-login">
+        <div class="profile-card">
+            <h1 class="profile-heading">个人资料</h1>
+
+            <section class="profile-section">
+                <h2 class="profile-section-title">基本信息</h2>
+                <form>
+                    <div class="form-group">
+                        <label for="email">邮箱</label>
+                        <input type="email" id="email" value="lazycat@example.com" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="nickname">昵称</label>
+                        <input type="text" id="nickname" value="LazyCat" maxlength="100" required>
+                    </div>
+                    <div class="form-group">
+                        <label>头像</label>
+                        <div class="profile-avatar-row">
+                            <img class="profile-avatar" alt="头像预览" src="{avatar}">
+                            <div class="profile-avatar-actions">
+                                <input type="text" placeholder="头像图片链接" maxlength="500">
+                                <button type="button" class="btn btn-secondary">上传图片</button>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </form>
+            </section>
+
+            <section class="profile-section">
+                <h2 class="profile-section-title">账号安全</h2>
+                <form>
+                    <div class="form-group">
+                        <label for="oldPassword">当前密码</label>
+                        <input type="password" id="oldPassword" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">新密码</label>
+                        <input type="password" id="newPassword" placeholder="至少 6 位" minlength="6" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword">确认新密码</label>
+                        <input type="password" id="confirmPassword" minlength="6" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">修改密码</button>
+                </form>
+            </section>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <a href="#">冀ICP备2026039047号</a>
+    </footer>
+</body>
+</html>'''
+
+profile_out = profile_html.replace("{css}", css).replace("{avatar}", AVATAR_PLACEHOLDER)
+
+with io.open(PROFILE_OUT, "w", encoding="utf-8") as f:
+    f.write(profile_out)
+
+print("written:", PROFILE_OUT, len(profile_out), "chars")

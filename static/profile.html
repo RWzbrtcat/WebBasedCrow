@@ -24,54 +24,54 @@
 
     <!-- 主体 -->
     <main class="container container-login">
-        <div class="login-card">
-            <h1 class="login-title">个人资料</h1>
-            <p class="login-subtitle">昵称会作为你文章的作者名显示，修改后历史文章作者也会同步更新</p>
+        <div class="profile-card">
+            <h1 class="profile-heading">个人资料</h1>
 
-            <form id="profileForm">
-                <div class="form-group">
-                    <label for="email">邮箱（不可修改）</label>
-                    <input type="email" id="email" disabled>
-                </div>
-                <div class="form-group">
-                    <label for="nickname">昵称</label>
-                    <input type="text" id="nickname" placeholder="默认等于邮箱" maxlength="100" required>
-                </div>
-                <div class="form-group">
-                    <label>头像</label>
-                    <div class="profile-avatar-row">
-                        <img id="avatarPreview" class="profile-avatar" alt="头像预览" hidden>
-                        <div class="profile-avatar-actions">
-                            <input type="text" id="avatar" placeholder="头像图片链接（可留空）" maxlength="500">
-                            <button type="button" class="btn btn-secondary" id="avatarUploadBtn">上传图片</button>
+            <section class="profile-section">
+                <h2 class="profile-section-title">基本信息</h2>
+                <form id="profileForm">
+                    <div class="form-group">
+                        <label for="email">邮箱</label>
+                        <input type="email" id="email" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="nickname">昵称</label>
+                        <input type="text" id="nickname" maxlength="100" required>
+                    </div>
+                    <div class="form-group">
+                        <label>头像</label>
+                        <div class="profile-avatar-row">
+                            <img id="avatarPreview" class="profile-avatar" alt="头像预览" hidden>
+                            <div class="profile-avatar-actions">
+                                <input type="text" id="avatar" placeholder="头像图片链接" maxlength="500">
+                                <button type="button" class="btn btn-secondary" id="avatarUploadBtn">上传图片</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block">保存</button>
-                <p class="login-error" id="profileError" hidden></p>
-            </form>
-        </div>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <p class="profile-error" id="profileError" hidden></p>
+                </form>
+            </section>
 
-        <div class="login-card">
-            <h1 class="login-title">修改密码</h1>
-            <p class="login-subtitle">修改后请妥善保存新密码</p>
-
-            <form id="passwordForm">
-                <div class="form-group">
-                    <label for="oldPassword">旧密码</label>
-                    <input type="password" id="oldPassword" autocomplete="current-password" required>
-                </div>
-                <div class="form-group">
-                    <label for="newPassword">新密码（至少 6 位）</label>
-                    <input type="password" id="newPassword" autocomplete="new-password" minlength="6" required>
-                </div>
-                <div class="form-group">
-                    <label for="confirmPassword">确认新密码</label>
-                    <input type="password" id="confirmPassword" autocomplete="new-password" minlength="6" required>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block">修改密码</button>
-                <p class="login-error" id="passwordError" hidden></p>
-            </form>
+            <section class="profile-section">
+                <h2 class="profile-section-title">账号安全</h2>
+                <form id="passwordForm">
+                    <div class="form-group">
+                        <label for="oldPassword">当前密码</label>
+                        <input type="password" id="oldPassword" autocomplete="current-password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">新密码</label>
+                        <input type="password" id="newPassword" placeholder="至少 6 位" autocomplete="new-password" minlength="6" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword">确认新密码</label>
+                        <input type="password" id="confirmPassword" autocomplete="new-password" minlength="6" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">修改密码</button>
+                    <p class="profile-error" id="passwordError" hidden></p>
+                </form>
+            </section>
         </div>
     </main>
 

@@ -1811,6 +1811,12 @@ body.post-page .markdown-body h6 {
         padding: 5px 9px;
         font-size: 0.85rem;
     }
+    .profile-card {
+        padding: 24px 20px;
+    }
+    .profile-avatar-row {
+        flex-wrap: wrap;
+    }
     .brand .site-title {
         font-size: 1.35rem;
     }
@@ -2012,14 +2018,56 @@ body.post-page .markdown-body h6 {
     display: flex;
     gap: 10px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .profile-avatar-actions input {
-    flex: 1;
+    flex: 1 1 150px;
 }
 
 .profile-avatar-actions .btn {
     flex-shrink: 0;
+}
+
+/* ========== 个人资料页（单卡片 + 分区） ========== */
+.profile-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+    box-shadow: var(--shadow);
+}
+
+.profile-heading {
+    font-family: var(--serif);
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 24px;
+}
+
+.profile-section + .profile-section {
+    margin-top: 26px;
+    padding-top: 26px;
+    border-top: 1px solid var(--border);
+}
+
+.profile-section-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.profile-error {
+    color: var(--danger);
+    font-size: 0.88rem;
+    margin-top: 12px;
+}
+
+.form-group input:disabled {
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: not-allowed;
 }
 
 /* 编辑器只读作者字段的视觉提示 */
