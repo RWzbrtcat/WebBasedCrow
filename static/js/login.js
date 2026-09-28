@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 submitBtn.textContent = '登录';
             }
         } catch (err) {
-            errorEl.textContent = '无法连接到服务器';
+            errorEl.textContent = '网络连接失败，请检查网络后重试';
             errorEl.hidden = false;
             submitBtn.disabled = false;
             submitBtn.textContent = '登录';

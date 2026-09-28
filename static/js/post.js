@@ -20,17 +20,61 @@ document.addEventListener('DOMContentLoaded', () => {
     initHeaderScroll();
 });
 
-async function apiRequest(url, method = 'GET', body = null) {
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// 把异常翻译成用户能看懂的文案（NETWORK = 网络层失败，BAD_JSON = 返回不是合法 JSON）
+function describeFetchError(e) {
+    const msg = (e && e.message) || '';
+    if (msg === '未登录') return '登录状态已失效，正在跳转到登录页…';
+    if (msg === 'NETWORK') return '网络连接失败，请检查网络后重试';
+    if (msg === 'BAD_JSON') return '服务器返回的数据格式有误';
+    const m = msg.match(/^HTTP (\d+)$/);
+    if (m) {
+        const code = Number(m[1]);
+        if (code >= 500) return `服务器内部错误（${code}），请稍后重试`;
+        if (code === 404) return '文章不存在或已被删除（404）';
+        return `请求失败（${code}）`;
+    }
+    return '加载失败，请稍后重试';
+}
+
+async function apiRequest(url, method = 'GET', body = null, retry = true) {
     const options = { method, headers: { 'Content-Type': 'application/json' } };
     if (body) options.body = JSON.stringify(body);
 
-    const response = await fetch(url, options);
+    let response;
+    try {
+        response = await fetch(url, options);
+    } catch (e) {
+        if (retry && method === 'GET') {
+            await sleep(700);
+            return apiRequest(url, method, body, false);
+        }
+        console.error('[post] 请求失败', url, e);
+        throw new Error('NETWORK');
+    }
+
     if (response.status === 401) {
         window.location.href = '/login';
         throw new Error('未登录');
     }
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return await response.json();
+    if (!response.ok) {
+        if (retry && method === 'GET' && response.status >= 500) {
+            await sleep(700);
+            return apiRequest(url, method, body, false);
+        }
+        console.error('[post] HTTP 错误', url, response.status);
+        throw new Error(`HTTP ${response.status}`);
+    }
+
+    try {
+        return await response.json();
+    } catch (e) {
+        console.error('[post] JSON 解析失败', url, e);
+        throw new Error('BAD_JSON');
+    }
 }
 
 async function loadPost(id) {
@@ -50,12 +94,20 @@ async function loadPost(id) {
             showNotFound(postData.message || '文章不存在');
         }
     } catch (e) {
+        console.error('[post] 加载文章失败', e);
         detail.innerHTML = `
             <div class="empty-state">
-                <p>❌ 无法连接到服务器</p>
-                <p style="font-size:0.85rem;margin-top:8px;">请确保 C++ 服务正在运行</p>
+                <p>❌ ${describeFetchError(e)}</p>
+                <button type="button" class="btn btn-secondary" id="retryPostBtn" style="margin-top:14px;">重试</button>
             </div>
         `;
+        const retryBtn = document.getElementById('retryPostBtn');
+        if (retryBtn) {
+            retryBtn.addEventListener('click', () => {
+                const id = new URLSearchParams(location.search).get('id');
+                if (id) loadPost(id);
+            });
+        }
     }
 }
 

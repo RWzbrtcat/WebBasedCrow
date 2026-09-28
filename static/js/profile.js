@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
             errorEl.hidden = false;
             return false;
         } catch (err) {
-            errorEl.textContent = '无法连接到服务器';
+            errorEl.textContent = '网络连接失败，请检查网络后重试';
             errorEl.hidden = false;
             return false;
         }
@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 passwordError.hidden = false;
             }
         } catch (err) {
-            passwordError.textContent = '无法连接到服务器';
+            passwordError.textContent = '网络连接失败，请检查网络后重试';
             passwordError.hidden = false;
         } finally {
             btn.disabled = false;
@@ -212,7 +212,7 @@ async function loadProfile() {
             if (placeholder) placeholder.hidden = true;
         }
     } catch (err) {
-        document.getElementById('profileError').textContent = '无法连接到服务器';
+        document.getElementById('profileError').textContent = '网络连接失败，请检查网络后重试';
         document.getElementById('profileError').hidden = false;
     }
 }

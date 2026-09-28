@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showError(data.message || '添加失败');
             }
         } catch (err) {
-            showError('无法连接到服务器');
+            showError('网络连接失败，请检查网络后重试');
         }
     });
 
@@ -129,7 +129,7 @@ async function loadAdmins() {
                 </div>`;
             }).join('');
     } catch (err) {
-        listEl.innerHTML = '<div class="admin-loading">无法连接到服务器</div>';
+        listEl.innerHTML = '<div class="admin-loading">网络连接失败，请检查网络后重试</div>';
     }
 }
 
