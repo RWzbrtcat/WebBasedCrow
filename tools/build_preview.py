@@ -476,3 +476,60 @@ with io.open(ADMIN_OUT, "w", encoding="utf-8") as f:
     f.write(admin_out)
 
 print("written:", ADMIN_OUT, len(admin_out), "chars")
+
+# ---------------- 登录页预览 ----------------
+LOGIN_OUT = os.path.join(ROOT, "preview_login.html")
+
+login_html = '''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录预览 · LazyCat's Blog</title>
+<style>
+{css}
+</style>
+</head>
+<body>
+    <header class="site-header site-header-pill scrolled">
+        <div class="header-inner">
+            <div class="brand"><a class="site-title" href="#">LazyCat</a></div>
+            <nav class="nav">
+                <a href="#">首页</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container container-login">
+        <div class="login-card">
+            <h1 class="login-title">管理员登录</h1>
+            <p class="login-subtitle">仅限作者本人登录后撰写文章</p>
+            <form>
+                <div class="form-group">
+                    <label for="emailPrefix">账号</label>
+                    <div class="input-affix">
+                        <input type="text" id="emailPrefix" placeholder="用户名" autocomplete="username" spellcheck="false">
+                        <span class="input-affix-suffix">@lazycat.com</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <input type="password" id="password" placeholder="请输入管理员密码" autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">登录</button>
+            </form>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <a href="#">冀ICP备2026039047号</a>
+    </footer>
+</body>
+</html>'''
+
+login_out = login_html.replace("{css}", css)
+
+with io.open(LOGIN_OUT, "w", encoding="utf-8") as f:
+    f.write(login_out)
+
+print("written:", LOGIN_OUT, len(login_out), "chars")
