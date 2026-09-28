@@ -187,5 +187,88 @@ certbot certificates
 
 1. **备案是硬门槛**：国内服务器未备案域名无法访问 80/443，海外服务器则无需备案。
 2. **DNS 传播延迟**：A 记录加好后，部分公共 DNS（如 114.114.114.114）会缓存旧的负面结果，可能需要几小时才刷新；海外 DNS（8.8.8.8 / 1.1.1.1）通常较快。
-3. **数据库密码硬编码**：`src/main.cpp` 中数据库密码写死为 `root/123456`，生产环境建议改为环境变量或配置文件读取。
+3. **数据库密码不要写死在源码**：`src/main.cpp` 通过环境变量读取（`MYSQL_HOST` / `MYSQL_USER` / `MYSQL_PASSWORD` / `MYSQL_DB` / `MYSQL_PORT`），部署时用 systemd 的 `Environment=` 或 `EnvironmentFile=` 注入，不要把密码提交进 Git。
 4. **8080 端口无需对外暴露**：通过 Nginx 反代访问，安全组只开 80/443 即可。
+
+## 七、常见故障：启动失败 `Address already in use`
+
+### 现象
+
+网站打不开（前端提示「网络连接失败」），`journalctl -u blog` 看到：
+
+```
+task_server[4081739]: [ERROR   ] Failed to bind to 0.0.0.0:0 - Address already in use
+task_server[4081739]: [ERROR   ] Server startup failed. Aborting run().
+```
+
+### 两个坑要分清
+
+1. **`0.0.0.0:0` 里的端口 0 是假信息**。Crow 在 `Crow/include/crow/http_server.h:87-90` 打印的是
+   `acceptor_.address() << ":" << acceptor_.port()`，而这两个值是在 `bind()` **失败之后**读取的，
+   此时 endpoint 并未真正绑定，所以端口恒为 0。实际尝试绑定的是 `main.cpp` 里写死的 **8080**。
+2. **Crow 已经开了 `SO_REUSEADDR`**（`http_server.h:80` 的 `set_option(Acceptor::reuse_address_option())`），
+   因此 TIME_WAIT 不会触发该错误。报 `Address already in use` 只可能是**另一个进程仍以 LISTEN 状态占着 8080**——
+   典型场景：服务崩溃 → systemd 立刻拉起新进程 → 旧进程还没退出 → 新进程绑定失败 → 反复重启失败。
+
+### 应急恢复
+
+```bash
+sudo systemctl stop blog
+sudo pkill -f task_server            # 清掉残留进程
+sudo ss -tlnp | grep ':8080'         # 确认已无占用（应无输出）
+sudo systemctl start blog
+systemctl is-active blog             # 应为 active
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/api/posts   # 应为 200
+```
+
+### 根治：加固 systemd unit（等端口释放 + 快速停止 + 重启限流）
+
+```bash
+sudo tee /etc/systemd/system/blog.service > /dev/null <<'EOF'
+[Unit]
+Description=WebBasedCrow Blog Server
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/wb/projects/WebBasedCrow/bin
+Environment=MYSQL_HOST=localhost
+Environment=MYSQL_USER=root
+Environment=MYSQL_PASSWORD=你的数据库密码
+Environment=MYSQL_DB=blogdb
+# 启动前等 8080 释放（最多 30s），避免旧进程未退出导致 bind 失败
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 30); do ss -tln | grep -q ":8080 " || exit 0; sleep 1; done; exit 0'
+ExecStart=/home/wb/projects/WebBasedCrow/bin/task_server
+KillSignal=SIGTERM
+TimeoutStopSec=5          # 5 秒不退出就 SIGKILL，避免端口长期占用
+Restart=always
+RestartSec=5              # 给端口释放留足时间
+StartLimitIntervalSec=120
+StartLimitBurst=5         # 2 分钟内最多重启 5 次，避免疯狂重启刷爆日志
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl restart blog
+sudo systemctl status blog
+```
+
+### 查崩溃根因（为什么会重启）
+
+```bash
+# 崩溃前后 60 行日志
+journalctl -u blog --since "2026-09-28 09:40" -o short-precise | tail -60
+
+# 看是否有崩溃 / 异常终止记录
+journalctl -u blog | grep -Ei 'terminate|abort|segfault|signal|gone away|FATAL'
+
+# 数据库是否正常
+systemctl is-active mariadb
+```
+
+> `Restart=always` 会掩盖崩溃：服务挂掉后自动拉起，表面上看只是"卡了一下"。
+> 若日志里出现 `MySQL server has gone away` 或 `terminate called after throwing`，
+> 说明是数据库连接断开 / 未捕获异常，需按具体堆栈修 `src/database.cpp`。
