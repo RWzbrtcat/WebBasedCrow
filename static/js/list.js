@@ -408,6 +408,8 @@ function renderThemeTabs() {
     }
     container.hidden = false;
 
+    let html = '<span class="filter-label">主题</span>';
+    html += `<span class="filter-tab${currentTheme === 'all' ? ' active' : ''}" data-name="all">全部</span>`;
     themes.forEach(th => {
         html += `<span class="filter-tab${currentTheme === th ? ' active' : ''}" data-name="${escapeAttr(th)}">${escapeHtml(th)}</span>`;
     });
