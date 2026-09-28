@@ -92,13 +92,19 @@ html = '''<!DOCTYPE html>
                 <a href="#" class="active">首页</a>
                 <a href="#">草稿</a>
                 <a href="#">创作</a>
-                <button type="button" class="personalize-btn nav-dropdown-toggle">个性化<span class="nav-dropdown-caret"></span></button>
                 <div class="nav-avatar-wrap">
                     <button type="button" class="nav-avatar" title="个人资料" aria-label="个人资料" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></button>
                     <div class="nav-avatar-menu" hidden>
                         <a href="#">个人资料</a>
                         <a href="#">管理员</a>
                         <a href="#">退出</a>
+                    </div>
+                </div>
+                <div class="nav-dropdown">
+                    <button type="button" class="personalize-btn nav-dropdown-toggle">个性化<span class="nav-dropdown-caret"></span></button>
+                    <div class="nav-dropdown-menu" hidden>
+                        <button type="button" class="nav-dropdown-item">更换背景</button>
+                        <button type="button" class="nav-dropdown-item">更换样式</button>
                     </div>
                 </div>
             </nav>
@@ -167,6 +173,24 @@ html = '''<!DOCTYPE html>
             if (wrap && !wrap.contains(e.target) && menu && !menu.hidden) {
                 menu.hidden = true;
                 avatar.setAttribute('aria-expanded', 'false');
+            }
+        });
+    })();
+    (function () {
+        var dWrap = document.querySelector('.nav-dropdown');
+        if (!dWrap) return;
+        var dToggle = dWrap.querySelector('.nav-dropdown-toggle');
+        var dMenu = dWrap.querySelector('.nav-dropdown-menu');
+        dToggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var willOpen = dMenu.hidden;
+            dMenu.hidden = !dMenu.hidden;
+            dWrap.classList.toggle('open', willOpen);
+        });
+        document.addEventListener('click', function (e) {
+            if (!dWrap.contains(e.target)) {
+                dMenu.hidden = true;
+                dWrap.classList.remove('open');
             }
         });
     })();

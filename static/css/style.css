@@ -173,6 +173,8 @@ html {
     display: inline-flex;
     align-items: center;
     flex-shrink: 0;
+    order: 99;
+    margin-left: 4px;
 }
 
 .nav-avatar {
@@ -254,11 +256,11 @@ html {
     font-size: 0.9rem;
     font-weight: 600;
     padding: 7px 14px;
-    border-radius: 20px;
+    border-radius: 999px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    transition: all 0.15s;
+    transition: all var(--transition);
 }
 
 .nav .personalize-btn:hover {
@@ -292,7 +294,7 @@ html {
     min-width: 140px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     box-shadow: var(--shadow-md);
     padding: 6px;
     z-index: 300;
@@ -305,16 +307,17 @@ html {
     background: none;
     border: none;
     padding: 8px 12px;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
     font-family: inherit;
     font-size: 0.9rem;
     color: var(--text);
-    transition: background 0.15s;
+    transition: background var(--transition), color var(--transition);
 }
 
 .nav-dropdown-item:hover {
-    background: var(--bg);
+    background: var(--accent-soft);
+    color: var(--accent-dark);
 }
 
 .bg-toast {
@@ -1790,6 +1793,23 @@ body.post-page .markdown-body h6 {
 @media (max-width: 640px) {
     .header-inner {
         padding: 16px 16px;
+    }
+    /* 窄屏：灵动岛胶囊允许换行并收紧间距，避免导航溢出。
+       选择器需覆盖靠后的 .site-header-pill .* 规则，故用 .site-header 提升优先级 */
+    .site-header.site-header-pill .header-inner {
+        padding: 8px 10px;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .site-header.site-header-pill .nav {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 2px;
+    }
+    .site-header.site-header-pill .nav a,
+    .site-header.site-header-pill .nav .personalize-btn {
+        padding: 5px 9px;
+        font-size: 0.85rem;
     }
     .brand .site-title {
         font-size: 1.35rem;
