@@ -3,13 +3,15 @@
 // ============================================
 
 const API_BASE = '/api';
+const EMAIL_DOMAIN = '@lazycat.com';
 
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('adminForm');
-    const emailInput = document.getElementById('email');
+    const emailInput = document.getElementById('emailPrefix');
     const passwordInput = document.getElementById('password');
     const errorEl = document.getElementById('adminError');
     const listEl = document.getElementById('adminList');
+    const countEl = document.getElementById('adminCount');
 
     loadAdmins();
 
@@ -17,13 +19,24 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         errorEl.hidden = true;
 
-        const email = emailInput.value.trim();
+        // 只填前缀，自动补全为 @lazycat.com；粘入完整邮箱时自动剥离后缀
+        let prefix = emailInput.value.trim();
+        const at = prefix.indexOf('@');
+        if (at !== -1) prefix = prefix.slice(0, at);
+        prefix = prefix.replace(/\s+/g, '');
+
         const password = passwordInput.value;
 
-        if (!email || !password) {
-            showError('请输入邮箱和密码');
+        if (!prefix || !password) {
+            showError('请输入账号和密码');
             return;
         }
+        if (!/^[A-Za-z0-9._-]+$/.test(prefix)) {
+            showError('账号只能包含字母、数字、点、下划线和连字符');
+            return;
+        }
+
+        const email = prefix + EMAIL_DOMAIN;
 
         try {
             const res = await fetch(`${API_BASE}/admins`, {
@@ -71,23 +84,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadAdmins() {
     const listEl = document.getElementById('adminList');
+    const countEl = document.getElementById('adminCount');
     try {
         const res = await fetch(`${API_BASE}/admins`);
         if (res.status === 401) { window.location.href = '/login'; return; }
         if (res.status === 403) { window.location.href = '/'; return; }
         const data = await res.json();
         if (!data.success) {
-            listEl.innerHTML = `<div class="admin-list-title">${escapeHtml(data.message || '加载失败')}</div>`;
+            listEl.innerHTML = `<div class="admin-loading">${escapeHtml(data.message || '加载失败')}</div>`;
             return;
         }
         const admins = data.admins || [];
+        if (countEl) countEl.textContent = String(admins.length);
         if (!admins.length) {
-            listEl.innerHTML = '<div class="admin-list-title">暂无管理员</div>';
+            listEl.innerHTML = '<div class="admin-empty">暂无管理员</div>';
             return;
         }
-        listEl.innerHTML = `
-            <div class="admin-list-title">已有管理员（${admins.length}）</div>
-            ${admins.map(a => {
+        listEl.innerHTML = admins.map(a => {
                 const badge = a.is_main ? '<span class="admin-item-badge">主管理员</span>' : '';
                 const delBtn = a.is_main
                     ? ''
@@ -106,10 +119,9 @@ async function loadAdmins() {
                     </div>
                     ${delBtn}
                 </div>`;
-            }).join('')}
-        `;
+            }).join('');
     } catch (err) {
-        listEl.innerHTML = '<div class="admin-list-title">无法连接到服务器</div>';
+        listEl.innerHTML = '<div class="admin-loading">无法连接到服务器</div>';
     }
 }
 

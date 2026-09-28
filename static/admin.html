@@ -23,27 +23,33 @@
     </header>
 
     <!-- 主体 -->
-    <main class="container container-login">
-        <div class="login-card">
-            <h1 class="login-title">管理员管理</h1>
-            <p class="login-subtitle">仅主管理员可新增 / 删除管理员</p>
+    <main class="container container-admin">
+        <div class="admin-layout">
+            <section class="admin-panel">
+                <h1 class="admin-title">添加管理员</h1>
+                <form id="adminForm">
+                    <div class="form-group">
+                        <label for="emailPrefix">登录账号</label>
+                        <div class="input-affix">
+                            <input type="text" id="emailPrefix" placeholder="用户名" autocomplete="off" spellcheck="false" required>
+                            <span class="input-affix-suffix">@lazycat.com</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">密码</label>
+                        <input type="password" id="password" placeholder="自定义密码" autocomplete="new-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">添加管理员</button>
+                    <p class="login-error" id="adminError" hidden></p>
+                </form>
+            </section>
 
-            <form id="adminForm">
-                <div class="form-group">
-                    <label for="email">邮箱</label>
-                    <input type="email" id="email" placeholder="管理员登录邮箱" autocomplete="off" required>
+            <section class="admin-panel">
+                <h2 class="admin-title-sm">已有管理员<span class="admin-count" id="adminCount"></span></h2>
+                <div class="admin-list" id="adminList">
+                    <div class="admin-loading">加载中...</div>
                 </div>
-                <div class="form-group">
-                    <label for="password">密码</label>
-                    <input type="password" id="password" placeholder="自定义密码" autocomplete="new-password" required>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block">添加管理员</button>
-                <p class="login-error" id="adminError" hidden></p>
-            </form>
-
-            <div class="admin-list" id="adminList">
-                <div class="admin-list-title">加载中...</div>
-            </div>
+            </section>
         </div>
     </main>
 

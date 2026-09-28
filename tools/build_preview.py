@@ -341,3 +341,121 @@ with io.open(PROFILE_OUT, "w", encoding="utf-8") as f:
     f.write(profile_out)
 
 print("written:", PROFILE_OUT, len(profile_out), "chars")
+
+# ---------------- 管理员管理页预览 ----------------
+ADMIN_OUT = os.path.join(ROOT, "preview_admin.html")
+
+AVATAR_A = (
+    "data:image/svg+xml;utf8,"
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c98c5a'>"
+    "<circle cx='12' cy='12' r='12'/></svg>"
+)
+
+ADMIN_ITEMS = [
+    ("LazyCat", "admin@lazycat.com", True, True),
+    ("小猫助手", "helper@lazycat.com", False, False),
+    ("编辑小喵", "editor@lazycat.com", False, False),
+]
+
+
+def admin_item(nickname, email, is_main, with_avatar):
+    badge = '<span class="admin-item-badge">主管理员</span>' if is_main else ""
+    del_btn = "" if is_main else '<button type="button" class="admin-item-del">删除</button>'
+    avatar = (
+        f'<img class="admin-item-avatar" src="{AVATAR_A}" alt="">'
+        if with_avatar
+        else f'<span class="admin-item-avatar admin-item-avatar-empty">{nickname[0]}</span>'
+    )
+    return f'''<div class="admin-item">
+                    <div class="admin-item-info">
+                        {avatar}
+                        <div class="admin-item-text">
+                            <span class="admin-item-nickname">{nickname}{badge}</span>
+                            <span class="admin-item-email">{email}</span>
+                        </div>
+                    </div>
+                    {del_btn}
+                </div>'''
+
+
+admin_items = "\n".join(admin_item(*a) for a in ADMIN_ITEMS)
+
+admin_html = '''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理员管理预览 · LazyCat's Blog</title>
+<style>
+{css}
+</style>
+</head>
+<body>
+    <header class="site-header site-header-pill scrolled">
+        <div class="header-inner">
+            <div class="brand"><a class="site-title" href="#">LazyCat</a></div>
+            <nav class="nav">
+                <a href="#">首页</a>
+                <a href="#">草稿</a>
+                <a href="#">隐藏</a>
+                <a href="#">创作</a>
+                <div class="nav-avatar-wrap">
+                    <button type="button" class="nav-avatar" title="个人资料" aria-label="个人资料" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></button>
+                    <div class="nav-avatar-menu" hidden>
+                        <a href="#">个人资料</a>
+                        <a href="#">管理员</a>
+                        <a href="#">退出</a>
+                    </div>
+                </div>
+                <div class="nav-dropdown">
+                    <button type="button" class="personalize-btn nav-dropdown-toggle">个性化<span class="nav-dropdown-caret"></span></button>
+                    <div class="nav-dropdown-menu" hidden>
+                        <button type="button" class="nav-dropdown-item">更换背景</button>
+                        <button type="button" class="nav-dropdown-item">更换样式</button>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container container-admin">
+        <div class="admin-layout">
+            <section class="admin-panel">
+                <h1 class="admin-title">添加管理员</h1>
+                <form>
+                    <div class="form-group">
+                        <label for="emailPrefix">登录账号</label>
+                        <div class="input-affix">
+                            <input type="text" id="emailPrefix" placeholder="用户名" autocomplete="off" spellcheck="false">
+                            <span class="input-affix-suffix">@lazycat.com</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">密码</label>
+                        <input type="password" id="password" placeholder="自定义密码" autocomplete="new-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">添加管理员</button>
+                </form>
+            </section>
+
+            <section class="admin-panel">
+                <h2 class="admin-title-sm">已有管理员<span class="admin-count">3</span></h2>
+                <div class="admin-list">
+{items}
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <a href="#">冀ICP备2026039047号</a>
+    </footer>
+</body>
+</html>'''
+
+admin_out = admin_html.replace("{css}", css).replace("{items}", admin_items)
+
+with io.open(ADMIN_OUT, "w", encoding="utf-8") as f:
+    f.write(admin_out)
+
+print("written:", ADMIN_OUT, len(admin_out), "chars")
