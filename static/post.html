@@ -21,10 +21,16 @@
         </div>
     </header>
 
-    <!-- 主体 -->
-    <main class="container">
-        <div id="postDetail">
-            <div class="loading">加载中...</div>
+    <!-- 主体：左侧目录 + 正文 -->
+    <main class="container container-post">
+        <div class="post-layout" id="postLayout">
+            <aside class="post-toc" id="postToc" hidden aria-label="文章目录">
+                <div class="post-toc-title">目录</div>
+                <nav class="post-toc-list" id="postTocList"></nav>
+            </aside>
+            <div class="post-main" id="postDetail">
+                <div class="loading">加载中...</div>
+            </div>
         </div>
     </main>
 

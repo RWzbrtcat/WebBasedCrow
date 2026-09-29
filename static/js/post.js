@@ -150,12 +150,110 @@ function renderPost(post, authed, isMain, adminId) {
 
     renderMarkdownInto(document.getElementById('postContent'), post.content);
     bindInternalLinks(document.getElementById('postContent'));
+    buildPostToc();
 
     const canEdit = authed && (isMain || Number(post.author_id) === adminId);
     renderPostAdminActions(post, canEdit);
     document.getElementById('floatingActions').hidden = false;
     bindPostInteractions();
     loadComments();
+}
+
+// ===== 左侧文章目录（TOC） =====
+// 标题 id 由 markdown.js 的 attachHeadingIds 生成，这里直接复用做锚点
+function buildPostToc() {
+    const box = document.getElementById('postToc');
+    const list = document.getElementById('postTocList');
+    const layout = document.getElementById('postLayout');
+    const content = document.getElementById('postContent');
+    if (!box || !list || !content) return;
+
+    const heads = Array.from(content.querySelectorAll('h1, h2, h3'))
+        .filter((h) => h.id && h.textContent.trim());
+
+    // 标题少于 2 个时目录没有意义：隐藏侧栏，正文回到居中单列
+    if (heads.length < 2) {
+        box.hidden = true;
+        list.innerHTML = '';
+        if (layout) layout.classList.remove('has-toc');
+        detachTocSpy();
+        return;
+    }
+
+    list.innerHTML = heads.map((h) => {
+        const level = Number(h.tagName.slice(1));
+        const text = h.textContent.trim();
+        const title = escapeHtml(text).replace(/"/g, '&quot;');
+        return `<a class="post-toc-link post-toc-level-${level}" href="#${encodeURIComponent(h.id)}" title="${title}">${escapeHtml(text)}</a>`;
+    }).join('');
+
+    box.hidden = false;
+    if (layout) layout.classList.add('has-toc');
+
+    list.querySelectorAll('.post-toc-link').forEach((a) => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const id = decodeURIComponent(a.getAttribute('href').slice(1));
+            const target = document.getElementById(id);
+            if (!target) return;
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            history.replaceState(null, '', '#' + encodeURIComponent(id));
+            setActiveToc(id);
+        });
+    });
+
+    attachTocSpy(heads);
+}
+
+// 高亮目录中当前所在标题
+function setActiveToc(id) {
+    const list = document.getElementById('postTocList');
+    if (!list) return;
+    let activeEl = null;
+    list.querySelectorAll('.post-toc-link').forEach((a) => {
+        const on = decodeURIComponent(a.getAttribute('href').slice(1)) === id;
+        a.classList.toggle('active', on);
+        if (on) activeEl = a;
+    });
+    // 目录项较多时，让高亮项始终留在可视区
+    const box = document.getElementById('postToc');
+    if (activeEl && box && box.scrollHeight > box.clientHeight + 4) {
+        box.scrollTo({ top: Math.max(0, activeEl.offsetTop - box.clientHeight / 2), behavior: 'smooth' });
+    }
+}
+
+// 滚动跟随高亮：scroll + rAF 节流，比 IntersectionObserver 在长短标题混合时更稳
+let tocSpyHandler = null;
+function attachTocSpy(heads) {
+    detachTocSpy();
+    let ticking = false;
+    tocSpyHandler = () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+            ticking = false;
+            const line = 140;   // 视口顶部的判定线，避开悬浮头部
+            let current = heads[0].id;
+            for (const h of heads) {
+                if (h.getBoundingClientRect().top <= line) current = h.id;
+                else break;
+            }
+            // 已滚到底部时高亮最后一个标题
+            if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 8) {
+                current = heads[heads.length - 1].id;
+            }
+            setActiveToc(current);
+        });
+    };
+    window.addEventListener('scroll', tocSpyHandler, { passive: true });
+    tocSpyHandler();
+}
+
+function detachTocSpy() {
+    if (tocSpyHandler) {
+        window.removeEventListener('scroll', tocSpyHandler);
+        tocSpyHandler = null;
+    }
 }
 
 // 将编辑/隐藏/删除按钮注入顶部灵动岛头部（仅文章作者本人或主管理员可见）
