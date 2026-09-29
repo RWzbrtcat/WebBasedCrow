@@ -586,6 +586,16 @@ function closeDropdown(wrap) {
 }
 
 // 插入带语言标记的代码块
+// 插入 Mermaid 代码块时给的示例（可直接渲染出图，方便在此基础上改）
+const MERMAID_SAMPLE = [
+    'flowchart LR',
+    '    A[开始] --> B{条件判断}',
+    '    B -->|是| C[执行操作]',
+    '    B -->|否| D[跳过]',
+    '    C --> E[结束]',
+    '    D --> E'
+].join('\n');
+
 function insertCodeBlock(lang) {
     const ta = contentTextarea();
     const start = ta.selectionStart;
@@ -594,7 +604,8 @@ function insertCodeBlock(lang) {
     const prefix = lang ? '```' + lang + '\n' : '```\n';
     const suffix = '\n```';
     pushUndoState();
-    const text = selected || '代码';
+    // Mermaid 给一段可直接渲染的示例，方便在此基础上改
+    const text = selected || (lang === 'mermaid' ? MERMAID_SAMPLE : '代码');
     ta.value = ta.value.slice(0, start) + prefix + text + suffix + ta.value.slice(end);
     ta.setSelectionRange(start + prefix.length, start + prefix.length + text.length);
     ta.focus({ preventScroll: true });
@@ -918,8 +929,34 @@ function highlightMarkdown(text) {
     return html;
 }
 
+// Mermaid 不在 highlight.js 内置语言里，这里给一套轻量着色：
+// 图表类型关键字 / 连接箭头 / 注释（%%），让代码块在编辑时也有反馈
+// 三类 token 一次性扫出（注释 / 关键字 / 连接箭头），再逐段转义输出；
+// 必须先分词后转义——否则 `-->` 会先变成 `--&gt;`，箭头就匹配不到了。
+const MERMAID_TOKEN_RE = new RegExp([
+    '(%%[^\\n]*)',
+    '\\b(stateDiagram-v2|sequenceDiagram|classDiagram|flowchart|subgraph|erDiagram|gitgraph|mindmap|journey|gantt|graph|end|participant|actor|note|class|click|style|linkStyle|direction|TB|TD|BT|RL|LR)\\b',
+    '(<<-->>|<<--|<-->>|-->>|-\\.->|->>|--o|--x|-->|==>|===|-\\.-|---)'
+].join('|'), 'g');
+
+function highlightMermaid(code) {
+    let html = '';
+    let last = 0;
+    let m;
+    MERMAID_TOKEN_RE.lastIndex = 0;
+    while ((m = MERMAID_TOKEN_RE.exec(code)) !== null) {
+        html += escapeHtml(code.slice(last, m.index));
+        const cls = m[1] ? 'hljs-comment' : (m[2] ? 'hljs-keyword' : 'hljs-operator');
+        html += `<span class="${cls}">${escapeHtml(m[0])}</span>`;
+        last = m.index + m[0].length;
+    }
+    html += escapeHtml(code.slice(last));
+    return html;
+}
+
 function highlightCode(code, lang) {
     if (!code) return '';
+    if (lang === 'mermaid') return highlightMermaid(code);
     if (lang && window.hljs && window.hljs.getLanguage(lang)) {
         try {
             return window.hljs.highlight(code, { language: lang }).value;
