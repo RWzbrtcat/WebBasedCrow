@@ -34,11 +34,112 @@ function renderMarkdownInto(el, text) {
     el.innerHTML = renderMarkdown(text);
     if (window.hljs) {
         el.querySelectorAll('pre code').forEach((block) => {
+            // Mermaid 交给图表渲染，不做代码高亮
+            if (block.classList.contains('language-mermaid') || block.classList.contains('lang-mermaid')) return;
             hljs.highlightElement(block);
         });
     }
     attachHeadingIds(el);
     attachSourceOffsets(el, text);
+    renderMermaidIn(el);
+}
+
+// ===== Mermaid 图表支持 =====
+// 只有文中出现 ```mermaid 时才按需加载图表库，避免拖慢首屏；多 CDN 依次回退
+const MERMAID_CDNS = [
+    'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js',
+    'https://unpkg.com/mermaid@11/dist/mermaid.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.4.1/mermaid.min.js'
+];
+let mermaidLoading = null;
+
+function ensureMermaid() {
+    if (window.mermaid) return Promise.resolve(window.mermaid);
+    if (mermaidLoading) return mermaidLoading;
+
+    mermaidLoading = new Promise((resolve, reject) => {
+        let index = 0;
+        const tryNext = () => {
+            if (index >= MERMAID_CDNS.length) {
+                mermaidLoading = null;
+                reject(new Error('Mermaid 资源加载失败'));
+                return;
+            }
+            const script = document.createElement('script');
+            script.src = MERMAID_CDNS[index++];
+            script.onload = () => {
+                if (!window.mermaid) { tryNext(); return; }
+                try {
+                    window.mermaid.initialize({
+                        startOnLoad: false,
+                        securityLevel: 'strict',   // 禁止图表里的 HTML 标签与点击跳转
+                        theme: 'default',
+                        flowchart: { curve: 'basis', useMaxWidth: true },
+                        fontFamily: getComputedStyle(document.body).fontFamily || 'sans-serif'
+                    });
+                } catch (e) { /* 初始化失败不影响后续渲染尝试 */ }
+                resolve(window.mermaid);
+            };
+            script.onerror = tryNext;
+            document.head.appendChild(script);
+        };
+        tryNext();
+    });
+    return mermaidLoading;
+}
+
+// 编辑器里边打字边渲染代价较高：用计时器合并连续调用，只在输入停顿时渲染一次
+let mermaidTimer = null;
+let mermaidToken = 0;
+
+function renderMermaidIn(el) {
+    if (!el) return;
+    if (mermaidTimer) clearTimeout(mermaidTimer);
+    const hasMermaid = el.querySelector('pre > code.language-mermaid, pre > code.lang-mermaid');
+    if (!hasMermaid) return;
+    mermaidTimer = setTimeout(() => renderMermaidBlocks(el, ++mermaidToken), 300);
+}
+
+async function renderMermaidBlocks(el, token) {
+    let mermaid;
+    try {
+        mermaid = await ensureMermaid();
+    } catch (e) {
+        console.warn('[mermaid] 加载失败，按普通代码块显示', e);
+        return;
+    }
+    if (token !== mermaidToken) return;   // 已有更新的一轮渲染，放弃本次
+
+    const blocks = Array.from(el.querySelectorAll('pre > code.language-mermaid, pre > code.lang-mermaid'));
+    for (let i = 0; i < blocks.length; i++) {
+        const code = blocks[i];
+        const pre = code.closest('pre');
+        if (!pre) continue;
+        const source = code.textContent;
+        const offset = pre.dataset.offset;   // 保留源文本偏移，双击预览仍能定位
+
+        const box = document.createElement('div');
+        box.className = 'mermaid-block';
+        if (offset) box.dataset.offset = offset;
+
+        try {
+            const { svg } = await mermaid.render(`mermaid-${Date.now()}-${i}`, source);
+            if (token !== mermaidToken) return;
+            // mermaid 在 securityLevel:strict 下已自行消毒，直接插入以免 DOMPurify 破坏 SVG 结构
+            box.innerHTML = svg;
+        } catch (err) {
+            box.classList.add('mermaid-block-error');
+            const tip = document.createElement('div');
+            tip.className = 'mermaid-error-tip';
+            tip.textContent = 'Mermaid 语法有误，已显示源码';
+            const src = document.createElement('pre');
+            src.className = 'mermaid-source';
+            src.textContent = source;
+            box.appendChild(tip);
+            box.appendChild(src);
+        }
+        pre.replaceWith(box);
+    }
 }
 
 // 为预览中的顶层块级元素标注其在 Markdown 源文本中的字符偏移，

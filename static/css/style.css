@@ -1328,6 +1328,14 @@ html {
     color: var(--text-muted);
 }
 
+/* 下拉菜单内的分组分隔线（如代码块语言列表末尾的 Mermaid） */
+.md-dropdown-sep {
+    display: block;
+    height: 1px;
+    margin: 5px 8px;
+    background: var(--border);
+}
+
 .md-divider {
     width: 1px;
     background: var(--border);
@@ -2720,4 +2728,50 @@ input[readonly] {
 
 .site-footer a:hover {
     color: var(--text-secondary);
+}
+
+/* ===== Mermaid 图表（```mermaid 代码块渲染后的容器） ===== */
+.mermaid-block {
+    margin: 18px 0;
+    padding: 16px 12px;
+    background: var(--surface);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    text-align: center;
+    line-height: 1;
+}
+
+.mermaid-block svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* 语法错误时：保留源码，避免内容丢失 */
+.mermaid-block-error {
+    text-align: left;
+    border-color: var(--danger);
+}
+
+.mermaid-error-tip {
+    margin-bottom: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--danger);
+}
+
+.mermaid-source {
+    margin: 0;
+    padding: 10px 12px;
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Mermaid 连接箭头的高亮（highlight.js 无此语言，编辑器内自定义着色） */
+.hljs-operator {
+    color: var(--accent-dark);
 }
