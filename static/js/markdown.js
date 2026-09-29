@@ -47,9 +47,9 @@ function renderMarkdownInto(el, text) {
 // ===== Mermaid 图表支持 =====
 // 只有文中出现 ```mermaid 时才按需加载图表库，避免拖慢首屏；多 CDN 依次回退
 const MERMAID_CDNS = [
+    'https://fastly.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js',  // 国内访问较快
     'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js',
-    'https://unpkg.com/mermaid@11/dist/mermaid.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.4.1/mermaid.min.js'
+    'https://unpkg.com/mermaid@11/dist/mermaid.min.js'
 ];
 let mermaidLoading = null;
 

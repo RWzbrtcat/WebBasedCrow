@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid 图表渲染演示</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    <style>
+        /* 仅用于本演示页：并排展示源码与渲染结果 */
+        .demo-wrap { max-width: 1100px; margin: 0 auto; padding: 32px 20px 64px; }
+        .demo-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 6px; }
+        .demo-sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px; }
+        .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+        @media (max-width: 860px) { .demo-grid { grid-template-columns: 1fr; } }
+        .demo-card {
+            background: var(--surface);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            padding: 16px 18px;
+            box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,.06));
+        }
+        .demo-card h3 { margin: 0 0 10px; font-size: 0.95rem; }
+        .demo-src {
+            margin: 0; padding: 12px 14px; background: var(--bg);
+            border-radius: var(--radius-sm); font-size: 0.8rem; line-height: 1.6;
+            white-space: pre-wrap; word-break: break-word; overflow-x: auto;
+        }
+        .demo-note {
+            margin-top: 26px; padding: 14px 16px; border-radius: var(--radius-sm);
+            background: var(--accent-soft); font-size: 0.85rem; line-height: 1.7;
+        }
+        #status { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; }
+    </style>
+</head>
+<body>
+    <div class="demo-wrap">
+        <div class="demo-title">Mermaid 图表渲染演示</div>
+        <div class="demo-sub">左：Markdown 源码　右：renderMarkdownInto 渲染后的效果</div>
+        <div id="status">正在渲染…</div>
+
+        <div class="demo-grid">
+            <div class="demo-card">
+                <h3>源码（流程图）</h3>
+                <pre class="demo-src" id="srcFlow"></pre>
+            </div>
+            <div class="demo-card">
+                <h3>渲染结果</h3>
+                <div class="markdown-body" id="outFlow"></div>
+            </div>
+        </div>
+
+        <div class="demo-grid" style="margin-top:18px;">
+            <div class="demo-card">
+                <h3>源码（时序图 + 语法错误示例）</h3>
+                <pre class="demo-src" id="srcSeq"></pre>
+            </div>
+            <div class="demo-card">
+                <h3>渲染结果</h3>
+                <div class="markdown-body" id="outSeq"></div>
+            </div>
+        </div>
+
+        <div class="demo-note">
+            说明：图表库按需从 CDN 懒加载（jsdelivr → unpkg → cdnjs 依次回退），只有文中出现
+            <code>```mermaid</code> 代码块时才会加载，不影响其他页面首屏。语法错误时会保留源码并给出提示，不会吞掉内容。
+        </div>
+    </div>
+
+    <script src="static/js/marked.min.js"></script>
+    <script src="static/js/purify.min.js"></script>
+    <script src="static/js/highlight.min.js"></script>
+    <script src="static/js/markdown.js"></script>
+    <script>
+        const FLOW = [
+            '## 发布流程',
+            '',
+            '```mermaid',
+            'flowchart LR',
+            '    A[写文章] --> B{是否需要图表}',
+            '    B -->|是| C[插入 Mermaid 代码块]',
+            '    B -->|否| D[直接发布]',
+            '    C --> D',
+            '```'
+        ].join('\n');
+
+        const SEQ = [
+            '```mermaid',
+            'sequenceDiagram',
+            '    浏览器->>服务器: 请求 /api/posts',
+            '    服务器-->>浏览器: 返回 JSON',
+            '```',
+            '',
+            '```mermaid',
+            'flowchart LR',
+            '    A --> (((( 这里故意写错',
+            '```'
+        ].join('\n'));
+
+        document.getElementById('srcFlow').textContent = FLOW;
+        document.getElementById('srcSeq').textContent = SEQ;
+
+        renderMarkdownInto(document.getElementById('outFlow'), FLOW);
+        renderMarkdownInto(document.getElementById('outSeq'), SEQ);
+
+        // 简单状态提示：检测渲染是否产出 SVG 或错误块
+        setTimeout(() => {
+            const hasSvg = document.querySelector('#outFlow svg, #outFlow .mermaid-block svg');
+            const status = document.getElementById('status');
+            status.textContent = hasSvg
+                ? '渲染完成：流程图已生成为 SVG（时序图与错误示例见下方）'
+                : '图表库尚未加载完成（多为 CDN 不可达），此时 mermaid 代码块会按普通代码显示。';
+        }, 2500);
+    </script>
+</body>
+</html>
