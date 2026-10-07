@@ -123,6 +123,23 @@ bool isAllowedImageExt(const std::string& filename)
            ext == ".gif" || ext == ".webp" || ext == ".bmp";
 }
 
+// 获取客户端 IP：优先 Nginx 透传的 X-Real-IP，其次 X-Forwarded-For 的第一个，最后直连地址
+std::string getClientIp(const crow::request& req)
+{
+    std::string real = trim(req.get_header_value("X-Real-IP"));
+    if (!real.empty()) return real;
+
+    std::string forwarded = req.get_header_value("X-Forwarded-For");
+    if (!forwarded.empty())
+    {
+        size_t comma = forwarded.find(',');
+        std::string first = trim(comma == std::string::npos ? forwarded : forwarded.substr(0, comma));
+        if (!first.empty()) return first;
+    }
+
+    return req.remote_ip_address;
+}
+
 // 生成唯一文件名：时间戳 + 原始扩展名
 std::string generateImageName(const std::string& originalName)
 {

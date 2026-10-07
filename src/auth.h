@@ -14,6 +14,16 @@ struct Session
 // 会话 Cookie 名
 extern const std::string SESSION_COOKIE;
 
+// 匿名访客 Cookie 名：未登录也能评论，服务端借此识别「哪条是自己发的」
+// （HttpOnly，JS 读不到也改不了，杜绝伪造他人身份）
+extern const std::string ANON_COOKIE;
+
+// 读取当前请求的匿名访客标识，不存在返回空字符串
+std::string getAnonToken(const crow::request& req);
+
+// 把匿名标识写入响应（有效期 1 年）
+void setAnonCookie(crow::response& res, const std::string& token);
+
 // 生成会话 token 并写入会话表，返回 token（用于设置 Set-Cookie）
 std::string createSession(int adminId, bool isMain);
 

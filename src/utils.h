@@ -32,6 +32,10 @@ std::string mimeTypeFromFilename(const std::string& filename);
 // 校验扩展名是否为允许上传的图片格式
 bool isAllowedImageExt(const std::string& filename);
 
+// 获取客户端 IP：优先 Nginx 透传的 X-Real-IP / X-Forwarded-For，回退到直连地址。
+// 仅用于限流等内存判断，不落库（避免隐私合规负担）。
+std::string getClientIp(const crow::request& req);
+
 // 生成唯一文件名：时间戳 + 原始扩展名
 std::string generateImageName(const std::string& originalName);
 

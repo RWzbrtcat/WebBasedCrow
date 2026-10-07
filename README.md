@@ -22,7 +22,8 @@
 - [十二、前端开发与预览工具](#十二前端开发与预览工具)
 - [十三、常见问题排查](#十三常见问题排查)
 - [十四、API 一览](#十四api-一览)
-- [十五、已知限制与待办](#十五已知限制与待办)
+- [十五、匿名评论身份（blog_anon）](#十五匿名评论身份blog_anon)
+- [十六、已知限制与待办](#十六已知限制与待办)
 
 ---
 
@@ -627,8 +628,10 @@ journalctl -u blog --since today | grep -Ei 'Started|Stopping|terminate|gone awa
 | PUT/DELETE | `/api/posts/<id>` | 更新 / 删除（非主管理员只能改自己的） | 登录 |
 | PUT | `/api/posts/<id>/hidden` | 切换隐藏状态 | 登录 |
 | POST | `/api/posts/<id>/like` `/unlike` | 点赞 / 取消 | 公开 |
-| GET/POST | `/api/posts/<id>/comments` | 评论列表 / 发表 | 公开 |
-| PUT/DELETE | `/api/comments/<id>` | 修改 / 删除评论 | 登录 |
+| GET | `/api/posts/<id>/comments` | 评论列表（每条带 `mine` / `can_edit`） | 公开 |
+| POST | `/api/posts/<id>/comments` | 发表评论 / 回复（限流：同 IP 60 秒 5 条、同访客 10 秒 1 条） | 公开 |
+| PUT | `/api/comments/<id>` | `hidden` → 隐藏/显示，仅管理员；`content` → 改内容，作者（30 分钟内）或管理员 | 混合 |
+| DELETE | `/api/comments/<id>` | 删除评论及其回复：管理员任意；匿名访客仅限自己发的 | 混合 |
 | POST | `/api/upload` | 上传图片（multipart，字段 `image`） | 登录 |
 | GET/POST | `/api/topics` | 专栏列表 / 新增 | 读公开、写登录 |
 | DELETE | `/api/topics/<id>` | 删除专栏 | 登录 |
@@ -637,17 +640,46 @@ journalctl -u blog --since today | grep -Ei 'Started|Stopping|terminate|gone awa
 
 ---
 
-## 十五、已知限制与待办
+## 十五、匿名评论身份（blog_anon）
 
-### 15.1 已知限制
+访客**不需要登录**也能评论，服务端会为其下发匿名标识，用于"认领自己发的评论"（自助删除/修改）。
+
+**机制**
+
+1. 首次发表评论时，服务端生成 128 bit 随机 token（`randomHex(16)`），通过
+   `Set-Cookie: blog_anon=<token>; HttpOnly; Path=/; SameSite=Lax; Max-Age=31536000` 下发。
+2. token 一并写入 `comments.owner_token` 列；`owner_token` 为 NULL 的是历史评论，视为"无主"，仅管理员可操作。
+3. 评论列表接口**只返回 `mine`（是否自己发的）和 `can_edit`（是否仍在可修改时间窗内）**，
+   **`owner_token` 本身绝不返回给客户端** —— 否则任何人都能拿他人 token 冒充删评。
+4. 删除/修改的归属判断全部在**服务端**完成，前端按钮只是显示与否。
+5. 修改限**创建后 30 分钟内**，由 SQL 的 `created_at >= DATE_SUB(NOW(), INTERVAL 30 MINUTE)` 强制约束。
+
+**能力边界（重要）**
+
+不登录时**做不到"一人一 ID"**，只能做到"一浏览器一 ID"。以下情况该访客会变成"另一个人"：
+清除浏览器数据、换浏览器/设备、无痕模式。届时旧评论的管理权丢失（只能由管理员处理）。
+同理，同一人反复清 Cookie 可获得多个身份，所以**防刷依赖限流与内容审核，不能依赖身份**。
+需要跨设备唯一就必须引入弱登录（邮箱验证码等），当前未实现。
+
+**限流**：同一匿名 token 10 秒 1 条、同一 IP 60 秒 5 条（内存计数，重启清零）。
+客户端 IP 取自 `X-Real-IP` → `X-Forwarded-For` 首个 → 直连地址，**仅用于限流，不落库**。
+
+**表结构迁移**：服务启动时自动 `ALTER TABLE comments ADD COLUMN owner_token VARCHAR(64) NULL`
+并创建 `idx_comments_owner` 索引（幂等，已有则跳过），无需手动改库。
+
+## 十六、已知限制与待办
+
+### 16.1 已知限制
 
 - **端口写死 8080**，不支持环境变量配置。
 - **会话存内存**，重启后所有人需重新登录；多实例部署无法共享登录态。
 - **单数据库连接**（所有查询串行执行）+ 多线程 HTTP，高并发下数据库访问是瓶颈；`checkConnection()` 会 `mysql_ping` 自动重连。
 - **Mermaid 依赖外网 CDN**，离线部署需自行本地化。
 - **初始管理员为 `admin@localhost`**，与登录页默认补全的 `@lazycat.com` 不一致（见 [7.3](#73-首次启动与初始管理员)）。
+- **匿名评论身份绑定浏览器**：清 Cookie / 换设备即丢失对自己旧评论的管理权（详见 [第十五章](#十五匿名评论身份blog_anon)）。
+- **点赞去重仍是纯前端 `localStorage`**，清缓存即可重复点赞，服务端无记录。
 
-### 15.2 build/ 目录被误纳入版本控制
+### 16.2 build/ 目录被误纳入版本控制
 
 `build/` 是 CMake 中间产物，目前有文件被提交进了 Git（含 `CMakeCache.txt`，里面有本机绝对路径）。建议清理：
 
@@ -659,7 +691,7 @@ git commit -m "chore: 移除误纳入版本控制的 build/ 中间产物"
 
 > 执行前确认没有人在 `build/` 里放需要保留的东西。
 
-### 15.3 待办
+### 16.3 待办
 
 - [ ] 端口、上传目录等改为可配置（环境变量 / 配置文件）
 - [ ] 会话持久化到数据库或 Redis，支持多实例

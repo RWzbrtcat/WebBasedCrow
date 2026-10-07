@@ -8,6 +8,19 @@
 #include "utils.h"
 
 const std::string SESSION_COOKIE = "blog_session";
+const std::string ANON_COOKIE = "blog_anon";
+
+// 读取匿名访客标识：直接复用会话 Cookie 的解析逻辑
+std::string getAnonToken(const crow::request& req)
+{
+    return getCookie(req, ANON_COOKIE);
+}
+
+// 下发匿名标识：HttpOnly + SameSite=Lax，1 年有效
+void setAnonCookie(crow::response& res, const std::string& token)
+{
+    res.add_header("Set-Cookie", ANON_COOKIE + "=" + token + "; HttpOnly; Path=/; SameSite=Lax; Max-Age=31536000");
+}
 
 // 内存会话表（token -> 会话信息）。个人博客用内存会话即可，服务重启后需重新登录
 static std::unordered_map<std::string, Session> g_sessions;

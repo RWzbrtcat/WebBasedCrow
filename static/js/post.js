@@ -65,8 +65,17 @@ async function apiRequest(url, method = 'GET', body = null, retry = true) {
             await sleep(700);
             return apiRequest(url, method, body, false);
         }
-        console.error('[post] HTTP 错误', url, response.status);
-        throw new Error(`HTTP ${response.status}`);
+        // 服务端返回的错误文案（如限流提示）透传给调用方，便于直接展示
+        let serverMessage = '';
+        try {
+            const errBody = await response.json();
+            serverMessage = (errBody && errBody.message) || '';
+        } catch (e) { /* 响应不是 JSON，忽略 */ }
+        console.error('[post] HTTP 错误', url, response.status, serverMessage);
+        const err = new Error(serverMessage || `HTTP ${response.status}`);
+        err.status = response.status;
+        err.serverMessage = serverMessage;
+        throw err;
     }
 
     try {
@@ -438,9 +447,13 @@ function renderComments(comments) {
 function renderCommentItem(c) {
     const hiddenBadge = c.hidden ? '<span class="comment-hidden-badge">已隐藏</span>' : '';
     const replyBtn = `<button type="button" class="comment-reply-btn" data-id="${c.id}">回复</button>`;
-    const adminActions = isAdmin
-        ? `<button type="button" class="comment-action" data-action="hide" data-id="${c.id}">${c.hidden ? '显示' : '隐藏'}</button>
-           <button type="button" class="comment-action comment-action-danger" data-action="delete" data-id="${c.id}">删除</button>`
+    // 已登录（管理员）可操作任意评论；未登录访客凭服务端下发的匿名标识操作自己发的评论。
+    // mine / can_edit 均由服务端按 blog_anon Cookie 计算后下发，前端只负责显示。
+    const canManage = isAdmin || c.mine;
+    const manageActions = canManage
+        ? `${isAdmin ? `<button type="button" class="comment-action" data-action="hide" data-id="${c.id}">${c.hidden ? '显示' : '隐藏'}</button>` : ''}`
+          + `${(isAdmin || c.can_edit) ? `<button type="button" class="comment-action" data-action="edit" data-id="${c.id}">修改</button>` : ''}`
+          + `<button type="button" class="comment-action comment-action-danger" data-action="delete" data-id="${c.id}">删除</button>`
         : '';
     return `
         <div class="comment-item${c.hidden ? ' comment-hidden' : ''}" data-id="${c.id}" data-hidden="${c.hidden ? '1' : '0'}">
@@ -449,7 +462,7 @@ function renderCommentItem(c) {
                 <span class="comment-time">${formatDateTime(c.created_at)}</span>
             </div>
             <div class="comment-content">${escapeHtml(c.content)}</div>
-            <div class="comment-actions">${replyBtn}${adminActions}</div>
+            <div class="comment-actions">${replyBtn}${manageActions}</div>
             <div class="comment-reply-form" hidden></div>
         </div>
     `;
@@ -481,14 +494,73 @@ function onCommentsClick(e) {
         handleHideComment(id, actionBtn);
     } else if (actionBtn.dataset.action === 'delete') {
         handleDeleteComment(id);
+    } else if (actionBtn.dataset.action === 'edit') {
+        const item = actionBtn.closest('.comment-item');
+        const current = item ? item.querySelector('.comment-content').textContent : '';
+        openEditForm(item, id, current);
     }
 }
 
 function onCommentsSubmit(e) {
-    const form = e.target.closest('.comment-reply-form-inner');
-    if (!form) return;
-    e.preventDefault();
-    handleReplySubmit(form);
+    const replyForm = e.target.closest('.comment-reply-form-inner');
+    if (replyForm) {
+        e.preventDefault();
+        handleReplySubmit(replyForm);
+        return;
+    }
+    const editForm = e.target.closest('.comment-edit-form-inner');
+    if (editForm) {
+        e.preventDefault();
+        handleEditSubmit(editForm);
+    }
+}
+
+// 修改评论：匿名作者限创建后 30 分钟内（由服务端强制），管理员无限制
+function openEditForm(item, id, currentContent) {
+    const formContainer = item ? item.querySelector('.comment-reply-form') : null;
+    if (!formContainer) return;
+    formContainer.innerHTML = `
+        <form class="comment-form comment-edit-form-inner" data-comment-id="${id}">
+            <textarea class="reply-content" required></textarea>
+            <div class="comment-form-actions">
+                <button type="button" class="btn btn-secondary reply-cancel">取消</button>
+                <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+        </form>
+    `;
+    formContainer.hidden = false;
+    const textarea = formContainer.querySelector('.reply-content');
+    textarea.value = currentContent;
+    textarea.focus();
+}
+
+async function handleEditSubmit(form) {
+    const id = Number(form.dataset.commentId);
+    const content = form.querySelector('.reply-content').value.trim();
+    if (!content) {
+        showToast('请输入评论内容', 'error');
+        return;
+    }
+
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = '保存中...';
+
+    try {
+        const data = await apiRequest(`${API_BASE}/comments/${id}`, 'PUT', { content });
+        if (data.success) {
+            showToast('评论已修改');
+            loadComments();
+        } else {
+            showToast(data.message || '修改失败', 'error');
+            btn.disabled = false;
+            btn.textContent = '保存';
+        }
+    } catch (e) {
+        showToast(e.serverMessage || '修改失败，请稍后重试', 'error');
+        btn.disabled = false;
+        btn.textContent = '保存';
+    }
 }
 
 function openReplyForm(item, id, nickname) {
@@ -535,7 +607,7 @@ async function handleCommentSubmit(e) {
             showToast(data.message || '评论失败', 'error');
         }
     } catch (e) {
-        showToast('评论失败，请稍后重试', 'error');
+        showToast(e.serverMessage || '评论失败，请稍后重试', 'error');
     } finally {
         btn.disabled = false;
         btn.textContent = '发表评论';
@@ -564,7 +636,7 @@ async function handleReplySubmit(form) {
             showToast(data.message || '回复失败', 'error');
         }
     } catch (e) {
-        showToast('回复失败，请稍后重试', 'error');
+        showToast(e.serverMessage || '回复失败，请稍后重试', 'error');
     }
 }
 
@@ -603,7 +675,7 @@ async function handleDeleteComment(id) {
             showToast(data.message || '删除失败', 'error');
         }
     } catch (e) {
-        showToast('删除失败，请稍后重试', 'error');
+        showToast(e.serverMessage || '删除失败，请稍后重试', 'error');
     }
 }
 

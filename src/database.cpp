@@ -208,6 +208,25 @@ void DataBase::initTable()
         }
     }
 
+    // 匿名作者标识：未登录访客发评论时由服务端下发 HttpOnly Cookie（blog_anon），
+    // 据此识别「自己的评论」以便自助删除/修改。历史评论为 NULL，视为无主，仅管理员可操作。
+    if (!columnExists("comments", "owner_token"))
+    {
+        const char* alterSql = "ALTER TABLE comments ADD COLUMN owner_token VARCHAR(64) NULL DEFAULT NULL "
+                               "COMMENT '匿名作者标识' AFTER nickname";
+        if (mysql_query(conn_, alterSql) != 0)
+        {
+            throw std::runtime_error(std::string("补充 owner_token 列失败：") + mysql_error(conn_));
+        }
+    }
+    if (!indexExists("comments", "idx_comments_owner"))
+    {
+        if (mysql_query(conn_, "CREATE INDEX idx_comments_owner ON comments(owner_token)") != 0)
+        {
+            throw std::runtime_error(std::string("创建 owner_token 索引失败：") + mysql_error(conn_));
+        }
+    }
+
     // 配置表（键值对，用于存储站点背景图等全局设置）
     const char* settingsSql = R"(
         CREATE TABLE IF NOT EXISTS settings(
@@ -332,7 +351,29 @@ bool DataBase::columnExists(const std::string& table, const std::string& column)
     return exists;
 }
 
-// ===== 文章 =====
+bool DataBase::indexExists(const std::string& table, const std::string& index)
+{
+    std::string sql =
+        "SELECT COUNT(*) FROM information_schema.STATISTICS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '" + table +
+        "' AND INDEX_NAME = '" + index + "'";
+
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res)
+    {
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(res);
+    bool exists = row && row[0] && std::string(row[0]) != "0";
+    mysql_free_result(res);
+    return exists;
+}
 
 // 按状态获取文章列表（published 已发布 / draft 草稿）
 crow::json::wvalue DataBase::getPosts(const std::string& status)
@@ -844,7 +885,9 @@ bool DataBase::getPostAuthor(int id, int& outAuthorId, std::string& outAuthor)
 // ===== 评论 =====
 
 // 获取某篇文章的所有评论（按时间正序；includeHidden 为 true 时包含被隐藏的评论，仅供站长）
-crow::json::wvalue DataBase::getComments(int postId, bool includeHidden)
+// anonToken 为当前访客的匿名标识（可为空）：用于计算每条评论的 mine / can_edit，
+// 但 owner_token 本身绝不返回给客户端，避免被他人拿来冒充作者。
+crow::json::wvalue DataBase::getComments(int postId, bool includeHidden, const std::string& anonToken)
 {
     std::lock_guard<std::mutex> lock(mtx_);
     checkConnection();
@@ -852,7 +895,10 @@ crow::json::wvalue DataBase::getComments(int postId, bool includeHidden)
     crow::json::wvalue result;
     std::vector<crow::json::wvalue> comments;
 
-    std::string sql = "SELECT id, post_id, parent_id, nickname, content, hidden, created_at FROM comments WHERE post_id=" + std::to_string(postId);
+    // can_edit 由 SQL 直接算：仅创建 30 分钟内允许匿名作者修改
+    std::string sql = "SELECT id, post_id, parent_id, nickname, content, hidden, created_at, owner_token, "
+                      "(created_at >= DATE_SUB(NOW(), INTERVAL 30 MINUTE)) AS can_edit "
+                      "FROM comments WHERE post_id=" + std::to_string(postId);
     if (!includeHidden)
     {
         sql += " AND hidden=0";
@@ -880,6 +926,15 @@ crow::json::wvalue DataBase::getComments(int postId, bool includeHidden)
             c["content"] = row[4] ? row[4] : "";
             c["hidden"] = (row[5] && std::stoi(row[5]) != 0);
             c["created_at"] = row[6] ? row[6] : "";
+
+            // row[7] 是 owner_token：只在服务端比对，不输出给客户端
+            const char* owner = row[7];
+            bool mine = !anonToken.empty() && owner && anonToken == owner;
+            c["mine"] = mine;
+            // 修改权限：自己的评论且在可编辑时间窗内；管理员走 isAdmin 判断，不受此限制
+            bool canEdit = mine && row[8] && std::stoi(row[8]) != 0;
+            c["can_edit"] = canEdit;
+
             comments.push_back(std::move(c));
         }
         mysql_free_result(res);
@@ -891,7 +946,9 @@ crow::json::wvalue DataBase::getComments(int postId, bool includeHidden)
 }
 
 // 新增评论（parentId 为 0 表示顶层评论，否则为回复某条评论）
-crow::json::wvalue DataBase::addComment(int postId, int parentId, const std::string& nickname, const std::string& content)
+// ownerToken 为匿名作者标识（服务端下发的 HttpOnly Cookie），为空则存 NULL（无主评论）
+crow::json::wvalue DataBase::addComment(int postId, int parentId, const std::string& nickname,
+                                        const std::string& content, const std::string& ownerToken)
 {
     std::lock_guard<std::mutex> lock(mtx_);
     checkConnection();
@@ -905,7 +962,11 @@ crow::json::wvalue DataBase::addComment(int postId, int parentId, const std::str
         return result;
     }
 
-    const char* sql = "INSERT INTO comments (post_id, parent_id, nickname, content) VALUES (?, ?, ?, ?)";
+    // ownerToken 为空时不写该列（落库为默认 NULL，表示无主评论），
+    // 这样避免使用 MYSQL_BIND::is_null 的 my_bool 类型（MySQL 8.0 已移除该类型，兼容性差）
+    const char* sql = ownerToken.empty()
+        ? "INSERT INTO comments (post_id, parent_id, nickname, content) VALUES (?, ?, ?, ?)"
+        : "INSERT INTO comments (post_id, parent_id, nickname, content, owner_token) VALUES (?, ?, ?, ?, ?)";
     if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
     {
         result["success"] = false;
@@ -914,7 +975,7 @@ crow::json::wvalue DataBase::addComment(int postId, int parentId, const std::str
         return result;
     }
 
-    MYSQL_BIND bind[4];
+    MYSQL_BIND bind[5];
     std::memset(bind, 0, sizeof(bind));
 
     bind[0].buffer_type = MYSQL_TYPE_LONG;
@@ -930,6 +991,11 @@ crow::json::wvalue DataBase::addComment(int postId, int parentId, const std::str
     bind[3].buffer_type = MYSQL_TYPE_STRING;
     bind[3].buffer = (void*)content.c_str();
     bind[3].buffer_length = content.length();
+
+    // 占位符只有 4 个时，mysql_stmt_bind_param 按 param_count 只读前 4 个，多传无害
+    bind[4].buffer_type = MYSQL_TYPE_STRING;
+    bind[4].buffer = (void*)ownerToken.c_str();
+    bind[4].buffer_length = ownerToken.length();
 
     mysql_stmt_bind_param(stmt, bind);
 
@@ -998,13 +1064,59 @@ crow::json::wvalue DataBase::setCommentHidden(int id, int hidden)
     return result;
 }
 
-// 删除某条评论及其所有回复（站长）
-crow::json::wvalue DataBase::deleteComment(int id)
+// 删除某条评论及其所有回复。
+// isAdmin 为 true 时无条件删除；否则必须 ownerToken 与该评论的 owner_token 一致。
+crow::json::wvalue DataBase::deleteComment(int id, const std::string& ownerToken, bool isAdmin)
 {
     std::lock_guard<std::mutex> lock(mtx_);
     checkConnection();
 
     crow::json::wvalue result;
+
+    if (!isAdmin)
+    {
+        // 匿名作者：先校验归属，避免误删他人评论
+        if (ownerToken.empty())
+        {
+            result["success"] = false;
+            result["message"] = "无法确认评论归属";
+            return result;
+        }
+
+        std::string q = "SELECT owner_token FROM comments WHERE id=" + std::to_string(id);
+        if (mysql_query(conn_, q.c_str()) != 0)
+        {
+            result["success"] = false;
+            result["message"] = mysql_error(conn_);
+            return result;
+        }
+        MYSQL_RES* res = mysql_store_result(conn_);
+        if (!res)
+        {
+            result["success"] = false;
+            result["message"] = "评论不存在";
+            return result;
+        }
+        MYSQL_ROW row = mysql_fetch_row(res);
+        if (!row)
+        {
+            mysql_free_result(res);
+            result["success"] = false;
+            result["message"] = "评论不存在";
+            return result;
+        }
+        const char* owner = row[0];
+        bool matched = owner && ownerToken == owner;
+        mysql_free_result(res);
+
+        if (!matched)
+        {
+            result["success"] = false;
+            result["message"] = "无权删除他人评论";
+            return result;
+        }
+    }
+
     MYSQL_STMT* stmt = mysql_stmt_init(conn_);
     if (!stmt)
     {
@@ -1043,6 +1155,76 @@ crow::json::wvalue DataBase::deleteComment(int id)
     {
         result["success"] = false;
         result["message"] = mysql_stmt_error(stmt);
+    }
+    mysql_stmt_close(stmt);
+    return result;
+}
+
+// 修改评论内容。
+// isAdmin 为 true 时无条件修改；否则必须是作者本人，且限于创建后 30 分钟内（防止事后篡改历史）。
+crow::json::wvalue DataBase::updateCommentContent(int id, const std::string& content,
+                                                  const std::string& ownerToken, bool isAdmin)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+
+    if (!isAdmin && ownerToken.empty())
+    {
+        result["success"] = false;
+        result["message"] = "无法确认评论归属";
+        return result;
+    }
+
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = isAdmin
+        ? "UPDATE comments SET content=? WHERE id=?"
+        : "UPDATE comments SET content=? WHERE id=? AND owner_token=? "
+          "AND created_at >= DATE_SUB(NOW(), INTERVAL 30 MINUTE)";
+
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    MYSQL_BIND bind[3];
+    std::memset(bind, 0, sizeof(bind));
+
+    bind[0].buffer_type = MYSQL_TYPE_STRING;
+    bind[0].buffer = (void*)content.c_str();
+    bind[0].buffer_length = content.length();
+
+    bind[1].buffer_type = MYSQL_TYPE_LONG;
+    bind[1].buffer = (void*)&id;
+
+    bind[2].buffer_type = MYSQL_TYPE_STRING;
+    bind[2].buffer = (void*)ownerToken.c_str();
+    bind[2].buffer_length = ownerToken.length();
+
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+    }
+    else
+    {
+        my_ulonglong affected = mysql_stmt_affected_rows(stmt);
+        result["success"] = (affected > 0);
+        // 影响行数为 0 有几种可能：内容没改、不是本人发的、或超过 30 分钟窗口
+        result["message"] = (affected > 0) ? "修改成功" : "修改未生效：内容未变化、无权修改或已超过可修改时间";
     }
     mysql_stmt_close(stmt);
     return result;

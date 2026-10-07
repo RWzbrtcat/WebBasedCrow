@@ -1,10 +1,75 @@
 #include "routes.h"
 
+#include <chrono>
 #include <fstream>
+#include <mutex>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "auth.h"
 #include "utils.h"
+
+namespace
+{
+// 评论限流：内存计数，服务重启即清零（与会话一致，够用）。
+// key 前缀区分维度：ip: 限制同一来源，tok: 限制同一匿名访客。
+class RateLimiter
+{
+public:
+    // windowSec 秒内最多允许 maxCount 次，超出返回 false
+    bool allow(const std::string& key, int maxCount, int windowSec)
+    {
+        std::lock_guard<std::mutex> lock(mtx_);
+        auto now = std::chrono::steady_clock::now();
+        auto cutoff = now - std::chrono::seconds(windowSec);
+
+        // 先清理窗口内已无记录的 key，避免长期运行内存无限增长
+        for (auto it = hits_.begin(); it != hits_.end(); )
+        {
+            std::vector<std::chrono::steady_clock::time_point> recent;
+            for (const auto& t : it->second)
+            {
+                if (t >= cutoff) recent.push_back(t);
+            }
+            if (recent.empty())
+            {
+                it = hits_.erase(it);
+            }
+            else
+            {
+                it->second.swap(recent);
+                ++it;
+            }
+        }
+
+        // 兜底：条目过多时整体清空。最坏情况只是短暂放宽限流，好过内存无限增长
+        if (hits_.size() > 10000) hits_.clear();
+
+        auto& records = hits_[key];
+        if (static_cast<int>(records.size()) >= maxCount) return false;
+        records.push_back(now);
+        return true;
+    }
+
+private:
+    std::mutex mtx_;
+    std::unordered_map<std::string, std::vector<std::chrono::steady_clock::time_point>> hits_;
+};
+
+RateLimiter g_commentLimiter;
+
+// 限流拒绝响应
+crow::response tooManyRequests(const char* message)
+{
+    crow::json::wvalue err;
+    err["success"] = false;
+    err["message"] = message;
+    crow::response res(429, err);
+    addCorsHeaders(res);
+    return res;
+}
+} // namespace
 
 void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDir)
 {
@@ -427,7 +492,8 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
 
     // GET /api/posts/<id>/comments - 获取评论（公开；站长登录后额外包含被隐藏评论）
     CROW_ROUTE(app, "/api/posts/<int>/comments").methods("GET"_method)([&db](const crow::request& req, int id){
-        crow::response res(db.getComments(id, isLoggedIn(req)));
+        // 传入匿名标识，用于在结果中标注「哪条是自己发的」（mine / can_edit）；token 本身不下发
+        crow::response res(db.getComments(id, isLoggedIn(req), getAnonToken(req)));
         addCorsHeaders(res);
         return res;
     });
@@ -461,16 +527,36 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
         if (nickname.length() > 50) nickname = nickname.substr(0, 50);
         if (content.length() > 2000) content = content.substr(0, 2000);
 
-        crow::response res(db.addComment(id, parentId, nickname, content));
+        // 限流：先按 IP（对所有人有效，包括还没拿到 Cookie 的新访客），
+        // 再按匿名标识（仅对已有 Cookie 的访客，防止同一人短时间连发）
+        if (!g_commentLimiter.allow("ip:" + getClientIp(req), 5, 60))
+        {
+            return tooManyRequests("评论太频繁了，请稍后再试");
+        }
+        std::string anonToken = getAnonToken(req);
+        const bool needSetCookie = anonToken.empty();
+        if (needSetCookie)
+        {
+            anonToken = randomHex(16);   // 128 bit，不可猜测
+        }
+        else if (!g_commentLimiter.allow("tok:" + anonToken, 1, 10))
+        {
+            return tooManyRequests("评论太频繁了，请稍后再试");
+        }
+
+        crow::response res(db.addComment(id, parentId, nickname, content, anonToken));
+        // 首次来访：下发匿名标识（HttpOnly，JS 读不到也改不了），之后凭它认领自己的评论
+        if (needSetCookie) setAnonCookie(res, anonToken);
         addCorsHeaders(res);
         return res;
     });
 
-    // PUT /api/comments/<int> - 隐藏 / 取消隐藏评论（仅登录）
+    // PUT /api/comments/<int>
+    //   body.hidden  → 隐藏 / 取消隐藏（仅管理员）
+    //   body.content → 修改评论内容（管理员无条件；匿名作者限创建后 30 分钟内）
     CROW_ROUTE(app, "/api/comments/<int>").methods("PUT"_method)([&db](const crow::request& req, int id){
-        if (!isLoggedIn(req)) return unauthorizedResponse();
         auto body = crow::json::load(req.body);
-        if (!body || !body.has("hidden"))
+        if (!body || (!body.has("hidden") && !body.has("content")))
         {
             crow::json::wvalue err;
             err["success"] = false;
@@ -479,16 +565,39 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
             addCorsHeaders(res);
             return res;
         }
-        bool hidden = body["hidden"].b();
-        crow::response res(db.setCommentHidden(id, hidden ? 1 : 0));
+
+        const bool authed = isLoggedIn(req);
+
+        if (body.has("hidden"))
+        {
+            if (!authed) return unauthorizedResponse();
+            bool hidden = body["hidden"].b();
+            crow::response res(db.setCommentHidden(id, hidden ? 1 : 0));
+            addCorsHeaders(res);
+            return res;
+        }
+
+        std::string content = trim(std::string(body["content"].s()));
+        if (content.empty())
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["message"] = "评论内容不能为空";
+            crow::response res(400, err);
+            addCorsHeaders(res);
+            return res;
+        }
+        if (content.length() > 2000) content = content.substr(0, 2000);
+
+        crow::response res(db.updateCommentContent(id, content, getAnonToken(req), authed));
         addCorsHeaders(res);
         return res;
     });
 
-    // DELETE /api/comments/<int> - 删除评论及其回复（仅登录）
+    // DELETE /api/comments/<int> - 删除评论及其回复
+    // 管理员可删任意评论；未登录访客凭 blog_anon Cookie 只能删自己发的
     CROW_ROUTE(app, "/api/comments/<int>").methods("DELETE"_method)([&db](const crow::request& req, int id){
-        if (!isLoggedIn(req)) return unauthorizedResponse();
-        crow::response res(db.deleteComment(id));
+        crow::response res(db.deleteComment(id, getAnonToken(req), isLoggedIn(req)));
         addCorsHeaders(res);
         return res;
     });

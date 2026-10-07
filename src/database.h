@@ -46,10 +46,16 @@ public:
     bool getPostAuthor(int id, int& outAuthorId, std::string& outAuthor);
 
     // ===== 评论 =====
-    crow::json::wvalue getComments(int postId, bool includeHidden);
-    crow::json::wvalue addComment(int postId, int parentId, const std::string& nickname, const std::string& content);
+    // anonToken：当前访客的匿名标识（可为空），用于计算每条评论的 mine / can_edit，token 本身不下发
+    crow::json::wvalue getComments(int postId, bool includeHidden, const std::string& anonToken);
+    // ownerToken：匿名作者标识，为空表示该评论无主
+    crow::json::wvalue addComment(int postId, int parentId, const std::string& nickname,
+                                  const std::string& content, const std::string& ownerToken);
     crow::json::wvalue setCommentHidden(int id, int hidden);
-    crow::json::wvalue deleteComment(int id);
+    // isAdmin 为 true 时无条件操作；否则校验 ownerToken 归属（修改还受 30 分钟时间窗限制）
+    crow::json::wvalue deleteComment(int id, const std::string& ownerToken, bool isAdmin);
+    crow::json::wvalue updateCommentContent(int id, const std::string& content,
+                                            const std::string& ownerToken, bool isAdmin);
 
     // ===== 配置 =====
     std::string getSetting(const std::string& key);
@@ -73,6 +79,8 @@ public:
 private:
     // 判断表中某列是否存在
     bool columnExists(const std::string& table, const std::string& column);
+    // 判断表中某索引是否存在（MySQL 不支持 CREATE INDEX IF NOT EXISTS，需先查询）
+    bool indexExists(const std::string& table, const std::string& index);
     // 插入管理员记录（不主动加锁，调用方需已持有 mtx_）
     bool insertAdmin(const std::string& email, const std::string& password, int isMain, std::string& errMsg, int& outId);
     // 首次初始化时创建主管理员账号
