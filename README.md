@@ -617,100 +617,123 @@ journalctl -u blog --since today | grep -Ei 'Started|Stopping|terminate|gone awa
 
 ### 13.8 中文变成 `?`（每日一题 / 题库乱码）
 
-**已确认过的真实案例（2026-10-09）**：库里汉字完好，但 `curl /api/daily` 返回
-`{"tags":"????,???"}` —— 入库的 `智能指针,多线程` 是 4+3 个汉字，返回正好是 4+3 个 `?`，
-逗号原样保留。**严格 1 个汉字换 1 个 `?`**，这是 MySQL「结果集字符集转换」的特征
-（只有 MySQL 按字符转换；若由程序或前端按字节处理，会变成 3 个 `?`）。
-
-根因：`connect()` 里 `mysql_options(conn_, MYSQL_SET_CHARSET_NAME, "utf8mb4")`
-**静默失效**（该选项依赖客户端库能识别并加载字符集定义，在部分环境不生效且不报错），
-连接退回 latin1，于是所有中文结果集被逐字符替换成 `?`。
-
-修复：连接成功后**再显式执行一次 `SET NAMES utf8mb4`**（服务端语句，不依赖客户端字符集文件，
-可同时设好 client/connection/results 三者），并回读 `@@character_set_*` 打印到启动日志、
-非 utf8mb4 时告警，避免再次静默丢字符。见 `src/database.cpp` 的 `DataBase::connect()`。
-
-**症状**：题目里的中文全部变成 `?`，英文和 `::`、空格等 ASCII 原样保留，例如
+**症状**：题库里的中文全部变成 `?`，英文与 `::`、空格等 ASCII 原样保留，例如
 `std::shared_ptr ??????????????????`。
 
-**性质**：动手前**必须先分清两种情况**，否则会白折腾：
+**第一步：先分清是「数据丢了」还是「只是读错了」，不要一看到 `?` 就重导。**
 
-| 库里的真实字节 | 结论 | 处理 |
+| 库里的真实字节 | 含义 | 处理 |
 |---|---|---|
-| `3F3F…`（真 `?`） | MySQL 写入时因字符集无法表示而替换，**不可逆丢失** | 必须重新导入 |
-| `E7xx…`（正常 UTF-8） | **数据没丢**，问题在读取或渲染层 | **不要重导**，查接口/浏览器 |
+| `3F3F…`（真的 `?` 字符） | 写入时目标字符集表示不了，MySQL 静默替换，**不可逆** | 只能重新导入 |
+| `E7xx…`（正常 UTF-8 汉字字节） | **数据没丢**，问题在读取/渲染层 | **不要重导**，查连接字符集 |
+| `C3A7…`（latin1 双字节） | mojibake，字节还在，只是被错误解释 | 可通过转换还原 |
 
-另外，显示层乱码（`çš„å¼•ç”¨` 这种 mojibake）字节其实还在，可以用 `ALTER ... CONVERT TO` 还原，
-和上面两种都不是一回事。
-
-**定位**（先确认真实存储，再决定往哪个方向修）：
-
-```bash
-mysql -u root -p blogdb
-```
+取 HEX 时**必须跳过 ASCII 前缀**：题干常以 `std::` 开头，前 4 个字节恒为 `7374643A`，
+**无论中文有没有坏都一样**，用它判断等于没测。
 
 ```sql
--- 1) 表与列的字符集（都应为 utf8mb4 / utf8mb4_unicode_ci）
+SELECT id, SUBSTRING(question, 13, 3) AS cn,
+       HEX(SUBSTRING(question, 13, 3)) AS cn_hex   -- 期望 E79A84E5BC95E794A8（的引用）
+  FROM questions WHERE id = 1;
+```
+
+**根因（2026-10-09 修正）：连接的字符集与「表的字符集」不匹配。**
+
+MySQL 在结果集里做字符集转换，**转不动的字符直接替换成 `?`**，所以只要连接与表对不上，中文就没救。
+本项目踩的是**混合状态**：老表（`posts` / `topics` / `comments` / `settings` / `admins`）建库时
+随了 latin1 默认字符集，而 app 连接也是 latin1 —— 两边一致时字节**原样往返**，中文反而显示完全正常
+（这正是「整站文章看着没毛病、只有新功能坏」的原因）。而新的 `questions` 表在 DDL 里显式写了
+`CHARSET=utf8mb4`，于是：
+
+| 组合 | 结果 |
+|---|---|
+| latin1 表 + latin1 连接 | 字节透传，**看起来完全正常**（历史表一直如此） |
+| **utf8mb4 表 + latin1 连接** | 中文无法转成 latin1 → **逐字符变成 `?`** ← 每日一题的现状 |
+| latin1 表 + utf8mb4 连接 | 字节被当成 latin1 再编码 → **双重编码乱码**（`çš„` 这类） |
+
+**所以「把连接强制改成 utf8mb4」不是修复，而是把故障从一张表扩散到整站。**
+
+判读的关键指纹：**`1 个汉字 → 1 个 ?`**（不是 3 个）。只有 MySQL 按「字符」转换；
+若由程序或前端按字节处理，一个汉字会变成 3 个 `?`。
+
+**诊断：一条命令看清全库**
+
+```sql
 SELECT TABLE_NAME, TABLE_COLLATION FROM information_schema.TABLES
- WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('questions','daily_questions','daily_seen');
-
-SELECT COLUMN_NAME, CHARACTER_SET_NAME FROM information_schema.COLUMNS
- WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'questions' AND CHARACTER_SET_NAME IS NOT NULL;
-
--- 2) 看库里真实存了什么（关键）
---    注意：不要用 HEX(LEFT(question,4))！前 4 字节是 `std:` 这类 ASCII 前缀，
---    无论中文有没有坏都一样，测不出任何东西。要跳过 ASCII 前缀直接取中文字段。
-SELECT id, category, LEFT(question, 20) AS q,
-       HEX(SUBSTRING(question, 13, 6)) AS cn_hex   -- 从第 13 个字符起是中文
-  FROM questions ORDER BY id LIMIT 5;
-
--- 或者肉眼直接看（最省事）
-SELECT id, SUBSTRING(question, 13) AS cn FROM questions WHERE id = 1;
+ WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME;
 ```
 
-`cn_hex` 列的含义：
+`questions` = `utf8mb4_unicode_ci` 而 `posts` = `latin1_swedish_ci` → 命中上表第二种组合。
 
-| 开头 | 含义 | 能否救回 |
-|---|---|---|
-| `E79A84` 等（UTF-8 汉字字节） | 存储正常，问题在前端/接口 | 能 |
-| `3F3F3F3F`（全是 `?` 的 ASCII） | 已在写入时丢失 | **不能**，需重新导入 |
-| `C3A7C2B9` 等（latin1 双字节） | mojibake，字节还在 | 能，`ALTER ... CONVERT TO` 可还原 |
-
-**若库里是 `E7xx`（数据没丢），继续确认接口层**：
+也可以把连接钉成 latin1，用 CLI 直接复现 app 的症状：
 
 ```bash
-curl -s http://127.0.0.1:8080/api/daily          # 直接问服务端要，绕过浏览器
+# 应输出与应用接口一模一样的 std::shared_ptr ????...
+mysql --default-character-set=latin1 -u root -p blogdb -e "SELECT question FROM questions WHERE id=1;"
+# 老表若果然是「latin1 列装 UTF-8 字节」，这里会输出 çš„ 这类 mojibake
+mysql --default-character-set=latin1 -u root -p blogdb -e "SELECT id, title FROM posts LIMIT 3;"
 ```
 
-- `curl` 输出中文正常 → 问题在浏览器：先 `Ctrl+F5` 强刷（`/api/daily` 是 GET，可能被缓存），
-  再排查字体（`--serif` 里 `Georgia` 排在 CJK 字体之前，某些环境会逐字形回退失败）。
-- `curl` 输出也是 `?` → 服务端读取阶段出问题，查连接字符集
-  （`mysql_options(conn_, MYSQL_SET_CHARSET_NAME, "utf8mb4")`，
-  尤其注意 `checkConnection()` 触发重连后是否仍然生效）。
+**修复路线（二选一，不要混用）**
 
-**修复**（表字符集不是 utf8mb4 时）：
+- **路线 A：统一成 latin1**（快、零风险、治标）
+  三张新表也改成 latin1，全库回到字节透传，每日一题立刻正常。
+  **不能对已有中文的表直接 `CONVERT TO latin1`**（那会把中文真的写成 `?`），
+  要先清空再转，然后**用 latin1 客户端重新导入种子**。
+  缺点：代码里的 DDL 写的仍是 utf8mb4，新装环境会漂回去，属长期隐患。
+- **路线 B：统一成 utf8mb4**（正解，**必须先备份**，要点见 13.8.1）
+
+**代码侧（已改）**：`DataBase::connect()` 不再写死字符集，而是**探测核心表后让连接自动跟随**
+（老库全 latin1 → `SET NAMES latin1`；新库全 utf8mb4 → `SET NAMES utf8mb4`），
+可用环境变量 `MYSQL_CHARSET` 覆盖；**探测到混合字符集时不强制、只告警**，
+并把实际生效的 `character_set_client/connection/results` 打进启动日志。
+无论走哪条路线，代码都不需要再动。
+
+**重新导入种子**（两条路线都要做）：
 
 ```sql
-ALTER TABLE questions CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-**然后重新导入**（首次部署、还没手工维护过题库时最干净）：
-
-```sql
--- 确认没有手工加过的题目再执行；会重置自增 ID
 DELETE FROM daily_seen;
 DELETE FROM daily_questions;   -- 让当天题目重新生成
-TRUNCATE TABLE questions;
+TRUNCATE TABLE questions;      -- 确认没手工加过题目再执行，会重置自增 ID
 ```
 
 ```bash
+# 路线 B 用 utf8mb4；路线 A 换成 --default-character-set=latin1
 mysql -u root -p --default-character-set=utf8mb4 blogdb < tools/seed_questions.sql
 ```
 
-**预防**：`tools/seed_questions.sql` 开头已有 `SET NAMES utf8mb4;` 并会
-`ALTER TABLE questions CONVERT TO CHARACTER SET utf8mb4`，服务端启动时也会对新表做一次字符集自愈
-（`ensureTableCharset`），两条防线叠加后该类问题不会再出现。显式加 `--default-character-set=utf8mb4`
-可以再多一层保险。
+#### 13.8.1 路线 B：把老表真正迁到 utf8mb4
+
+**核心原则：只改「声明」，不改「字节」。**
+迁移前后 `HEX(col)` 必须**完全一致** —— 一致说明字节没被动过、只是解释方式变对了；
+不一致就是搞砸了，立刻用备份回滚。
+
+**不要**直接 `ALTER TABLE t CONVERT TO CHARACTER SET utf8mb4`：它会把「latin1 列里其实是 UTF-8
+的字节」再编码一次，变成双重编码乱码 —— `HEX` 会从 `E4B8AD` 变成 `C3A4C2B8C2AD`，一眼可辨。
+
+正确做法是**先转成二进制（字节原样保留），再按 utf8mb4 解释**：
+
+```sql
+-- 0) 必须备份，错了只能靠它回滚
+mysqldump -u root -p --default-character-set=binary blogdb > blogdb.bak.sql
+
+-- 1) 先只做一张表的一列，并记下迁移前的字节
+SELECT id, HEX(LEFT(title, 6)) FROM posts LIMIT 5;
+ALTER TABLE posts MODIFY title VARBINARY(255);                        -- 声明成二进制
+ALTER TABLE posts MODIFY title VARCHAR(255) CHARACTER SET utf8mb4
+                                        COLLATE utf8mb4_unicode_ci;   -- 再按 utf8mb4 解释
+
+-- 2) 必须与第 1 步的 HEX 完全相同，且此时 CLI 里 title 应显示正常中文
+SELECT id, HEX(LEFT(title, 6)), title FROM posts LIMIT 5;
+```
+
+第 2 步核验通过后，再对其余文本列（`content` / `summary` / `author` / `topic` / `theme`
+以及 `topics.name`、`comments.content`、`admins.nickname`、`settings.v`）逐列重复；
+`TEXT` 类型对应 `BLOB` / `MEDIUMBLOB`。**全部迁完、整站确认无误后**，连接才能切到 utf8mb4
+（设 `MYSQL_CHARSET=utf8mb4`，或直接依赖自动探测）。
+
+> 说明：这条路线**尚未在你的库上实测过**，务必先备份、先只做一列验证 HEX 不变再推广。
+
 
 ---
 
@@ -829,8 +852,9 @@ daily_questions 里有今天的记录吗？
 mysql -u <用户> -p --default-character-set=utf8mb4 blogdb < tools/seed_questions.sql
 ```
 
-> 显式带上 `--default-character-set=utf8mb4`：脚本开头虽然已有 `SET NAMES utf8mb4;`，
-> 但命令行参数能覆盖连接建立阶段，双保险更稳妥。中文若出现 `?` 见 [13.8](#138-中文变成-每日一题--题库乱码)。
+> 这里的字符集**必须与 `questions` 表的字符集一致**，否则中文会被替换成 `?`。本命令默认 utf8mb4；
+> 若你的库走的是「统一成 latin1」路线（见 [13.8](#138-中文变成-每日一题--题库乱码)），
+> 要换成 `--default-character-set=latin1`，脚本开头的 `SET NAMES utf8mb4;` 也要一并改掉。
 
 > 账号名取决于你有没有执行 [4.2 创建专用数据库账号](#42推荐创建专用数据库账号)：
 > 建了就用 `blog`，**没建就用 `root`** —— 两者都能跑这个脚本（只用到临时表 + `INSERT`，root 权限足够）。

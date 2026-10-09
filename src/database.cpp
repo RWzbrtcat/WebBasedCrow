@@ -78,13 +78,12 @@ void DataBase::connect()
         throw std::runtime_error("mysql_init 失败!");
     }
 
-    // 设置字符集为 utf8mb4，支持中文和 emoji。
-    // 注意：这一项在部分环境下会**静默失效**（客户端库无法识别/加载字符集定义时，
-    // 返回值被忽略，连接退回 latin1，之后所有中文结果集被 MySQL 逐字符替换成 '?'）。
-    // 因此下面连接成功后还会再显式执行一次 SET NAMES 兜底。
-    mysql_options(conn_, MYSQL_SET_CHARSET_NAME, "utf8mb4");
-
-    // 建立连接
+    // 建立连接。
+    // 注意：这里**不再无条件把字符集写死成 utf8mb4**。
+    // 本项目的历史表可能是 latin1（靠「字节透传」才一直看起来正常），
+    // 而新增的 questions 等表是 utf8mb4；连接字符集一旦与表不匹配，
+    // MySQL 在结果集转换时会把中文静默替换成 '?'（不可逆）。
+    // 所以字符集改成「按表探测 + 可用 MYSQL_CHARSET 覆盖」，见 applyConnectionCharset()。
     if (!mysql_real_connect(conn_, host_.c_str(), user_.c_str(), pass_.c_str(), db_.c_str(), port_, nullptr, CLIENT_FOUND_ROWS))
     {
         std::string err = "MySQL 连接失败! ";
@@ -94,16 +93,101 @@ void DataBase::connect()
         throw std::runtime_error(err);
     }
 
-    // 连接建立后显式 SET NAMES。
-    // 为什么不能只靠上面的 MYSQL_SET_CHARSET_NAME：它依赖客户端库的字符集定义，
-    // 失效时不报错；而 SET NAMES 是服务端语句，一定能生效，可同时设好
-    // character_set_client / connection / results 三者。
-    if (mysql_query(conn_, "SET NAMES utf8mb4") != 0)
+    // 让连接字符集与表一致，并把实际生效的值打进启动日志
+    applyConnectionCharset();
+
+    std::cout << "[DB] 已连接到 Mysql: " << host_ << ":" << port_ << std::endl;
+}
+
+// 探测核心表使用的字符集（如 utf8mb4 / latin1）。
+// 全部一致时返回该字符集；出现混合（例如老表 latin1 + 新表 utf8mb4）或表尚未创建时返回空串。
+std::string DataBase::detectTableCharset()
+{
+    static const char* kTables[] = {"posts", "topics", "comments", "settings", "admins", "questions"};
+    std::string common;
+    for (const char* t : kTables)
     {
-        std::cerr << "[DB] 设置连接字符集失败: " << mysql_error(conn_) << std::endl;
+        const std::string sql = "SELECT TABLE_COLLATION FROM information_schema.TABLES "
+                                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '" + std::string(t) + "'";
+        if (mysql_query(conn_, sql.c_str()) != 0)
+        {
+            return std::string();
+        }
+        MYSQL_RES* res = mysql_store_result(conn_);
+        if (!res)
+        {
+            return std::string();
+        }
+        MYSQL_ROW row = mysql_fetch_row(res);
+        const std::string collation = (row && row[0]) ? row[0] : "";
+        mysql_free_result(res);
+
+        if (collation.empty())
+        {
+            continue; // 这张表还没建出来，跳过
+        }
+
+        const std::string cs = collation.substr(0, collation.find('_'));
+        if (common.empty())
+        {
+            common = cs;
+        }
+        else if (common != cs)
+        {
+            return std::string(); // 混合字符集，无法用单一值同时匹配
+        }
+    }
+    return common;
+}
+
+// 设置连接字符集，使其与表保持一致。
+// 优先级：环境变量 MYSQL_CHARSET > 按表探测 > 保持客户端默认（不强制）。
+//
+// 为什么不无条件设成 utf8mb4：两种方向都会坏，必须匹配 ——
+//   1. utf8mb4 表 + latin1 连接：MySQL 把中文转成 latin1 时无法表示，替换为 '?'；
+//   2. latin1 表（里面存的是 UTF-8 字节）+ utf8mb4 连接：字节被当成 latin1 重新编码，
+//      整站中文变成双重编码乱码（çš„ 这类）。
+// 核心表的字符集不一致时不做任何强制，只打印警告，避免把还正常的表弄坏。
+void DataBase::applyConnectionCharset()
+{
+    const char* envCs = std::getenv("MYSQL_CHARSET");
+    std::string charset = (envCs && *envCs) ? std::string(envCs) : detectTableCharset();
+
+    // 字符集名会被拼进 SET NAMES 语句，只允许字母数字，避免注入
+    bool safe = !charset.empty() && charset.size() <= 20;
+    for (const char c : charset)
+    {
+        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')))
+        {
+            safe = false;
+            break;
+        }
+    }
+    if (!safe)
+    {
+        if (!charset.empty())
+        {
+            std::cerr << "[DB] MYSQL_CHARSET 含非法字符，已忽略：" << charset << std::endl;
+        }
+        charset.clear();
     }
 
-    // 回读实际生效的字符集并打印，避免「静默丢字符」再次发生没人发现
+    if (charset.empty())
+    {
+        std::cerr << "[DB] 警告：核心表的字符集不一致（或尚未建表），未强制连接字符集。"
+                     "混合字符集会让 utf8mb4 表里的中文变成 '?'，"
+                     "请先统一各表字符集，或用 MYSQL_CHARSET 显式指定。" << std::endl;
+    }
+    else if (mysql_query(conn_, ("SET NAMES " + charset).c_str()) != 0)
+    {
+        std::cerr << "[DB] SET NAMES " << charset << " 失败：" << mysql_error(conn_) << std::endl;
+    }
+    else
+    {
+        std::cout << "[DB] 连接字符集已设为 " << charset << "（与表一致）" << std::endl;
+    }
+
+    // 回读实际生效的三个字符集并打印，避免「静默丢字符」再次发生却无人察觉
     if (mysql_query(conn_, "SELECT @@character_set_client, @@character_set_connection, @@character_set_results") == 0)
     {
         MYSQL_RES* csRes = mysql_store_result(conn_);
@@ -117,17 +201,10 @@ void DataBase::connect()
                 const char* rsl = csRow[2] ? csRow[2] : "?";
                 std::cout << "[DB] 字符集 client=" << cli << " connection=" << con
                           << " results=" << rsl << std::endl;
-                if (std::string(cli) != "utf8mb4" || std::string(rsl) != "utf8mb4")
-                {
-                    std::cerr << "[DB] 警告：连接字符集不是 utf8mb4，中文会显示为 '?'！"
-                              << "请检查 MySQL 服务端是否支持 utf8mb4。" << std::endl;
-                }
             }
             mysql_free_result(csRes);
         }
     }
-
-    std::cout << "[DB] 已连接到 Mysql: " << host_ << ":" << port_ << std::endl;
 }
 
 // 检查连接是否存活，如果断开则重连
@@ -452,12 +529,13 @@ void DataBase::initTable()
     // 历史文章（author_id=0）一律归到主管理员，作者显示名同步为主管理员昵称
     backfillLegacyPosts();
 
-    // 字符集自愈：若老库的默认字符集不是 utf8mb4，新表可能跟着建成 latin1，
-    // 此时写入中文会被 MySQL 静默替换成 '?'，且不可逆。这里统一纠正回 utf8mb4。
-    // 仅在字符集确实非 utf8mb4 时才 ALTER，已是 utf8mb4 的表不受影响。
-    ensureTableCharset("questions");
-    ensureTableCharset("daily_questions");
-    ensureTableCharset("daily_seen");
+    // 建表之后再对齐一次连接字符集。
+    // 首次部署时 connect() 那一刻表还不存在，探测不出结果；到这里核心表已就绪，
+    // 才是能给出准确判断的时机。
+    // 注意：这里只「探测 + 设置连接」，不会去 ALTER 任何表的字符集 ——
+    // 把非 utf8mb4 的老表强制转换，会破坏「latin1 列装 UTF-8 字节」的历史数据
+    // （变成双重编码乱码，且不可逆）。要迁移必须人工按 README 13.8 的步骤做。
+    applyConnectionCharset();
 }
 
 // 判断表中某列是否存在
@@ -507,52 +585,6 @@ bool DataBase::indexExists(const std::string& table, const std::string& index)
     bool exists = row && row[0] && std::string(row[0]) != "0";
     mysql_free_result(res);
     return exists;
-}
-
-// 确保某张表的字符集是 utf8mb4。
-// 背景：若建表时数据库默认字符集是 latin1（老库常见），表会跟着变成 latin1，
-// 之后在 latin1 列里写中文，MySQL 无法表示该字符，会**静默替换成 '?'** —— 数据不可逆丢失。
-// 这里在启动时做一次自愈：发现表不是 utf8mb4 就 ALTER 过来。
-// 注意：只能救回字符集，已经被写成 '?' 的历史数据无法还原，需要重新导入。
-void DataBase::ensureTableCharset(const std::string& table)
-{
-    const std::string target = "utf8mb4_unicode_ci";
-
-    std::string sql =
-        "SELECT TABLE_COLLATION FROM information_schema.TABLES "
-        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '" + table + "'";
-
-    if (mysql_query(conn_, sql.c_str()) != 0)
-    {
-        return; // 表还没建出来等情况，交给后续逻辑处理
-    }
-
-    MYSQL_RES* res = mysql_store_result(conn_);
-    if (!res)
-    {
-        return;
-    }
-
-    MYSQL_ROW row = mysql_fetch_row(res);
-    const std::string collation = (row && row[0]) ? row[0] : "";
-    mysql_free_result(res);
-
-    if (collation.empty() || collation.rfind("utf8mb4", 0) == 0)
-    {
-        return; // 表不存在（不存在时后面会建），或本来就是 utf8mb4（含 utf8mb4_general_ci，不动它）
-    }
-
-    std::string alterSql = "ALTER TABLE " + table +
-                           " CONVERT TO CHARACTER SET utf8mb4 COLLATE " + target;
-    if (mysql_query(conn_, alterSql.c_str()) == 0)
-    {
-        std::cout << "[DB] 表 " << table << " 字符集 " << collation
-                  << " 非 utf8mb4，已自动转换为 " << target << std::endl;
-    }
-    else
-    {
-        std::cerr << "[DB] 转换表 " << table << " 字符集失败: " << mysql_error(conn_) << std::endl;
-    }
 }
 
 // 按状态获取文章列表（published 已发布 / draft 草稿）
