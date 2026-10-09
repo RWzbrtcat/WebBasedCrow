@@ -738,6 +738,11 @@ mysql -u <用户> -p blogdb < tools/seed_questions.sql
 
 `tools/seed_questions.sql` 含 46 道题（C++ 10 / MySQL 10 / 网络 9 / 操作系统 9 / 算法 8），覆盖语言特性、存储引擎与索引、TCP/HTTP、内存与并发、排序与设计题。脚本**可重复执行**：先导入临时表，再按「分类 + 题干」判重插入，已存在的题目不会被覆盖 —— 手动改过的题不会被脚本冲掉。
 
+> **脚本不依赖服务端先启动。** `questions` 表平时由服务端启动时创建（`initTable()`），
+> 而种子脚本第一步自带 `CREATE TABLE IF NOT EXISTS questions(...)`（DDL 与 `database.cpp` 保持一致，
+> 已存在则为空操作），所以「先导库再编译重启」和「先编译重启再导库」两种顺序都能跑通。
+> 若跳过这步直接用临时表复制，会出现 `ERROR 1146 (42S02): Table 'blogdb.questions' doesn't exist`。
+
 **② 站长的题库管理面板**
 
 用主管理员登录后打开 `/daily`，页面底部有「题库管理」（节点带 `data-auth-role="main"`，仅站长可见）：

@@ -3,10 +3,12 @@
 -- ============================================
 -- 用法：
 --     mysql -u <用户> -p <数据库名> < tools/seed_questions.sql
--- 例：
---     mysql -u blog -p blogdb < tools/seed_questions.sql
+-- 例（账号按实际存在的写，只有 root 就用 root）：
+--     mysql -u root -p blogdb < tools/seed_questions.sql
 --
 -- 说明：
+--   0. **可以独立执行，不依赖服务端先启动**。脚本自己会补齐 questions 表（见下面的第 0 步），
+--      所以「先导库再编译重启」或「先编译重启再导库」两种顺序都可以。
 --   1. 可重复执行：按「分类 + 题干」判重，已存在的题目不会重复插入，
 --      因此后续手动改过的题目不会被覆盖。
 --   2. 全部以「已发布」状态导入。想先审一遍的话，把最后一步的 status
@@ -14,6 +16,24 @@
 --   3. 题干与答案都是 Markdown，答案里的代码块会被前台渲染成高亮代码，
 --      ```mermaid 代码块会被渲染成图表。
 -- ============================================
+
+-- ---------- 第 0 步：确保题表存在 ----------
+-- 这张表平时由服务端启动时自动创建（src/database.cpp 的 initTable）。
+-- 此处再写一份 CREATE TABLE IF NOT EXISTS，是为了让本脚本能**独立执行**：
+-- 即使服务端还没跑过新版本（题表尚未创建），导入也不会因为
+-- 「ERROR 1146 Table 'blogdb.questions' doesn't exist」而中断。
+-- 表已存在时它是空操作；两处 DDL 必须保持一致。
+CREATE TABLE IF NOT EXISTS questions(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    category VARCHAR(50) NOT NULL COMMENT '分类：C++ / MySQL / 网络 / 操作系统 / 算法',
+    tags VARCHAR(200) NOT NULL DEFAULT '' COMMENT '标签，逗号分隔',
+    difficulty TINYINT NOT NULL DEFAULT 2 COMMENT '难度：1 基础 / 2 进阶 / 3 困难',
+    question TEXT NOT NULL COMMENT '题干（Markdown）',
+    answer TEXT NOT NULL COMMENT '答案（Markdown，支持代码块与 mermaid）',
+    status TINYINT NOT NULL DEFAULT 0 COMMENT '状态：0 草稿 / 1 已发布',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    KEY idx_questions_cat (category, status)
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TEMPORARY TABLE seed_questions LIKE questions;
 
