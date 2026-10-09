@@ -615,6 +615,65 @@ journalctl -u blog --since today | grep -Ei 'Started|Stopping|terminate|gone awa
 
 `src/main.cpp` 只用 `getenv` 读环境变量，源码里不含密码。若曾经提交过，请立即改密码并清理 Git 历史（`git filter-repo`）。
 
+### 13.8 中文变成 `?`（每日一题 / 题库乱码）
+
+**症状**：题目里的中文全部变成 `?`，英文和 `::`、空格等 ASCII 原样保留，例如
+`std::shared_ptr ??????????????????`。
+
+**性质**：`?` 是 MySQL 在**写入那一刻**因目标字符集无法表示该字符而做的替换，属于**数据丢失**，
+不是显示层问题（显示层乱码长这样：`çš„å¼•ç”¨`）。所以**修字符集不会让已有的 `?` 复原**，必须重新导入。
+
+**定位**（哪一步丢的）：
+
+```bash
+mysql -u root -p blogdb
+```
+
+```sql
+-- 1) 表与列的字符集（都应为 utf8mb4 / utf8mb4_unicode_ci）
+SELECT TABLE_NAME, TABLE_COLLATION FROM information_schema.TABLES
+ WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('questions','daily_questions','daily_seen');
+
+SELECT COLUMN_NAME, CHARACTER_SET_NAME FROM information_schema.COLUMNS
+ WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'questions' AND CHARACTER_SET_NAME IS NOT NULL;
+
+-- 2) 看库里真实存了什么（关键）
+SELECT id, category, HEX(LEFT(question, 4)) AS hex, LEFT(question, 12) AS q
+  FROM questions ORDER BY id LIMIT 5;
+```
+
+`hex` 列的含义：
+
+| 开头 | 含义 | 能否救回 |
+|---|---|---|
+| `E79A84` 等（UTF-8 汉字字节） | 存储正常，问题在前端/接口 | 能 |
+| `3F3F3F3F`（全是 `?` 的 ASCII） | 已在写入时丢失 | **不能**，需重新导入 |
+| `C3A7C2B9` 等（latin1 双字节） | mojibake，字节还在 | 能，`ALTER ... CONVERT TO` 可还原 |
+
+**修复**（表字符集不是 utf8mb4 时）：
+
+```sql
+ALTER TABLE questions CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+**然后重新导入**（首次部署、还没手工维护过题库时最干净）：
+
+```sql
+-- 确认没有手工加过的题目再执行；会重置自增 ID
+DELETE FROM daily_seen;
+DELETE FROM daily_questions;   -- 让当天题目重新生成
+TRUNCATE TABLE questions;
+```
+
+```bash
+mysql -u root -p --default-character-set=utf8mb4 blogdb < tools/seed_questions.sql
+```
+
+**预防**：`tools/seed_questions.sql` 开头已有 `SET NAMES utf8mb4;` 并会
+`ALTER TABLE questions CONVERT TO CHARACTER SET utf8mb4`，服务端启动时也会对新表做一次字符集自愈
+（`ensureTableCharset`），两条防线叠加后该类问题不会再出现。显式加 `--default-character-set=utf8mb4`
+可以再多一层保险。
+
 ---
 
 ## 十四、API 一览
@@ -729,8 +788,11 @@ daily_questions 里有今天的记录吗？
 
 ```bash
 # <用户> 填你实际连库的账号；没建专用账号就直接写 root（脚本和 root 完全兼容）
-mysql -u <用户> -p blogdb < tools/seed_questions.sql
+mysql -u <用户> -p --default-character-set=utf8mb4 blogdb < tools/seed_questions.sql
 ```
+
+> 显式带上 `--default-character-set=utf8mb4`：脚本开头虽然已有 `SET NAMES utf8mb4;`，
+> 但命令行参数能覆盖连接建立阶段，双保险更稳妥。中文若出现 `?` 见 [13.8](#138-中文变成-每日一题--题库乱码)。
 
 > 账号名取决于你有没有执行 [4.2 创建专用数据库账号](#42推荐创建专用数据库账号)：
 > 建了就用 `blog`，**没建就用 `root`** —— 两者都能跑这个脚本（只用到临时表 + `INSERT`，root 权限足够）。

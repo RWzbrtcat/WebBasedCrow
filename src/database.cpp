@@ -415,6 +415,13 @@ void DataBase::initTable()
 
     // 历史文章（author_id=0）一律归到主管理员，作者显示名同步为主管理员昵称
     backfillLegacyPosts();
+
+    // 字符集自愈：若老库的默认字符集不是 utf8mb4，新表可能跟着建成 latin1，
+    // 此时写入中文会被 MySQL 静默替换成 '?'，且不可逆。这里统一纠正回 utf8mb4。
+    // 仅在字符集确实非 utf8mb4 时才 ALTER，已是 utf8mb4 的表不受影响。
+    ensureTableCharset("questions");
+    ensureTableCharset("daily_questions");
+    ensureTableCharset("daily_seen");
 }
 
 // 判断表中某列是否存在
@@ -464,6 +471,52 @@ bool DataBase::indexExists(const std::string& table, const std::string& index)
     bool exists = row && row[0] && std::string(row[0]) != "0";
     mysql_free_result(res);
     return exists;
+}
+
+// 确保某张表的字符集是 utf8mb4。
+// 背景：若建表时数据库默认字符集是 latin1（老库常见），表会跟着变成 latin1，
+// 之后在 latin1 列里写中文，MySQL 无法表示该字符，会**静默替换成 '?'** —— 数据不可逆丢失。
+// 这里在启动时做一次自愈：发现表不是 utf8mb4 就 ALTER 过来。
+// 注意：只能救回字符集，已经被写成 '?' 的历史数据无法还原，需要重新导入。
+void DataBase::ensureTableCharset(const std::string& table)
+{
+    const std::string target = "utf8mb4_unicode_ci";
+
+    std::string sql =
+        "SELECT TABLE_COLLATION FROM information_schema.TABLES "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '" + table + "'";
+
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        return; // 表还没建出来等情况，交给后续逻辑处理
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res)
+    {
+        return;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(res);
+    const std::string collation = (row && row[0]) ? row[0] : "";
+    mysql_free_result(res);
+
+    if (collation.empty() || collation.rfind("utf8mb4", 0) == 0)
+    {
+        return; // 表不存在（不存在时后面会建），或本来就是 utf8mb4（含 utf8mb4_general_ci，不动它）
+    }
+
+    std::string alterSql = "ALTER TABLE " + table +
+                           " CONVERT TO CHARACTER SET utf8mb4 COLLATE " + target;
+    if (mysql_query(conn_, alterSql.c_str()) == 0)
+    {
+        std::cout << "[DB] 表 " << table << " 字符集 " << collation
+                  << " 非 utf8mb4，已自动转换为 " << target << std::endl;
+    }
+    else
+    {
+        std::cerr << "[DB] 转换表 " << table << " 字符集失败: " << mysql_error(conn_) << std::endl;
+    }
 }
 
 // 按状态获取文章列表（published 已发布 / draft 草稿）

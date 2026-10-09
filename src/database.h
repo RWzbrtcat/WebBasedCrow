@@ -102,6 +102,8 @@ private:
     bool columnExists(const std::string& table, const std::string& column);
     // 判断表中某索引是否存在（MySQL 不支持 CREATE INDEX IF NOT EXISTS，需先查询）
     bool indexExists(const std::string& table, const std::string& index);
+    // 确保表的字符集为 utf8mb4；非 utf8mb4 时自动 CONVERT（防中文被写成 '?'）
+    void ensureTableCharset(const std::string& table);
     // 插入管理员记录（不主动加锁，调用方需已持有 mtx_）
     bool insertAdmin(const std::string& email, const std::string& password, int isMain, std::string& errMsg, int& outId);
     // 首次初始化时创建主管理员账号

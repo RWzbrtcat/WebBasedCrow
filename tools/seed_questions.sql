@@ -17,7 +17,13 @@
 --      ```mermaid 代码块会被渲染成图表。
 -- ============================================
 
--- ---------- 第 0 步：确保题表存在 ----------
+-- ---------- 第 0 步：固定本次会话的字符集 ----------
+-- 本文件是 UTF-8 编码。若 mysql 客户端的默认字符集是 latin1（老系统上很常见），
+-- 中文会被当成 latin1 解释，这里显式声明一次，彻底摆脱对客户端默认值的依赖。
+-- 顺带把结果集也设为 utf8mb4，导入后自己看 SELECT 结果也不会乱码。
+SET NAMES utf8mb4;
+
+-- ---------- 第 1 步：确保题表存在，且是 utf8mb4 ----------
 -- 这张表平时由服务端启动时自动创建（src/database.cpp 的 initTable）。
 -- 此处再写一份 CREATE TABLE IF NOT EXISTS，是为了让本脚本能**独立执行**：
 -- 即使服务端还没跑过新版本（题表尚未创建），导入也不会因为
@@ -34,6 +40,10 @@ CREATE TABLE IF NOT EXISTS questions(
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     KEY idx_questions_cat (category, status)
 )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 幂等矫正字符集：若表是老库以 latin1 建出来的，中文会在写入时被静默替换成 '?'，
+-- 且不可逆。这里先统一转成 utf8mb4，避免后续插入再被吃掉。已是 utf8mb4 时为空操作。
+ALTER TABLE questions CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TEMPORARY TABLE seed_questions LIKE questions;
 
