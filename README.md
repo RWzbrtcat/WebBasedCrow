@@ -617,6 +617,19 @@ journalctl -u blog --since today | grep -Ei 'Started|Stopping|terminate|gone awa
 
 ### 13.8 中文变成 `?`（每日一题 / 题库乱码）
 
+**已确认过的真实案例（2026-10-09）**：库里汉字完好，但 `curl /api/daily` 返回
+`{"tags":"????,???"}` —— 入库的 `智能指针,多线程` 是 4+3 个汉字，返回正好是 4+3 个 `?`，
+逗号原样保留。**严格 1 个汉字换 1 个 `?`**，这是 MySQL「结果集字符集转换」的特征
+（只有 MySQL 按字符转换；若由程序或前端按字节处理，会变成 3 个 `?`）。
+
+根因：`connect()` 里 `mysql_options(conn_, MYSQL_SET_CHARSET_NAME, "utf8mb4")`
+**静默失效**（该选项依赖客户端库能识别并加载字符集定义，在部分环境不生效且不报错），
+连接退回 latin1，于是所有中文结果集被逐字符替换成 `?`。
+
+修复：连接成功后**再显式执行一次 `SET NAMES utf8mb4`**（服务端语句，不依赖客户端字符集文件，
+可同时设好 client/connection/results 三者），并回读 `@@character_set_*` 打印到启动日志、
+非 utf8mb4 时告警，避免再次静默丢字符。见 `src/database.cpp` 的 `DataBase::connect()`。
+
 **症状**：题目里的中文全部变成 `?`，英文和 `::`、空格等 ASCII 原样保留，例如
 `std::shared_ptr ??????????????????`。
 

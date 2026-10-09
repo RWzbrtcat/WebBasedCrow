@@ -78,7 +78,10 @@ void DataBase::connect()
         throw std::runtime_error("mysql_init 失败!");
     }
 
-    // 设置字符集为 utf8mb4，支持中文和 emoji
+    // 设置字符集为 utf8mb4，支持中文和 emoji。
+    // 注意：这一项在部分环境下会**静默失效**（客户端库无法识别/加载字符集定义时，
+    // 返回值被忽略，连接退回 latin1，之后所有中文结果集被 MySQL 逐字符替换成 '?'）。
+    // 因此下面连接成功后还会再显式执行一次 SET NAMES 兜底。
     mysql_options(conn_, MYSQL_SET_CHARSET_NAME, "utf8mb4");
 
     // 建立连接
@@ -89,6 +92,39 @@ void DataBase::connect()
         mysql_close(conn_);
         conn_ = nullptr;
         throw std::runtime_error(err);
+    }
+
+    // 连接建立后显式 SET NAMES。
+    // 为什么不能只靠上面的 MYSQL_SET_CHARSET_NAME：它依赖客户端库的字符集定义，
+    // 失效时不报错；而 SET NAMES 是服务端语句，一定能生效，可同时设好
+    // character_set_client / connection / results 三者。
+    if (mysql_query(conn_, "SET NAMES utf8mb4") != 0)
+    {
+        std::cerr << "[DB] 设置连接字符集失败: " << mysql_error(conn_) << std::endl;
+    }
+
+    // 回读实际生效的字符集并打印，避免「静默丢字符」再次发生没人发现
+    if (mysql_query(conn_, "SELECT @@character_set_client, @@character_set_connection, @@character_set_results") == 0)
+    {
+        MYSQL_RES* csRes = mysql_store_result(conn_);
+        if (csRes)
+        {
+            MYSQL_ROW csRow = mysql_fetch_row(csRes);
+            if (csRow)
+            {
+                const char* cli = csRow[0] ? csRow[0] : "?";
+                const char* con = csRow[1] ? csRow[1] : "?";
+                const char* rsl = csRow[2] ? csRow[2] : "?";
+                std::cout << "[DB] 字符集 client=" << cli << " connection=" << con
+                          << " results=" << rsl << std::endl;
+                if (std::string(cli) != "utf8mb4" || std::string(rsl) != "utf8mb4")
+                {
+                    std::cerr << "[DB] 警告：连接字符集不是 utf8mb4，中文会显示为 '?'！"
+                              << "请检查 MySQL 服务端是否支持 utf8mb4。" << std::endl;
+                }
+            }
+            mysql_free_result(csRes);
+        }
     }
 
     std::cout << "[DB] 已连接到 Mysql: " << host_ << ":" << port_ << std::endl;
