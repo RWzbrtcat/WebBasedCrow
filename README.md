@@ -154,6 +154,10 @@ FLUSH PRIVILEGES;
 
 然后把密码写进 systemd 的 `EnvironmentFile`（见 [8.2](#82-配置-systemd-服务)），**不要写进源码、不要提交进 Git**。
 
+> 这一步是**可选的**。如果你服务器上只有 `root`（很常见），跳过本节即可，
+> 只要把服务端的 `MYSQL_USER` 设成 `root`、`MYSQL_PASSWORD` 填 root 的密码就能正常跑。
+> 本文档后续出现的 `mysql -u blog` 都只是示例，**按你实际存在的账号替换**（用 root 就是 `-u root`）。
+
 ### 4.3 表结构：自动创建，无需手动建表
 
 服务启动时 `DataBase` 构造函数会自动 `CREATE TABLE IF NOT EXISTS`：
@@ -724,8 +728,13 @@ daily_questions 里有今天的记录吗？
 **① 导入种子题库（推荐首次部署）**
 
 ```bash
-mysql -u blog -p blogdb < tools/seed_questions.sql
+# <用户> 填你实际连库的账号；没建专用账号就直接写 root（脚本和 root 完全兼容）
+mysql -u <用户> -p blogdb < tools/seed_questions.sql
 ```
+
+> 账号名取决于你有没有执行 [4.2 创建专用数据库账号](#42推荐创建专用数据库账号)：
+> 建了就用 `blog`，**没建就用 `root`** —— 两者都能跑这个脚本（只用到临时表 + `INSERT`，root 权限足够）。
+> 库名要和服务端的 `MYSQL_DB` 保持一致，默认是 `blogdb`。
 
 `tools/seed_questions.sql` 含 46 道题（C++ 10 / MySQL 10 / 网络 9 / 操作系统 9 / 算法 8），覆盖语言特性、存储引擎与索引、TCP/HTTP、内存与并发、排序与设计题。脚本**可重复执行**：先导入临时表，再按「分类 + 题干」判重插入，已存在的题目不会被覆盖 —— 手动改过的题不会被脚本冲掉。
 
