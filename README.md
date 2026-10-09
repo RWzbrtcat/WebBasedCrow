@@ -620,10 +620,17 @@ journalctl -u blog --since today | grep -Ei 'Started|Stopping|terminate|gone awa
 **症状**：题目里的中文全部变成 `?`，英文和 `::`、空格等 ASCII 原样保留，例如
 `std::shared_ptr ??????????????????`。
 
-**性质**：`?` 是 MySQL 在**写入那一刻**因目标字符集无法表示该字符而做的替换，属于**数据丢失**，
-不是显示层问题（显示层乱码长这样：`çš„å¼•ç”¨`）。所以**修字符集不会让已有的 `?` 复原**，必须重新导入。
+**性质**：动手前**必须先分清两种情况**，否则会白折腾：
 
-**定位**（哪一步丢的）：
+| 库里的真实字节 | 结论 | 处理 |
+|---|---|---|
+| `3F3F…`（真 `?`） | MySQL 写入时因字符集无法表示而替换，**不可逆丢失** | 必须重新导入 |
+| `E7xx…`（正常 UTF-8） | **数据没丢**，问题在读取或渲染层 | **不要重导**，查接口/浏览器 |
+
+另外，显示层乱码（`çš„å¼•ç”¨` 这种 mojibake）字节其实还在，可以用 `ALTER ... CONVERT TO` 还原，
+和上面两种都不是一回事。
+
+**定位**（先确认真实存储，再决定往哪个方向修）：
 
 ```bash
 mysql -u root -p blogdb
@@ -638,17 +645,35 @@ SELECT COLUMN_NAME, CHARACTER_SET_NAME FROM information_schema.COLUMNS
  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'questions' AND CHARACTER_SET_NAME IS NOT NULL;
 
 -- 2) 看库里真实存了什么（关键）
-SELECT id, category, HEX(LEFT(question, 4)) AS hex, LEFT(question, 12) AS q
+--    注意：不要用 HEX(LEFT(question,4))！前 4 字节是 `std:` 这类 ASCII 前缀，
+--    无论中文有没有坏都一样，测不出任何东西。要跳过 ASCII 前缀直接取中文字段。
+SELECT id, category, LEFT(question, 20) AS q,
+       HEX(SUBSTRING(question, 13, 6)) AS cn_hex   -- 从第 13 个字符起是中文
   FROM questions ORDER BY id LIMIT 5;
+
+-- 或者肉眼直接看（最省事）
+SELECT id, SUBSTRING(question, 13) AS cn FROM questions WHERE id = 1;
 ```
 
-`hex` 列的含义：
+`cn_hex` 列的含义：
 
 | 开头 | 含义 | 能否救回 |
 |---|---|---|
 | `E79A84` 等（UTF-8 汉字字节） | 存储正常，问题在前端/接口 | 能 |
 | `3F3F3F3F`（全是 `?` 的 ASCII） | 已在写入时丢失 | **不能**，需重新导入 |
 | `C3A7C2B9` 等（latin1 双字节） | mojibake，字节还在 | 能，`ALTER ... CONVERT TO` 可还原 |
+
+**若库里是 `E7xx`（数据没丢），继续确认接口层**：
+
+```bash
+curl -s http://127.0.0.1:8080/api/daily          # 直接问服务端要，绕过浏览器
+```
+
+- `curl` 输出中文正常 → 问题在浏览器：先 `Ctrl+F5` 强刷（`/api/daily` 是 GET，可能被缓存），
+  再排查字体（`--serif` 里 `Georgia` 排在 CJK 字体之前，某些环境会逐字形回退失败）。
+- `curl` 输出也是 `?` → 服务端读取阶段出问题，查连接字符集
+  （`mysql_options(conn_, MYSQL_SET_CHARSET_NAME, "utf8mb4")`，
+  尤其注意 `checkConnection()` 触发重连后是否仍然生效）。
 
 **修复**（表字符集不是 utf8mb4 时）：
 
