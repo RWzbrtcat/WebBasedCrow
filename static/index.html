@@ -15,6 +15,7 @@
             </div>
             <nav class="nav">
                 <a href="/" class="active">首页</a>
+                <a href="/daily">每日一题</a>
                 <a href="/drafts" data-auth-role="admin" hidden>草稿</a>
                 <a href="/hidden" data-auth-role="admin" hidden>隐藏</a>
                 <a href="/editor" data-auth-role="admin" hidden>创作</a>
@@ -39,6 +40,22 @@
                 <button type="button" class="btn btn-primary" id="topicAddConfirm">添加</button>
                 <button type="button" class="btn btn-secondary" id="topicAddCancel">取消</button>
             </div>
+
+            <!-- 每日一题：今日题目，答案点开才显示 -->
+            <section class="home-daily" id="homeDaily" hidden>
+                <div class="daily-card-head">
+                    <span class="daily-badge">每日一题</span>
+                    <span class="daily-date" id="homeDailyDate"></span>
+                    <span class="daily-meta" id="homeDailyMeta"></span>
+                </div>
+                <p class="home-daily-question" id="homeDailyQuestion"></p>
+                <div class="home-daily-actions">
+                    <button type="button" class="btn btn-primary" id="homeDailyReveal">查看答案</button>
+                    <a class="btn btn-secondary" href="/daily">进入每日一题</a>
+                    <span class="daily-streak" id="homeDailyStreak"></span>
+                </div>
+                <div class="daily-answer" id="homeDailyAnswer" hidden></div>
+            </section>
 
             <div id="postList" class="post-list">
                 <div class="loading">加载中...</div>

@@ -33,6 +33,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!IS_DRAFTS) await loadTopics();
     await loadPosts();
 
+    // 首页顶部的「每日一题」卡片（仅首页有该节点，失败时静默隐藏）
+    if (!IS_DRAFTS && !IS_HIDDEN) initHomeDaily();
+
     if (IS_DRAFTS) {
         await loadHiddenPosts();
         const hiddenList = document.getElementById('hiddenList');
@@ -605,4 +608,102 @@ function showToast(message, type = 'success') {
         toast.style.animation = 'toastIn 0.25s ease-out reverse';
         setTimeout(() => toast.remove(), 250);
     }, 2500);
+}
+
+// ============================================
+// 首页「每日一题」卡片
+// 题目随首页一起加载；答案点开才去取，Markdown 渲染所需脚本也在那一刻才加载，
+// 避免首页初次打开就背上 marked / purify / highlight 的体积。
+// ============================================
+
+let markdownStackPromise = null;
+
+function difficultyText(level) {
+    if (Number(level) === 1) return '基础';
+    if (Number(level) === 3) return '困难';
+    return '进阶';
+}
+
+function loadMarkdownStack() {
+    if (window.renderMarkdownInto) return Promise.resolve();
+    if (markdownStackPromise) return markdownStackPromise;
+
+    const loadScript = (src) => new Promise((resolve, reject) => {
+        const el = document.createElement('script');
+        el.src = src;
+        el.onload = () => resolve();
+        el.onerror = () => reject(new Error('脚本加载失败：' + src));
+        document.head.appendChild(el);
+    });
+
+    if (!document.querySelector('link[href="/css/highlight.css"]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = '/css/highlight.css';
+        document.head.appendChild(link);
+    }
+
+    markdownStackPromise = loadScript('/js/marked.min.js')
+        .then(() => loadScript('/js/purify.min.js'))
+        .then(() => loadScript('/js/highlight.min.js'))
+        .then(() => loadScript('/js/markdown.js'))
+        .catch((e) => {
+            markdownStackPromise = null; // 失败后允许重试
+            throw e;
+        });
+
+    return markdownStackPromise;
+}
+
+async function initHomeDaily() {
+    const box = document.getElementById('homeDaily');
+    if (!box) return;
+
+    try {
+        const data = await apiRequest(`${API_BASE}/daily`);
+        if (!data || !data.available) return; // 题库为空时不占位
+
+        box.hidden = false;
+        document.getElementById('homeDailyDate').textContent = data.date || '';
+        document.getElementById('homeDailyMeta').textContent =
+            `${data.category || ''} · ${difficultyText(data.difficulty)}`;
+        document.getElementById('homeDailyQuestion').textContent = data.question || '';
+
+        const streakEl = document.getElementById('homeDailyStreak');
+        streakEl.textContent = data.streak > 0 ? `连答 ${data.streak} 天` : '';
+
+        const btn = document.getElementById('homeDailyReveal');
+        const answerBox = document.getElementById('homeDailyAnswer');
+
+        btn.addEventListener('click', async () => {
+            if (!answerBox.hidden) {
+                answerBox.hidden = true;
+                btn.textContent = '查看答案';
+                return;
+            }
+
+            btn.disabled = true;
+            try {
+                const res = await apiRequest(`${API_BASE}/daily/answer?id=${encodeURIComponent(data.id)}`);
+                if (!res.success) {
+                    showToast(res.message || '答案加载失败', 'error');
+                    return;
+                }
+                await loadMarkdownStack();
+                answerBox.innerHTML = '<div class="daily-answer-label">参考答案</div><div class="markdown-body"></div>';
+                window.renderMarkdownInto(answerBox.querySelector('.markdown-body'), res.answer);
+                answerBox.hidden = false;
+                btn.textContent = '收起答案';
+                if (res.streak > 0) streakEl.textContent = `连答 ${res.streak} 天`;
+            } catch (e) {
+                showToast(describeFetchError(e), 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    } catch (e) {
+        // 首页卡片加载失败不打扰用户，保持隐藏即可
+        box.hidden = true;
+        console.warn('[list] 每日一题加载失败', e);
+    }
 }

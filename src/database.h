@@ -57,6 +57,27 @@ public:
     crow::json::wvalue updateCommentContent(int id, const std::string& content,
                                             const std::string& ownerToken, bool isAdmin);
 
+    // ===== 每日一题 =====
+    // 取今天的题目：不存在时按「日期索引 + 分类轮转」懒生成并落库（无需定时任务）。
+    // anonToken 非空时附带该访客是否已看答案与连续打卡天数；答案不在此接口返回。
+    crow::json::wvalue getDailyQuestion(const std::string& anonToken);
+    // 取某题的答案；anonToken 非空时记录「今天看过答案」
+    crow::json::wvalue getDailyAnswer(int questionId, const std::string& anonToken);
+    // 历史排期（按日期倒序分页），不含答案
+    crow::json::wvalue getDailyHistory(int page, int pageSize);
+    // 随机换一题（category 为空表示不限分类），不含答案
+    crow::json::wvalue getRandomQuestion(const std::string& category);
+    // 题库浏览（可按分类分页），不含答案，附各分类数量统计；includeDrafts 为 true 时含草稿（仅站长）
+    crow::json::wvalue getQuestions(const std::string& category, int page, int pageSize, bool includeDrafts);
+    // 单题详情（含答案，供站长编辑时回填）
+    crow::json::wvalue getQuestionById(int id);
+    // 题目增删改（权限由路由层校验：仅主管理员）
+    crow::json::wvalue addQuestion(const std::string& category, const std::string& tags, int difficulty,
+                                    const std::string& question, const std::string& answer, int status);
+    crow::json::wvalue updateQuestion(int id, const std::string& category, const std::string& tags, int difficulty,
+                                      const std::string& question, const std::string& answer, int status);
+    crow::json::wvalue deleteQuestion(int id);
+
     // ===== 配置 =====
     std::string getSetting(const std::string& key);
     crow::json::wvalue setSetting(const std::string& key, const std::string& value);
@@ -89,4 +110,8 @@ private:
     bool getMainAdmin(int& outId, std::string& outNickname);
     // 历史文章（author_id=0）归到主管理员
     void backfillLegacyPosts();
+    // 确保某天的题目已生成，返回题目 ID（0 表示题库中没有已发布的题目）
+    int ensureDailyQuestion(const std::string& date);
+    // 连续打卡天数（今天已答则含今天，否则从昨天往前算）
+    int getDailyStreak(const std::string& ownerToken);
 };

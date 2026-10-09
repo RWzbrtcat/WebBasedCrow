@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每日一题 · LazyCat's Blog</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/highlight.css">
+</head>
+<body class="daily-page">
+    <!-- 站点头部 -->
+    <header class="site-header site-header-pill">
+        <div class="header-inner">
+            <div class="brand">
+                <a class="site-title" href="/">LazyCat</a>
+            </div>
+            <nav class="nav">
+                <a href="/">首页</a>
+                <a href="/daily" class="active">每日一题</a>
+                <a href="/drafts" data-auth-role="admin" hidden>草稿</a>
+                <a href="/hidden" data-auth-role="admin" hidden>隐藏</a>
+                <a href="/editor" data-auth-role="admin" hidden>创作</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 主体 -->
+    <main class="container container-daily">
+        <h1 class="page-title">每日一题</h1>
+        <p class="page-subtitle">每天一道 C++ / MySQL 面试题 · 答案点开才显示</p>
+
+        <!-- 今日题目 -->
+        <section class="daily-card" id="todayCard">
+            <div class="loading">加载中...</div>
+        </section>
+
+        <!-- 题库：分类筛选 + 列表 -->
+        <div class="daily-section-head">
+            <h2 class="daily-section-title">题库</h2>
+            <span class="daily-section-note" id="bankCount"></span>
+        </div>
+        <div class="filter-bar">
+            <div class="filter-row" id="categoryTabs"></div>
+        </div>
+        <div class="daily-list" id="questionList">
+            <div class="loading">加载中...</div>
+        </div>
+        <div class="daily-more">
+            <button type="button" class="btn btn-secondary" id="loadMoreBtn" hidden>加载更多</button>
+        </div>
+
+        <!-- 历史题目 -->
+        <div class="daily-section-head">
+            <h2 class="daily-section-title">历史题目</h2>
+        </div>
+        <div class="daily-history" id="historyList">
+            <div class="loading">加载中...</div>
+        </div>
+
+        <!-- 题库管理（仅站长可见） -->
+        <section class="daily-bank-admin" id="bankAdmin" data-auth-role="main" hidden>
+            <div class="admin-panel">
+                <button type="button" class="admin-toggle" id="bankToggle" aria-expanded="false" aria-controls="bankPanel">
+                    题库管理
+                    <span class="admin-toggle-caret"></span>
+                </button>
+                <div id="bankPanel" hidden>
+                    <p class="bank-hint">答案支持 Markdown：代码块用三反引号包裹，画图用 <code>```mermaid</code>。</p>
+                    <form id="questionForm">
+                        <div class="question-form-row">
+                            <div class="form-group">
+                                <label for="qCategory">分类</label>
+                                <input type="text" id="qCategory" list="categoryOptions" placeholder="C++ / MySQL" maxlength="50" required>
+                                <datalist id="categoryOptions"></datalist>
+                            </div>
+                            <div class="form-group">
+                                <label for="qDifficulty">难度</label>
+                                <select id="qDifficulty">
+                                    <option value="1">基础</option>
+                                    <option value="2" selected>进阶</option>
+                                    <option value="3">困难</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="qStatus">状态</label>
+                                <select id="qStatus">
+                                    <option value="1" selected>已发布</option>
+                                    <option value="0">草稿</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="qTags">标签（逗号分隔，可选）</label>
+                            <input type="text" id="qTags" maxlength="200" placeholder="智能指针,RAII">
+                        </div>
+                        <div class="form-group">
+                            <label for="qQuestion">题干（支持 Markdown）</label>
+                            <textarea id="qQuestion" rows="3" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="qAnswer">答案（支持 Markdown / 代码块 / mermaid）</label>
+                            <textarea id="qAnswer" rows="8" required></textarea>
+                        </div>
+                        <div class="question-form-actions">
+                            <button type="submit" class="btn btn-primary" id="qSaveBtn">添加题目</button>
+                            <button type="button" class="btn btn-secondary" id="qCancelBtn" hidden>取消编辑</button>
+                            <span class="question-form-hint" id="qFormHint"></span>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/marked.min.js"></script>
+    <script src="/js/purify.min.js"></script>
+    <script src="/js/highlight.min.js"></script>
+    <script src="/js/markdown.js"></script>
+    <script src="/js/daily.js"></script>
+    <script src="/js/header.js"></script>
+    <script src="/js/background.js"></script>
+    <script src="/js/theme.js"></script>
+
+    <footer class="site-footer">
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">冀ICP备2026039047号</a>
+    </footer>
+</body>
+</html>

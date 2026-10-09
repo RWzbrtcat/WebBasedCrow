@@ -132,6 +132,19 @@ html = '''<!DOCTYPE html>
                     <span class="filter-tab" data-name="t4">旅行</span>
                 </div>
             </div>
+            <section class="home-daily">
+                <div class="daily-card-head">
+                    <span class="daily-badge">每日一题</span>
+                    <span class="daily-date">2026-10-09 · 周五</span>
+                    <span class="daily-meta">C++ · 进阶</span>
+                </div>
+                <p class="home-daily-question">std::shared_ptr 的引用计数是线程安全的吗？为什么？</p>
+                <div class="home-daily-actions">
+                    <button type="button" class="btn btn-primary">查看答案</button>
+                    <a class="btn btn-secondary" href="#">进入每日一题</a>
+                    <span class="daily-streak">连答 12 天</span>
+                </div>
+            </section>
             <div class="post-list">
 {cards}
             </div>
@@ -537,3 +550,240 @@ with io.open(LOGIN_OUT, "w", encoding="utf-8") as f:
     f.write(login_out)
 
 print("written:", LOGIN_OUT, len(login_out), "chars")
+
+# ---------------- 每日一题页预览 ----------------
+DAILY_OUT = os.path.join(ROOT, "preview_daily.html")
+
+daily_html = '''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日一题预览 · LazyCat's Blog</title>
+<style>
+{css}
+</style>
+</head>
+<body class="daily-page">
+    <header class="site-header site-header-pill">
+        <div class="header-inner">
+            <div class="brand"><a class="site-title" href="#">LazyCat</a></div>
+            <nav class="nav">
+                <a href="#">首页</a>
+                <a href="#" class="active">每日一题</a>
+                <a href="#">草稿</a>
+                <a href="#">隐藏</a>
+                <a href="#">创作</a>
+                <a href="#" class="nav-avatar">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container container-daily">
+        <h1 class="page-title">每日一题</h1>
+        <p class="page-subtitle">每天一道 C++ / MySQL 面试题 · 答案点开才显示</p>
+
+        <section class="daily-card">
+            <div class="daily-card-head">
+                <span class="daily-badge">每日一题</span>
+                <span class="daily-date">2026-10-09</span>
+                <span class="daily-meta">C++ · 进阶</span>
+            </div>
+            <p class="daily-question">std::shared_ptr 的引用计数是线程安全的吗？为什么？</p>
+            <p class="daily-tags">智能指针, 多线程</p>
+            <div class="daily-actions">
+                <button type="button" class="btn btn-primary" data-toggle="todayAnswer">收起答案</button>
+                <button type="button" class="btn btn-secondary">换一题</button>
+                <span class="daily-streak">连答 12 天</span>
+            </div>
+            <div class="daily-answer" id="todayAnswer">
+                <div class="daily-answer-label">参考答案</div>
+                <div class="markdown-body">
+                    <p><strong>引用计数的增减是线程安全的</strong>，标准要求它与 <code>std::atomic</code> 的操作等价；但<strong>被管理对象的读写不安全</strong>。</p>
+                    <ol>
+                        <li>拷贝与析构（计数 +1 / -1）是原子的，各线程持有自己的副本互不影响。</li>
+                        <li>同一个 <code>shared_ptr</code> 实例被并发赋值则不是线程安全的，需要外部加锁。</li>
+                        <li>对象本身的访问完全不受保护。</li>
+                    </ol>
+                    <pre><code>auto sp = std::make_shared&lt;int&gt;(0);
+// 线程 A            // 线程 B
+sp = other;          // 同时改 sp → 数据竞争</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <div class="daily-section-head">
+            <h2 class="daily-section-title">题库</h2>
+            <span class="daily-section-note">共 46 题</span>
+        </div>
+        <div class="filter-bar">
+            <div class="filter-row">
+                <span class="filter-label">分类</span>
+                <span class="filter-tab active" data-name="">全部</span>
+                <span class="filter-tab" data-name="cpp">C++</span>
+                <span class="filter-tab" data-name="mysql">MySQL</span>
+                <span class="filter-tab" data-name="net">网络</span>
+                <span class="filter-tab" data-name="os">操作系统</span>
+                <span class="filter-tab" data-name="algo">算法</span>
+            </div>
+        </div>
+        <div class="daily-list">
+            <article class="daily-item">
+                <div class="daily-item-head">
+                    <span class="daily-item-cat">MySQL</span>
+                    <span class="daily-item-diff">进阶</span>
+                    <span class="daily-item-id">#12</span>
+                </div>
+                <p class="daily-item-question">聚簇索引和二级索引有什么区别？什么是回表？</p>
+                <div class="daily-item-actions">
+                    <button type="button" class="daily-link" data-toggle="bankAnswer1">收起答案</button>
+                    <button type="button" class="daily-link">编辑</button>
+                    <button type="button" class="daily-link daily-link-danger">删除</button>
+                </div>
+                <div class="daily-item-answer" id="bankAnswer1">
+                    <div class="markdown-body">
+                        <p>聚簇索引的叶子节点存<strong>整行数据</strong>，二级索引的叶子只存<strong>索引列 + 主键值</strong>；用二级索引查到主键后再回聚簇索引取整行，这一步就是<strong>回表</strong>。</p>
+                    </div>
+                </div>
+            </article>
+            <article class="daily-item">
+                <div class="daily-item-head">
+                    <span class="daily-item-cat">C++</span>
+                    <span class="daily-item-diff">基础</span>
+                    <span class="daily-item-draft">草稿</span>
+                    <span class="daily-item-id">#31</span>
+                </div>
+                <p class="daily-item-question">什么是 RAII？为什么说它是 C++ 资源管理的核心？</p>
+                <div class="daily-item-actions">
+                    <button type="button" class="daily-link" data-toggle="bankAnswer2">查看答案</button>
+                    <button type="button" class="daily-link">编辑</button>
+                    <button type="button" class="daily-link daily-link-danger">删除</button>
+                </div>
+                <div class="daily-item-answer" id="bankAnswer2" hidden>
+                    <div class="markdown-body">
+                        <p>资源在构造函数中获取、在析构函数中释放，把资源生命周期绑定到栈对象的作用域上。</p>
+                    </div>
+                </div>
+            </article>
+        </div>
+        <div class="daily-more">
+            <button type="button" class="btn btn-secondary">加载更多</button>
+        </div>
+
+        <div class="daily-section-head">
+            <h2 class="daily-section-title">历史题目</h2>
+        </div>
+        <div class="daily-history">
+            <div class="daily-history-row">
+                <span class="daily-history-date">2026-10-08</span>
+                <span class="daily-history-q">聚簇索引和二级索引的区别？回表是什么？</span>
+                <span class="daily-history-cat">MySQL</span>
+            </div>
+            <div class="daily-history-row">
+                <span class="daily-history-date">2026-10-07</span>
+                <span class="daily-history-q">move 语义解决了什么问题？std::move 真的移动了吗？</span>
+                <span class="daily-history-cat">C++</span>
+            </div>
+            <div class="daily-history-row">
+                <span class="daily-history-date">2026-10-06</span>
+                <span class="daily-history-q">TCP 三次握手为什么不是两次？</span>
+                <span class="daily-history-cat">网络</span>
+            </div>
+        </div>
+
+        <section class="daily-bank-admin">
+            <div class="admin-panel">
+                <button type="button" class="admin-toggle" id="bankToggle" aria-expanded="false">
+                    题库管理
+                    <span class="admin-toggle-caret"></span>
+                </button>
+                <div id="bankPanel" hidden>
+                    <p class="bank-hint">答案支持 Markdown：代码块用三反引号包裹，画图用 <code>```mermaid</code>。</p>
+                    <div class="question-form-row">
+                        <div class="form-group">
+                            <label for="qCategory">分类</label>
+                            <input type="text" id="qCategory" placeholder="C++ / MySQL">
+                        </div>
+                        <div class="form-group">
+                            <label for="qDifficulty">难度</label>
+                            <select id="qDifficulty">
+                                <option>基础</option>
+                                <option selected>进阶</option>
+                                <option>困难</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="qStatus">状态</label>
+                            <select id="qStatus">
+                                <option selected>已发布</option>
+                                <option>草稿</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="qQuestion">题干（支持 Markdown）</label>
+                        <textarea id="qQuestion" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="qAnswer">答案（支持 Markdown / 代码块 / mermaid）</label>
+                        <textarea id="qAnswer" rows="6"></textarea>
+                    </div>
+                    <div class="question-form-actions">
+                        <button type="button" class="btn btn-primary">添加题目</button>
+                        <span class="question-form-hint">正在编辑 #31</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <a href="#">冀ICP备2026039047号</a>
+    </footer>
+
+    <script>
+    (function () {
+        document.querySelectorAll('[data-toggle]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var box = document.getElementById(btn.dataset.toggle);
+                if (!box) return;
+                box.hidden = !box.hidden;
+                btn.textContent = box.hidden ? '查看答案' : '收起答案';
+            });
+        });
+        var toggle = document.getElementById('bankToggle');
+        var panel = document.getElementById('bankPanel');
+        if (toggle && panel) {
+            toggle.addEventListener('click', function () {
+                var open = panel.hidden;
+                panel.hidden = !panel.hidden;
+                toggle.setAttribute('aria-expanded', String(open));
+            });
+        }
+        document.querySelectorAll('.filter-row').forEach(function (row) {
+            row.addEventListener('click', function (e) {
+                var tab = e.target.closest('.filter-tab');
+                if (!tab) return;
+                row.querySelectorAll('.filter-tab').forEach(function (n) { n.classList.remove('active'); });
+                tab.classList.add('active');
+            });
+        });
+        var h = document.querySelector('.site-header-pill');
+        if (h) {
+            var update = function () { h.classList.toggle('scrolled', window.scrollY > 0); };
+            update();
+            window.addEventListener('scroll', update, { passive: true });
+        }
+    })();
+    </script>
+</body>
+</html>'''
+
+daily_out = daily_html.replace("{css}", css)
+
+with io.open(DAILY_OUT, "w", encoding="utf-8") as f:
+    f.write(daily_out)
+
+print("written:", DAILY_OUT, len(daily_out), "chars")

@@ -1,6 +1,7 @@
 #include "routes.h"
 
 #include <chrono>
+#include <cstdlib>
 #include <fstream>
 #include <mutex>
 #include <string>
@@ -672,6 +673,177 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
         }
     });
 
+    // ========== 每日一题 ==========
+
+    // GET /api/daily - 今日题目。首次访问时按「日期索引 + 分类轮转」懒生成并落库，
+    // 因此不需要定时任务。答案不在此返回，需另调 /api/daily/answer。
+    CROW_ROUTE(app, "/api/daily").methods("GET"_method)([&db](const crow::request& req){
+        crow::response res(db.getDailyQuestion(getAnonToken(req)));
+        addCorsHeaders(res);
+        return res;
+    });
+
+    // GET /api/daily/answer?id=<题目ID> - 查看答案。
+    // 首次来访的用户在这里拿到匿名标识（HttpOnly），用于记录「今天看过答案」并累计连续天数。
+    CROW_ROUTE(app, "/api/daily/answer").methods("GET"_method)([&db](const crow::request& req){
+        const char* rawId = req.url_params.get("id");
+        const int questionId = rawId ? std::atoi(rawId) : 0;
+        if (questionId <= 0)
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["message"] = "缺少有效的题目 id";
+            crow::response res(400, err);
+            addCorsHeaders(res);
+            return res;
+        }
+
+        std::string anonToken = getAnonToken(req);
+        const bool needSetCookie = anonToken.empty();
+        if (needSetCookie) anonToken = randomHex(16);
+
+        crow::response res(db.getDailyAnswer(questionId, anonToken));
+        if (needSetCookie) setAnonCookie(res, anonToken);
+        addCorsHeaders(res);
+        return res;
+    });
+
+    // GET /api/daily/history?page=1 - 历史题目（按日期倒序，不含答案）
+    CROW_ROUTE(app, "/api/daily/history").methods("GET"_method)([&db](const crow::request& req){
+        const char* rawPage = req.url_params.get("page");
+        const int page = rawPage ? std::atoi(rawPage) : 1;
+        crow::response res(db.getDailyHistory(page, 12));
+        addCorsHeaders(res);
+        return res;
+    });
+
+    // GET /api/daily/random?category=C++ - 随机换一题（不含答案）
+    CROW_ROUTE(app, "/api/daily/random").methods("GET"_method)([&db](const crow::request& req){
+        const char* rawCategory = req.url_params.get("category");
+        const std::string category = rawCategory ? trim(rawCategory) : std::string();
+        crow::response res(db.getRandomQuestion(category));
+        addCorsHeaders(res);
+        return res;
+    });
+
+    // GET /api/questions?category=&page=&page_size= - 题库浏览（不含答案）
+    // 站长带 with_drafts=1 时可以看到草稿
+    CROW_ROUTE(app, "/api/questions").methods("GET"_method)([&db](const crow::request& req){
+        const char* rawCategory = req.url_params.get("category");
+        const char* rawPage = req.url_params.get("page");
+        const char* rawSize = req.url_params.get("page_size");
+        const char* rawDrafts = req.url_params.get("with_drafts");
+
+        const std::string category = rawCategory ? trim(rawCategory) : std::string();
+        const int page = rawPage ? std::atoi(rawPage) : 1;
+        const int pageSize = rawSize ? std::atoi(rawSize) : 10;
+        const bool withDrafts = isMainAdmin(req) && rawDrafts && std::string(rawDrafts) == "1";
+
+        crow::response res(db.getQuestions(category, page, pageSize, withDrafts));
+        addCorsHeaders(res);
+        return res;
+    });
+
+    // GET /api/questions/<id> - 单题详情（含答案，仅主管理员，供编辑回填）
+    CROW_ROUTE(app, "/api/questions/<int>").methods("GET"_method)([&db](const crow::request& req, int id){
+        if (!isMainAdmin(req)) return forbiddenResponse();
+        crow::response res(db.getQuestionById(id));
+        addCorsHeaders(res);
+        return res;
+    });
+
+    // POST /api/questions - 新增题目（仅主管理员）
+    CROW_ROUTE(app, "/api/questions").methods("POST"_method)([&db](const crow::request& req){
+        if (!isMainAdmin(req)) return forbiddenResponse();
+
+        auto body = crow::json::load(req.body);
+        if (!body)
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["message"] = "无效的 JSON 数据";
+            crow::response res(400, err);
+            addCorsHeaders(res);
+            return res;
+        }
+
+        std::string category = trim(body.has("category") ? std::string(body["category"].s()) : std::string());
+        std::string tags = trim(body.has("tags") ? std::string(body["tags"].s()) : std::string());
+        std::string question = trim(body.has("question") ? std::string(body["question"].s()) : std::string());
+        std::string answer = trim(body.has("answer") ? std::string(body["answer"].s()) : std::string());
+        int difficulty = body.has("difficulty") ? static_cast<int>(body["difficulty"].i()) : 2;
+        int status = body.has("status") ? static_cast<int>(body["status"].i()) : 1;
+
+        if (category.empty() || question.empty() || answer.empty())
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["message"] = "分类、题干、答案都不能为空";
+            crow::response res(400, err);
+            addCorsHeaders(res);
+            return res;
+        }
+        if (category.length() > 50) category = category.substr(0, 50);
+        if (tags.length() > 200) tags = tags.substr(0, 200);
+        if (difficulty < 1) difficulty = 1;
+        if (difficulty > 3) difficulty = 3;
+        if (status != 0) status = 1;
+
+        crow::response res(db.addQuestion(category, tags, difficulty, question, answer, status));
+        addCorsHeaders(res);
+        return res;
+    });
+
+    // PUT /api/questions/<id> - 修改题目（仅主管理员）
+    CROW_ROUTE(app, "/api/questions/<int>").methods("PUT"_method)([&db](const crow::request& req, int id){
+        if (!isMainAdmin(req)) return forbiddenResponse();
+
+        auto body = crow::json::load(req.body);
+        if (!body)
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["message"] = "无效的 JSON 数据";
+            crow::response res(400, err);
+            addCorsHeaders(res);
+            return res;
+        }
+
+        std::string category = trim(body.has("category") ? std::string(body["category"].s()) : std::string());
+        std::string tags = trim(body.has("tags") ? std::string(body["tags"].s()) : std::string());
+        std::string question = trim(body.has("question") ? std::string(body["question"].s()) : std::string());
+        std::string answer = trim(body.has("answer") ? std::string(body["answer"].s()) : std::string());
+        int difficulty = body.has("difficulty") ? static_cast<int>(body["difficulty"].i()) : 2;
+        int status = body.has("status") ? static_cast<int>(body["status"].i()) : 1;
+
+        if (category.empty() || question.empty() || answer.empty())
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["message"] = "分类、题干、答案都不能为空";
+            crow::response res(400, err);
+            addCorsHeaders(res);
+            return res;
+        }
+        if (category.length() > 50) category = category.substr(0, 50);
+        if (tags.length() > 200) tags = tags.substr(0, 200);
+        if (difficulty < 1) difficulty = 1;
+        if (difficulty > 3) difficulty = 3;
+        if (status != 0) status = 1;
+
+        crow::response res(db.updateQuestion(id, category, tags, difficulty, question, answer, status));
+        addCorsHeaders(res);
+        return res;
+    });
+
+    // DELETE /api/questions/<id> - 删除题目（仅主管理员）
+    CROW_ROUTE(app, "/api/questions/<int>").methods("DELETE"_method)([&db](const crow::request& req, int id){
+        if (!isMainAdmin(req)) return forbiddenResponse();
+        crow::response res(db.deleteQuestion(id));
+        addCorsHeaders(res);
+        return res;
+    });
+
     // GET /api/settings/background - 获取当前站点背景图（公开）
     CROW_ROUTE(app, "/api/settings/background").methods("GET"_method)([&db](){
         crow::json::wvalue out;
@@ -859,6 +1031,11 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
             return res;
         }
         return htmlResponse(readFile(staticDir + "/profile.html"));
+    });
+
+    // 每日一题页（公开：未登录也能做题，答题记录靠匿名 Cookie）
+    CROW_ROUTE(app, "/daily")([staticDir](){
+        return htmlResponse(readFile(staticDir + "/daily.html"));
     });
 
     // CSS 文件

@@ -23,7 +23,8 @@
 - [十三、常见问题排查](#十三常见问题排查)
 - [十四、API 一览](#十四api-一览)
 - [十五、匿名评论身份（blog_anon）](#十五匿名评论身份blog_anon)
-- [十六、已知限制与待办](#十六已知限制与待办)
+- [十六、每日一题](#十六每日一题)
+- [十七、已知限制与待办](#十七已知限制与待办)
 
 ---
 
@@ -162,7 +163,10 @@ FLUSH PRIVILEGES;
 | `posts` | 文章：标题、正文、简介、作者、`topic`（专栏）、`theme`（主题）、`status`（published/draft）、点赞数、`hidden`、创建/更新时间 |
 | `topics` | 专栏（首次启动会用已有文章的 `topic` 去重填充） |
 | `comments` | 评论 |
-| `settings` | 站点配置（背景图、主题色），键值对 |
+| `questions` | 面试题库：分类、标签、难度、题干、答案（Markdown）、`status`（草稿/已发布） |
+| `daily_questions` | 每日排期：`d`（日期）→ `question_id`，当天用哪道题 |
+| `daily_seen` | 答题记录：`(d, owner_token)` 主键，用于统计连续打卡天数 |
+| `settings` | 站点配置（背景图、主题色、每日一题基准日），键值对 |
 | `admins` | 管理员（邮箱、昵称、头像、salt、密码哈希、`is_main`） |
 
 **升级安全**：启动时若发现旧表缺列（如 `posts.theme`、`admins.nickname`），会自动 `ALTER TABLE` 补上，无需手动迁移。
@@ -637,6 +641,15 @@ journalctl -u blog --since today | grep -Ei 'Started|Stopping|terminate|gone awa
 | DELETE | `/api/topics/<id>` | 删除专栏 | 登录 |
 | GET | `/api/settings/background` `/api/settings/theme` | 读取站点背景 / 主题色 | 公开 |
 | POST | `/api/settings/background` `/api/settings/theme` | 修改站点背景 / 主题色 | 登录 |
+| GET | `/api/daily` | 今日题目（首次访问自动生成并落库，不含答案），附 `answered` / `streak` | 公开 |
+| GET | `/api/daily/answer?id=` | 取题目答案，同时记录「今天看过答案」 | 公开 |
+| GET | `/api/daily/history?page=` | 历史排期（按日期倒序，不含答案） | 公开 |
+| GET | `/api/daily/random?category=` | 随机换一题（不含答案） | 公开 |
+| GET | `/api/questions?category=&page=&page_size=` | 题库浏览（不含答案）；站长带 `with_drafts=1` 可见草稿 | 公开 |
+| GET | `/api/questions/<id>` | 单题详情（含答案，编辑回填用） | 主管理员 |
+| POST | `/api/questions` | 新增题目 | 主管理员 |
+| PUT | `/api/questions/<id>` | 修改题目 | 主管理员 |
+| DELETE | `/api/questions/<id>` | 删除题目 | 主管理员 |
 
 ---
 
@@ -667,9 +680,74 @@ journalctl -u blog --since today | grep -Ei 'Started|Stopping|terminate|gone awa
 **表结构迁移**：服务启动时自动 `ALTER TABLE comments ADD COLUMN owner_token VARCHAR(64) NULL`
 并创建 `idx_comments_owner` 索引（幂等，已有则跳过），无需手动改库。
 
-## 十六、已知限制与待办
+## 十六、每日一题
 
-### 16.1 已知限制
+首页顶部与独立页 `/daily` 展示当天题目；访客**不需要登录**，答题记录靠匿名 Cookie（`blog_anon`）。
+
+### 16.1 选题机制：不用定时任务
+
+Crow 是单进程服务，没有 cron。当天题目采用**懒生成**：第一个访问当天题目的请求触发计算并落库，之后当天固定不变。
+
+```
+第一个 GET /api/daily
+      ↓
+daily_questions 里有今天的记录吗？
+      ├─ 有   → 直接返回
+      └─ 没有 → 按「日期差 + 分类轮转」算出题目 → INSERT IGNORE 落库 → 重新读取并返回
+```
+
+- **序号来源是日期差，不是行数**：`dayIndex = 今天 − daily_base_date`（基准日首次运行时写入 `settings.daily_base_date`）。这样即使某天没人访问、库里缺了那天，顺序也不会错位。
+- **分类轮转**：`category = 分类列表[dayIndex % 分类数]`，再在该分类内按 `dayIndex / 分类数` 轮转。效果是 C++ → MySQL → 网络 → 操作系统 → 算法 依次出现，而不是连着几天都是同一类。
+- **用 `INSERT IGNORE` 而不是「先查再插」**：`app.multithreaded()` 是多线程的，同一秒可能有多个请求同时触发生成；靠主键 `d` 让先写入的那条生效，随后统一读回，保证所有人看到同一题。
+- **题库与排期分表**：题库可以随便增删改，`daily_questions` 一旦写入就不动，历史题目不会因为改题库而跳变（被删掉的题目在历史列表里显示为空）。
+
+### 16.2 答案为什么不跟题目一起返回
+
+`GET /api/daily` 只返回题干，答案要单独请求 `GET /api/daily/answer?id=`。否则打开 F12 看一眼接口就剧透了——前端的「查看答案」按钮就是按这个思路做的。
+
+答案以 Markdown 渲染，所以可以直接写代码块和 `mermaid` 图表（复用文章页同一套 `markdown.js`）。
+
+### 16.3 连续打卡
+
+看答案时服务端往 `daily_seen` 写一条 `(今天, blog_anon)`（`INSERT IGNORE`，一天一条）。`streak` 的计算规则：
+
+- 今天已看 → 从今天往前数；
+- 今天还没看 → 从昨天往前数（今天没过完，不算断）；
+- 中间缺一天 → 归零。
+
+最多回溯 400 天。**匿名身份绑定浏览器**：清 Cookie / 换设备 / 无痕都会归零重来，这是不登录方案的能力边界（同[第十五章](#十五匿名评论身份blog_anon)）。
+
+### 16.4 题库维护
+
+两种方式，按需要选。
+
+**① 导入种子题库（推荐首次部署）**
+
+```bash
+mysql -u blog -p blogdb < tools/seed_questions.sql
+```
+
+`tools/seed_questions.sql` 含 46 道题（C++ 10 / MySQL 10 / 网络 9 / 操作系统 9 / 算法 8），覆盖语言特性、存储引擎与索引、TCP/HTTP、内存与并发、排序与设计题。脚本**可重复执行**：先导入临时表，再按「分类 + 题干」判重插入，已存在的题目不会被覆盖 —— 手动改过的题不会被脚本冲掉。
+
+**② 站长的题库管理面板**
+
+用主管理员登录后打开 `/daily`，页面底部有「题库管理」（节点带 `data-auth-role="main"`，仅站长可见）：
+
+- 表单含分类、标签、难度（基础/进阶/困难）、状态（草稿/已发布）、题干与答案（Markdown）；
+- 列表每项都有「查看答案 / 编辑 / 删除」，编辑会把内容回填到表单；
+- 列表请求带 `with_drafts=1`，草稿会打「草稿」标记。**草稿不会进入每日排期**（选题只取 `status=1`）。
+
+**草稿的价值**：AI 生成或从别处摘来的题目先落草稿，人工核对答案后再发布 —— 面试题答案写错比没有更糟。
+
+### 16.5 已知边界
+
+- **分类名称直接参与轮转**：改分类名相当于换了一批题，历史排期不受影响，但后续轮转节奏会变。
+- **`ORDER BY RAND()` 只适合小题库**（几千题以内毫无压力），题量到十万级需要改成按 id 随机取。
+- 题库为空时首页卡片**自动隐藏不占位**，`/daily` 会给出空状态提示。
+
+## 十七、已知限制与待办
+
+### 17.1 已知限制
 
 - **端口写死 8080**，不支持环境变量配置。
 - **会话存内存**，重启后所有人需重新登录；多实例部署无法共享登录态。
@@ -678,8 +756,9 @@ journalctl -u blog --since today | grep -Ei 'Started|Stopping|terminate|gone awa
 - **初始管理员为 `admin@localhost`**，与登录页默认补全的 `@lazycat.com` 不一致（见 [7.3](#73-首次启动与初始管理员)）。
 - **匿名评论身份绑定浏览器**：清 Cookie / 换设备即丢失对自己旧评论的管理权（详见 [第十五章](#十五匿名评论身份blog_anon)）。
 - **点赞去重仍是纯前端 `localStorage`**，清缓存即可重复点赞，服务端无记录。
+- **每日一题的连续打卡同样绑定浏览器**（详见 [16.3](#163-连续打卡)）。
 
-### 16.2 build/ 目录被误纳入版本控制
+### 17.2 build/ 目录被误纳入版本控制
 
 `build/` 是 CMake 中间产物，目前有文件被提交进了 Git（含 `CMakeCache.txt`，里面有本机绝对路径）。建议清理：
 
@@ -691,12 +770,13 @@ git commit -m "chore: 移除误纳入版本控制的 build/ 中间产物"
 
 > 执行前确认没有人在 `build/` 里放需要保留的东西。
 
-### 16.3 待办
+### 17.3 待办
 
 - [ ] 端口、上传目录等改为可配置（环境变量 / 配置文件）
 - [ ] 会话持久化到数据库或 Redis，支持多实例
 - [ ] 数据库连接池化，避免单连接串行
 - [ ] 初始管理员邮箱改为可配置，统一为 `@lazycat.com`
+- [ ] 每日一题：支持按收藏/错题重练，以及题库导入的 CSV/Markdown 格式
 - [ ] 补齐自动化测试（现有 `tools/repro_list.mjs` 仅覆盖首页渲染）
 
 ---

@@ -2783,6 +2783,504 @@ input[readonly] {
     color: var(--accent-dark);
 }
 
+/* ========== 文章详情页：左侧目录 + 加宽正文 ========== */
+.post-page {
+    --header-width: 1180px;   /* 导航胶囊跟随正文宽度对齐 */
+}
+
+.container-post {
+    max-width: 1180px;
+}
+
+/* 无目录时正文居中单列；有目录时 JS 给 .post-layout 加 has-toc 变双列 */
+.post-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 860px);
+    justify-content: center;
+    align-items: start;
+}
+
+.post-layout.has-toc {
+    grid-template-columns: 236px minmax(0, 860px);
+    gap: 32px;
+}
+
+.post-main {
+    min-width: 0;
+}
+
+.post-toc {
+    position: sticky;
+    top: 96px;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+    padding: 18px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.post-toc[hidden] {
+    display: none;
+}
+
+.post-toc-title {
+    padding: 0 8px 10px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.post-toc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.post-toc-link {
+    display: block;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border-left: 2px solid transparent;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background-color var(--transition), color var(--transition);
+}
+
+.post-toc-link:hover {
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+}
+
+.post-toc-link.active {
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    color: var(--accent-dark);
+    font-weight: 600;
+}
+
+.post-toc-level-2 {
+    padding-left: 22px;
+}
+
+.post-toc-level-3 {
+    padding-left: 34px;
+    font-size: 0.84rem;
+}
+
+/* 正文适度放大 */
+.post-page .post-full {
+    padding: 48px 44px;
+}
+
+.post-page .post-full .post-title {
+    font-size: 2.2rem;
+}
+
+.post-page .post-content {
+    font-size: 1.12rem;
+}
+
+/* 窄屏：收起目录，正文回到单列并收紧内边距 */
+@media (max-width: 1080px) {
+    .post-layout,
+    .post-layout.has-toc {
+        grid-template-columns: minmax(0, 860px);
+        gap: 0;
+    }
+
+    .post-toc {
+        display: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .post-page .post-full {
+        padding: 28px 20px;
+    }
+
+    .post-page .post-full .post-title {
+        font-size: 1.6rem;
+    }
+
+    .post-page .post-content {
+        font-size: 1.02rem;
+    }
+}
+
+/* ========== 每日一题 ========== */
+
+body.daily-page {
+    --header-width: 900px;
+}
+
+.container-daily {
+    max-width: 900px;
+}
+
+/* 题目卡片（今日题目 / 随机一题共用） */
+.daily-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 24px 26px;
+    margin-bottom: 8px;
+    box-shadow: var(--shadow);
+}
+
+.daily-card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.daily-badge {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--accent-dark);
+    background: var(--accent-soft);
+    border: 1px solid var(--card-border);
+    padding: 3px 10px;
+    border-radius: 999px;
+}
+
+.daily-date,
+.daily-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.daily-meta {
+    margin-left: auto;
+    color: var(--accent-dark);
+}
+
+.daily-question {
+    font-family: var(--serif);
+    font-size: 1.18rem;
+    line-height: 1.7;
+    color: var(--text);
+    margin: 0 0 10px;
+    white-space: pre-wrap;
+}
+
+.daily-tags {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin: 0 0 16px;
+}
+
+.daily-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.daily-streak {
+    margin-left: auto;
+    font-size: 0.8rem;
+    color: var(--accent-dark);
+}
+
+/* 答案区：默认收起，点「查看答案」才展开 */
+.daily-answer {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--card-border);
+}
+
+.daily-answer[hidden] {
+    display: none;
+}
+
+.daily-answer-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+
+.daily-empty-hint {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+}
+
+/* 分区标题 */
+.daily-section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 36px 0 14px;
+}
+
+.daily-section-title {
+    font-family: var(--serif);
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text);
+    margin: 0;
+}
+
+.daily-section-note {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* 题库列表 */
+.daily-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.daily-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.daily-item:hover {
+    border-color: var(--card-border);
+    box-shadow: var(--shadow-md);
+}
+
+.daily-item-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.daily-item-cat {
+    font-size: 0.72rem;
+    color: var(--accent-dark);
+    background: var(--accent-soft);
+    border-radius: 4px;
+    padding: 2px 8px;
+}
+
+.daily-item-diff {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 7px;
+}
+
+.daily-item-draft {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+    padding: 1px 7px;
+}
+
+.daily-item-id {
+    margin-left: auto;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.daily-item-question {
+    font-size: 0.96rem;
+    line-height: 1.65;
+    margin: 0 0 10px;
+    white-space: pre-wrap;
+}
+
+.daily-item-actions {
+    display: flex;
+    gap: 14px;
+}
+
+.daily-item-answer {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border);
+}
+
+.daily-item-answer[hidden] {
+    display: none;
+}
+
+.daily-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.82rem;
+    color: var(--accent);
+    cursor: pointer;
+    transition: color var(--transition);
+}
+
+.daily-link:hover {
+    color: var(--accent-dark);
+}
+
+.daily-link-danger {
+    color: var(--text-muted);
+}
+
+.daily-link-danger:hover {
+    color: var(--danger);
+}
+
+.daily-more {
+    display: flex;
+    justify-content: center;
+    margin-top: 14px;
+}
+
+/* 历史题目 */
+.daily-history {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.daily-history-row {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+.daily-history-row:last-child {
+    border-bottom: none;
+}
+
+.daily-history-date {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    min-width: 84px;
+}
+
+.daily-history-q {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.daily-history-cat {
+    font-size: 0.75rem;
+    color: var(--accent-dark);
+}
+
+/* 站长：题库管理 */
+.daily-bank-admin {
+    margin-top: 36px;
+}
+
+.bank-hint {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: 12px 0 16px;
+}
+
+.bank-hint code {
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+.question-form-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 12px;
+}
+
+.question-form-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.question-form-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* 首页「每日一题」卡片 */
+.home-daily {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 24px;
+}
+
+.home-daily[hidden] {
+    display: none;
+}
+
+.home-daily-question {
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    line-height: 1.7;
+    margin: 0 0 14px;
+    white-space: pre-wrap;
+}
+
+.home-daily-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+    .daily-card {
+        padding: 20px 18px;
+    }
+
+    .daily-question {
+        font-size: 1.05rem;
+    }
+
+    .daily-meta {
+        margin-left: 0;
+    }
+
+    .question-form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .daily-history-row {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .daily-history-date {
+        min-width: 0;
+    }
+
+    .daily-history-q {
+        white-space: normal;
+        flex-basis: 100%;
+        order: 3;
+    }
+}
+
 </style>
 </head>
 <body class="home-page">
@@ -2833,6 +3331,19 @@ input[readonly] {
                     <span class="filter-tab" data-name="t4">旅行</span>
                 </div>
             </div>
+            <section class="home-daily">
+                <div class="daily-card-head">
+                    <span class="daily-badge">每日一题</span>
+                    <span class="daily-date">2026-10-09 · 周五</span>
+                    <span class="daily-meta">C++ · 进阶</span>
+                </div>
+                <p class="home-daily-question">std::shared_ptr 的引用计数是线程安全的吗？为什么？</p>
+                <div class="home-daily-actions">
+                    <button type="button" class="btn btn-primary">查看答案</button>
+                    <a class="btn btn-secondary" href="#">进入每日一题</a>
+                    <span class="daily-streak">连答 12 天</span>
+                </div>
+            </section>
             <div class="post-list">
 <article class="post-card">
     <h2 class="post-title"><a href="#">深入理解 C++ 智能指针</a></h2>

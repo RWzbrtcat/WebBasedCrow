@@ -1,10 +1,54 @@
 #include "database.h"
 
+#include <algorithm>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <iostream>
 #include <stdexcept>
 
 #include "utils.h"
+
+namespace
+{
+// 当前本地日期，格式 YYYY-MM-DD
+std::string todayStr()
+{
+    std::time_t t = std::time(nullptr);
+    std::tm tm{};
+#if defined(_WIN32)
+    localtime_s(&tm, &t);
+#else
+    localtime_r(&t, &tm);
+#endif
+    char buf[16];
+    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+    return std::string(buf);
+}
+
+// 把 YYYY-MM-DD 转成「自公元 0 年起的第几天」，用于算连续天数。
+// 采用 Howard Hinnant 的 days_from_civil 算法，纯整数运算，不受时区影响。
+long daysFromDate(const std::string& date)
+{
+    int y = 0, m = 0, d = 0;
+    if (std::sscanf(date.c_str(), "%d-%d-%d", &y, &m, &d) != 3) return 0;
+    if (m <= 2) y -= 1;
+    long era = (y >= 0 ? y : y - 399) / 400;
+    unsigned yoe = static_cast<unsigned>(y - era * 400);
+    unsigned doy = static_cast<unsigned>((153 * (m + (m > 2 ? -3 : 9)) + 2) / 5 + d - 1);
+    unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    return era * 146097L + static_cast<long>(doe);
+}
+
+// SQL 字符串字面量转义（用于拼接内部生成的日期、分类等）
+std::string sqlQuote(MYSQL* conn, const std::string& s)
+{
+    std::vector<char> buf(s.length() * 2 + 1);
+    mysql_real_escape_string(conn, buf.data(), s.c_str(), static_cast<unsigned long>(s.length()));
+    return "'" + std::string(buf.data()) + "'";
+}
+} // namespace
 
 // ===== 连接管理 =====
 
@@ -225,6 +269,53 @@ void DataBase::initTable()
         {
             throw std::runtime_error(std::string("创建 owner_token 索引失败：") + mysql_error(conn_));
         }
+    }
+
+    // 面试题库：题目与答案分开存，答案走单独接口下发，避免列表接口直接剧透
+    const char* questionsSql = R"(
+        CREATE TABLE IF NOT EXISTS questions(
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            category VARCHAR(50) NOT NULL COMMENT '分类：C++ / MySQL / 网络 / 操作系统 / 算法',
+            tags VARCHAR(200) NOT NULL DEFAULT '' COMMENT '标签，逗号分隔',
+            difficulty TINYINT NOT NULL DEFAULT 2 COMMENT '难度：1 基础 / 2 进阶 / 3 困难',
+            question TEXT NOT NULL COMMENT '题干（Markdown）',
+            answer TEXT NOT NULL COMMENT '答案（Markdown，支持代码块与 mermaid）',
+            status TINYINT NOT NULL DEFAULT 0 COMMENT '状态：0 草稿 / 1 已发布',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            KEY idx_questions_cat (category, status)
+        )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    )";
+    if (mysql_query(conn_, questionsSql) != 0)
+    {
+        throw std::runtime_error(std::string("创建题库表失败：") + mysql_error(conn_));
+    }
+
+    // 每日排期：某天用哪道题。与题库分离，题库增删改不会让历史题目跳变
+    const char* dailySql = R"(
+        CREATE TABLE IF NOT EXISTS daily_questions(
+            d DATE PRIMARY KEY COMMENT '当天日期',
+            question_id INT NOT NULL COMMENT '题目 ID',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '生成时间'
+        )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    )";
+    if (mysql_query(conn_, dailySql) != 0)
+    {
+        throw std::runtime_error(std::string("创建每日一题表失败：") + mysql_error(conn_));
+    }
+
+    // 答题记录：匿名访客凭 blog_anon Cookie 认领，用于「连续打卡 N 天」
+    const char* dailySeenSql = R"(
+        CREATE TABLE IF NOT EXISTS daily_seen(
+            d DATE NOT NULL COMMENT '日期',
+            owner_token VARCHAR(64) NOT NULL COMMENT '匿名访客标识',
+            question_id INT NOT NULL COMMENT '题目 ID',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '首次查看答案时间',
+            PRIMARY KEY (d, owner_token)
+        )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    )";
+    if (mysql_query(conn_, dailySeenSql) != 0)
+    {
+        throw std::runtime_error(std::string("创建答题记录表失败：") + mysql_error(conn_));
     }
 
     // 配置表（键值对，用于存储站点背景图等全局设置）
@@ -1932,4 +2023,665 @@ bool DataBase::changePassword(int adminId, const std::string& oldPassword, const
     }
 
     return true;
+}
+
+// ===== 每日一题 =====
+
+// 确保某天的题目已生成，返回题目 ID（0 表示题库中没有已发布的题目）。
+// 调用方必须已持有 mtx_：本函数不再加锁，也不调用会加锁的 getSetting/setSetting。
+int DataBase::ensureDailyQuestion(const std::string& date)
+{
+    // 1. 当天已有排期，直接用
+    {
+        std::string sql = "SELECT question_id FROM daily_questions WHERE d=" + sqlQuote(conn_, date) + " LIMIT 1";
+        if (mysql_query(conn_, sql.c_str()) == 0)
+        {
+            MYSQL_RES* res = mysql_store_result(conn_);
+            if (res)
+            {
+                MYSQL_ROW row = mysql_fetch_row(res);
+                int id = (row && row[0]) ? std::atoi(row[0]) : 0;
+                mysql_free_result(res);
+                if (id > 0) return id;
+            }
+        }
+    }
+
+    // 2. 取「有已发布题目的分类」，按名称排序保证顺序稳定
+    std::vector<std::string> categories;
+    if (mysql_query(conn_, "SELECT DISTINCT category FROM questions WHERE status=1 ORDER BY category") == 0)
+    {
+        MYSQL_RES* res = mysql_store_result(conn_);
+        if (res)
+        {
+            MYSQL_ROW row;
+            while ((row = mysql_fetch_row(res)))
+            {
+                if (row[0] && row[0][0]) categories.push_back(row[0]);
+            }
+            mysql_free_result(res);
+        }
+    }
+    if (categories.empty()) return 0;
+
+    // 3. 基准日：首次运行以当天为基准。之后用「日期差」而不是行数来算序号，
+    //    这样即使某天没人访问，顺序也不会错位（行数法会因为缺天而少前进）。
+    std::string base;
+    if (mysql_query(conn_, "SELECT v FROM settings WHERE k='daily_base_date'") == 0)
+    {
+        MYSQL_RES* res = mysql_store_result(conn_);
+        if (res)
+        {
+            MYSQL_ROW row = mysql_fetch_row(res);
+            if (row && row[0]) base = row[0];
+            mysql_free_result(res);
+        }
+    }
+    if (base.empty())
+    {
+        base = date;
+        std::string ins = "INSERT INTO settings (k, v) VALUES ('daily_base_date', " + sqlQuote(conn_, base) +
+                          ") ON DUPLICATE KEY UPDATE v=VALUES(v)";
+        mysql_query(conn_, ins.c_str());
+    }
+
+    long dayIndex = daysFromDate(date) - daysFromDate(base);
+    if (dayIndex < 0) dayIndex = 0;
+
+    // 4. 分类轮转 + 类内轮转：dayIndex 决定用哪个分类，dayIndex/n 决定该类里的第几题
+    const long n = static_cast<long>(categories.size());
+    const std::string category = categories[static_cast<size_t>(dayIndex % n)];
+
+    std::vector<int> pool;
+    {
+        std::string sql = "SELECT id FROM questions WHERE status=1 AND category=" + sqlQuote(conn_, category) +
+                          " ORDER BY id";
+        if (mysql_query(conn_, sql.c_str()) == 0)
+        {
+            MYSQL_RES* res = mysql_store_result(conn_);
+            if (res)
+            {
+                MYSQL_ROW row;
+                while ((row = mysql_fetch_row(res)))
+                {
+                    if (row[0]) pool.push_back(std::atoi(row[0]));
+                }
+                mysql_free_result(res);
+            }
+        }
+    }
+    if (pool.empty()) return 0;
+
+    const int picked = pool[static_cast<size_t>((dayIndex / n) % static_cast<long>(pool.size()))];
+
+    // 5. INSERT IGNORE：app 是多线程的，同一秒可能有两个请求同时进来，只让先到的写入生效
+    std::string ins = "INSERT IGNORE INTO daily_questions (d, question_id) VALUES (" + sqlQuote(conn_, date) + ", " +
+                      std::to_string(picked) + ")";
+    mysql_query(conn_, ins.c_str());
+
+    // 6. 重新读一次：并发时以先写入的那条为准，保证所有客户端看到同一题
+    std::string back = "SELECT question_id FROM daily_questions WHERE d=" + sqlQuote(conn_, date) + " LIMIT 1";
+    if (mysql_query(conn_, back.c_str()) == 0)
+    {
+        MYSQL_RES* res = mysql_store_result(conn_);
+        if (res)
+        {
+            MYSQL_ROW row = mysql_fetch_row(res);
+            int id = (row && row[0]) ? std::atoi(row[0]) : picked;
+            mysql_free_result(res);
+            return id;
+        }
+    }
+    return picked;
+}
+
+// 连续打卡天数：今天已答则从今天往前数，今天没答则从昨天往前数（今天还没结束，不算断）
+int DataBase::getDailyStreak(const std::string& ownerToken)
+{
+    if (ownerToken.empty()) return 0;
+
+    std::vector<std::string> dates;
+    std::string sql = "SELECT d FROM daily_seen WHERE owner_token=" + sqlQuote(conn_, ownerToken) +
+                      " ORDER BY d DESC LIMIT 400";
+    if (mysql_query(conn_, sql.c_str()) != 0) return 0;
+
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res) return 0;
+    MYSQL_ROW row;
+    while ((row = mysql_fetch_row(res)))
+    {
+        if (row[0]) dates.push_back(row[0]);
+    }
+    mysql_free_result(res);
+    if (dates.empty()) return 0;
+
+    const long todayNum = daysFromDate(todayStr());
+    long expected = 0;
+    if (daysFromDate(dates[0]) == todayNum)
+    {
+        expected = todayNum;
+    }
+    else if (daysFromDate(dates[0]) == todayNum - 1)
+    {
+        expected = todayNum - 1;
+    }
+    else
+    {
+        return 0; // 已经断档
+    }
+
+    int streak = 0;
+    for (size_t i = 0; i < dates.size(); ++i)
+    {
+        if (daysFromDate(dates[i]) != expected - static_cast<long>(i)) break;
+        ++streak;
+    }
+    return streak;
+}
+
+// 取今天的题目（不含答案）
+crow::json::wvalue DataBase::getDailyQuestion(const std::string& anonToken)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    const std::string date = todayStr();
+    crow::json::wvalue result;
+    result["success"] = true;
+    result["available"] = false;
+    result["answered"] = false;
+    result["streak"] = 0;
+    result["date"] = date;
+
+    const int qid = ensureDailyQuestion(date);
+    if (qid <= 0)
+    {
+        result["message"] = "题库里还没有已发布的题目";
+        return result;
+    }
+
+    std::string sql = "SELECT id, category, tags, difficulty, question FROM questions WHERE id=" + std::to_string(qid);
+    if (mysql_query(conn_, sql.c_str()) != 0) return result;
+
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res) return result;
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (!row)
+    {
+        mysql_free_result(res);
+        return result;
+    }
+    result["id"] = row[0] ? std::atoi(row[0]) : 0;
+    result["category"] = row[1] ? row[1] : "";
+    result["tags"] = row[2] ? row[2] : "";
+    result["difficulty"] = row[3] ? std::atoi(row[3]) : 2;
+    result["question"] = row[4] ? row[4] : "";
+    result["available"] = true;
+    mysql_free_result(res);
+
+    if (!anonToken.empty())
+    {
+        std::string seen = "SELECT 1 FROM daily_seen WHERE d=" + sqlQuote(conn_, date) +
+                           " AND owner_token=" + sqlQuote(conn_, anonToken) + " LIMIT 1";
+        if (mysql_query(conn_, seen.c_str()) == 0)
+        {
+            MYSQL_RES* r2 = mysql_store_result(conn_);
+            if (r2)
+            {
+                MYSQL_ROW r = mysql_fetch_row(r2);
+                result["answered"] = (r != nullptr);
+                mysql_free_result(r2);
+            }
+        }
+        result["streak"] = getDailyStreak(anonToken);
+    }
+    return result;
+}
+
+// 取题目答案；anonToken 非空时顺带记录「今天看过答案」
+crow::json::wvalue DataBase::getDailyAnswer(int questionId, const std::string& anonToken)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    result["success"] = false;
+    result["streak"] = 0;
+
+    std::string sql = "SELECT id, category, tags, difficulty, question, answer FROM questions WHERE id=" +
+                      std::to_string(questionId) + " AND status=1";
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        result["message"] = "查询失败";
+        return result;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res)
+    {
+        result["message"] = "查询失败";
+        return result;
+    }
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (!row)
+    {
+        mysql_free_result(res);
+        result["message"] = "题目不存在或尚未发布";
+        return result;
+    }
+    result["success"] = true;
+    result["id"] = row[0] ? std::atoi(row[0]) : 0;
+    result["category"] = row[1] ? row[1] : "";
+    result["tags"] = row[2] ? row[2] : "";
+    result["difficulty"] = row[3] ? std::atoi(row[3]) : 2;
+    result["question"] = row[4] ? row[4] : "";
+    result["answer"] = row[5] ? row[5] : "";
+    mysql_free_result(res);
+
+    if (!anonToken.empty())
+    {
+        const std::string date = todayStr();
+        std::string ins = "INSERT IGNORE INTO daily_seen (d, owner_token, question_id) VALUES (" +
+                          sqlQuote(conn_, date) + ", " + sqlQuote(conn_, anonToken) + ", " +
+                          std::to_string(questionId) + ")";
+        mysql_query(conn_, ins.c_str());
+        result["streak"] = getDailyStreak(anonToken);
+    }
+    return result;
+}
+
+// 历史排期（按日期倒序分页），不含答案
+crow::json::wvalue DataBase::getDailyHistory(int page, int pageSize)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    if (page < 1) page = 1;
+    if (pageSize < 1) pageSize = 10;
+    if (pageSize > 50) pageSize = 50;
+    const int offset = (page - 1) * pageSize;
+
+    crow::json::wvalue result;
+    std::vector<crow::json::wvalue> items;
+
+    std::string sql = "SELECT dq.d, dq.question_id, q.category, q.difficulty, q.question "
+                      "FROM daily_questions dq LEFT JOIN questions q ON q.id=dq.question_id "
+                      "ORDER BY dq.d DESC LIMIT " + std::to_string(pageSize) + " OFFSET " + std::to_string(offset);
+    if (mysql_query(conn_, sql.c_str()) == 0)
+    {
+        MYSQL_RES* res = mysql_store_result(conn_);
+        if (res)
+        {
+            MYSQL_ROW row;
+            while ((row = mysql_fetch_row(res)))
+            {
+                crow::json::wvalue item;
+                item["date"] = row[0] ? row[0] : "";
+                item["id"] = (row[1] && row[1][0]) ? std::atoi(row[1]) : 0;
+                item["category"] = row[2] ? row[2] : "";
+                item["difficulty"] = row[3] ? std::atoi(row[3]) : 2;
+                item["question"] = row[4] ? row[4] : "";
+                items.push_back(std::move(item));
+            }
+            mysql_free_result(res);
+        }
+    }
+
+    long total = 0;
+    if (mysql_query(conn_, "SELECT COUNT(*) FROM daily_questions") == 0)
+    {
+        MYSQL_RES* res = mysql_store_result(conn_);
+        if (res)
+        {
+            MYSQL_ROW row = mysql_fetch_row(res);
+            if (row && row[0]) total = std::strtol(row[0], nullptr, 10);
+            mysql_free_result(res);
+        }
+    }
+
+    const bool hasMore = (static_cast<int>(items.size()) == pageSize);
+    result["questions"] = std::move(items);
+    result["total"] = static_cast<int>(total);
+    result["page"] = page;
+    result["hasMore"] = hasMore;
+    result["success"] = true;
+    return result;
+}
+
+// 随机换一题（category 为空表示不限分类），不含答案
+crow::json::wvalue DataBase::getRandomQuestion(const std::string& category)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    result["success"] = false;
+
+    std::string sql = "SELECT id, category, tags, difficulty, question FROM questions WHERE status=1";
+    if (!category.empty()) sql += " AND category=" + sqlQuote(conn_, category);
+    sql += " ORDER BY RAND() LIMIT 1";
+
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        result["message"] = "查询失败";
+        return result;
+    }
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res)
+    {
+        result["message"] = "查询失败";
+        return result;
+    }
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (!row)
+    {
+        mysql_free_result(res);
+        result["message"] = "题库里还没有已发布的题目";
+        return result;
+    }
+    result["success"] = true;
+    result["id"] = row[0] ? std::atoi(row[0]) : 0;
+    result["category"] = row[1] ? row[1] : "";
+    result["tags"] = row[2] ? row[2] : "";
+    result["difficulty"] = row[3] ? std::atoi(row[3]) : 2;
+    result["question"] = row[4] ? row[4] : "";
+    mysql_free_result(res);
+    return result;
+}
+
+// 题库浏览（不含答案），附各分类数量；includeDrafts 为 true 时含草稿（仅站长）
+crow::json::wvalue DataBase::getQuestions(const std::string& category, int page, int pageSize, bool includeDrafts)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    if (page < 1) page = 1;
+    if (pageSize < 1) pageSize = 10;
+    if (pageSize > 50) pageSize = 50;
+    const int offset = (page - 1) * pageSize;
+
+    const std::string statusWhere = includeDrafts ? "1=1" : "status=1";
+
+    crow::json::wvalue result;
+    std::vector<crow::json::wvalue> items;
+
+    std::string sql = "SELECT id, category, tags, difficulty, question, status FROM questions WHERE " + statusWhere;
+    if (!category.empty()) sql += " AND category=" + sqlQuote(conn_, category);
+    sql += " ORDER BY id DESC LIMIT " + std::to_string(pageSize) + " OFFSET " + std::to_string(offset);
+
+    if (mysql_query(conn_, sql.c_str()) == 0)
+    {
+        MYSQL_RES* res = mysql_store_result(conn_);
+        if (res)
+        {
+            MYSQL_ROW row;
+            while ((row = mysql_fetch_row(res)))
+            {
+                crow::json::wvalue item;
+                item["id"] = row[0] ? std::atoi(row[0]) : 0;
+                item["category"] = row[1] ? row[1] : "";
+                item["tags"] = row[2] ? row[2] : "";
+                item["difficulty"] = row[3] ? std::atoi(row[3]) : 2;
+                item["question"] = row[4] ? row[4] : "";
+                item["status"] = row[5] ? std::atoi(row[5]) : 0;
+                items.push_back(std::move(item));
+            }
+            mysql_free_result(res);
+        }
+    }
+
+    // 各分类数量（只统计已发布，供前端筛选条使用）
+    std::vector<crow::json::wvalue> categories;
+    if (mysql_query(conn_, "SELECT category, COUNT(*) FROM questions WHERE status=1 GROUP BY category ORDER BY category") == 0)
+    {
+        MYSQL_RES* res = mysql_store_result(conn_);
+        if (res)
+        {
+            MYSQL_ROW row;
+            while ((row = mysql_fetch_row(res)))
+            {
+                crow::json::wvalue c;
+                c["name"] = row[0] ? row[0] : "";
+                c["count"] = (row[1]) ? std::atoi(row[1]) : 0;
+                categories.push_back(std::move(c));
+            }
+            mysql_free_result(res);
+        }
+    }
+
+    long total = 0;
+    std::string countSql = "SELECT COUNT(*) FROM questions WHERE " + statusWhere;
+    if (!category.empty()) countSql += " AND category=" + sqlQuote(conn_, category);
+    if (mysql_query(conn_, countSql.c_str()) == 0)
+    {
+        MYSQL_RES* res = mysql_store_result(conn_);
+        if (res)
+        {
+            MYSQL_ROW row = mysql_fetch_row(res);
+            if (row && row[0]) total = std::strtol(row[0], nullptr, 10);
+            mysql_free_result(res);
+        }
+    }
+
+    const bool hasMore = (static_cast<int>(items.size()) == pageSize);
+    result["questions"] = std::move(items);
+    result["categories"] = std::move(categories);
+    result["total"] = static_cast<int>(total);
+    result["page"] = page;
+    result["hasMore"] = hasMore;
+    result["success"] = true;
+    return result;
+}
+
+// 单题详情（含答案，供站长编辑时回填）
+crow::json::wvalue DataBase::getQuestionById(int id)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    result["success"] = false;
+
+    std::string sql = "SELECT id, category, tags, difficulty, question, answer, status FROM questions WHERE id=" +
+                      std::to_string(id);
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        result["message"] = "查询失败";
+        return result;
+    }
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res)
+    {
+        result["message"] = "查询失败";
+        return result;
+    }
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (!row)
+    {
+        mysql_free_result(res);
+        result["message"] = "题目不存在";
+        return result;
+    }
+    result["success"] = true;
+    result["id"] = row[0] ? std::atoi(row[0]) : 0;
+    result["category"] = row[1] ? row[1] : "";
+    result["tags"] = row[2] ? row[2] : "";
+    result["difficulty"] = row[3] ? std::atoi(row[3]) : 2;
+    result["question"] = row[4] ? row[4] : "";
+    result["answer"] = row[5] ? row[5] : "";
+    result["status"] = row[6] ? std::atoi(row[6]) : 0;
+    mysql_free_result(res);
+    return result;
+}
+
+// 新增题目（仅主管理员，权限由路由层校验）
+crow::json::wvalue DataBase::addQuestion(const std::string& category, const std::string& tags, int difficulty,
+                                         const std::string& question, const std::string& answer, int status)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = "INSERT INTO questions (category, tags, difficulty, question, answer, status) VALUES (?, ?, ?, ?, ?, ?)";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    int diff = difficulty;
+    int st = status;
+    MYSQL_BIND bind[6];
+    std::memset(bind, 0, sizeof(bind));
+    bind[0].buffer_type = MYSQL_TYPE_STRING;
+    bind[0].buffer = (void*)category.c_str();
+    bind[0].buffer_length = category.length();
+    bind[1].buffer_type = MYSQL_TYPE_STRING;
+    bind[1].buffer = (void*)tags.c_str();
+    bind[1].buffer_length = tags.length();
+    bind[2].buffer_type = MYSQL_TYPE_LONG;
+    bind[2].buffer = (void*)&diff;
+    bind[3].buffer_type = MYSQL_TYPE_STRING;
+    bind[3].buffer = (void*)question.c_str();
+    bind[3].buffer_length = question.length();
+    bind[4].buffer_type = MYSQL_TYPE_STRING;
+    bind[4].buffer = (void*)answer.c_str();
+    bind[4].buffer_length = answer.length();
+    bind[5].buffer_type = MYSQL_TYPE_LONG;
+    bind[5].buffer = (void*)&st;
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) == 0)
+    {
+        result["success"] = true;
+        result["id"] = static_cast<int>(mysql_stmt_insert_id(stmt));
+        result["message"] = "已添加";
+    }
+    else
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+    }
+    mysql_stmt_close(stmt);
+    return result;
+}
+
+// 修改题目（仅主管理员）
+crow::json::wvalue DataBase::updateQuestion(int id, const std::string& category, const std::string& tags,
+                                            int difficulty, const std::string& question,
+                                            const std::string& answer, int status)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = "UPDATE questions SET category=?, tags=?, difficulty=?, question=?, answer=?, status=? WHERE id=?";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    int diff = difficulty;
+    int st = status;
+    int qid = id;
+    MYSQL_BIND bind[7];
+    std::memset(bind, 0, sizeof(bind));
+    bind[0].buffer_type = MYSQL_TYPE_STRING;
+    bind[0].buffer = (void*)category.c_str();
+    bind[0].buffer_length = category.length();
+    bind[1].buffer_type = MYSQL_TYPE_STRING;
+    bind[1].buffer = (void*)tags.c_str();
+    bind[1].buffer_length = tags.length();
+    bind[2].buffer_type = MYSQL_TYPE_LONG;
+    bind[2].buffer = (void*)&diff;
+    bind[3].buffer_type = MYSQL_TYPE_STRING;
+    bind[3].buffer = (void*)question.c_str();
+    bind[3].buffer_length = question.length();
+    bind[4].buffer_type = MYSQL_TYPE_STRING;
+    bind[4].buffer = (void*)answer.c_str();
+    bind[4].buffer_length = answer.length();
+    bind[5].buffer_type = MYSQL_TYPE_LONG;
+    bind[5].buffer = (void*)&st;
+    bind[6].buffer_type = MYSQL_TYPE_LONG;
+    bind[6].buffer = (void*)&qid;
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) == 0)
+    {
+        result["success"] = true;
+        result["message"] = "已保存";
+    }
+    else
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+    }
+    mysql_stmt_close(stmt);
+    return result;
+}
+
+// 删除题目（仅主管理员）。已在每日排期里的记录会保留日期，题目内容回退为空
+crow::json::wvalue DataBase::deleteQuestion(int id)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = "DELETE FROM questions WHERE id=?";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    int qid = id;
+    MYSQL_BIND bind[1];
+    std::memset(bind, 0, sizeof(bind));
+    bind[0].buffer_type = MYSQL_TYPE_LONG;
+    bind[0].buffer = (void*)&qid;
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) == 0)
+    {
+        result["success"] = true;
+        result["message"] = "已删除";
+    }
+    else
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+    }
+    mysql_stmt_close(stmt);
+    return result;
 }
