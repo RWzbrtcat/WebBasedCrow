@@ -42,6 +42,72 @@ def sql_quote(s: str) -> str:
     return "'" + s.replace("\\", "\\\\").replace("'", "''") + "'"
 
 
+def validate_sql(sql: str, expected_rows: int) -> None:
+    """写文件前做一次「像 MySQL 一样」的扫描，不通过就直接退出。
+
+    起因：曾经漏掉 VALUES 语句结尾的分号，导入时报
+        ERROR 1064 ... near 'INSERT INTO questions ...'
+    （客户端不认为语句结束，把下一条 INSERT 一起发了过去）。
+    只统计「行数/字段数」的校验发现不了这类问题，必须检查语句终止符。
+
+    检查三件事：
+      1. 单引号 / 反引号字符串是否闭合（识别 \\\\ 转义与 '' 形式）；
+      2. VALUES 里的行数是否等于题目数；
+      3. VALUES 语句是否以分号结束。
+
+    第 2 项在扫描过程中顺手统计：只有「非字符串、非注释」状态下、
+    位于行首的 ( 才算一行 —— 答案代码块里行首的 ( 处于字符串状态，会被整体跳过。
+    """
+    n = len(sql)
+    i = 0
+    rows = 0
+    while i < n:
+        c = sql[i]
+        if c == "'" or c == "`":
+            quote = c
+            i += 1
+            while True:
+                if i >= n:
+                    raise SystemExit("SQL 中存在未闭合的 %s 字符串" % quote)
+                if sql[i] == "\\" and quote == "'":
+                    i += 2
+                    continue
+                if sql[i] == quote:
+                    # '' 或 `` 是转义写法，不算结束
+                    if i + 1 < n and sql[i + 1] == quote:
+                        i += 2
+                        continue
+                    i += 1
+                    break
+                i += 1
+            continue
+        if sql.startswith("--", i) and (i + 2 >= n or sql[i + 2] in " \t\r\n"):
+            j = sql.find("\n", i)
+            i = n if j < 0 else j
+            continue
+        if sql.startswith("/*", i):
+            j = sql.find("*/", i + 2)
+            if j < 0:
+                raise SystemExit("SQL 中存在未闭合的 /* 注释")
+            i = j + 2
+            continue
+        if c == "(" and (i == 0 or sql[i - 1] == "\n"):
+            rows += 1
+        i += 1
+
+    if rows != expected_rows:
+        raise SystemExit("VALUES 行数 %d 与题目数 %d 不一致" % (rows, expected_rows))
+
+    marker = "INSERT INTO questions ("
+    if marker not in sql:
+        raise SystemExit("生成结果里找不到 " + marker)
+    if not sql[: sql.index(marker)].rstrip().endswith(";"):
+        raise SystemExit(
+            "VALUES 语句结尾缺少分号 —— 导入会报 "
+            "ERROR 1064 ... near 'INSERT INTO questions'"
+        )
+
+
 def main() -> str:
     all_q = list(Q_EXISTING) + Q_CPP + Q_LINUX + Q_MYSQL + Q_NETWORK + Q_OS + Q_ALGO + Q_REDIS + Q_OTHERDB
 
@@ -72,7 +138,10 @@ def main() -> str:
         buf.write("(%s, %s, %d,\n %s,\n %s, 1),\n\n"
                   % (sql_quote(cat), sql_quote(tags), diff, sql_quote(q), sql_quote(a)))
 
-    values = buf.getvalue().rstrip(",\n")
+    # 去掉最后一行多余的分隔逗号，并补上语句结束分号。
+    # 少了这个分号，mysql 客户端不会结束该语句，会把后面的 INSERT INTO questions
+    # 一起发给服务端，报 ERROR 1064 ... near 'INSERT INTO questions'。
+    values = buf.getvalue().rstrip(",\n") + ";"
 
     header = """-- ============================================
 -- 每日一题 · 种子题库（C++ / Linux / MySQL / Redis / 其他数据库 / 网络 / 操作系统 / 算法，共 500 道）
@@ -145,12 +214,16 @@ DROP TEMPORARY TABLE seed_questions;
 SELECT category, COUNT(*) AS total FROM questions WHERE status = 1 GROUP BY category ORDER BY category;
 """
 
-    return header + values + footer
+    sql = header + values + footer
+    validate_sql(sql, len(all_q))
+    return sql
 
 
 if __name__ == "__main__":
     sql = main()
-    with open("tools/seed_questions.sql", "w", encoding="utf-8") as f:
+    # newline="\n"：Windows 上文本模式会把 \n 写成 \r\n，而 \r 一旦落在字符串
+    # 字面量里会被原样写进数据库（每条答案尾部多一个回车）。显式锁死 LF。
+    with open("tools/seed_questions.sql", "w", encoding="utf-8", newline="\n") as f:
         f.write(sql)
     dist = Counter(c for c, *_ in (list(Q_EXISTING) + Q_CPP + Q_LINUX + Q_MYSQL + Q_NETWORK + Q_OS + Q_ALGO + Q_REDIS + Q_OTHERDB))
     print("生成完成，共 %d 道题：" % sum(dist.values()))

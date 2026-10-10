@@ -34745,7 +34745,7 @@ GROUP BY user, host, command;
 - **临时表**：会话级。
 - **汇总表**：预聚合（类似物化视图）。
 
-**一句话总结**：**视图是「保存的查询（虚拟表）」，实时执行、不存数据、用于简化查询和权限控制；物化视图是「查询结果落盘的真实表」，查询快但**可能滞后**且占空间，需刷新，用于加速复杂聚合/报表；PostgreSQL/Oracle 原生支持物化视图，**MySQL 不支持需用汇总表模拟** —— 一个换「简便/实时」，一个换「速度」。**', 1)
+**一句话总结**：**视图是「保存的查询（虚拟表）」，实时执行、不存数据、用于简化查询和权限控制；物化视图是「查询结果落盘的真实表」，查询快但**可能滞后**且占空间，需刷新，用于加速复杂聚合/报表；PostgreSQL/Oracle 原生支持物化视图，**MySQL 不支持需用汇总表模拟** —— 一个换「简便/实时」，一个换「速度」。**', 1);
 
 INSERT INTO questions (category, tags, difficulty, question, answer, status)
 SELECT s.category, s.tags, s.difficulty, s.question, s.answer, 1
