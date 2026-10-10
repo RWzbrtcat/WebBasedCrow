@@ -2911,11 +2911,11 @@ input[readonly] {
 /* ========== 每日一题 ========== */
 
 body.daily-page {
-    --header-width: 1260px;
+    --header-width: 1420px;
 }
 
 .container-daily {
-    max-width: 1260px;
+    max-width: 1420px;
 }
 
 /* 出题 / 改题页（/daily/question）：单列表单，收窄更利于阅读 */
@@ -2931,9 +2931,9 @@ body.daily-question-page {
    用 grid-template-areas 驱动回流：窄屏只要改 areas 即可重排，无需动 DOM。 */
 .daily-layout {
     display: grid;
-    grid-template-columns: 208px minmax(0, 1fr) 252px;
+    grid-template-columns: 256px minmax(0, 1fr) 300px;
     grid-template-areas: "history main side";
-    gap: 26px;
+    gap: 28px;
     align-items: start;
     margin-top: 28px;
 }
@@ -2946,7 +2946,7 @@ body.daily-question-page {
     max-height: calc(100vh - 130px);
     overflow-y: auto;
     scrollbar-width: thin;
-    padding: 16px 14px 18px;
+    padding: 18px 16px 20px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -2982,7 +2982,7 @@ body.daily-question-page {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 16px 16px 18px;
+    padding: 18px 18px 20px;
 }
 
 .daily-side-title {
@@ -3364,7 +3364,7 @@ body.daily-question-page {
     margin-top: 14px;
 }
 
-/* 历史题目：只在右侧栏出现，按窄栏排版（日期一行、题干一行、分类做小标签） */
+/* 历史题目：在左侧栏出现，按窄栏排版（日期一行、题干一行、分类做小标签） */
 .daily-history {
     display: block;
 }
@@ -3412,9 +3412,9 @@ body.daily-question-page {
 }
 
 /* 两栏回落：历史题目移到主栏下方，改为格子排布；侧栏跨两行继续吸顶 */
-@media (max-width: 1200px) {
+@media (max-width: 1280px) {
     .daily-layout {
-        grid-template-columns: minmax(0, 1fr) 252px;
+        grid-template-columns: minmax(0, 1fr) 300px;
         grid-template-areas:
             "main side"
             "history side";
