@@ -388,7 +388,7 @@ void DataBase::initTable()
     const char* questionsSql = R"(
         CREATE TABLE IF NOT EXISTS questions(
             id INT AUTO_INCREMENT PRIMARY KEY,
-            category VARCHAR(50) NOT NULL COMMENT '分类：C++ / MySQL / 网络 / 操作系统 / 算法',
+            category VARCHAR(50) NOT NULL COMMENT '分类：C++ / Linux / MySQL / Redis / 其他数据库 / 网络 / 操作系统 / 算法',
             tags VARCHAR(200) NOT NULL DEFAULT '' COMMENT '标签，逗号分隔',
             difficulty TINYINT NOT NULL DEFAULT 2 COMMENT '难度：1 基础 / 2 进阶 / 3 困难',
             question TEXT NOT NULL COMMENT '题干（Markdown）',

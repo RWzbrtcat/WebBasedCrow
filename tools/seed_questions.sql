@@ -1,5 +1,5 @@
 -- ============================================
--- 每日一题 · 种子题库（C++ 程序员面试题）
+-- 每日一题 · 种子题库（C++ / Linux / MySQL / Redis / 其他数据库 / 网络 / 操作系统 / 算法，共 500 道）
 -- ============================================
 -- 用法：
 --     mysql -u <用户> -p <数据库名> < tools/seed_questions.sql
@@ -15,6 +15,8 @@
 --      从 1 改成 0，进后台逐条核对后再发布。
 --   3. 题干与答案都是 Markdown，答案里的代码块会被前台渲染成高亮代码，
 --      ```mermaid 代码块会被渲染成图表。
+--   4. 本题库由 tools/gen_seed.py 从 tools/qbank/ 自动生成，改题请改 qbank 下的数据文件，
+--      再重跑生成器，不要直接改本文件（会被覆盖）。
 -- ============================================
 
 -- ---------- 第 0 步：固定本次会话的字符集 ----------
@@ -31,7 +33,7 @@ SET NAMES utf8mb4;
 -- 表已存在时它是空操作；两处 DDL 必须保持一致。
 CREATE TABLE IF NOT EXISTS questions(
     id INT AUTO_INCREMENT PRIMARY KEY,
-    category VARCHAR(50) NOT NULL COMMENT '分类：C++ / MySQL / 网络 / 操作系统 / 算法',
+    category VARCHAR(50) NOT NULL COMMENT '分类：C++ / Linux / MySQL / Redis / 其他数据库 / 网络 / 操作系统 / 算法',
     tags VARCHAR(200) NOT NULL DEFAULT '' COMMENT '标签，逗号分隔',
     difficulty TINYINT NOT NULL DEFAULT 2 COMMENT '难度：1 基础 / 2 进阶 / 3 困难',
     question TEXT NOT NULL COMMENT '题干（Markdown）',
@@ -49,7 +51,6 @@ CREATE TEMPORARY TABLE seed_questions LIKE questions;
 
 INSERT INTO seed_questions (category, tags, difficulty, question, answer, status) VALUES
 
--- ===== C++ =====
 ('C++', '智能指针,多线程', 2,
  'std::shared_ptr 的引用计数是线程安全的吗？为什么？',
  '**引用计数的增减是线程安全的**，标准要求它与 `std::atomic` 的操作等价；但**被管理对象的读写不安全**。
@@ -180,7 +181,7 @@ free(raw);
 v.reserve(n);          // 提前按预计规模分配，避免反复搬迁
 ```
 
-另外，`clear()` 不会释放内存（capacity 不变），要真正归还内存用 `shrink_to_fit()` 或与空 vector 交换。这也意味着**遍历时删除元素**要格外小心，正确写法是 `it = v.erase(it);`。', 2),
+另外，`clear()` 不会释放内存（capacity 不变），要真正归还内存用 `shrink_to_fit()` 或与空 vector 交换。这也意味着**遍历时删除元素**要格外小心，正确写法是 `it = v.erase(it);`。', 1),
 
 ('C++', '类型转换,基础', 2,
  'C++ 四种类型转换分别用在什么场景？',
@@ -196,7 +197,7 @@ const char* s = ...; char* p2 = const_cast<char*>(s);
 uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
 ```
 
-要点：C 风格 `(T)x` 会依次尝试多种转换，语义模糊、难以检索，现代 C++ 一律用这四种显式转换。', 2),
+要点：C 风格 `(T)x` 会依次尝试多种转换，语义模糊、难以检索，现代 C++ 一律用这四种显式转换。', 1),
 
 ('C++', '智能指针,循环引用', 2,
  'shared_ptr 的循环引用是怎么回事？怎么解决？',
@@ -226,7 +227,7 @@ struct Node {
 
 `weak_ptr` 不增加强引用计数，用时通过 `lock()` 提升成 `shared_ptr`（对象已销毁则得到空），或 `expired()` 判断存活。
 
-识别信号：只要图结构里存在**反向边/父子互指/观察者与被观察者互指**，就要考虑其中一侧该用 `weak_ptr`。', 2),
+识别信号：只要图结构里存在**反向边/父子互指/观察者与被观察者互指**，就要考虑其中一侧该用 `weak_ptr`。', 1),
 
 ('C++', 'const,成员函数', 1,
  'const 成员函数是什么？mutable 又是干什么的？',
@@ -251,7 +252,6 @@ public:
 
 它的意义在于让「逻辑 const」与「位 const」解耦：对象对外看是只读的，内部仍可维护缓存等实现细节。', 1),
 
--- ===== MySQL =====
 ('MySQL', '存储引擎,InnoDB', 1,
  'InnoDB 和 MyISAM 有什么区别？为什么现在默认用 InnoDB？',
  '| 维度 | InnoDB | MyISAM |
@@ -295,7 +295,7 @@ ALTER TABLE user ADD INDEX idx_name_age (name, age);   -- name+age 都在索引�
 SELECT name, age FROM user WHERE name = ''tom'';         -- Extra: Using index，不回表
 ```
 
-实践建议：主键用递增的 `BIGINT`（避免页分裂、减小二级索引体积），高频查询尽量用覆盖索引。', 2),
+实践建议：主键用递增的 `BIGINT`（避免页分裂、减小二级索引体积），高频查询尽量用覆盖索引。', 1),
 
 ('MySQL', '索引原理,B+树', 2,
  '为什么 MySQL 索引用 B+ 树，而不是 B 树、哈希表或红黑树？',
@@ -309,7 +309,7 @@ SELECT name, age FROM user WHERE name = ''tom'';         -- Extra: Using index�
 2. **叶子节点用双向链表串起来** —— 范围查询、`ORDER BY`、分页只需要顺序扫描叶子链表，不用反复回溯上层。B 树做范围查询要中序遍历，来回跳跃。
 3. **查询性能稳定** —— 任何键都要走到叶子，路径长度一致（B 树在非叶命中就返回，快慢不均）。
 
-一句话总结：用**矮胖的多路平衡树 + 叶子链表**，把随机 I/O 次数压到最低，同时把范围查询变成顺序扫描。', 2),
+一句话总结：用**矮胖的多路平衡树 + 叶子链表**，把随机 I/O 次数压到最低，同时把范围查询变成顺序扫描。', 1),
 
 ('MySQL', '事务,隔离级别', 2,
  'MySQL 的四种事务隔离级别分别解决什么问题？默认是哪个？',
@@ -333,7 +333,7 @@ SELECT name, age FROM user WHERE name = ''tom'';         -- Extra: Using index�
 - **MVCC**：RR 下 ReadView 在事务**首次快照读**时生成，之后一直复用，所以快照读天然可重复。
 - **间隙锁（Next-Key Lock）**：`SELECT ... FOR UPDATE`、`UPDATE` 等当前读会锁住区间，阻止在范围内插入新行。
 
-RC 与 RR 的重要差别也在这里：**RC 每次查询都生成新的 ReadView**，所以能读到别人最新提交的数据；RR 全程用第一次的 ReadView。', 2),
+RC 与 RR 的重要差别也在这里：**RC 每次查询都生成新的 ReadView**，所以能读到别人最新提交的数据；RR 全程用第一次的 ReadView。', 1),
 
 ('MySQL', 'MVCC,undo log', 3,
  'MVCC 是怎么实现的？RC 和 RR 下的差异在哪？',
@@ -361,7 +361,7 @@ RC 与 RR 的重要差别也在这里：**RC 每次查询都生成新的 ReadVie
 - **RC**：每次 `SELECT` 都重新生成 → 能看见别人新提交的数据 → 不可重复读。
 - **RR**：只在事务**第一次快照读**时生成一次，之后复用 → 整个事务看到的是同一个快照。
 
-补充：`SELECT ... FOR UPDATE`、`UPDATE`、`DELETE` 属于**当前读**，不走 MVCC，读最新版本并加锁。', 3),
+补充：`SELECT ... FOR UPDATE`、`UPDATE`、`DELETE` 属于**当前读**，不走 MVCC，读最新版本并加锁。', 1),
 
 ('MySQL', '索引优化,联合索引', 2,
  '什么是联合索引的最左前缀原则？为什么范围查询后面的列用不上索引？',
@@ -386,7 +386,7 @@ WHERE a > 1 AND b = 2            -- 只用上 a！b 用不上
 
 - 等值条件放左边，范围条件放右边；
 - 高频等值列在前，区分度高的列在前；
-- 用 `EXPLAIN` 看 `key` 与 `key_len` 确认实际用到了几列 —— `key_len` 是判断「用上几列」最直接的证据。', 2),
+- 用 `EXPLAIN` 看 `key` 与 `key_len` 确认实际用到了几列 —— `key_len` 是判断「用上几列」最直接的证据。', 1),
 
 ('MySQL', '索引失效,优化', 2,
  '哪些写法会导致索引失效？',
@@ -400,7 +400,7 @@ WHERE a > 1 AND b = 2            -- 只用上 a！b 用不上
 6. **`!=`、`NOT IN`、`NOT LIKE`**：优化器常判定回表成本高于全表扫描，直接选全扫。
 7. **索引列参与 `IS NULL` 大量匹配 / 区分度极低**（如性别、状态只有两三个值）：优化器可能认为走索引不如全表扫。
 
-排查手段：`EXPLAIN` 看 `type`（出现 `ALL` 就是全表扫）和 `key`（为 `NULL` 说明没用索引）。', 2),
+排查手段：`EXPLAIN` 看 `type`（出现 `ALL` 就是全表扫）和 `key`（为 `NULL` 说明没用索引）。', 1),
 
 ('MySQL', 'explain,性能优化', 2,
  'EXPLAIN 你主要关注哪几列？',
@@ -419,7 +419,7 @@ WHERE a > 1 AND b = 2            -- 只用上 a！b 用不上
    - `Using index condition`：索引条件下推，过滤在存储引擎层做；
    - `Using where`：回表后再过滤。
 
-另外两个补充手段：`EXPLAIN FORMAT=JSON` 看成本估算，`EXPLAIN ANALYZE`（8.0.18+）会**真正执行**并给出各步骤实际耗时，定位瓶颈最直接。', 2),
+另外两个补充手段：`EXPLAIN FORMAT=JSON` 看成本估算，`EXPLAIN ANALYZE`（8.0.18+）会**真正执行**并给出各步骤实际耗时，定位瓶颈最直接。', 1),
 
 ('MySQL', '慢查询,日志', 2,
  '线上一条 SQL 很慢，你会怎么排查？',
@@ -448,7 +448,7 @@ SET GLOBAL log_queries_not_using_indexes = ON;
 **4. 优化手段（按性价比）**
 加合适的联合索引 → 改写 SQL（避免函数、拆分大查询、用 `LIMIT` 分页）→ 覆盖索引 / 延迟关联 → 引入缓存 → 架构层面读写分离、分库分表。
 
-补充：改完索引一定要回归验证，`ALTER TABLE` 加索引在大表上会锁表（MySQL 5.6+ 的 `ALGORITHM=INPLACE` 可在线加索引，但仍有 IO 压力），建议在低峰执行。', 2),
+补充：改完索引一定要回归验证，`ALTER TABLE` 加索引在大表上会锁表（MySQL 5.6+ 的 `ALGORITHM=INPLACE` 可在线加索引，但仍有 IO 压力），建议在低峰执行。', 1),
 
 ('MySQL', '死锁,锁', 3,
  '数据库死锁是怎么产生的？怎么排查和避免？',
@@ -478,9 +478,8 @@ SELECT * FROM performance_schema.data_locks;   -- 8.0 起可看锁明细
 3. **减少锁范围**：更新时用主键或唯一索引定位，避免无索引的 `UPDATE`（会锁大量行甚至升级为间隙锁）。RR 下缺索引的更新可能锁住整张表的区间。
 4. **拆分批量更新**：大 `IN` 批量更新按主键排序后再执行，减少交叉持锁。
 5. **降低隔离级别到 RC**：RC 基本不用间隙锁，能显著减少锁冲突（代价是放弃部分 RR 的一致性）。
-6. **业务层重试**：死锁报错属于可重试错误，捕获后小退避重试即可让用户无感。', 3),
+6. **业务层重试**：死锁报错属于可重试错误，捕获后小退避重试即可让用户无感。', 1),
 
--- ===== 网络 =====
 ('网络', 'TCP,三次握手', 1,
  'TCP 为什么需要三次握手？两次不行吗？',
  '三次握手的目的是**双向确认收发能力并同步初始序列号（ISN）**。
@@ -519,7 +518,7 @@ SELECT * FROM performance_schema.data_locks;   -- 8.0 起可看锁明细
 
 **为什么是 2MSL**：MSL 是报文在网络中的最大存活时间，即「一来一回」的最坏情况。等 2 倍 MSL，就能确保本次连接的所有报文都已消亡、以及丢失的 FIN 能得到应答。Linux 上 MSL 默认 60 秒，所以 `TIME_WAIT` 约 60 秒。
 
-**实践要点**：`TIME_WAIT` 出现在**主动关闭方**。高并发短连接的服务端如果耗尽端口，可开 `net.ipv4.tcp_tw_reuse`（客户端侧安全）或改成长连接；`tcp_tw_recycle` 在新内核已移除，别再用。', 2),
+**实践要点**：`TIME_WAIT` 出现在**主动关闭方**。高并发短连接的服务端如果耗尽端口，可开 `net.ipv4.tcp_tw_reuse`（客户端侧安全）或改成长连接；`tcp_tw_recycle` 在新内核已移除，别再用。', 1),
 
 ('网络', 'TCP,UDP', 1,
  'TCP 和 UDP 的核心区别是什么？各自适合什么场景？',
@@ -558,7 +557,7 @@ SELECT * FROM performance_schema.data_locks;   -- 8.0 起可看锁明细
 4. **服务端推送**（Server Push）：可主动把 CSS/JS 推给客户端（实际效果一般，Chrome 已废弃该特性）。
 5. **流优先级**：可标注哪个资源更急。
 
-**注意**：HTTP/2 解决的是**应用层**队头阻塞。在传输层，一旦某个 TCP 报文丢失，后面的所有 Stream 都要等它重传（TCP 层的队头阻塞），这正是 **HTTP/3 换成 QUIC（基于 UDP）** 的动机。', 2),
+**注意**：HTTP/2 解决的是**应用层**队头阻塞。在传输层，一旦某个 TCP 报文丢失，后面的所有 Stream 都要等它重传（TCP 层的队头阻塞），这正是 **HTTP/3 换成 QUIC（基于 UDP）** 的动机。', 1),
 
 ('网络', 'HTTPS,TLS', 2,
  'HTTPS 的握手过程是怎样的？为什么用非对称加密协商对称密钥？',
@@ -581,7 +580,7 @@ SELECT * FROM performance_schema.data_locks;   -- 8.0 起可看锁明细
 - 非对称加密的运算量比对称加密高几个数量级。用它传完密钥就退出，长连接的大量数据交给 AES 之类的对称算法，性能可接受。
 - **证书解决的是「公钥是不是真的属于对方」**，防止中间人替换公钥。没有证书，纯非对称加密依然挡不住 MITM。
 
-**TLS 1.3 的优化**：砍掉了 RSA 密钥交换（只保留 ECDHE 等前向安全方案），把两次往返压到 **1-RTT**，会话复用时可以 **0-RTT**（代价是有重放风险，需谨慎用于非幂等请求）。', 2),
+**TLS 1.3 的优化**：砍掉了 RSA 密钥交换（只保留 ECDHE 等前向安全方案），把两次往返压到 **1-RTT**，会话复用时可以 **0-RTT**（代价是有重放风险，需谨慎用于非幂等请求）。', 1),
 
 ('网络', 'DNS,HTTP,浏览器', 2,
  '在浏览器地址栏输入一个 URL 后，到页面显示出来，中间发生了什么？',
@@ -611,7 +610,7 @@ Nginx 之类先接收：可能命中静态文件缓存直接返回；动态请�
 - 遇到 `<script>` 会阻塞解析（除非 `async`/`defer`）—— 这也是把脚本放页面底部或用 `defer` 的原因；
 - 解析过程中继续请求图片、CSS、JS，复用已有连接（keep-alive）。
 
-**收尾**：不再需要连接时四次挥手；若是 HTTP/1.1 长连接则保留复用。', 2),
+**收尾**：不再需要连接时四次挥手；若是 HTTP/1.1 长连接则保留复用。', 1),
 
 ('网络', 'TCP,拥塞控制', 3,
  'TCP 的拥塞控制有哪几个阶段？',
@@ -634,7 +633,7 @@ Nginx 之类先接收：可能命中静态文件缓存直接返回；动态请�
 - **超时重传**：网络可能严重拥塞 → `ssthresh = cwnd/2`，`cwnd` 重置为 1，**回到慢启动**。
 - **三次重复 ACK**：轻度丢包 → 快重传 + 快恢复，**不退回慢启动**。
 
-现代 Linux 默认用 **CUBIC**（基于三次函数增长，对高带宽长距离链路更友好），可换 **BBR**（基于带宽与时延建模，不把丢包一律当拥塞信号，在有一定丢包的链路上表现更好）。', 3),
+现代 Linux 默认用 **CUBIC**（基于三次函数增长，对高带宽长距离链路更友好），可换 **BBR**（基于带宽与时延建模，不把丢包一律当拥塞信号，在有一定丢包的链路上表现更好）。', 1),
 
 ('网络', 'HTTP,状态码', 1,
  '常见 HTTP 状态码你了解哪些？',
@@ -678,9 +677,8 @@ Nginx 之类先接收：可能命中静态文件缓存直接返回；动态请�
 - **HttpOnly**：JS 读不到，防 XSS 偷 Cookie（本项目的匿名访客标识 `blog_anon` 也是这么设的）。
 - **SameSite=Lax**：跨站请求不带 Cookie，防 CSRF。
 - **Secure**：仅 HTTPS 传输（生产环境加上）。
-- **不要在 Cookie 里直接存敏感信息或用户 ID 明文**，只存不可猜测的随机凭据。', 2),
+- **不要在 Cookie 里直接存敏感信息或用户 ID 明文**，只存不可猜测的随机凭据。', 1),
 
--- ===== 操作系统 =====
 ('操作系统', '进程,线程', 1,
  '进程和线程有什么区别？',
  '**进程是资源分配的基本单位，线程是 CPU 调度的基本单位。**
@@ -724,7 +722,7 @@ cv.wait(lk, [] { return !q.empty(); });   // 带谓词的 wait，等价于 while
 auto task = q.front(); q.pop();
 ```
 
-**选型口诀**：保护数据用互斥量；等待条件用条件变量（配互斥量）；限制并发数用信号量；读多写少用读写锁；简单计数用原子。', 2),
+**选型口诀**：保护数据用互斥量；等待条件用条件变量（配互斥量）；限制并发数用信号量；读多写少用读写锁；简单计数用原子。', 1),
 
 ('操作系统', '死锁,并发', 2,
  '死锁的四个必要条件是什么？怎么破坏？',
@@ -748,7 +746,7 @@ auto task = q.front(); q.pop();
 
 - `std::scoped_lock lk(m1, m2)`（C++17）内部用死锁避免算法一次性锁多个互斥量，比自己手写顺序更省心；
 - 缩短临界区、避免在持锁时调用可能再次加锁的函数（尤其避免回调）；
-- 出问题时的排查工具：`gdb` 查看线程栈、`pstack`、`pthread_mutex` 的 `PTHREAD_MUTEX_ERRORCHECK` 类型、`helgrind`/TSan 检测数据竞争。', 2),
+- 出问题时的排查工具：`gdb` 查看线程栈、`pstack`、`pthread_mutex` 的 `PTHREAD_MUTEX_ERRORCHECK` 类型、`helgrind`/TSan 检测数据竞争。', 1),
 
 ('操作系统', '虚拟内存,分页', 2,
  '什么是虚拟内存？它解决了什么问题？',
@@ -766,7 +764,7 @@ auto task = q.front(); q.pop();
 - 多一层页表查询 → 用 **TLB** 缓存最近的映射；进程切换时要处理 TLB（PCID 可减少刷新）。
 - 页表本身可能很大 → 用**多级页表**（x86-64 四级）按需展开，或**大页**（2MB/1GB）减少 TLB miss。
 - **缺页中断**分为：页不在内存（major fault，要读盘）和页不存在（非法访问，进程被杀），后者就是段错误的来源。
-- 经典 LRU 之外，Linux 用**双链表的 active/inactive** 近似 LRU，配合 `kswapd` 后台回收。', 2),
+- 经典 LRU 之外，Linux 用**双链表的 active/inactive** 近似 LRU，配合 `kswapd` 后台回收。', 1),
 
 ('操作系统', '页面置换,LRU', 2,
  '常见页面置换算法有哪些？LRU 怎么实现？',
@@ -799,7 +797,7 @@ std::unordered_map<int, Node*> map_;
 记录每个页最近访问的序号，淘汰序号最小的。定位是 O(1)，但每次都要扫描找最小值 O(n)，只适合小规模。
 
 **③ Redis 的近似 LRU**
-为了省内存不维护链表，给每个 key 存 24 位时间戳，淘汰时**随机采样 5 个**，淘汰其中最久未用的。是「用一点精度换内存与实现成本」的经典权衡。', 3),
+为了省内存不维护链表，给每个 key 存 24 位时间戳，淘汰时**随机采样 5 个**，淘汰其中最久未用的。是「用一点精度换内存与实现成本」的经典权衡。', 1),
 
 ('操作系统', '用户态,内核态,系统调用', 2,
  '用户态和内核态为什么要区分？切换的开销在哪？',
@@ -822,7 +820,7 @@ std::unordered_map<int, Node*> map_;
 
 - **批量处理**：`readv/writev`、`sendmmsg` 一次调用处理多个；
 - **减少调用次数**：用缓冲读写（`printf` 的缓冲、`fread` 的块读）替代逐字节 IO；
-- **零拷贝**：`sendfile`、`splice`、`mmap` 让数据不必在内核态与用户态之间来回搬 —— 这正是 Nginx 静态文件快的原因之一。', 2),
+- **零拷贝**：`sendfile`、`splice`、`mmap` 让数据不必在内核态与用户态之间来回搬 —— 这正是 Nginx 静态文件快的原因之一。', 1),
 
 ('操作系统', 'IO多路复用,epoll', 3,
  'select、poll、epoll 有什么区别？epoll 为什么高效？',
@@ -849,7 +847,7 @@ std::unordered_map<int, Node*> map_;
 - **LT（水平触发，默认）**：只要缓冲区还有数据，每次 `epoll_wait` 都会通知。写起来简单，不怕漏读。
 - **ET（边沿触发）**：只在状态**变化**时通知一次。必须配**非阻塞 fd**，并且**循环读到 `EAGAIN`**，否则残留数据永远不会再通知。ET 能减少系统调用次数，Nginx / Redis / Netty 都用 ET。
 
-**易错点**：epoll 是 Linux 特有的，写完记得「水平触发安全、边沿触发高效但要写对循环」，以及「`epoll_wait` 返回的 fd 需要主动处理，否则会一直重复通知」。', 3),
+**易错点**：epoll 是 Linux 特有的，写完记得「水平触发安全、边沿触发高效但要写对循环」，以及「`epoll_wait` 返回的 fd 需要主动处理，否则会一直重复通知」。', 1),
 
 ('操作系统', 'IPC,进程通信', 2,
  '进程间通信有哪些方式？各自适合什么场景？',
@@ -873,7 +871,7 @@ std::unordered_map<int, Node*> map_;
    - 跨主机只能用网络 socket；
    - 适合：客户端-服务端模型（Nginx ↔ PHP-FPM、MySQL 的本地连接都走 UDS）。
 
-**选型口诀**：**要快用共享内存（记得加同步），要跨机器用 socket，要简单就用管道，要事件通知用信号。**', 2),
+**选型口诀**：**要快用共享内存（记得加同步），要跨机器用 socket，要简单就用管道，要事件通知用信号。**', 1),
 
 ('操作系统', '内存分配,碎片', 3,
  '内存碎片是怎么产生的？操作系统和分配器分别怎么应对？',
@@ -899,9 +897,8 @@ std::unordered_map<int, Node*> map_;
 2. **定长分配**：把变长需求转成固定规格（如环形缓冲区、slab）；
 3. **jemalloc / tcmalloc 替换 glibc malloc**：按大小分级 + 线程缓存，在多线程下有更好的碎片控制与吞吐；
 4. **避免频繁申请释放大数据块**，用 `reserve`/`resize` 复用；
-5. 长期运行的进程关注 **RSS 与碎片指标**（`mallinfo2`、`pmap`），必要时定期重启或改用独立进程隔离。', 3),
+5. 长期运行的进程关注 **RSS 与碎片指标**（`mallinfo2`、`pmap`），必要时定期重启或改用独立进程隔离。', 1),
 
--- ===== 算法 =====
 ('算法', '排序,快速排序', 2,
  '快速排序的时间复杂度是多少？最坏情况什么时候出现？怎么优化？',
  '**复杂度**：平均 `O(n log n)`，最坏 `O(n²)`，空间 `O(log n)`（递归栈），**不稳定**。
@@ -921,7 +918,7 @@ int pivot = a[low];
 4. **三路划分**：把数组分成 `< pivot`、`== pivot`、`> pivot` 三段，**大量重复元素**时从 `O(n²)` 降到 `O(n)`（`std::sort` 用的是 introspective sort，同样处理了重复元素）。
 5. **内省排序（introsort）**：递归深度超过 `2·log n` 就改走**堆排序**，同时保证「平均快排的速度 + 最坏 O(n log n)」—— 这就是 `std::sort` 的实现策略。
 
-**为什么 `std::sort` 不稳定**：分区过程中的元素移动是跳跃式的。要稳定就用 `std::stable_sort`（通常是归并）。', 2),
+**为什么 `std::sort` 不稳定**：分区过程中的元素移动是跳跃式的。要稳定就用 `std::stable_sort`（通常是归并）。', 1),
 
 ('算法', '排序,稳定性', 2,
  '常见排序算法哪些是稳定的？实际工程里怎么选？',
@@ -948,7 +945,7 @@ int pivot = a[low];
 - **定长字符串 / 整数**（手机号、IP）→ 基数排序；
 - **数据几乎有序** → 插入排序或 Timsort（Go、Python、Java 的对象排序都用它，结合了归并 + 插入）。
 
-一句话：**库函数默认用 `std::sort`（introsort，快但不稳定）；需要稳定就显式换 `std::stable_sort`，同时接受 O(n) 额外空间。**', 2),
+一句话：**库函数默认用 `std::sort`（introsort，快但不稳定）；需要稳定就显式换 `std::stable_sort`，同时接受 O(n) 额外空间。**', 1),
 
 ('算法', '哈希表,冲突处理', 2,
  '哈希表的冲突有哪些解决办法？负载因子为什么重要？',
@@ -971,7 +968,7 @@ int pivot = a[low];
 - 开放定址法：因子越接近 1，线性探测的探测次数**急剧上升**（趋近 1 时趋于无穷），所以必须留空位；
 - 因此两种实现都要**在超过阈值时扩容（rehash）**：通常桶数翻倍并重新分布所有元素，**这一步是 O(n) 的**，也是哈希表「均摊 O(1)、单次可能 O(n)」的来源。
 
-**工程注意**：能预估元素量就 `reserve()`，一次性分配够桶，避免多次 rehash；哈希函数要尽量均匀（`std::hash` 对整数是恒等映射，遇到「都是同余数」的键要自己加混淆，否则退化成链表）。', 2),
+**工程注意**：能预估元素量就 `reserve()`，一次性分配够桶，避免多次 rehash；哈希函数要尽量均匀（`std::hash` 对整数是恒等映射，遇到「都是同余数」的键要自己加混淆，否则退化成链表）。', 1),
 
 ('算法', '二分查找,边界', 2,
  '手写一个二分查找，需要注意哪些细节？',
@@ -1004,7 +1001,7 @@ int lowerBound(const std::vector<int>& a, int target) {
 
 - 循环**必须收敛**：`lo = mid + 1` / `hi = mid` 这种「一边动、一边不动」的设计保证每次区间至少缩小 1，不会死循环；
 - **必须有序**，且不能用于链表（无法 O(1) 随机访问）；
-- 二分的本质是「**在单调的判定函数上找边界**」，不限于数组 —— 求平方根、旋转数组最小值、二分答案（最大值最小化）都是同一套模板。', 2),
+- 二分的本质是「**在单调的判定函数上找边界**」，不限于数组 —— 求平方根、旋转数组最小值、二分答案（最大值最小化）都是同一套模板。', 1),
 
 ('算法', '海量数据,TopK', 2,
  '海量数据求 Top K（如 10 亿个数取最大的 100 个）怎么做？',
@@ -1040,7 +1037,7 @@ for (int x : nums) {
 
 - 求 Top K **去重**：外层再加一个 `unordered_set` 判重；
 - 求**出现频率最高的 K 个（Top K frequent）**：先用哈希表统计频次，再对频次做小顶堆；
-- 内存实在紧张时可以把「值 + 频次」编码成定长记录，用外部排序（归并排序分段文件）。', 3),
+- 内存实在紧张时可以把「值 + 频次」编码成定长记录，用外部排序（归并排序分段文件）。', 1),
 
 ('算法', 'LRU,设计题', 2,
  '设计一个 LRU 缓存，要求 get 和 put 都是 O(1)。',
@@ -1085,7 +1082,7 @@ public:
 - `put` 已存在的 key 时**必须也是「更新 + 移到头部」**，不能只更新值（否则它不会变成最近使用）；
 - 容量为 0 的边界情况；
 - 工程里（如 Redis）通常不会用真 LRU：维护链表要额外内存与全局锁，改成了**近似 LRU**（随机采样淘汰）或分段锁 + 分片 LRU；
-- 若要求**线程安全**，最简单是整表加锁（读写都要），高并发下用分片（按 key 哈希到多个独立 LRUCache）。', 2),
+- 若要求**线程安全**，最简单是整表加锁（读写都要），高并发下用分片（按 key 哈希到多个独立 LRUCache）。', 1),
 
 ('算法', '动态规划,思路', 3,
  '动态规划的一般解题步骤是什么？和分治、贪心有什么区别？',
@@ -1116,7 +1113,7 @@ for (int i = 0; i < n; ++i)
 
 **判断能否用 DP 的两条**：最优子结构（全局最优由局部最优推出）+ 重叠子问题（画出递归树会发现同一状态被反复计算，用记忆化或递推消除）。若贪心能成立，它一定比 DP 简单 —— 但**贪心的正确性必须证明**，凭空假设是面试最常见的错误。
 
-**常见优化方向**：记忆化搜索（自顶向下，好写）↔ 递推（自底向上，好优化空间）；状态压缩（状压 DP，n ≤ 20）；单调队列 / 前缀和把 O(n²) 压到 O(n)。', 3),
+**常见优化方向**：记忆化搜索（自顶向下，好写）↔ 递推（自底向上，好优化空间）；状态压缩（状压 DP，n ≤ 20）；单调队列 / 前缀和把 O(n²) 压到 O(n)。', 1),
 
 ('算法', '堆,优先队列', 2,
  '堆是什么？建堆为什么是 O(n) 而不是 O(n log n)？',
@@ -1151,7 +1148,33604 @@ auto cmp = [](const Task& a, const Task& b) { return a.prio > b.prio; };
 std::priority_queue<Task, std::vector<Task>, decltype(cmp)> pq(cmp);
 ```
 
-**典型应用**：Top K、合并 K 个有序链表、调度器（按优先级出队）、Dijkstra 求最短路、中位数（大小两个堆对顶）。', 2);
+**典型应用**：Top K、合并 K 个有序链表、调度器（按优先级出队）、Dijkstra 求最短路、中位数（大小两个堆对顶）。', 1),
+
+('C++', '指针,引用', 1,
+ '指针和引用有什么区别？',
+ '| 维度 | 指针 | 引用 |
+|---|---|---|
+| 是否可空 | 可以为 `nullptr` | 必须绑定对象，不可为空 |
+| 是否可改绑 | 可以指向别的对象 | 一经绑定不可改绑 |
+| 是否占内存 | 是，本身是一个对象（有地址、有大小） | 通常被实现为指针，但语言层面不占"独立对象"的地位 |
+| 能否取地址 | `&p` 得到指针的地址 | `&r` 得到被引用对象的地址 |
+| 能否算术运算 | 可以 `p++` | 不可以 |
+| 数组 | 可以有指针数组、指向数组的指针 | 没有引用的数组 |
+
+关键点：
+- 引用**必须初始化**，所以不存在"空引用"（但可以通过悬垂引用制造 UB）。
+- 传参时 `const T&` 既避免拷贝，又不像指针那样需要判空，是"只读大对象"的首选。
+- 编译器通常用指针实现引用，但会把"引用不可改绑"作为优化依据（如别名分析）。
+
+```cpp
+int a = 1, b = 2;
+int& r = a;
+r = b;      // 这是赋值！a 变成 2，而不是让 r 改绑到 b
+```', 1),
+
+('C++', '宏,const,inline', 1,
+ '`#define` 和 `const`、`inline` 有什么区别？宏有哪些坑？',
+ '宏是**预处理期的文本替换**，不参与编译期的类型检查与作用域。
+
+坑：
+1. **无类型检查**：`#define MAX 100` 与 `int` 相加不会报错。
+2. **多次求值**：`#define SQ(x) ((x)*(x))`，`SQ(i++)` 中 `i++` 会执行两次。
+3. **运算符优先级**：`#define ADD(a,b) a+b`，`ADD(1,2)*3` 变成 `1+2*3 = 7` 而非 9。所以宏体要整体加括号，参数也要加。
+4. **无作用域**：宏是全局的，`#undef` 才能撤销；命名冲突难排查。
+5. **调试困难**：调试器看不到宏符号，编译错误定位到展开后的代码。
+
+替代方案：
+
+| 宏用途 | 现代替代 |
+|---|---|
+| 常量 | `constexpr` / `const` |
+| 小函数 | `inline` 函数 / `constexpr` 函数 |
+| 类型别名 | `using` / `typedef` |
+| 条件编译 | 仍然只能用宏（`#ifdef`） |
+| 日志、断言 | 宏仍是常见选择（要 `__FILE__` / `__LINE__`） |
+
+注意：`inline` 的本意是"允许在多个翻译单元中重复定义（ODR 例外）"，**是否真的内联由编译器决定**，不是强制的。', 1),
+
+('C++', 'static,生命周期', 2,
+ '`static` 关键字在 C++ 中有哪几种用法？',
+ '按作用位置分五种：
+
+1. **全局/命名空间作用域的 static**：内部链接（internal linkage），符号只在当前翻译单元可见，避免重名冲突。
+2. **函数内的 static 局部变量**：静态存储期，**首次执行到声明处时初始化一次**（C++11 起保证线程安全，编译器插入 `__cxa_guard_acquire` 之类的守卫），程序结束时析构。
+3. **类的 static 数据成员**：属于类而非对象，所有实例共享；必须在**类外定义**（C++17 起可用 `inline static` 在类内定义）。
+4. **类的 static 成员函数**：没有 `this`，不能访问非静态成员，不能是 `virtual`/`const`。
+5. **匿名命名空间**：C++ 中替代文件级 static 的更现代做法。
+
+```cpp
+void f() {
+    static int cnt = 0;   // 只初始化一次，多线程安全
+    ++cnt;
+}
+```
+
+坑：函数内静态局部变量的初始化存在**线程安全的性能开销**（每次进入都要检查守卫），热路径上要留意。', 1),
+
+('C++', 'extern C,链接', 2,
+ '`extern "C"` 是做什么的？为什么 C++ 调用 C 库要加它？',
+ 'C++ 为了支持**函数重载**，会对函数名做**名字修饰（name mangling）**，例如
+`void foo(int)` 在 GCC 下变成 `_Z3fooi`。而 C 语言不做修饰，符号名就是 `foo`。
+
+`extern "C"` 告诉编译器：括号内的声明**按 C 的方式生成符号名**，不做修饰。
+
+用途：
+1. **C++ 调用 C 库**：C 库导出的符号是未修饰的，C++ 若不声明 `extern "C"`，链接时会找不到符号。
+2. **C 调用 C++**：C 编译器不认识 C++ 的修饰，所以 C++ 侧要导出未修饰符号。
+3. **给 C 用的头文件**要写成双兼容形式：
+
+```cpp
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void c_api(int x);
+
+#ifdef __cplusplus
+}
+#endif
+```
+
+注意：
+- `extern "C"` 对**函数和全局变量**有效；C++ 的类、模板、重载函数不能放进 `extern "C"` 块（重载函数名会冲突）。
+- 它只影响链接名，不影响调用约定（调用约定是 `__cdecl`/`__stdcall` 等另一套）。', 1),
+
+('C++', 'struct,class', 1,
+ 'C++ 里 `struct` 和 `class` 有什么区别？',
+ '语言层面**只有两个区别**：
+
+| 维度 | struct | class |
+|---|---|---|
+| 默认访问权限 | `public` | `private` |
+| 默认继承方式 | `public` 继承 | `private` 继承 |
+
+其它（能否有成员函数、构造析构、虚函数、继承、模板）都完全一样。
+
+实践约定：
+- `struct` 用于**纯数据聚合**、POD、简单的小对象（成员全 public，无复杂不变量）。
+- `class` 用于**有封装、有不变量需要维护**的抽象类型。
+
+还有一个容易被忽视的点：**C 兼容性**。`struct` 在 C 和 C++ 中都能用，是跨语言数据交换的常见选择；但含 C++ 特性的 struct（虚函数、非平凡构造）就不再是 C 兼容的了。', 1),
+
+('C++', 'POD,平凡类型', 3,
+ '什么是 POD？平凡类型（trivial）、标准布局（standard-layout）和 POD 的关系是什么？',
+ '这三个概念在 C++11 后被拆开了：
+
+- **平凡类型（trivial）**：满足
+  - 有平凡的默认构造/拷贝构造/移动构造/拷贝赋值/移动赋值/析构（全部 `= default` 且非虚）
+  - 这样的类型可以**按字节 memcpy**，生命周期不用显式管理。
+- **标准布局（standard-layout）**：布局与 C 兼容，要求
+  - 无虚函数、无虚基类
+  - 所有非静态成员同访问控制
+  - 无两个基类含同类型非静态成员等
+  - 这样的类型可以安全地在 C 与 C++ 之间传递、可以用 `offsetof`。
+- **POD（Plain Old Data）**：C++11 之前 = 平凡 + 标准布局；**C++20 起 POD 概念已被弃用**，因为它其实是两个独立需求的合并，混在一起反而不精确。
+
+用途：
+- 需要 `memcpy` / 二进制序列化 → 要 **trivial**。
+- 需要与 C 结构体互操作 / `offsetof` → 要 **standard-layout**。
+
+```cpp
+struct A { int x; double y; };          // trivial + standard-layout
+struct B { virtual void f(); int x; };  // 都不是
+struct C { A a; private: int z; };      // trivial 但不是 standard-layout（访问控制不统一）
+```', 1),
+
+('C++', 'sizeof,对齐', 2,
+ '`sizeof` 有哪些常见陷阱？空类的大小是多少？',
+ '常见陷阱：
+
+1. **空类不是 0**：`sizeof(Empty) == 1`。因为每个对象必须有唯一地址，标准强制至少 1 字节。
+2. **空基类优化（EBO）**：作为基类时空类可以占 0 字节，`sizeof(Derived) == sizeof(Derived)` 不含空基类。
+3. **虚函数引入 vptr**：64 位下 `sizeof` 会比成员总和多 8 字节（vptr）。
+4. **成员对齐填充**：`struct { char a; int b; }` 大小是 8 而不是 5。
+5. **数组与指针**：`sizeof(arr)` 是数组总字节；函数参数里的数组已退化为指针，`sizeof` 得到指针大小。
+6. **`sizeof` 不求值**：`sizeof(f())` 不会真正调用 `f()`（C++ 中 `f` 返回类型已知即可）。
+7. **变长数组**：C99 的 VLA 在 C++ 标准里不存在（GCC 作扩展支持），`sizeof` 在运行期才能算。
+
+示例：
+
+```cpp
+struct A { };                       // 1
+struct B { virtual ~B(); };         // 8（vptr）
+struct C { char c; int i; };        // 8（填充 3 字节）
+struct D { virtual ~D(); int i; };  // 16（vptr 8 + int 4 + 填充 4）
+```
+
+面试延伸：把成员按**从大到小排列**可以减少填充，但要注意可读性，通常靠编译器 `-Wpadded` 提示。', 1),
+
+('C++', '内存对齐', 2,
+ '为什么要做内存对齐？对齐规则是什么？',
+ '**原因**：
+1. **硬件要求**：多数 CPU 访问未对齐地址会触发异常或性能惩罚（x86 容忍但慢，ARM 某些指令直接 SIGBUS）。
+2. **原子性**：跨缓存行的读写在硬件上不是原子的。
+3. **缓存效率**：对齐访问能更好地利用 cache line。
+
+**规则**（以结构体为例）：
+1. 每个成员的偏移必须是该成员对齐要求的整数倍，不足则填充。
+2. 结构体总大小必须是**最大成员对齐要求**的整数倍（尾部填充），这样数组里每个元素都对齐。
+3. `#pragma pack(n)` 或 `__attribute__((packed))` 可强制减小对齐，代价是可能产生未对齐访问。
+
+```cpp
+struct S1 { char a; int b; char c; };  // 偏移 0,4,8 → 大小 12
+struct S2 { int b; char a; char c; };  // 偏移 0,4,5 → 大小 8
+```
+
+**优化技巧**：
+- 把大对齐成员放前面。
+- 用 `alignas` 显式指定（如 SIMD 需要 16/32 字节对齐）。
+- 用 `offsetof` 验证布局。
+- 需要网络传输时用 `packed` 或手动序列化，不要直接 `memcpy` 结构体。', 1),
+
+('C++', 'volatile', 2,
+ '`volatile` 的作用是什么？它能保证线程安全吗？',
+ '`volatile` 告诉编译器：**这个变量的值可能被程序之外的因素改变，不要优化掉对它的读写**。
+
+它保证：
+- 每次访问都真实地从内存读写，不缓存在寄存器里。
+- 编译器不会重排两个 volatile 访问之间的顺序（相对顺序）。
+
+它**不保证**：
+- **原子性**：`volatile int` 的 `++` 依然不是原子的。
+- **线程安全**：没有内存屏障语义，不能替代 `std::atomic` 或互斥量。
+- **可见性/顺序**：多核下 CPU 仍可能乱序、缓存不一致。
+
+正确用途：
+1. **内存映射 I/O**（`volatile uint32_t* reg`）。
+2. **信号处理程序**中的 `volatile sig_atomic_t` 标志。
+3. 与 `setjmp/longjmp` 配合的局部变量。
+
+```cpp
+volatile int flag = 0;   // ❌ 不能拿来当线程间标志
+
+std::atomic<bool> flag;  // ✅ 线程间通信应该用这个
+```
+
+面试常见陷阱：拿 `volatile` 当"轻量级锁"是错的，它解决的是"编译器优化"，不是"并发"。', 1),
+
+('C++', '野指针,悬垂指针', 1,
+ '什么是野指针和悬垂指针？怎么避免？',
+ '**野指针（wild pointer）**：未初始化的指针，指向随机地址。
+```cpp
+int* p;      // p 是野指针
+*p = 1;      // ❌ UB
+```
+**悬垂指针（dangling pointer）**：指向的对象已销毁（`delete` 后、栈对象离开作用域后）。
+```cpp
+int* p = new int(3);
+delete p;    // p 变成悬垂指针，但地址还"看着像"有效
+*p = 5;      // ❌ UB，可能"看起来正常"最危险
+```
+
+**避免手段**：
+1. **初始化**：指针定义时就置 `nullptr`。
+2. **delete 后置空**：`delete p; p = nullptr;`。
+3. **优先智能指针**：`unique_ptr` / `shared_ptr` 自动管理生命周期。
+4. **不要返回局部变量的地址**。
+5. **容器扩容/删除后旧迭代器会失效**，不要继续用。
+6. **`shared_ptr` 用 `weak_ptr` 打破循环引用**。
+
+检测工具：ASan（`-fsanitize=address`）、Valgrind、`-D_GLIBCXX_DEBUG`（检查迭代器误用）。', 1),
+
+('C++', 'nullptr,NULL', 1,
+ '`nullptr` 和 `NULL` 有什么区别？',
+ '`NULL` 通常是 `0` 或 `0L`（`#define NULL 0`），本质是**整数**。
+`nullptr` 是 C++11 引入的 `std::nullptr_t` 类型的字面量，**不是整数**。
+
+问题在于重载决议：
+
+```cpp
+void f(int);
+void f(char*);
+
+f(NULL);     // ❌ 二义性：0 能被当作整数，也能当作空指针常量
+f(nullptr);  // ✅ 一定匹配 f(char*)
+```
+
+此外：
+- `NULL` 在模板参数推导中会推出 `int`。
+- `nullptr` 可以隐式转换成任意指针类型和 `bool`，但不能隐式转成整数（需要显式 `reinterpret_cast`）。
+- `sizeof(nullptr) == sizeof(void*)`，`sizeof(NULL)` 取决于平台（可能是 4 或 8）。
+
+**结论**：现代 C++ 一律用 `nullptr`；`NULL` 只在维护 C 兼容代码时出现。', 1),
+
+('C++', 'override,重载,隐藏', 2,
+ '重载（overload）、重写（override）、隐藏（hide）有什么区别？',
+ '| 概念 | 发生位置 | 条件 |
+|---|---|---|
+| **重载** | 同一作用域 | 函数名相同、参数列表不同；返回值不参与 |
+| **重写** | 派生类覆盖基类虚函数 | 签名完全相同（含 const、引用限定符），基类函数是 `virtual` |
+| **隐藏** | 派生类同名函数遮蔽基类所有同名重载 | 只要名字相同，哪怕参数不同也隐藏 |
+
+隐藏是最容易踩的坑：
+
+```cpp
+struct Base {
+    void f(int);
+    virtual void g();
+};
+struct Derived : Base {
+    void f(double);            // 隐藏了 Base::f(int)
+    void g() override;         // 重写
+};
+
+Derived d;
+d.f(1);          // 调用 Derived::f(double)，Base::f(int) 被隐藏
+d.Base::f(1);    // 显式调用基类版本
+```
+
+**解决隐藏**：`using Base::f;` 把基类名字引进来。
+
+**防止"假重写"**：给重写函数加 `override`，签名不匹配时编译报错；`final` 禁止进一步重写。
+
+C++23 起还有 `override`/`final` 之外的多重继承同名歧义问题，需要显式限定。', 1),
+
+('C++', '名字修饰,mangling', 2,
+ '什么是名字修饰（name mangling）？为什么需要它？',
+ '为实现**函数重载**和**命名空间/类作用域**，编译器把 C++ 函数名编码成唯一的链接符号，这就是 name mangling。
+
+例如 GCC（Itanium ABI）下：
+
+| 源码 | 符号 |
+|---|---|
+| `void f()` | `_Z1fv` |
+| `void f(int)` | `_Z1fi` |
+| `void N::f(int,double)` | `_ZN1N1fEid` |
+| `int g<int>(int)`（模板实例） | `_Z1gIiEiT_` |
+
+规则要点：
+- 前缀 `_Z`，然后是名字长度+名字，再是参数类型编码。
+- **返回类型通常不参与**（C++ 允许仅返回类型不同的重载吗？不允许——所以不需要编码返回类型；但函数模板的返回类型参与推导）。
+
+**实践影响**：
+1. `nm -C` / `c++filt` 可以把符号还原成可读形式。
+2. 跨编译器/跨版本 ABI 不兼容，部分原因就是 mangling 规则不同。
+3. 需要跨语言调用时，用 `extern "C"` 或导出 C 接口。
+4. 链接报 "undefined reference to `_ZN...`" 时，用 `nm`/`c++filt` 解出真实函数名能快速定位。', 1),
+
+('C++', '默认参数,虚函数', 3,
+ '虚函数可以有默认参数吗？会有什么问题？',
+ '可以，但**默认参数是静态绑定的**，虚函数是**动态绑定**的 —— 两者混用会产生反直觉行为：
+
+```cpp
+struct Base {
+    virtual void f(int x = 1) { std::cout << "Base " << x; }
+};
+struct Derived : Base {
+    void f(int x = 2) override { std::cout << "Derived " << x; }
+};
+
+Base* p = new Derived;
+p->f();   // 输出 "Derived 1" 而不是 "Derived 2"
+```
+
+原因：默认参数在**编译期**按 `p` 的静态类型 `Base*` 取（得到 1），函数体在**运行期**按动态类型 `Derived` 取。
+
+其它注意点：
+- 默认参数只能写在**声明或定义之一**，不能两处都写。
+- 默认参数在虚函数里不可作为重载区分依据。
+- **不要**用默认参数实现"可选参数"的多态接口，改用重载或 `std::optional`。
+
+**结论**：虚函数与默认参数不要混用；如果必须，保证基类和派生类默认值一致并注释说明。', 1),
+
+('C++', 'RVO,NRVO,移动语义', 3,
+ '什么是 RVO/NRVO？它和移动语义是什么关系？',
+ '**RVO（Return Value Optimization）**：返回临时对象时，编译器直接在调用者的空间构造，省略拷贝。
+**NRVO（Named RVO）**：返回**具名局部变量**时的同类优化。
+
+```cpp
+std::string make() {
+    return std::string("hi");   // RVO：直接在返回值处构造
+}
+std::string make2() {
+    std::string s = "hi";
+    return s;                    // NRVO：s 就地构造在返回值处
+}
+```
+
+标准规定了两种层次的保证：
+1. **C++17 起，返回纯右值（prvalue）时的拷贝省略是强制的**（guaranteed copy elision），`make()` 中的拷贝**一定不会发生**。
+2. NRVO 仍是**可选优化**（几乎所有编译器都做，但不是标准保证）。
+
+与移动语义的关系：
+- 如果没有 RVO/NRVO，C++11 之前会调用拷贝构造；C++11 之后会**优先调用移动构造**（因为返回的局部变量是"将亡值"）。
+- 所以"返回大对象"在有移动语义后开销大幅下降，但仍可能有一次移动；RVO 能把它变成零拷贝。
+- 这就是"不要 `return std::move(local)`"的原因：`std::move` 会把返回值变成右值引用，**反而阻止 NRVO**，强制多一次移动。
+
+```cpp
+std::vector<int> f() {
+    std::vector<int> v;
+    return std::move(v);   // ❌ 错误：破坏 NRVO
+}
+```', 1),
+
+('C++', 'explicit,隐式转换', 2,
+ '`explicit` 的作用是什么？什么时候必须用？',
+ '`explicit` 禁止**单参数构造函数**（或转换运算符）参与**隐式转换**，只允许显式构造。
+
+```cpp
+struct A {
+    A(int);            // 允许 A a = 1; 这种隐式转换
+    explicit A(double); // 禁止 A a = 1.0;
+};
+
+void f(A);
+f(1);      // 若 A(int) 非 explicit，这里会隐式构造 A
+f(A(1));   // 显式构造，总是可以
+```
+
+需要 `explicit` 的典型场景：
+1. **数值包装类**：`explicit Duration(int ms)` —— 否则 `Duration d = 5;` 会让人误以为 5 是秒还是毫秒。
+2. **智能指针**：`explicit shared_ptr(T*)` —— 防止裸指针隐式转成智能指针导致双重释放。
+3. **`vector<int> v = 5;`** 这类初始化其实是 `vector(size_type)`，`explicit` 能拦住误写。
+4. **C++11 起，`explicit` 也可以加在转换运算符上**；C++20 起支持条件 `explicit(bool)`：
+
+```cpp
+template <class T>
+struct Wrapper {
+    explicit(cond) operator T();   // 按条件决定是否 explicit
+};
+```
+
+实践中：**除"转换语义就是本意"的少数情况（如 `std::string_view` 从 `const char*`）外，单参数构造函数都该加 `explicit`**。', 1),
+
+('C++', 'EBO,空基类优化', 3,
+ '什么是空基类优化（EBO）？`std::tuple` 为什么需要它？',
+ '**EBO（Empty Base Optimization）**：空类作为**基类**时，派生类中不为其分配额外空间。
+
+```cpp
+struct Empty {};
+struct A { Empty e; int i; };   // sizeof = 8（Empty 占 1 字节 + 3 填充）
+struct B : Empty { int i; };    // sizeof = 4（EBO 生效）
+```
+
+标准只**允许**不**强制**（除 `[[no_unique_address]]` 的语义外），但主流编译器都实现。
+
+**为什么重要**：
+- 标准库大量用"空基类 + 模板"来携带**类型信息**或**标签**而不占内存。
+- `std::allocator` 通常是空类，容器继承它以避免对象变大。
+- `std::tuple` 用递归继承 + EBO 实现"零开销存储各类型"：每个元素存为一个基类，空类型元素不占空间。
+
+```cpp
+// C++20 的 [[no_unique_address]] 是给"成员"而非"基类"的 EBO
+struct C {
+    [[no_unique_address]] Empty e;
+    int i;
+};   // sizeof 可以是 4
+```
+
+注意：EBO 只对**不同的**空基类生效；两个同类型的空基类仍需要各自可区分的地址。', 1),
+
+('C++', '虚函数表,对象模型', 3,
+ 'C++ 的对象模型是什么？虚函数表（vtable）是怎么工作的？',
+ '**核心机制**：
+- 含虚函数的类，编译器生成一张**虚函数表（vtable）**，存该类所有虚函数的地址。
+- 每个对象里有一个隐藏指针 **vptr**，指向所属类的 vtable（通常放在对象起始处）。
+- 调用 `p->f()` 时：从 `p` 取 vptr → 找到 vtable → 按槽位取函数地址 → 调用。这就是**动态绑定**。
+
+```cpp
+struct Base { virtual void f(); virtual ~Base(); int a; };
+// 64 位下的布局：
+// [ vptr (8) ][ a (4) ][ padding (4) ]  => sizeof = 16
+```
+
+**派生类重写时**：派生类有自己的 vtable，被重写的函数槽位替换为派生类版本，未重写的沿用基类版本。
+
+**多重继承**：派生类对象含**多个 vptr**（每个含虚函数的基类一个），因此有"指针调整"（调整 `this` 偏移），这是多继承转换指针时地址会变的原因。
+
+**关键性质与代价**：
+1. 每个对象多一个指针的空间开销。
+2. 一次间接跳转，无法内联（除非 `final` 或 devirtualization）。
+3. vptr 在构造/析构期间会变化：**构造期间 vptr 指向当前类的 vtable**，所以在基类构造函数里调用虚函数只会调到基类版本（派生部分还没构造）。
+4. vtable 通常放在只读数据段，无额外运行期开销。
+
+**如何验证**：`g++ -fdump-class-hierarchy`（旧）或 `-fdump-lang-class`（新）可打印布局。', 1),
+
+('C++', '多重继承,虚继承,菱形继承', 3,
+ '多重继承和菱形继承（钻石继承）有什么问题？虚继承是怎么解决的？',
+ '**菱形继承**：
+
+```cpp
+struct A { int x; };
+struct B : A {};
+struct C : A {};
+struct D : B, C {};      // D 里有两份 A::x —— 二义性
+```
+
+```cpp
+D d;
+d.x = 1;        // ❌ 二义性：是 B::A::x 还是 C::A::x？
+d.B::x = 2;     // 必须显式限定
+```
+
+**问题**：
+1. 数据冗余（两份 `A`）。
+2. 二义性。
+3. 若 `A` 有虚函数，`D` 会有两个 vptr。
+
+**虚继承**：让 `B`、`C` 虚继承 `A`，使 `D` 只保留**一份** `A` 子对象。
+
+```cpp
+struct B : virtual A {};
+struct C : virtual A {};
+struct D : B, C {};      // 只有一份 A
+D d;
+d.x = 1;                 // ✅ 唯一的 A::x
+```
+
+**代价**：
+- 虚基类的偏移**不能在编译期确定**，需要运行期通过 **vbtable（虚基类表）** 查找，访问虚基类成员多一次间接。
+- 更复杂的对象布局与指针调整，跨虚基类转换指针代价更高。
+- 构造函数中，**只有最派生类负责构造虚基类**，中间类的初始化列表里对虚基类的调用会被忽略。
+
+**实践建议**：虚继承是"接口继承"（无数据）时常用；带数据的菱形继承通常说明设计有问题，优先考虑组合或纯接口多继承。', 1),
+
+('C++', '静态成员,定义', 2,
+ '为什么类的静态成员变量必须在类外定义？C++17 有什么变化？',
+ '类内的 `static int count;` 只是**声明**，不分配存储。**定义**（分配存储）必须放在类外，且不能重复加 `static`：
+
+```cpp
+struct A {
+    static int count;        // 声明
+};
+int A::count = 0;            // 定义（在某个 .cpp 中，只能一次）
+```
+
+原因：类定义通常放在头文件里、被多个翻译单元包含；如果类内就分配存储，会**违反 ODR**（多次定义）。
+
+**例外**：
+- **`static constexpr` 整型**在 C++17 前可以在类内初始化（但 ODR-使用仍需类外定义）；C++17 起 `static constexpr` 成员**隐式 inline**，无需类外定义。
+- C++17 起可用 **`inline static`** 直接在类内定义：
+
+```cpp
+struct A {
+    inline static int count = 0;   // C++17，无需类外定义
+};
+```
+
+这也是 C++17 后**头文件-only 库里单例计数器**的标准写法。
+
+补充：`static const int N = 10;` 在类内初始化后，若只是当编译期常量用（如数组大小），不需要类外定义；一旦取地址（`&A::N`）就需要定义。', 1),
+
+('C++', '友元', 1,
+ '`friend` 是做什么的？什么时候该用？',
+ '`friend` 授予某个函数或类**访问本类私有/保护成员**的权限。
+
+三种形式：
+
+```cpp
+class A {
+    int secret = 0;
+    friend void f(A&);              // 友元函数
+    friend class B;                 // 友元类
+    friend std::ostream& operator<<(std::ostream&, const A&);
+};
+```
+
+**特点**：
+- 友元关系**不是双向的**（B 是 A 的友元，不代表 A 是 B 的友元）。
+- 友元**不被继承**。
+- 友元破坏了封装，但**用对了是好事**：它把"需要访问私有数据"的紧耦合关系**显式声明出来**，比用公有 getter 暴露内部结构更好。
+
+**合理用途**：
+1. **运算符重载**（`operator<<`、`operator+` 需要访问私有成员）。
+2. **两个紧密协作的类**（如迭代器访问容器、`std::vector` 与它的迭代器）。
+3. **测试代码**访问内部状态。
+
+**替代方案**：把需要共享的实现放到 `detail` 命名空间，或用公有接口；现代设计更倾向"用公有接口而非友元"。
+
+注意：`friend` 声明可以在类内任意位置（不受 public/private 影响），因为友元声明本身不是成员。', 1),
+
+('C++', '运算符重载', 2,
+ '运算符重载有哪些规则和常见的坑？',
+ '**不能重载的运算符**：`.`、`::`、`?:`、`sizeof`、`typeid`、`.*`。**不能发明新运算符**，也不能改变运算符的元数（arity）与优先级。
+
+**成员 vs 非成员**：
+- **必须是非成员**：`operator<<`/`>>`（左操作数是 `ostream`）、需要隐式转换左操作数时。
+- **通常是成员**：`+=`、`[]`、`()`、`->`、一元 `-`。
+
+**常见坑**：
+
+1. **`operator=` 要处理自赋值**：
+```cpp
+A& operator=(const A& o) {
+    if (this == &o) return *this;   // 自赋值保护
+    ...
+}
+```
+
+2. **`operator<<` 返回 `ostream&` 以支持链式调用**，且要 `const&` 参数。
+3. **不要重载 `&&`、`||`、`,`** —— 会丢失短路求值。
+4. **`operator[]` 不检查越界**，`at()` 才检查；`const` 版本要返回 `const` 引用。
+5. **`operator+` 用非成员 + 返回值**，避免修改自身：
+```cpp
+A operator+(const A& a, const A& b) { A r = a; r += b; return r; }
+```
+6. **`operator bool` 要 `explicit`**，否则 `if (obj)` 之外还会参与算术转换。
+7. **`operator->` 返回指针**，支持 `ptr->member` 的链式穿透；`operator->*` 罕见。
+8. **后置 `++` 用一个 `int` 哑参数区分**：
+```cpp
+T& operator++();        // 前置
+T  operator++(int);     // 后置
+```
+9. 三/五法则：定义了拷贝构造、拷贝赋值、析构中任一个，通常都要定义全部（或 `= delete`/`= default`）。
+
+**原则**：运算符重载要**符合直觉**（`+` 就该是"相加"），不要滥用 `operator,` 或给无意义类型重载算术。', 1),
+
+('C++', '三五法则,拷贝控制', 2,
+ '什么是三法则、五法则、零法则？',
+ '**三法则（Rule of Three）**：如果类需要自定义**析构函数、拷贝构造函数、拷贝赋值运算符**中的任何一个，通常三个都需要（因为都要管理同一份资源）。
+
+```cpp
+class Buffer {
+    int* data_; size_t n_;
+public:
+    ~Buffer();                            // 释放
+    Buffer(const Buffer&);                // 深拷贝
+    Buffer& operator=(const Buffer&);     // 深拷贝 + 自赋值保护
+};
+```
+
+**五法则（Rule of Five）**：C++11 引入移动语义后，再加上**移动构造**和**移动赋值**：
+
+```cpp
+Buffer(Buffer&&) noexcept;             // 偷走资源
+Buffer& operator=(Buffer&&) noexcept;
+```
+移动操作要标 `noexcept`，否则 `std::vector` 扩容时会退回拷贝（因为要强异常安全保证）。
+
+**零法则（Rule of Zero）**：**更好的做法**是不写任何这些函数，让编译器生成的版本正确工作 —— 手段是把资源交给**智能指针或容器**管理：
+
+```cpp
+class Buffer {
+    std::vector<int> data_;   // 自带正确的拷贝/移动/析构
+};
+```
+
+**为什么零法则最好**：手写拷贝控制是错误高发区（自赋值、异常安全、移动后状态），而标准库已验证过的组件不会出错。
+
+**特例**：定义了析构或拷贝操作，编译器**不再隐式生成移动操作**（会退化成拷贝），这也常是"对象没有移动"的原因。', 1),
+
+('C++', '拷贝构造,const引用', 2,
+ '拷贝构造函数为什么参数必须是 `const T&`？不这样会怎样？',
+ '因为**按值传参本身就会调用拷贝构造**，形成无限递归：
+
+```cpp
+class A {
+    A(A o);   // ❌ 编译错误：按值传参需要拷贝，而拷贝又需要先构造参数 → 无限递归
+};
+```
+
+标准直接规定拷贝构造的第一个参数必须是 `T&`、`const T&`、`volatile T&` 或 `const volatile T&`。
+
+**为什么要 `const`**：
+- 允许从 `const` 对象拷贝（`const A a; A b = a;`）。
+- 允许从临时量（右值）拷贝。
+
+**为什么要引用**：
+- 避免递归。
+- 避免无谓拷贝。
+
+补充：
+- 若同时有 `A(const A&)` 和 `A(A&&)`，右值优先匹配移动版本。
+- **`A(A&)`（非 const）是合法的**，但会拒绝从 `const` 对象拷贝，通常不是想要的。
+- 拷贝构造**可以有其它带默认值的参数**，但那会变成普通构造函数。
+- 传参时的隐式转换可能触发拷贝构造，所以"拷贝构造"经常在初始化、传参、返回时被隐式调用；C++17 后返回 prvalue 时会被省略。', 1),
+
+('C++', '深拷贝,浅拷贝', 1,
+ '什么是浅拷贝和深拷贝？',
+ '**浅拷贝**：逐位复制成员，指针成员只复制**指针值**（两个对象指向同一块内存）。
+**深拷贝**：指针成员指向的内容也复制一份，两个对象互不影响。
+
+编译器生成的拷贝构造/赋值是**浅拷贝**：
+
+```cpp
+class S {
+    char* buf_;
+public:
+    S(const S&) = default;   // 浅拷贝：两个对象的 buf_ 指向同一块
+};
+```
+
+若类管理资源（堆内存、文件句柄、锁），浅拷贝会导致：
+1. **双重释放**：两个对象析构时都 `delete buf_` → 崩溃。
+2. **悬垂**：一个对象改了内存，另一个"莫名其妙"也变了。
+
+**解决**：
+- **深拷贝**：手动 `new` + `memcpy`，但要处理异常安全与自赋值。
+- **移动语义**：转移所有权，源对象置空。
+- **`std::shared_ptr`**：共享所有权，引用计数管理。
+- **`= delete` 禁止拷贝**：只允许移动（`unique_ptr` 风格）。
+
+```cpp
+class S {
+    std::unique_ptr<char[]> buf_;   // 零法则：不可拷贝，可移动
+};
+```', 1),
+
+('C++', 'default,delete', 1,
+ '`= default` 和 `= delete` 分别有什么用？',
+ '**`= default`**：显式要求编译器生成默认实现。
+- 用途1：写了自定义构造/析构后，想恢复编译器版本。
+- 用途2：改变访问级别或虚特性（如 `virtual ~A() = default;`）。
+- 用途3：在类外定义以打破头文件依赖：
+```cpp
+// A.h
+class A { public: ~A(); };
+// A.cpp
+A::~A() = default;   // 让析构在 .cpp 里生成，头文件不暴露实现
+```
+
+**`= delete`**：显式禁用某个函数。
+```cpp
+class NonCopyable {
+    NonCopyable(const NonCopyable&) = delete;
+    NonCopyable& operator=(const NonCopyable&) = delete;
+};
+```
+比放到 `private` 里不实现更好：**错误在编译期以清晰信息报出**，而不是链接期。
+
+**其它用途**：
+- 禁用不想要的隐式转换：
+```cpp
+void f(int);
+void f(double) = delete;   // 禁止 f(3.14) 的隐式转换
+```
+- **模板禁用特定实例化**：
+```cpp
+template <class T> void f(T) = delete;   // 禁止所有 T，需特化才能用
+```
+
+注意：`= delete` 的函数仍参与重载决议（选中后报错），这正是它能"精准拦截"的原因；而 `private` 未定义版本是链接期才报错。', 1),
+
+('C++', '模板特化,偏特化', 2,
+ '什么是模板全特化和偏特化？函数模板能偏特化吗？',
+ '**全特化（explicit specialization）**：为特定类型提供完全独立的实现。
+
+```cpp
+template <class T> struct Traits { static const char* name(); };
+template <> struct Traits<int> { static const char* name() { return "int"; } };
+```
+
+**偏特化（partial specialization）**：只固定部分模板参数，仍保留泛型部分。
+
+```cpp
+template <class T, class U> struct Pair { };          // 主模板
+template <class T> struct Pair<T, int> { };            // 偏特化：第二个固定为 int
+template <class T> struct Pair<T*, T*> { };            // 偏特化：两个都是指针
+```
+
+偏特化也是 `std::vector<T*>`、`std::is_pointer` 等的实现基础。
+
+**关键限制：函数模板不能偏特化**，只能全特化。
+
+```cpp
+template <class T> void f(T);            // 主模板
+template <> void f<int>(int);            // ✅ 全特化
+template <class T> void f<T*>(T*);       // ❌ 编译错误：函数模板不支持偏特化
+```
+
+**替代方案**：用**重载**或**委托到类模板**（tag dispatch / class template partial specialization）：
+
+```cpp
+template <class T> struct helper { static void f(T); };
+template <class T> struct helper<T*> { static void f(T*); };   // 偏特化放在类模板里
+
+template <class T> void f(T x) { helper<T>::f(x); }
+```
+
+**顺序要求**：特化必须出现在**首次使用之前**，否则是 `ill-formed, no diagnostic required`（实际上往往静默走主模板，非常难查）。', 1),
+
+('C++', 'SFINAE,enable_if', 3,
+ '什么是 SFINAE？`std::enable_if` 是怎么用的？',
+ '**SFINAE = Substitution Failure Is Not An Error**：模板实参替换失败时，**不报错，只是把该候选从重载集中移除**。
+
+```cpp
+template <class T>
+typename T::value_type f(T);     // 若 T 没有 value_type，替换失败 → 静默丢弃
+
+template <class T>
+void f(T);                        // 兜底
+```
+（但这个例子会二义性；实际要配合 enable_if 约束。）
+
+**`std::enable_if`**：
+
+```cpp
+template <bool B, class T = void>
+struct enable_if {};                 // B == false：无 type 成员 → 替换失败
+template <class T>
+struct enable_if<true, T> { using type = T; };
+```
+
+三种常见写法：
+
+```cpp
+// 1) 返回类型
+template <class T>
+typename std::enable_if<std::is_integral<T>::value, int>::type
+f(T);
+
+// 2) 模板参数默认值（推荐，不污染签名）
+template <class T, class = std::enable_if_t<std::is_integral<T>::value>>
+int f(T);
+
+// 3) 模板非类型参数
+template <class T, std::enable_if_t<std::is_integral<T>::value, int> = 0>
+int f(T);
+```
+
+**C++17 起**，优先用 **`if constexpr`** 替代部分场景；**C++20 起**用 **concepts/requires**，可读性远好于 SFINAE：
+
+```cpp
+template <std::integral T> int f(T);
+template <class T> requires std::integral<T> int f(T);
+```
+
+**注意**：SFINAE 只适用于"模板参数替换阶段"的失败；函数体里的错误、硬错误（如 `static_assert` 失败）不适用。', 1),
+
+('C++', '可变参数模板,折叠表达式', 3,
+ '可变参数模板（variadic template）怎么用？折叠表达式是什么？',
+ '**可变参数模板**用 `...` 接受任意数量、任意类型的参数：
+
+```cpp
+template <class... Ts>
+void f(Ts... args) {          // 值接收
+    g(args...);               // 展开
+    sizeof...(args)           // 参数个数
+}
+
+template <class... Ts>
+void f(const Ts&... args) {   // 完美转发时用 Ts&&... + std::forward
+}
+```
+
+**C++11/14 的展开方式**（递归 + 递归终止）：
+
+```cpp
+void print() {}                        // 终止
+template <class T, class... Rest>
+void print(const T& first, const Rest&... rest) {
+    std::cout << first;
+    print(rest...);
+}
+```
+
+**C++17 折叠表达式**（fold expression）把它变成一行：
+
+```cpp
+template <class... Ts>
+void print(const Ts&... ts) {
+    ((std::cout << ts << '' ''), ...);    // 一元右折叠
+}
+
+template <class... Ts>
+auto sum(const Ts&... ts) {
+    return (ts + ...);                   // (0 + ...) 是二元折叠，空参数时给初值
+}
+```
+
+四种形式：
+
+| 形式 | 展开 |
+|---|---|
+| `(pack op ...)` | 一元右折叠 |
+| `(... op pack)` | 一元左折叠 |
+| `(init op ... op pack)` | 二元右折叠 |
+| `(pack op ... op init)` | 二元左折叠 |
+
+**典型应用**：`std::make_unique` 转发、日志、`std::tuple` 构造、类型列表遍历。
+
+一个坑：空参数包时，一元折叠的运算符决定了结果（`&&` → true，`+` → 编译错误需用二元折叠给初值）。', 1),
+
+('C++', 'CRTP', 3,
+ '什么是 CRTP？它能解决什么问题？',
+ '**CRTP（Curiously Recurring Template Pattern）**：派生类把自己作为模板参数传给基类。
+
+```cpp
+template <class Derived>
+struct Base {
+    void interface() {
+        static_cast<Derived*>(this)->implementation();   // 静态多态
+    }
+};
+
+struct D : Base<D> {
+    void implementation();
+};
+```
+
+**核心价值：编译期多态**（static polymorphism）
+- 无需虚函数、无 vptr 开销、可内联。
+- 适合：运算符的"统一实现"、`enable_shared_from_this`、Mixin。
+
+**典型用途**：
+
+1. **统一提供 `operator!=`/`operator>` 等**（只需派生类实现 `==`、`<`）。
+2. **`std::enable_shared_from_this<T>`** 就是 CRTP 实现。
+3. **计数器 Mixin**：每个派生类各自一份静态计数。
+```cpp
+template <class T> struct Counter {
+    static int count;
+    Counter() { ++count; }
+};
+struct A : Counter<A> {};
+struct B : Counter<B> {};   // A 和 B 各有独立的 count
+```
+4. **策略注入 / 编译期接口**。
+
+**注意**：
+- `Base` 里访问派生类成员要靠 `static_cast<Derived*>(this)`，因为此时 `Derived` 还不完整。
+- 不要在基类构造/析构里调用 `static_cast<Derived*>(this)->...`，此时派生部分未构造，是 UB。
+- 这也是"Mixin"和"策略模式零开销实现"的常见手法。
+
+**与虚函数的取舍**：类型在编译期已知、追求性能 → CRTP；需要运行期多态（异构容器、插件） → 虚函数。', 1),
+
+('C++', 'type_traits', 2,
+ '`<type_traits>` 里常用的工具有哪些？举几个实际用法。',
+ '**分类**：
+
+| 类别 | 例子 |
+|---|---|
+| 类型判断 | `is_integral`, `is_pointer`, `is_same`, `is_base_of`, `is_convertible` |
+| 类型变换 | `remove_reference`, `add_const`, `decay`, `common_type`, `conditional` |
+| 属性判断 | `is_trivial`, `is_trivially_copyable`, `is_nothrow_move_constructible` |
+| `_v` / `_t` 简写 | `is_integral_v<T>`, `remove_reference_t<T>`（C++17） |
+
+**实际用法**：
+
+1. **完美转发**：
+```cpp
+template <class T>
+void f(T&& x) { g(std::forward<T>(x)); }
+```
+`std::forward` 内部就用 `remove_reference` + `conditional`。
+
+2. **返回类型推导**：
+```cpp
+template <class A, class B>
+auto add(A a, B b) -> decltype(a + b);
+// 或 C++14: auto add(A a, B b) { return a + b; }
+```
+
+3. **按类型选择实现**（tag dispatch / if constexpr）：
+```cpp
+template <class T>
+void serialize(T& v) {
+    if constexpr (std::is_arithmetic_v<T>) { raw_write(v); }
+    else { v.serialize(); }
+}
+```
+
+4. **`std::declval<T>()`**：在 `decltype` 里"假装"有一个 `T` 对象，用于探测表达式是否合法（SFINAE 检测惯用法）：
+```cpp
+template <class T, class = void>
+struct has_size : std::false_type {};
+template <class T>
+struct has_size<T, std::void_t<decltype(std::declval<T>().size())>>
+    : std::true_type {};
+```
+
+5. **`std::void_t`**（C++17）：把任意类型列表"吃掉"变成 `void`，专用于 SFINAE 探测。', 1),
+
+('C++', '编译期多态,运行期多态', 2,
+ '编译期多态和运行期多态有什么区别？怎么选？',
+ '| 维度 | 编译期多态 | 运行期多态 |
+|---|---|---|
+| 实现手段 | 模板、重载、CRTP、`if constexpr`、concepts | 虚函数、函数指针、`std::function` |
+| 决议时机 | 编译期 | 运行期 |
+| 开销 | 零运行时开销，可内联 | vptr + 一次间接跳转，通常不能内联 |
+| 代码体积 | 每种实例化一份代码（可能膨胀） | 一份代码 |
+| 能否异构容器 | 不能（类型必须在编译期确定） | 能（`vector<unique_ptr<Base>>`） |
+| 是否需要重编译 | 改类型要重编译 | 可动态加载（插件） |
+| 错误信息 | 模板错误较难读 | 较直观 |
+
+**选择依据**：
+- **类型在编译期已知、追求性能** → 编译期多态（如数值库、容器、`std::sort` 的比较器模板）。
+- **需要运行时决定行为、跨模块扩展** → 运行期多态（插件系统、GUI 事件、异构集合）。
+- 混合：**类型擦除**（type erasure）——用虚函数包住模板，对外暴露统一接口。`std::function`、`std::any`、`std::shared_ptr<void>` 都是这个思路：
+
+```cpp
+class AnyCallable {
+    struct Concept { virtual void call() = 0; };
+    template <class F> struct Model : Concept {
+        F f; void call() override { f(); }
+    };
+    std::unique_ptr<Concept> p_;
+public:
+    template <class F> AnyCallable(F f) : p_(new Model<F>{std::move(f)}) {}
+    void operator()() { p_->call(); }
+};
+```
+
+**性能对比**：虚函数调用的间接跳转在有大量分支时可能成为瓶颈（分支预测失败）；热路径上常考虑去虚化（`final`、devirtualization）或改回模板。', 1),
+
+('C++', 'constexpr,consteval', 2,
+ '`constexpr`、`const`、`consteval`、`constinit` 有什么区别？',
+ '| 关键字 | 含义 | 求值时机 |
+|---|---|---|
+| `const` | 只读；**可能**是运行期确定 | 不限定 |
+| `constexpr` | **可以**在编译期求值（若上下文需要） | 编译期或运行期均可 |
+| `consteval`（C++20） | **必须**在编译期求值（immediate function） | 只能编译期 |
+| `constinit`（C++20） | 变量必须**静态初始化**（避免静态初始化顺序问题） | 编译期 |
+
+```cpp
+const int a = f();          // 运行期初始化也行
+constexpr int b = f();      // ❌ f 必须能被编译期求值
+```
+
+**C++14 起 `constexpr` 函数可以含循环、局部变量、if**；C++17 起支持 `constexpr` lambda；C++20 起支持 `constexpr` 动态分配、`constexpr` 虚函数、`std::vector`/`std::string` 的 constexpr 用法。
+
+```cpp
+constexpr int fib(int n) {
+    int a = 0, b = 1;
+    for (int i = 0; i < n; ++i) { int t = a + b; a = b; b = t; }
+    return a;
+}
+static_assert(fib(10) == 55);   // 编译期求值
+```
+
+**为什么关心**：
+- 编译期求值 = **零运行时开销**，且可用于 `static_assert`、数组大小、模板参数。
+- `consteval` 用于"必须编译期算完"的场景（编译期解析、格式串校验）。
+- `constinit` 解决**静态初始化顺序问题**（跨编译单元的全局对象在 `main` 之前初始化的顺序未定义）：
+```cpp
+constinit int x = compute();   // 保证静态初始化，不会在运行期"迟到"
+```
+
+注意：`constexpr` 变量是隐式 `const`；`constexpr` 成员函数在类里也是隐式 `const`（C++14 前）；C++23 起可以用 `constexpr` 做更多编译期计算。', 1),
+
+('C++', 'auto,decltype,推导规则', 2,
+ '`auto` 的推导规则是什么？它和 `decltype` 有什么不同？',
+ '**`auto` 用模板实参推导规则**（丢弃顶层 `const`、引用，数组/函数退化为指针）：
+
+```cpp
+const int  ci = 0;
+auto a = ci;        // int（顶层 const 被丢弃）
+auto& b = ci;       // const int&（引用会保留 const）
+auto c = {1, 2};    // std::initializer_list<int>
+
+int arr[3];
+auto d = arr;       // int*（退化为指针）
+```
+
+**特例**：`auto&&` 是**万能引用**（转发引用），配合 `std::forward` 做完美转发：
+```cpp
+template <class T> void f(T&& x);   // T&& 是万能引用（有类型推导时）
+```
+
+**`decltype` 精确得多**：
+- `decltype(expr)`：expr 是**名字**时得到其声明类型（含 const/引用）；否则按值类别推导。
+- `decltype((expr))`：**多加一层括号**，总是得到引用类型（左值 → `T&`）。
+
+```cpp
+int x = 0; const int& r = x;
+decltype(x)  a;   // int
+decltype(r)  b;   // const int&
+decltype((x)) c;  // int&（因为 (x) 是左值表达式）
+```
+
+**`decltype(auto)`**（C++14）：用 `decltype` 规则推导返回类型，保留引用，常用于转发函数：
+```cpp
+template <class F, class... A>
+decltype(auto) call(F&& f, A&&... a) {
+    return std::forward<F>(f)(std::forward<A>(a)...);
+}
+```
+
+**返回值推导对比**：
+| 写法 | 结果 |
+|---|---|
+| `auto` | 按值，丢引用和顶层 const |
+| `auto&` | 左值引用（可加 const） |
+| `decltype(auto)` | 完全按 decltype 规则（保留引用与 const） |
+
+工具：`-std=c++17` + 编译器错误信息，或 `typeid(x).name()`（注意不精确）；调试模板类型常用 `static_assert(std::is_same_v<decltype(x), T>)` 或经典的 incomplete template trick。', 1),
+
+('C++', '结构化绑定', 2,
+ '什么是结构化绑定？它有哪些限制？',
+ '**结构化绑定**（C++17）把聚合类型"拆开"到多个名字：
+
+```cpp
+std::pair<int,std::string> p{1, "a"};
+auto [id, name] = p;                        // 拷贝
+auto& [rid, rname] = p;                     // 引用，可修改 p
+const auto& [cid, cname] = p;               // 只读引用
+
+std::map<int,int> m;
+for (const auto& [k, v] : m) { ... }
+
+struct Point { int x, y; };
+Point pt{1, 2};
+auto [x, y] = pt;
+```
+
+**支持的类型**：
+1. **数组**（C 风格数组）。
+2. **聚合/平凡结构体**（公开非静态成员）。
+3. **实现 tuple 协议的类型**：`std::tuple_size`、`std::tuple_element`、`get<I>`（`std::pair`、`std::tuple`、`std::array`）。
+
+**常见坑**：
+- 绑定的是**隐藏对象的成员**，不是原对象的引用（除非用引用形式），所以值绑定是拷贝。
+- **不能显式指定类型**（`auto [int x, int y]` 非法）。
+- 结构体**成员顺序必须与绑定顺序一致**，否则静默错位。
+- 结构化绑定**不能用作 lambda 捕获**（C++17），C++20 起可以。
+- 变量**不是独立的变量**，是"绑定名"，`decltype` 行为略特殊（C++20 明确）。
+
+**实用技巧**：解构 `insert` 返回值：
+```cpp
+if (auto [it, ok] = m.insert({1, 2}); ok) { ... }
+```', 1),
+
+('C++', '完美转发,引用折叠', 3,
+ '什么是完美转发？引用折叠规则是什么？',
+ '**完美转发**指把参数**原样**（保留左/右值和 const）转给下层函数，是工厂函数、`emplace` 的基础。
+
+```cpp
+template <class T, class... Args>
+std::unique_ptr<T> make_unique(Args&&... args) {
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
+```
+
+**引用折叠规则**（只在类型推导/别名中出现）：
+
+| 组合 | 结果 |
+|---|---|
+| `T& &` | `T&` |
+| `T& &&` | `T&` |
+| `T&& &` | `T&` |
+| `T&& &&` | `T&&` |
+
+口诀：**只要有一个是左值引用，结果就是左值引用**。
+
+**`T&&` 什么时候是万能引用**：
+- 有**类型推导**（模板参数 `T` 需要被推导）时，`T&&` 是万能引用。
+- 若类型已确定（`int&&`、`std::vector<int>&&`），就是普通右值引用。
+- `const T&&` **不是**万能引用。
+
+**推导细节**：`f(x)` 中 x 是左值 → `T` 推导为 `T&`，`T&&` 折叠成 `T&`；x 是右值 → `T` 推导为 `T`，形参为 `T&&`。
+
+**`std::forward<T>(x)`** 做的就是按 `T` 决定再转成左值还是右值：
+```cpp
+// 简化实现
+template <class T>
+constexpr T&& forward(std::remove_reference_t<T>& x) noexcept {
+    return static_cast<T&&>(x);
+}
+```
+
+**常见坑**：
+- 转发后**不要再用**被转发的对象（可能已被移动）。
+- 构造函数里转发时，若构造函数是 `explicit`，转发会丢失 `explicit`（C++17 前的已知问题，`std::make_unique` 因此不能完美转发初始化列表）。
+- `std::forward` 只能用于**模板推导出的** `T`，不能手写错。', 1),
+
+('C++', 'move,forward', 2,
+ '`std::move` 和 `std::forward` 有什么区别？',
+ '**`std::move`：无条件地把实参转成右值**（本质是一次 `static_cast<T&&>`），表示"我不再需要这个对象了"。
+**`std::forward`：有条件地转发**，按模板推导出的 `T` 决定保持左值还是转成右值。
+
+```cpp
+// std::move 的简化实现
+template <class T>
+constexpr std::remove_reference_t<T>&& move(T&& x) noexcept {
+    return static_cast<std::remove_reference_t<T>&&>(x);
+}
+
+// std::forward 的简化实现
+template <class T>
+constexpr T&& forward(std::remove_reference_t<T>& x) noexcept {
+    return static_cast<T&&>(x);
+}
+```
+
+**语义区别**：
+- `std::move`：**我确定要放弃它** —— 用于把局部变量/成员移交给别人。
+- `std::forward`：**我不确定调用者给的是左值还是右值** —— 用于转发。
+
+**常见错误**：
+1. **`return std::move(local);`** —— 破坏 NRVO，反而可能多一次移动。
+2. **对 `const` 对象 `std::move`** —— 得到 `const T&&`，移动构造接受 `T&&` 所以不匹配，**会静默退回拷贝**：
+```cpp
+const std::string s = "x";
+std::string t = std::move(s);   // 实际是拷贝！
+```
+3. **在转发后继续使用参数**。
+4. **对已经 `std::move` 过的对象做除赋值/析构外的操作** —— 处于"有效但未指定"状态。
+
+**一句话总结**：`move` 是"转成右值"，`forward` 是"保持原样转下去"。', 1),
+
+('C++', 'lambda,捕获', 2,
+ 'lambda 是什么？捕获列表有哪些坑？',
+ 'lambda 是**编译器生成的匿名函数对象**（闭包），捕获的变量成为其成员。
+
+```cpp
+int x = 1;
+auto f = [x](int y) { return x + y; };       // 按值捕获（拷贝）
+auto g = [&x](int y) { return x + y; };      // 按引用捕获
+auto h = [=] { return x; };                  // 全部按值
+auto k = [&] { return x; };                  // 全部按引用
+auto m = [p = std::make_unique<int>(1)] { return *p; };  // 初始化捕获（C++14）
+```
+
+**坑**：
+
+1. **`[&]` 捕获局部变量的引用，若 lambda 活得比变量长 → 悬垂**：
+```cpp
+std::function<void()> f;
+{
+    int x = 1;
+    f = [&x]{ std::cout << x; };   // ❌ x 已销毁
+}
+f();   // UB
+```
+
+2. **`[=]` 在成员函数里捕获的是 `this` 指针（按值），不是成员副本** —— 对象销毁后调用同样 UB。C++20 起 `[=]` 捕获 `this` 已弃用，要显式 `[*this]` 或 `[this]`（并注意生命周期）。
+
+3. **`mutable`**：按值捕获的变量在 lambda 内默认是 `const`，要改需 `mutable`（改动的是 lambda 内部的副本）：
+```cpp
+int c = 0;
+auto f = [c]() mutable { return ++c; };
+f(); f();   // 返回 1, 2 —— 但外部的 c 仍是 0
+```
+
+4. **`std::function` 会为 lambda 分配堆内存**（大闭包），热路径上优先用 `auto` 存 lambda 或模板参数，避免类型擦除的开销。
+
+5. **lambda 的大小 = 捕获的变量大小（+ 对齐）**，捕获大对象要当心；`[&]`/`[=]` 只捕获**用到的**变量（未用的是 ODR-use 才捕获）。
+
+6. **泛型 lambda**（C++14）：`[](auto x){...}` 等价于模板 `operator()`；C++20 起可写 `[]<class T>(T x){}`。
+
+**存储与线程**：lambda 若被拷贝到其他线程，注意捕获的对象是否线程安全；捕获引用跨线程尤其危险。', 1),
+
+('C++', 'std::function', 2,
+ '`std::function` 是怎么实现的？开销在哪？',
+ '`std::function<Sig>` 是**类型擦除**容器：可存任意可调用对象（函数指针、lambda、仿函数、成员函数绑定）只要签名兼容。
+
+**实现原理**（简化）：
+```cpp
+template <class Sig> class function;   // 主模板
+template <class R, class... A>
+class function<R(A...)> {
+    struct Base { virtual R call(A...) = 0; virtual ~Base() = default; };
+    template <class F> struct Model : Base {
+        F f;
+        R call(A... a) override { return f(std::forward<A>(a)...); }
+    };
+    std::unique_ptr<Base> p_;    // 或 SBO 的小缓冲
+public:
+    template <class F> function(F f) : p_(new Model<F>{std::move(f)}) {}
+    R operator()(A... a) const { return p_->call(...); }
+};
+```
+
+**开销**：
+1. **一次虚函数调用**（间接跳转），不能跨类型内联。
+2. **可能堆分配**：闭包超过 SBO（small buffer optimization，典型 16~32 字节）时 heap alloc。libstdc++/libc++ 都做了 SBO。
+3. **大小固定**：`sizeof(std::function)` 通常 32 字节（含 SBO 缓冲），捕获大对象会触发分配。
+
+**优化建议**：
+- 泛型上下文里**优先用模板参数或 `auto`** 接 lambda，零开销：
+```cpp
+template <class F> void run(F f) { f(); }   // 可内联
+void run(std::function<void()> f);          // 有间接调用
+```
+- 需要存储异构可调用对象时才用 `std::function`。
+- C++23 有 `std::move_only_function`（支持只移类型，且不要求可拷贝）。
+
+**与函数指针对比**：
+
+| | 函数指针 | std::function |
+|---|---|---|
+| 能否存有状态 lambda | ❌ | ✅ |
+| 开销 | 无 | 间接调用 + 可能分配 |
+| 大小 | 8 字节 | 通常 32 字节 |
+
+**注意**：`std::function` 若为空时调用 `operator()` 会抛 `std::bad_function_call`；`std::function<...> == nullptr` 可用于判空。', 1),
+
+('C++', 'std::bind', 2,
+ '`std::bind` 有什么问题？为什么现在推荐用 lambda？',
+ '`std::bind`（C++11）可以绑定参数、重排参数、绑定成员函数：
+
+```cpp
+using namespace std::placeholders;
+void f(int a, int b);
+auto g = std::bind(f, 1, _1);
+g(2);        // f(1, 2)
+
+struct S { void m(int); };
+S s;
+auto h = std::bind(&S::m, &s, _1);
+h(3);        // s.m(3)
+```
+
+**问题**：
+
+1. **可读性差**：`std::bind(f, 1, _2, _1)` 需要对照占位符数位次，容易错。
+2. **类型推导不直观**：返回类型是实现定义的（`std::_Bind<...>`），错误信息极长，调试器里是 `_Bind_helper<...>` 这样的名字。
+3. **完美转发的坑**：`std::bind` 默认**按值存储**实参并**移动**到调用点 —— 对引用语义不友好；想把左值按引用传需要 `std::ref`：
+```cpp
+int x = 1;
+auto f = std::bind(g, x);          // ❌ 拷贝 x
+auto h = std::bind(g, std::ref(x)); // ✅ 引用
+```
+4. **与重载函数/模板配合困难**：`std::bind(f, ...)` 无法推导重载函数到底选哪个，需要 `static_cast` 消歧义。
+5. **不能完美转发**：`bind` 的 `operator()` 内部有 `decay` 语义，转发能力不如 lambda。
+
+**lambda 的等价写法**（C++14 起，且支持泛型参数与捕获）：
+```cpp
+auto g = [](int b) { return f(1, b); };       // 清晰、可内联、类型明确
+auto h = [&s](int x) { s.m(x); };
+```
+
+**结论**：除少数历史代码或需要"占位符重排"的场景，一律用 lambda。`std::bind` 已被视为过时（C++ 社区共识，如 Scott Meyers 的 Effective Modern C++ Item 34 标题就是"Prefer lambdas to std::bind"）。', 1),
+
+('C++', '容器选择', 2,
+ '`vector`、`list`、`deque`、`map`、`unordered_map` 分别适合什么场景？',
+ '| 容器 | 底层 | 随机访问 | 中间插删 | 查找 | 内存 |
+|---|---|---|---|---|---|
+| `vector` | 连续数组 | O(1) | O(n) | O(n) 线性 | 紧凑，缓存友好 |
+| `deque` | 分段连续（map of blocks） | O(1) | 头尾 O(1) | O(n) | 略大，头尾扩张不搬移 |
+| `list` | 双向链表 | O(n) | O(1)（有迭代器） | O(n) | 每节点两个指针 + 分配开销 |
+| `forward_list` | 单向链表 | O(n) | O(1)（有前置） | O(n) | 更省 |
+| `map`/`set` | 红黑树 | O(log n) | O(log n) | O(log n) 有序 | 每节点指针开销 |
+| `unordered_map`/`set` | 哈希表 | 平均 O(1) | 平均 O(1) | 平均 O(1)，最坏 O(n) | 桶 + 节点 |
+| `array` | 定长数组 | O(1) | 不支持 | O(n) | 无额外开销 |
+
+**选择原则**：
+
+1. **默认用 `vector`** —— 连续内存带来的缓存局部性通常碾压"复杂度更优"的链表。现代 CPU 上 `vector` 的线性查找常常快于 `list` 的遍历。
+2. **需要有序、范围查询、有序遍历** → `map`/`set`。
+3. **只需快速查找、不要求顺序** → `unordered_map`/`unordered_set`。
+4. **频繁在头部插删** → `deque`（比 `vector` 的头部插入 O(n) 好）。
+5. **需要稳定引用/迭代器**（插入不影响其它元素地址） → `list`/`map`。
+6. **元素极大且拷贝昂贵** → 考虑存 `unique_ptr`（`vector<unique_ptr<T>>`）避免扩容搬移。
+7. **范围确定且定长** → `std::array`。
+
+**实践的反直觉点**：
+- `list` 在现代 CPU 上往往**不如** `vector`，因为链表遍历是随机内存访问、缓存命中率极低，通常被称为"几乎不要用 list"。
+- `unordered_map` 的哈希计算与冲突链在缓存上也不友好；元素少时（< 几十）`vector` 线性查找反而更快。
+- `map` 的迭代器与引用**稳定**（节点不会因插删而移动），这是它相对 `vector` 的重要优势。', 1),
+
+('C++', '哈希表', 2,
+ '`std::unordered_map` 的哈希冲突怎么解决？负载因子和 rehash 是什么？',
+ '**实现**：标准只要求"平均 O(1)"，主流实现（libstdc++、libc++、MSVC）都是**链地址法（separate chaining）**：
+- 一个桶数组（bucket array）。
+- 每个桶挂一条**单链表**（libstdc++ 实现为节点里带 `next` 指针，全表一条大链表 + 桶索引，迭代器是 `const_iterator`）。
+
+**冲突解决**：链地址法。插入时算哈希 → 对桶数取模 → 挂到对应链表头/尾。
+
+**负载因子（load factor）** = `元素数 / 桶数`。
+- 默认 `max_load_factor() == 1.0`。
+- 插入后若 `size / bucket_count > max_load_factor`，触发 **rehash**：把桶数扩到下一个质数/2 的幂，**重新插入所有元素**。
+- **rehash 会使所有迭代器失效**（但引用/指针不失效，因为节点没动，只改链）。
+
+```cpp
+std::unordered_map<int,int> m;
+m.reserve(1000);          // 预分配桶，避免多次 rehash
+m.max_load_factor(0.7);   // 调低负载因子换查找速度
+```
+
+**注意点**：
+
+1. **rehash 会让迭代器失效**，遍历中不能插入。
+2. **迭代顺序不确定**（与插入顺序无关）。
+3. **自定义类型要提供 `std::hash` 特化和 `operator==`**：
+```cpp
+struct P { int x, y; bool operator==(const P&) const; };
+struct PHash { size_t operator()(const P& p) const { return std::hash<int>{}(p.x) ^ (std::hash<int>{}(p.y) << 1); } };
+std::unordered_map<P, int, PHash> m;
+```
+4. **哈希质量差会导致最坏 O(n)**；需要防哈希洪水攻击时可用 `std::hash` 的随机种子变体（libstdc++ 有 `std::__hash` 的随机化）。
+5. **`std::map` 的最坏 O(log n) 是稳定保证**，实时系统更看重确定性时选 `map`。
+
+**C++20 起**有 `contains()`、`try_emplace`、`insert_or_assign`；`try_emplace` 避免无谓的构造（`insert` 可能先构造再丢弃）。', 1),
+
+('C++', 'vector,reserve,realloc', 2,
+ '`vector` 的 `size` 和 `capacity` 有什么区别？`reserve` 有什么用？',
+ '**`size`**：已有元素个数。**`capacity`**：当前分配的内存能装多少个元素（不重新分配的前提下）。
+
+```cpp
+std::vector<int> v;
+v.size();      // 0
+v.capacity();  // 0（实现相关）
+v.push_back(1);
+// 典型按 2 倍扩容：capacity 变 1 → 2 → 4 → 8 ...
+```
+
+**扩容过程**：申请新内存（通常 2 倍或 1.5 倍）→ 移动/拷贝旧元素 → 释放旧内存。因此 `push_back` **均摊** O(1)，但单次扩容 O(n)，且**所有迭代器/指针/引用失效**。
+
+**`reserve(n)`**：预分配至少 n 个元素的空间，把多次扩容变成一次：
+
+```cpp
+std::vector<int> v;
+v.reserve(10000);            // 只改 capacity，不改 size
+for (int i = 0; i < 10000; ++i) v.push_back(i);   // 不再扩容
+```
+
+**`resize(n)`** 则改 `size`（多出来的元素值初始化）：
+```cpp
+v.resize(5);      // size = 5，新增元素为 0
+v.resize(2);      // size = 2，尾部元素被销毁（capacity 不变）
+```
+
+**`shrink_to_fit()`** 请求释放多余容量（非强制，实现可忽略）；C++11 前用 `swap` 技巧：
+```cpp
+std::vector<int>(v).swap(v);   // 老写法
+```
+
+**实践建议**：
+1. 已知元素个数时**先 `reserve`**，避免重复分配与搬移。
+2. 用 `emplace_back(args...)` 就地构造，避免临时对象 + 移动。
+3. 扩容会让**引用/指针/迭代器全部失效**；如果外部持有元素指针（如 `vector<Foo>` 里 `Foo*`），要改用 `deque`/`list` 或存 `unique_ptr`。
+4. 扩容时的元素搬移在元素类型有 `noexcept` 移动构造时用移动，否则**退回拷贝**（强异常安全保证要求）。
+
+**扩容倍数为什么常见是 1.5 或 2**：2 倍导致"永远无法复用之前释放的内存块"（新块总比所有旧块之和还大）；1.5 倍可以更好地复用。', 1),
+
+('C++', 'vector bool 特化', 3,
+ '`std::vector<bool>` 有什么特殊之处？为什么说它是"坑"？',
+ '`std::vector<bool>` 是一个**特化**，为节省空间把每个 bool 压成 **1 bit**（不是 1 字节）。
+
+```cpp
+std::vector<bool> v(8);
+sizeof(v[0]);        // ❌ 编译错误：v[0] 是代理对象，不是一个 bool 左值
+auto x = v[0];       // ✅ 可以隐式转换为 bool（proxy）
+bool& r = v[0];      // ❌ 不能绑定引用
+```
+
+**问题清单**：
+
+1. **`operator[]` 返回代理对象（`std::vector<bool>::reference`）**，不是 `bool&`。
+   - 不能用 `bool*`、不能取地址、不能绑定 `bool&`。
+   - 模板代码里 `auto&& x = v[0];` 得到的是代理的引用，行为怪异。
+2. **不能与 C 风格接口互操作**：没有 `data()` 返回 `bool*`（C++17 前完全没有 `data()`）。
+3. **线程不安全**：多个 bit 共享同一字节，并发写不同 bit 会数据竞争。
+4. **性能可能更差**：位运算 + 读改写，比直接操作字节慢。
+5. **泛型代码里破坏假设**：`std::vector<T>` 的通用算法遇到 `T = bool` 会编译失败（如 `&v[0]`）。
+
+**替代方案**：
+- 需要真正的 `bool` 数组 → `std::vector<char>` 或 `std::vector<uint8_t>`（明确 1 字节）。
+- C++20 起可以用 `std::vector<bool>` 的替代品：boost 的 `dynamic_bitset`、或自己的位集包装。
+- 需要位集但长度固定 → `std::bitset<N>`（专门为此设计，接口清晰）。
+
+**标准委员会的态度**：`std::vector<bool>` 被公认是设计失误，但**不能改**（破坏 ABI 兼容）。新的提案（如 `std::bitset` 的动态版本）在推进中。
+
+面试回答要点：**明确指出"代理引用"和"不能取地址"这两个核心差异**，并给出替代方案。', 1),
+
+('C++', 'string,SSO', 3,
+ '`std::string` 的 SSO（小字符串优化）是什么？',
+ '**SSO（Short String Optimization）**：短字符串直接存在 `std::string` 对象内部的缓冲区里，**不分配堆内存**。
+
+`std::string` 通常 32 字节（libstdc++/libc++/MSVC 略有差异），典型布局：
+
+```
+[ 指针(8) ][ 长度(8) ][ 容量或 SSO 缓冲(16) ]
+                                  ↑ 短串(<=15 字符)就存这里
+```
+
+- **libstdc++**：SSO 容量 15 字符（16 字节缓冲去掉 1 个存长度/标志）。
+- **libc++**：SSO 容量 22 字符（利用指针的最高位做标志，布局更紧凑）。
+- **MSVC**：SSO 容量 15 字符。
+
+```cpp
+std::string s1 = "short";                 // 无堆分配
+std::string s2 = "this is a long string over 15 chars";  // 堆分配
+```
+
+**为什么重要**：
+1. 绝大多数标识符、键名都是短串，SSO 让常见路径**零分配**，性能提升显著。
+2. `sizeof(std::string)` 因此较大（32 字节）—— 这是拿对象大小换分配次数。
+3. **移动短字符串仍要拷贝缓冲内容**（不能像长串那样只挪指针），所以短串的"移动"并不比拷贝便宜。
+
+**相关坑**：
+- **`c_str()` 返回的指针在字符串修改后失效**（含 SSO 的情况下，缓冲在对象内部，对象移动就失效）。
+- `std::string_view` 指向 `string` 内部时，`string` 的修改/移动会让 view 悬垂。
+- C++11 起 `std::string` 保证**连续存储**，C++11 前不保证。
+- `resize`/`reserve` 的语义与 `vector` 类似，但 `clear()` **不释放容量**。
+
+**面试延伸**：`std::string` 的 `capacity` 在 SSO 状态下通常返回 15（libstdc++），这时 `reserve(16)` 才会真正分配。', 1),
+
+('C++', '迭代器失效', 2,
+ '各类容器的迭代器失效规则是什么？',
+ '**这是高频面试题，按容器背**：
+
+| 容器 | 插入 | 删除 |
+|---|---|---|
+| `vector` | **全部失效**（扩容时）；不扩容时插入点之后失效 | 删除点之后全部失效 |
+| `deque` | 两端插入：迭代器失效但引用不失效；中间插入：全部失效 | 中间删除全部失效；两端删除只影响被删元素 |
+| `list` | 不失效（节点独立） | 只影响被删元素的迭代器 |
+| `forward_list` | 不失效 | 同 list |
+| `map`/`set` | 不失效 | 只影响被删元素 |
+| `unordered_map`/`set` | **rehash 时全部失效**；否则不失效 | 只影响被删元素（引用/指针不失效） |
+
+**`vector` 的细节**：
+```cpp
+std::vector<int> v{1,2,3,4};
+auto it = v.begin();
+v.push_back(5);        // 可能扩容 → it 失效（UB）
+v.erase(v.begin());    // it 之后的都失效
+```
+
+**正确的删除姿势**：
+```cpp
+// 遍历中删除：用 erase 的返回值
+for (auto it = v.begin(); it != v.end(); ) {
+    if (pred(*it)) it = v.erase(it);
+    else ++it;
+}
+// C++20 起更方便
+std::erase_if(v, pred);
+```
+
+**`map`/`list` 的优势**：节点不会因插入/删除而移动，所以迭代器、引用、指针都稳定，只有被删元素本身失效。这是它们相对 `vector` 的核心价值。
+
+**`unordered_map` 的 rehash 会让迭代器全失效**，所以遍历时不能插入新元素；若要边遍历边插入，先 `reserve`。
+
+**调试工具**：`-D_GLIBCXX_DEBUG` 会让 libstdc++ 检测迭代器误用（越界、失效后用）并报错；ASan 也能抓到部分悬垂访问。', 1),
+
+('C++', 'sort,introsort', 3,
+ '`std::sort` 的底层实现是什么？为什么不用纯快排？',
+ '`std::sort` 用 **introsort（内省排序）**，是三种算法的混合：
+
+1. **快速排序**为主。
+2. **递归深度超过 `2 * log2(n)`** 时切换到**堆排序**（防止快排 O(n²) 最坏情况）。
+3. **子区间长度小于阈值（典型 16）** 时切换到**插入排序**（对小数组更快，常数小）。
+
+```
+introsort:
+  quicksort + 深度超限则 heapsort + 小区间用 insertionsort
+```
+
+**为什么不全用快排**：快排最坏 O(n²)（已排序输入 + 首元素作 pivot 时），而 introsort 通过深度限制把最坏压到 **O(n log n)**。
+
+**pivot 选法**：三数取中（median-of-three）或 median-of-nine，避免有序输入退化。
+
+**复杂度与稳定性**：
+- 时间复杂度：O(n log n)（最好/平均/最坏）。
+- **不稳定**（相等元素顺序不保证）。需要稳定用 `std::stable_sort`（归并排序，额外 O(n) 空间）。
+
+**相关函数**：
+
+| 函数 | 用途 | 复杂度 |
+|---|---|---|
+| `sort` | 全排序 | O(n log n) |
+| `stable_sort` | 稳定排序 | O(n log² n) 或 O(n log n) 带额外空间 |
+| `partial_sort` | 只排前 k 个 | O(n log k) |
+| `nth_element` | 找第 n 名（快速选择） | 平均 O(n) |
+| `partition` | 按谓词分组 | O(n) |
+
+**实现细节**：libstdc++/libc++ 的 `sort` 在**移动代价低**时用移动，`is_trivially_copyable` 时可能用 `memmove` 加速。
+
+**面试延伸**：
+- `nth_element` 求中位数/TopK 是 O(n) 平均；
+- `stable_sort` 的额外空间可以通过 `partial_sort` 或"索引排序"规避；
+- 需要自定义比较器时注意**严格弱序**：`a < b` 必须满足 irreflexive、asymmetric、transitive，否则 UB（常见错误是 `<=`）。', 1),
+
+('C++', 'array,C数组', 1,
+ '`std::array` 和 C 风格数组有什么区别？',
+ '| 维度 | C 数组 `T a[N]` | `std::array<T,N>` |
+|---|---|---|
+| 拷贝赋值 | ❌ 不能整体赋值/传参 | ✅ 可拷贝、可赋值、可传值 |
+| 大小 | 需要单独传长度 | `size()` 编译期常量 |
+| 边界检查 | 无 | `at()` 有，`operator[]` 无 |
+| 迭代器 | 退化为指针 | 有 `begin/end` |
+| 与算法配合 | 需 `begin(a), end(a)` | 直接可用 |
+| 零开销 | — | 是（`sizeof == N*sizeof(T)`，无额外成员） |
+| 结构化绑定 | 支持 | 支持 |
+
+```cpp
+std::array<int, 3> a{1,2,3};
+a.size();      // 3
+a.at(5);       // 抛 std::out_of_range
+std::sort(a.begin(), a.end());
+auto b = a;    // ✅ 整体拷贝（C 数组做不到）
+```
+
+**注意**：
+- `std::array` **不退化**为指针，所以 `sizeof(a)` 是数组大小，不是指针大小。
+- `std::array<T,0>` 是合法的（大小为 1，因为对象必须有地址）。
+- 作为函数参数时，`std::array` 按值传参是真正的值传递；C 数组会退化为指针。
+- 需要与 C 接口互操作时用 `a.data()`。
+
+**选择**：新代码优先 `std::array`；需要与 C API 交互或聚合初始化的 POD 数组时用 C 数组。C++20 起还有 `std::span` 用于"引用一段连续内存"，是传参的首选替代。', 1),
+
+('C++', '智能指针', 2,
+ 'C++ 有哪几种智能指针？各自的使用场景是什么？',
+ '| 智能指针 | 所有权 | 开销 | 场景 |
+|---|---|---|---|
+| `unique_ptr` | 独占 | 零开销（可空） | 默认选择，替代裸指针 |
+| `shared_ptr` | 共享（引用计数） | 控制块 + 原子操作 | 多方共享生命周期 |
+| `weak_ptr` | 不增加计数 | 与 shared 配套 | 打破循环引用、观测 |
+| `auto_ptr`（已废弃） | — | — | 不要用（C++17 移除） |
+
+**`unique_ptr`**：
+```cpp
+auto p = std::make_unique<Foo>(args);   // C++14
+p->method();
+auto q = std::move(p);                  // 所有权转移，p 变 nullptr
+```
+- 不可拷贝，只可移动。
+- 支持下放自定义删除器：`unique_ptr<FILE, decltype(&fclose)>`。
+- 用于数组：`std::unique_ptr<int[]>`（C++17 起 `make_unique<int[]>`）。
+
+**`shared_ptr`**：
+```cpp
+auto a = std::make_shared<Foo>();   // 推荐：一次分配（对象 + 控制块）
+auto b = a;                          // 引用计数 +1
+```
+- 引用计数归零时释放对象。
+- **控制块里有两个计数**：`shared_count`（决定释放对象）和 `weak_count`（决定释放控制块）。
+- `make_shared` 比 `shared_ptr<T>(new T)` 好：**一次分配**（减少一次 malloc 和更好的缓存局部性），且异常安全。
+
+**`weak_ptr`**：
+```cpp
+std::weak_ptr<Foo> w = a;
+if (auto s = w.lock()) { s->method(); }   // 提升为 shared_ptr，可能失败
+```
+- 不增加引用计数，不阻止对象销毁。
+- 用途：**打破循环引用**、**缓存**（观测对象是否还活着）、观察者模式。
+
+**选择原则**：
+1. **默认 `unique_ptr`**。
+2. 确实需要共享所有权才用 `shared_ptr`（它的原子引用计数是有成本的）。
+3. 需要"观测但不拥有"用 `weak_ptr` 或裸指针/引用。
+4. **不要**从同一个裸指针构造两个 `shared_ptr`（双重释放）。
+
+**注意**：`shared_ptr<int>` 不是"指向 int 的智能指针"，而是"共享拥有一个 int"，`sizeof(shared_ptr) == 2 * sizeof(void*)`（有指针 + 控制块指针）。', 1),
+
+('C++', 'unique_ptr', 2,
+ '`unique_ptr` 是怎么做到"零开销 + 不可拷贝"的？删除器怎么用？',
+ '**实现要点**（简化）：
+
+```cpp
+template <class T, class D = std::default_delete<T>>
+class unique_ptr {
+    T* ptr_ = nullptr;
+    // 无删除器状态时：[[no_unique_address]] D d_;
+public:
+    unique_ptr(const unique_ptr&) = delete;              // 不可拷贝
+    unique_ptr(unique_ptr&& o) noexcept : ptr_(o.ptr_) { o.ptr_ = nullptr; }  // 可移动
+    ~unique_ptr() { if (ptr_) D{}(ptr_); }
+    T* release() noexcept { T* p = ptr_; ptr_ = nullptr; return p; }
+    void reset(T* p = nullptr) noexcept { if (ptr_) D{}(ptr_); ptr_ = p; }
+};
+```
+
+**为什么零开销**：
+- 无状态删除器（`default_delete`）是**空类**，配合 `[[no_unique_address]]` / EBO **不占空间** → `sizeof(unique_ptr<T>) == sizeof(T*)`。
+- 全部操作可内联，没有虚函数、没有引用计数。
+
+**与裸指针的差别**：只是"析构时自动 delete"，编译期保证，运行期零成本。
+
+**自定义删除器**：
+
+```cpp
+// 1) 函数指针形式（占 8 字节）
+auto closer = [](FILE* f){ if (f) fclose(f); };
+std::unique_ptr<FILE, decltype(closer)> fp(fopen("f.txt","r"), closer);
+
+// 2) 无状态函数对象（不占空间）
+struct FileCloser { void operator()(FILE* f) const { if (f) fclose(f); } };
+std::unique_ptr<FILE, FileCloser> fp(fopen("f.txt","r"));
+
+// 3) 作为类型别名封装
+template <class T> using Unique = std::unique_ptr<T, ...>;
+```
+
+**注意点**：
+- 删除器是**类型的一部分**：`unique_ptr<T, D1>` 和 `unique_ptr<T, D2>` 是不同类型，不能互相赋值。
+- 删除器的**有状态部分**会占空间（比如持有 allocator 引用）。
+- `unique_ptr<T[]>` 用 `delete[]`，但**不支持自定义删除器时的数组推导**要小心。
+- 转换为 `shared_ptr`：`std::shared_ptr<T> sp = std::move(up);` 是允许的（移动所有权）。
+
+**为什么 `unique_ptr` 比 `shared_ptr` 更适合做成员**：独占语义清晰、零开销；只有当确实需要共享时才升级为 `shared_ptr`。', 1),
+
+('C++', 'make_shared,控制块', 3,
+ '`std::make_shared` 和 `shared_ptr<T>(new T)` 有什么区别？',
+ '**关键差异：内存分配次数与控制块布局**。
+
+```cpp
+std::shared_ptr<Foo> a(new Foo);            // 两次分配
+std::shared_ptr<Foo> b = std::make_shared<Foo>();  // 一次分配（通常）
+```
+
+| 维度 | `shared_ptr<T>(new T)` | `make_shared<T>()` |
+|---|---|---|
+| 分配次数 | 2（对象 + 控制块） | 1（合并为一块） |
+| 缓存局部性 | 对象与控制块分离 | 相邻，更好 |
+| 异常安全 | 若控制块分配失败，`new T` 已分配 → 会泄漏？实际上标准保证 delete，但顺序不理想 | 天然安全 |
+| 弱引用寿命 | 对象释放后，控制块随 weak 计数归零释放 | **对象和控制块同一块内存**，weak 计数未归零时**整块都不释放** |
+| 支持 `weak_ptr` 长持有时 | 对象内存可先释放 | 对象内存要等 weak 也归零 |
+| 自定义删除器 | ✅ | ❌（`make_shared` 不支持） |
+| 私有构造函数 | ❌ 无法访问 | ✅（`make_shared` 可访问） |
+
+**最后两条是选型关键**：
+- 需要**自定义删除器**（如 `fclose`、`munmap`）→ 只能用 `shared_ptr<T>(ptr, deleter)`。
+- 构造函数是 `private`/`protected` → 用 `make_shared`（它作为友元？不，是因为标准规定 `make_shared` 内部 `::new T(...)` 不受访问限制？实际上是通过 `allocator_traits::construct`，能在派生场景工作。实践上常见做法是给 `make_shared` 加友元或提供静态工厂）。
+
+**`weak_ptr` 与内存滞留**（重要陷阱）：
+
+```cpp
+auto sp = std::make_shared<BigObject>();  // 对象 + 控制块在一整块内存
+std::weak_ptr<BigObject> w = sp;
+sp.reset();          // 对象析构，但**整块内存**要等 w 也释放
+```
+若有大对象 + 长生命周期的 `weak_ptr`，`make_shared` 会让内存滞留 → 此时应**用 `shared_ptr<T>(new T)`**，让对象内存可以先行释放。
+
+**`allocate_shared`**：`std::allocate_shared` 支持自定义 allocator，是 `make_shared` 的泛化版本，用于内存池场景。
+
+**结论**：默认用 `make_shared`；需要自定义删除器、或有大对象 + 长持有 `weak_ptr` 时用显式构造。', 1),
+
+('C++', '裸指针,智能指针', 1,
+ '为什么推荐用智能指针而不是裸指针？什么情况下裸指针仍然合适？',
+ '**裸指针的语义模糊**：无法从 `T*` 看出这是"拥有"还是"借用"。
+
+```cpp
+void f(Foo* p);        // 谁负责 delete？调用者？函数内？
+```
+这导致：内存泄漏、双重释放、悬垂、所有权不清。
+
+**智能指针表达所有权**：
+- `unique_ptr<T>`：独占拥有，离开作用域即释放。
+- `shared_ptr<T>`：共享拥有，最后一个释放。
+- `T*` / `T&`：**不拥有，只是借用**（更清晰的约定）。
+
+**裸指针仍然合适的场景**：
+1. **非拥有的形参**：`void render(const Foo&)` 或 `void render(const Foo* p)`（可空时用指针）。
+2. **观察者/缓存**，生命周期由别处保证（配合注释或 `weak_ptr`）。
+3. **实现容器/数据结构的内部节点链接**（`list` 的 `next`）。
+4. **C 接口互操作**（不能传智能指针，用 `.get()` / `.release()`）。
+5. **性能极端的场景**：`unique_ptr` 已经是零开销，通常不需要退回裸指针。
+
+**注意点**：
+- 传参时**不要**传 `shared_ptr` 值（会原子增删引用计数）；传 `const T&` 或 `T*` 更合适，除非函数需要**延长生命周期**（那就传 `shared_ptr` 值）。
+- `.get()` 得到的裸指针**不拥有**，不能 delete。
+- `shared_ptr` 参数传递是"可能共享所有权"的信号，传递方式本身就是文档。
+
+**判断标准**：问自己"这块内存谁负责释放？" —— 有明确答案就用智能指针；"别人负责"就用裸指针/引用并注释清楚。', 1),
+
+('C++', 'atomic,内存序', 3,
+ '`std::atomic` 是什么？六种内存序分别是什么含义？',
+ '`std::atomic<T>` 提供**原子的读改写**与**内存序**控制，是 C++ 并发的基础设施。
+
+```cpp
+std::atomic<int> cnt{0};
+cnt.fetch_add(1, std::memory_order_relaxed);   // 原子自增
+int v = cnt.load(std::memory_order_acquire);
+cnt.store(1, std::memory_order_release);
+
+auto expected = 0;
+bool ok = cnt.compare_exchange_strong(expected, 1);   // CAS
+```
+
+**六种内存序**（从弱到强）：
+
+| 内存序 | 语义 |
+|---|---|
+| `relaxed` | 只保证该操作的原子性，**不保证任何顺序**（同一变量的修改仍有 total order） |
+| `consume` | 依赖顺序（data dependency），实践中被当作 `acquire`，**不推荐使用** |
+| `acquire` | 读操作：**之后的**读写不能重排到它之前 |
+| `release` | 写操作：**之前的**读写不能重排到它之后 |
+| `acq_rel` | 读改写的双面（`fetch_add` 等） |
+| `seq_cst` | **默认**，全局单一顺序（sequential consistency），最易推理也最慢 |
+
+**acquire-release 配对**是核心模式（发布-订阅）：
+
+```cpp
+// 线程 A
+data = 42;                                   // 非原子写
+flag.store(true, std::memory_order_release); // 保证 data 的写在 flag 之前可见
+
+// 线程 B
+while (!flag.load(std::memory_order_acquire));  // 保证之后能看到 data = 42
+assert(data == 42);                              // 一定成立
+```
+
+**要点**：
+1. 默认 `seq_cst` 最安全，性能敏感时再降级。
+2. `relaxed` 用于**纯计数**（如统计），但**不能**用来同步数据。
+3. **CAS 有 ABA 问题**（见下一题）。
+4. `std::atomic` 对**非平凡类型**（如 `shared_ptr` 的实现）需要特殊处理，标准只保证对 trivially copyable 类型的无锁性。
+5. **不是所有类型都无锁**：`is_lock_free()` 可检测；大对象可能退化为内部加锁。
+6. 注意**不要用 volatile 替代 atomic**（见 volatile 题）。
+
+**x86 的实际情况**：load/store 天然有 acquire/release 语义（强内存模型），所以 `relaxed` 和 `acquire` 在 x86 上编译结果常常一样；但在 ARM/PowerPC 上差异巨大（需要显式屏障指令）。写可移植代码必须用正确的内存序，不能因为"x86 上跑得对"就降级。', 1),
+
+('C++', '内存屏障', 2,
+ '内存屏障（fence）是什么？`std::atomic_thread_fence` 怎么用？',
+ '**为什么需要屏障**：编译器和 CPU 都会重排指令（编译器优化 + 乱序执行 + store buffer / 缓存一致性协议），在单线程内保持"as-if"语义，但多线程下可能观察到违反直觉的顺序。
+
+**两类屏障**：
+
+1. **编译器屏障**：阻止编译器重排。
+   - `asm volatile("" ::: "memory");`（GCC 常用）。
+   - `std::atomic_signal_fence(std::memory_order_acq_rel);`（标准库提供）。
+2. **CPU 内存屏障**：阻止硬件重排，如 x86 的 `mfence`/`lfence`/`sfence`，ARM 的 `dmb`。
+
+**标准库接口**：
+```cpp
+std::atomic_thread_fence(std::memory_order_release);
+std::atomic_thread_fence(std::memory_order_acquire);
+```
+
+**独立屏障的用法**（不依赖某个原子变量）：
+
+```cpp
+// 生产者
+data[0] = 1; data[1] = 2;
+std::atomic_thread_fence(std::memory_order_release);
+flag.store(true, std::memory_order_relaxed);
+
+// 消费者
+while (!flag.load(std::memory_order_relaxed));
+std::atomic_thread_fence(std::memory_order_acquire);
+assert(data[0] == 1);
+```
+
+**语义细则**（容易搞错）：
+- `release` fence 与之前的所有写建立顺序，与**之后的**原子 store 结合表现如同 release store。
+- `acquire` fence 与**之前的**原子 load 结合，之后的所有读看到对应 release 的写。
+- `seq_cst` fence 最强，全局顺序。
+
+**实践建议**：
+1. **优先用 `acquire`/`release` 的原子操作**，而不是独立 fence —— 更好理解，编译器也更容易优化。
+2. `std::atomic_thread_fence` 只有在"一个 fence 需要覆盖多个原子操作"时才更方便（如批量发布）。
+3. 调试并发 bug 极难，**优先用 mutex + 简单模型**；只有确证性能瓶颈才下探到内存序。
+
+**参考**：Herb Sutter 的 "atomic<> Weapons" 演讲是理解内存序的最佳材料。', 1),
+
+('C++', 'CAS,ABA', 3,
+ '什么是 CAS？ABA 问题是什么？怎么解决？',
+ '**CAS（Compare-And-Swap）**：原子地"比较再交换"，是无锁数据结构的基石。
+
+```cpp
+bool compare_exchange_weak(T& expected, T desired);   // 可能伪失败，需循环
+bool compare_exchange_strong(T& expected, T desired); // 不会伪失败，但可能更慢
+```
+
+语义：若当前值 == `expected`，则写入 `desired` 并返回 true；否则把**当前值写回 `expected`** 并返回 false。
+
+```cpp
+int expected = 0;
+while (!cnt.compare_exchange_weak(expected, expected + 1)) {
+    // 失败时 expected 已被更新为最新值，重试即可
+}
+```
+
+`weak` 版本在 LL/SC 架构（ARM、PowerPC）上可能"伪失败"（无理由返回 false），所以必须放在循环里；在 x86 上和 strong 等价。
+
+**ABA 问题**：
+
+线程 1 读到值 A，准备 CAS 成 C；期间线程 2 把 A 改成 B 又改回 A。线程 1 的 CAS 成功，但它以为"值没变"，实际上中间发生过变化 —— 对**指针/带关联状态**的算法会导致严重错误（如无锁栈的节点已被释放又复用）。
+
+```
+T1: 读到 head = A
+T2: pop A（head = B），free(A)，malloc 又返回同一地址赋给新节点
+T2: push 新节点（head = A，地址相同）
+T1: CAS(head, A → C) 成功，但 C 的 next 指向已释放的 A  → 崩溃
+```
+
+**解决手段**：
+1. **带版本号的指针**（tagged pointer）：`(ptr, version)` 一起 CAS，用 `std::atomic<struct{void* p; uint64_t v;}>` 或把版本塞进 64 位的高位。
+2. **`std::shared_ptr` 的 `atomic_load/atomic_store` 自由函数**（C++20 起 `std::atomic<std::shared_ptr<T>>`）：避免节点被过早释放。
+3. **Hazard Pointer / RCU**：延迟回收。
+4. **双字 CAS**：x86_64 的 `cmpxchg16b`。
+5. **放弃无锁**：用锁，通常更简单更可靠。
+
+**实践建议**：**无锁编程极难写对**，先用锁；确有需求时用现成库（`folly`、`boost.lockfree`）并做压力测试 + ThreadSanitizer。', 1),
+
+('C++', '锁,自旋锁,读写锁', 2,
+ '自旋锁、互斥锁、读写锁有什么区别？怎么选？',
+ '| 锁 | 等待方式 | 适用场景 | 缺点 |
+|---|---|---|---|
+| 自旋锁 | 忙等（CPU 空转） | 临界区极短、多核 | 浪费 CPU；单核无意义 |
+| 互斥锁（mutex） | 睡眠等待（futex） | 一般场景 | 上下文切换开销 |
+| 读写锁（shared_mutex） | 读共享、写独占 | **读多写少** | 写饥饿、实现复杂，读锁也有开销 |
+| 递归锁 | 可重入 | 递归调用同一锁 | 设计缺陷信号，通常应重构 |
+
+**自旋锁**：
+```cpp
+std::atomic_flag lock = ATOMIC_FLAG_INIT;
+while (lock.test_and_set(std::memory_order_acquire)) { /* spin */ }
+// critical section
+lock.clear(std::memory_order_release);
+```
+- 好处：无系统调用、延迟低。
+- 坏处：持锁时间长会浪费 CPU；单核上只会白等。
+- 现代实现（如 `pthread_spinlock`、`folly::SpinLock`）常做**自适应自旋**：先自旋几次，再退化为睡眠。
+
+**互斥锁**：
+```cpp
+std::mutex m;
+{ std::lock_guard<std::mutex> g(m); /* ... */ }
+```
+- Linux 上基于 **futex**：无竞争时全是用户态操作（快），有竞争才进内核睡眠。
+- **不要手写 `lock()/unlock()`**，用 RAII 守卫（`lock_guard`、`unique_lock`、`scoped_lock`）。
+
+**读写锁（`std::shared_mutex`，C++17）**：
+```cpp
+std::shared_mutex sm;
+{ std::shared_lock g(sm);  read(); }     // 多个读者并行
+{ std::unique_lock g(sm);  write(); }    // 写独占
+```
+- **注意**：读锁不是免费的（原子操作 + 可能的缓存行争用）；**读多写少到极致时**才划算（一般读:写 > 10:1 才考虑）。
+- 存在**写饥饿**风险（读者源源不断）。
+
+**选择原则**：
+1. **默认用 `mutex`** —— 简单、正确、无竞争时很快。
+2. 临界区只有几条指令且多核 → 考虑自旋/自适应锁。
+3. 读远多于写、且读操作不短 → 考虑 `shared_mutex`，但先测性能。
+4. **减少锁竞争**比换锁更重要：缩小临界区、分片（sharding）、无锁数据结构、线程本地存储。
+5. 多把锁时用 `std::scoped_lock(a, b)`（C++17）做**死锁避免**（内部用 `std::lock` 的一致顺序算法）。', 1),
+
+('C++', '条件变量,虚假唤醒', 2,
+ '条件变量怎么用？什么是虚假唤醒？',
+ '条件变量用于**线程间等待某个条件成立**，必须与互斥量配合。
+
+**标准用法**：
+
+```cpp
+std::mutex m;
+std::condition_variable cv;
+std::queue<int> q;
+
+// 消费者
+{
+    std::unique_lock<std::mutex> lk(m);
+    cv.wait(lk, [] { return !q.empty(); });   // ✅ 带谓词的版本
+    int v = q.front(); q.pop();
+}
+
+// 生产者
+{
+    std::lock_guard<std::mutex> lk(m);
+    q.push(1);
+}                     // 先解锁
+cv.notify_one();      // 再通知（也可以解锁前通知，但解锁后通知通常更好）
+```
+
+**为什么要带谓词**：`cv.wait(lk, pred)` 等价于：
+```cpp
+while (!pred()) cv.wait(lk);
+```
+这个 `while` 循环用于抵御**虚假唤醒**和**通知丢失**。
+
+**虚假唤醒（spurious wakeup）**：`wait` 可能在**没有任何 `notify`** 的情况下返回。POSIX 和 C++ 标准都明确允许。所以：
+- ❌ **错误写法**：`cv.wait(lk); /* 直接假设条件成立 */`
+- ✅ **正确写法**：永远用谓词，或手写 `while (!pred) cv.wait(lk);`
+
+**其它要点**：
+
+1. **通知必须在持有锁时修改条件之后**（否则可能丢通知）：
+```cpp
+// ❌ 危险：notify 可能在消费者检查条件之后、wait 之前发生 → 丢通知
+q.push(1);
+cv.notify_one();
+```
+2. `notify_one` 唤醒一个等待者；`notify_all` 唤醒全部（多消费者共享条件时常用 all 避免饿死）。
+3. **`wait` 会释放锁**（这是它必须接收 `unique_lock` 的原因），被唤醒后重新获取锁。
+4. 不要在 `notify` 时持锁太久，会造成"惊群"式争用。
+5. C++20 起有 `std::atomic::wait/notify`，某些场景可替代条件变量。
+
+**经典陷阱**：谓词访问的共享数据必须在**同一把锁**下修改和读取，否则数据竞争。', 1),
+
+('C++', '线程池', 3,
+ '线程池怎么实现？核心组件有哪些？',
+ '**核心组成**：
+
+1. **任务队列**（`std::queue<std::function<void()>>`）+ 互斥量 + 条件变量。
+2. **工作线程**：循环取任务执行。
+3. **停止标志**：让 `join` 时线程能退出。
+4. **返回值机制**：`std::future` / `std::packaged_task`。
+
+**简化实现**：
+
+```cpp
+class ThreadPool {
+public:
+    explicit ThreadPool(size_t n) {
+        for (size_t i = 0; i < n; ++i) {
+            workers_.emplace_back([this] {
+                for (;;) {
+                    std::function<void()> task;
+                    {
+                        std::unique_lock<std::mutex> lk(m_);
+                        cv_.wait(lk, [this] { return stop_ || !tasks_.empty(); });
+                        if (stop_ && tasks_.empty()) return;
+                        task = std::move(tasks_.front());
+                        tasks_.pop();
+                    }
+                    task();                       // 在锁外执行，避免串行化
+                }
+            });
+        }
+    }
+
+    template <class F, class... Args>
+    auto submit(F&& f, Args&&... args)
+        -> std::future<std::invoke_result_t<F, Args...>> {
+        using R = std::invoke_result_t<F, Args...>;
+        auto task = std::make_shared<std::packaged_task<R()>>(
+            std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+        std::future<R> fut = task->get_future();
+        {
+            std::lock_guard<std::mutex> lk(m_);
+            if (stop_) throw std::runtime_error("pool stopped");
+            tasks_.emplace([task] { (*task)(); });
+        }
+        cv_.notify_one();
+        return fut;
+    }
+
+    ~ThreadPool() {
+        { std::lock_guard<std::mutex> lk(m_); stop_ = true; }
+        cv_.notify_all();
+        for (auto& t : workers_) t.join();
+    }
+private:
+    std::vector<std::thread> workers_;
+    std::queue<std::function<void()>> tasks_;
+    std::mutex m_;
+    std::condition_variable cv_;
+    bool stop_ = false;
+};
+```
+
+**关键设计点**：
+
+1. **任务在锁外执行**，否则退化成串行。
+2. **`packaged_task` 要 `shared_ptr` 包起来**（`std::function` 要求可拷贝，而 `packaged_task` 只可移动）。
+3. **析构顺序**：设 stop → notify_all → join，保证队列里剩余任务跑完（或按需丢弃）。
+4. **线程数**：CPU 密集 ≈ 核数；IO 密集可更多（`核数 / (1 - 阻塞系数)`）。
+5. **无界队列会导致内存爆炸**，生产环境要限流或拒绝策略。
+6. **异常处理**：工作线程里的异常必须捕获，否则 `std::terminate`；用 `packaged_task` 会自动把异常存到 future。
+7. 更精细的设计：**work-stealing**（每线程一个队列 + 窃取）减少锁竞争。
+
+**常见面试追问**：
+- 如何优雅关闭？（stop 标志 + 队列排空）
+- 如何处理任务抛异常？（catch 后存 future 或日志）
+- 如何避免惊群？（notify_one 而非 all；或按条件唤醒）
+- 任务优先级？（多队列 + 优先级比较）', 1),
+
+('C++', '无锁队列', 3,
+ '无锁队列（lock-free queue）的原理是什么？难点在哪？',
+ '**单生产者单消费者（SPSC）无锁队列**最简单，也最实用：
+
+```cpp
+template <class T, size_t N>
+class SpscQueue {                     // N 必须是 2 的幂
+    std::array<T, N> buf_;
+    std::atomic<size_t> head_{0}, tail_{0};   // 只用两个原子变量
+public:
+    bool push(const T& v) {
+        const size_t t = tail_.load(std::memory_order_relaxed);
+        const size_t next = (t + 1) & (N - 1);
+        if (next == head_.load(std::memory_order_acquire)) return false;  // 满
+        buf_[t] = v;
+        tail_.store(next, std::memory_order_release);   // 发布
+        return true;
+    }
+    bool pop(T& out) {
+        const size_t h = head_.load(std::memory_order_relaxed);
+        if (h == tail_.load(std::memory_order_acquire)) return false;     // 空
+        out = std::move(buf_[h]);
+        head_.store((h + 1) & (N - 1), std::memory_order_release);
+        return true;
+    }
+};
+```
+
+**核心思想**：
+- 用**伪共享隔离**（`alignas(64)` 把 head/tail 分到不同缓存行）+ **acquire/release 配对**保证可见性。
+- 生产者只写 `tail_`，消费者只写 `head_`，**没有写冲突**，所以不需要 CAS。
+
+**MPMC（多生产者多消费者）**：必须用 CAS 循环，难度陡增：
+
+```cpp
+// Michael-Scott 队列：基于 CAS 的链表
+// 需要解决 ABA、内存回收（hazard pointer / epoch-based reclamation）
+```
+
+**难点**：
+1. **ABA 问题**（见前一题）。
+2. **内存回收**：节点何时可以 free？其他线程可能还持着指针 → 需要 **Hazard Pointer**、**Epoch-Based Reclamation（EBR）**、**引用计数**。
+3. **内存序正确性**：写错内存序会表现为"偶发崩溃"，极难调试。
+4. **伪共享**：头和尾在同一缓存行会导致性能崩塌。
+5. **内存分配**：`new/delete` 本身可能加锁，破坏"无锁"承诺 → 需预分配环形缓冲。
+
+**实践建议**：
+1. **优先 SPSC 环形缓冲**（够用且简单），生产环境大量使用（如日志、网络收发包）。
+2. MPMC 用成熟库（`boost::lockfree::queue`、`moodycamel::ConcurrentQueue`、`folly::MPMCQueue`），不要手写。
+3. **测试**：`-fsanitize=thread`（TSan）能发现数据竞争；压力测试 + 断言。
+4. 性能对比：无锁并不总是更快 —— 低竞争时 mutex 已经很快，高竞争时无锁的 CAS 重试也很贵。**先 profile**。
+
+**经典参考**：Herb Sutter 的 "Writing a Generalized Concurrent Queue"、Dmitry Vyukov 的 1024cores.net。', 1),
+
+('C++', 'async,future,promise', 2,
+ '`std::async`、`future`、`promise`、`packaged_task` 分别是什么？',
+ '它们构成 C++11 的**异步任务框架**：
+
+| 组件 | 作用 |
+|---|---|
+| `std::future<T>` | **消费者**：等待并取回结果（`get()`），`get` 只能调一次 |
+| `std::promise<T>` | **生产者**：`set_value` / `set_exception` 设置结果 |
+| `std::packaged_task<F>` | 把可调用对象包装成任务，调用时自动把结果存进 future |
+| `std::async` | 高层封装：提交任务，返回 `future` |
+
+**`std::async`**：
+```cpp
+auto fut = std::async(std::launch::async, [] { return 42; });
+//               ^^^^^^^^^^^^^^^^^^ 必须显式指定策略！
+int v = fut.get();
+```
+
+**⚠️ 最重要的坑**：`std::async` 的默认策略是 `async | deferred`，**由实现决定**。若选择 `deferred`，任务根本不会在新线程执行，而是在 `get()`/`wait()` 时**在当前线程惰性执行**。这会导致：
+- "并发"没有发生（性能 bug）。
+- **`fut` 析构会阻塞**（deferred 的 future 析构时会同步执行任务）。
+
+**所以永远显式写 `std::launch::async`。**
+
+**`promise`/`future` 手动配对**：
+```cpp
+std::promise<int> prom;
+std::future<int> fut = prom.get_future();
+std::thread t([&prom] {
+    try { prom.set_value(compute()); }
+    catch (...) { prom.set_exception(std::current_exception()); }
+});
+int v = fut.get();   // 若 set_exception，get() 会重新抛出
+t.join();
+```
+
+**`packaged_task`**（可放进容器/队列，用于线程池）：
+```cpp
+std::packaged_task<int()> task([]{ return 1; });
+auto fut = task.get_future();
+std::thread(std::move(task)).detach();
+fut.get();
+```
+
+**`future` 的 `get()` 语义**：
+- 阻塞直到结果可用。
+- **只能调用一次**（之后 `valid() == false`，再调 `get()` 是 UB）。
+- 若任务抛异常，`get()` 重新抛出该异常。
+
+**其它注意**：
+- `std::async` 返回的 future 若被丢弃（未取结果），对 `launch::async` 会**阻塞等待任务完成**（因为 future 析构要求同步），所以"即发即忘"不能用 `std::async`。
+- 需要链式 `.then()` 得用 `std::future` 之外的东西（C++20 有 `std::execution`，或 `boost::future`、folly `SemiFuture`）。
+- `std::shared_future` 可以多次 `get()`、可拷贝，用于多消费者。', 1),
+
+('C++', 'shared_ptr 线程安全', 3,
+ '多线程下 `shared_ptr` 的引用计数是原子的，那它完全线程安全吗？',
+ '**部分安全，关键点要分清**：
+
+✅ **安全的**：
+- **引用计数的增减是原子的**。多个线程可以各自持有/释放 `shared_ptr` 副本（拷贝、析构、赋值）而不会把计数搞乱。
+- 不同 `shared_ptr` 实例（指向同一对象）的并发操作是安全的。
+
+❌ **不安全的**：
+1. **同一个 `shared_ptr` 实例的并发读写**：
+```cpp
+std::shared_ptr<Foo> sp = ...;
+// 线程A
+sp = other;                    // ❌ 与线程B竞争同一个 sp
+// 线程B
+auto copy = sp;                // ❌ 数据竞争！
+```
+因为 `shared_ptr` 有**两个指针**（对象指针 + 控制块指针），赋值/读取不是单个原子操作，可能读到"新对象指针 + 旧控制块指针"的撕裂状态。
+- 解决：**加锁**，或用 C++20 的 `std::atomic<std::shared_ptr<T>>`（`atomic_load/atomic_store` 自由函数在 C++11 起也有，但已弃用）。
+
+2. **被管理对象本身的并发访问**：
+```cpp
+auto sp = std::make_shared<int>(0);
+std::thread([sp]{ ++*sp; });   // ❌ 不是原子的（除非 int 本身是 atomic）
+```
+`shared_ptr` 只保证计数原子，**不保证 `*sp` 的访问安全**。
+
+3. **`weak_ptr::lock()`**：是线程安全的（原子地提升），但提升失败说明对象已销毁。
+
+**实现细节**：控制块里有 `shared_count`（原子）和 `weak_count`（原子）。当 `shared_count == 0` 时销毁对象；`shared_count == 0 && weak_count == 0` 时销毁控制块。
+
+**为什么有两个指针**（`sizeof == 16`）：支持**别名构造**（aliasing constructor），让 `shared_ptr` 指向对象的某部分/派生类，但共享同一控制块：
+```cpp
+struct S { int a; int b; };
+auto sp = std::make_shared<S>();
+std::shared_ptr<int> pa(sp, &sp->a);   // 指向成员，但控制块是同一个
+```
+
+**实践总结**：
+- 只在**线程间共享所有权**（各自持有副本）时用 `shared_ptr`。
+- 需要**共享修改同一个 shared_ptr 变量**时，加锁或原子化。
+- 高频读写的热点用 `unique_ptr` + 转移，或干脆把数据放在同一个线程。', 1),
+
+('C++', '伪共享', 3,
+ '什么是伪共享（false sharing）？怎么避免？',
+ '**伪共享**：多个线程修改**不同变量**，但这些变量落在**同一个 cache line**（通常 64 字节）上，导致缓存行在核间反复失效、乒乓（cache line ping-pong），性能急剧下降。
+
+```cpp
+struct Counters {
+    std::atomic<long> a;   // 相邻
+    std::atomic<long> b;   // 同一 cache line
+};
+// 线程1 频繁写 a，线程2 频繁写 b → 互相把对方的 cache line 打失效
+```
+
+**为什么会这样**：缓存一致性协议（MESI）以 **cache line** 为最小同步单位。修改一个字节也要独占整条 line。
+
+**解决办法**：
+
+1. **对齐填充（padding）到 cache line 边界**：
+
+```cpp
+struct alignas(64) Padded {
+    std::atomic<long> v;
+    char pad[64 - sizeof(std::atomic<long>)];   // 补满 64 字节
+};
+```
+
+2. **`alignas(std::hardware_destructive_interference_size)`**（C++17）：
+```cpp
+struct alignas(std::hardware_destructive_interference_size) Counter {
+    std::atomic<long> v;
+};
+```
+注意这个常量在实际编译器上可能仍是 64（x86）或 128（部分 ARM），且 C++ 标准备注它可能不等于真实值。
+
+3. **`[[no_unique_address]]` 与布局设计**：把热点变量分散到不同结构体，或按线程分片。
+
+4. **每线程独立累加，最后汇总**（避免共享写）：
+```cpp
+struct alignas(64) ThreadLocal { long count = 0; };
+std::array<ThreadLocal, N> stats;   // 每线程写自己的
+// 结束后 reduce
+```
+
+**检测工具**：`perf c2c`（Linux）专门定位 cache line 竞争；`perf stat` 观察 `cache-misses` 暴涨。
+
+**真实案例**：
+- 高性能队列的 head/tail 指针（前面 SPSC 队列题就是靠 `alignas` 隔离）。
+- 线程池的每线程统计、`std::atomic` 标志。
+- 分配器的 arena 结构。
+
+**注意**：伪共享和"真共享"（同时读写同一变量）不同 —— 真共享需要同步，伪共享只需**布局隔离**。
+
+**反例警示**：不要盲目加 padding（浪费内存、影响缓存命中率），**先 profile 确认热点**再优化。', 1),
+
+('C++', 'happens-before,内存模型', 3,
+ 'C++ 的内存模型是什么？happens-before 关系怎么建立？',
+ '**C++ 内存模型**（C++11 引入）规定了多线程程序的**可见性**与**顺序**语义，让编译器优化和硬件乱序都有明确边界。
+
+**几个基础关系**：
+
+1. **sequenced-before**：同一线程内，按程序的求值顺序。
+2. **synchronizes-with**：跨线程的同步关系，由原子操作的 acquire/release 配对建立。
+   - 若 A 是 release 写、B 是读到 A 写的值的 acquire 读，则 A **synchronizes-with** B。
+3. **happens-before** = sequenced-before 的传递闭包 ∪ synchronizes-with。
+   - 若 A happens-before B，则 A 的所有副作用对 B 可见。
+4. **data race（数据竞争）**：两个线程访问同一内存位置、至少一个是写、且没有 happens-before 关系 → **UB（未定义行为）**。这是最重要的规则：**有 data race 的程序，编译器可以假设它不存在并做任意优化**。
+
+**建立 happens-before 的手段**：
+
+| 手段 | 说明 |
+|---|---|
+| `mutex` 的 unlock → lock | 同一 mutex，先解锁的线程的所有写在加锁者看来可见 |
+| `atomic` store(release) → load(acquire) | 配对同步 |
+| `atomic` seq_cst 操作 | 全局单一顺序，更强 |
+| `thread::join()` | join 返回后能看到被 join 线程的所有写 |
+| `condition_variable` | 配合 mutex 传递 |
+| `promise::set_value` → `future::get` | 同样建立同步 |
+
+```cpp
+int data = 0;
+std::atomic<bool> ready{false};
+
+// 线程 A
+data = 42;
+ready.store(true, std::memory_order_release);   // 发布
+
+// 线程 B
+while (!ready.load(std::memory_order_acquire));  // 订阅
+assert(data == 42);   // 一定成立（happens-before 建立）
+```
+
+**为什么需要它**：
+- 没有内存模型时，编译器可以把 `data = 42` 重排到 store 之后，硬件也可以（store buffer）→ 线程 B 看到 `ready == true` 但 `data == 0`。
+- C++ 内存模型让"哪些重排是允许的"有精确定义。
+
+**关键概念补充**：
+- **UB 的定义**：data race 是 UB，所以"看起来能跑"不代表正确 —— 编译器可能在优化后彻底改变行为。
+- **`std::atomic` 默认 `seq_cst`**：最易推理，全局一致顺序，代价是可能插入额外屏障。
+- **`relaxed` 原子**：仍是原子的，但**不建立** happens-before（除同变量的修改顺序外）。
+
+**实践建议**：初学者用 `mutex` + `seq_cst` 就够；只有在确证瓶颈时才降级内存序，并配合 TSan 验证。', 1),
+
+('C++', '异常安全', 3,
+ '异常安全有哪几个级别？怎么写强异常安全的代码？',
+ '**异常安全保证的四个级别**（从弱到强）：
+
+| 级别 | 保证 | 说明 |
+|---|---|---|
+| **no-throw / nothrow** | 不抛异常 | 如 `swap`、移动构造、析构 |
+| **strong**（强保证） | 提交或回滚 | 操作要么完全成功，要么对象状态不变（原子性） |
+| **basic**（基本保证） | 不泄漏、不破坏不变量 | 对象仍可用但可能处于合法但未指定状态 |
+| **no guarantee** | 无保证 | 出了问题对象可能损坏 —— 不该出现在库代码里 |
+
+**怎么写强异常安全**：
+
+1. **Copy-and-swap 惯用法**：
+```cpp
+class A {
+public:
+    A& operator=(const A& o) {
+        A tmp(o);              // 先拷贝（可能抛，但原对象未动）
+        swap(*this, tmp);      // swap 是 noexcept 的
+        return *this;
+    }                          // tmp 析构时释放旧资源
+private:
+    friend void swap(A& a, A& b) noexcept { std::swap(a.p_, b.p_); }
+};
+```
+优点：自动处理自赋值；异常发生在拷贝阶段时原对象完全不变。
+
+2. **RAII 管理所有资源**：资源析构函数必须不抛异常。栈展开时会调用析构，若析构抛异常 → `terminate`。
+
+3. **把副作用放到最后**（"先做可能失败的事，再做不可逆的事"）。
+
+4. **`noexcept` 标记不该抛的函数**：析构、移动构造/赋值、`swap`。
+
+**为什么移动操作要 `noexcept`**：
+`std::vector` 扩容时要提供强异常安全 —— 它会**把旧元素移动到新缓冲区**，若移动可能抛异常且中途失败，就无法回滚（旧元素已被改）。因此 `vector` 用 `std::move_if_noexcept`：只有当移动是 `noexcept` 时才用移动，否则**退回拷贝**。
+
+```cpp
+A(A&&) noexcept;   // ✅ 标上，vector 才会用你的移动
+```
+
+**析构函数与异常**：
+- 析构默认隐式 `noexcept`；若内部可能抛异常，**必须捕获**，否则栈展开时再抛 → `std::terminate`。
+- `throw` 在 `noexcept` 函数里会立刻 `terminate`。
+
+**实践清单**：
+- 用智能指针/容器管理资源（零法则）。
+- 赋值用 copy-and-swap。
+- 移动操作标 `noexcept`。
+- 析构不抛。
+- 只在真正异常的场景用异常，不要用异常做控制流。', 1),
+
+('C++', 'noexcept', 2,
+ '`noexcept` 有什么用？什么时候该加？',
+ '`noexcept` 声明"这个函数不抛异常"，编译器可以据此优化，且**抛异常时直接 `std::terminate`**（不会展开栈）。
+
+**语法**：
+```cpp
+void f() noexcept;                     // 不抛
+void g() noexcept(true);               // 同上
+void h() noexcept(false);              // 可能抛（默认）
+template <class T>
+void foo() noexcept(noexcept(T{}));    // 条件 noexcept（依赖 T）
+void operator delete(void*) noexcept;  // 标准库里的例子
+```
+
+**三个影响**：
+
+1. **优化**：调用方无需生成栈展开代码，代码更小更快；编译器可做更强的优化。
+2. **容器行为（最重要）**：`std::vector` 扩容时用 `std::move_if_noexcept` —— **移动构造不是 `noexcept` 时会退回拷贝**，性能大降。
+```cpp
+class A {
+    A(A&&) noexcept;                       // ✅ vector 扩容会用移动
+    A(A&&);                                // ❌ vector 退化为拷贝
+};
+```
+3. **接口契约**：告诉调用者"这里不会失败"。
+
+**该加 `noexcept` 的地方**：
+- **移动构造/移动赋值**（关键！）
+- **析构函数**（本来就隐式 `noexcept`）
+- **`swap`**
+- 简单的 getter、`size()`、`empty()` 等无失败可能的函数
+- 内存释放、`clear()`
+
+**不该加的地方**：
+- 可能抛的函数（如会分配内存的容器操作、会 `stoi` 的解析）—— 加了会在异常时直接 `terminate`，比抛异常更难排查。
+- **不要**为了性能给不确定的函数加 `noexcept`。
+
+**注意**：
+- `noexcept` 是**声明**而非检查：若函数内部真的抛了，行为是 `terminate` 而不是"编译错误"。
+- `noexcept(expr)` 的形式可以按模板参数条件化，例如：
+```cpp
+template <class T>
+class Wrapper {
+    T t_;
+public:
+    Wrapper(Wrapper&&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
+};
+```
+- `noexcept` 参与**重载决议**（自 C++17 起，函数指针类型含 noexcept，但重载决议不区分）。
+- **`noexcept` 不是异常规范（`throw()`，已废弃）**。', 1),
+
+('C++', '栈展开', 2,
+ '什么是栈展开（stack unwinding）？',
+ '当异常被抛出后，控制权从抛出点向**最近的匹配 catch** 传递，沿途**已构造完整的局部对象逐一析构**，这个过程就是栈展开。
+
+```cpp
+void f() {
+    std::string s = "hello";       // ① 构造
+    Resource r;                    // ② 构造
+    throw std::runtime_error("x"); // ③ 抛出 → s、r 依次析构（逆序）
+}
+```
+
+**关键点**：
+
+1. **析构顺序**：与构造相反（后构造的先析构）。
+2. **只有"构造完成"的对象会被析构**：若构造函数中途抛异常，**已构造的成员和基类会被析构**，但**该对象自身的析构函数不会被调用**。
+```cpp
+class A {
+    std::string a_, b_;
+public:
+    A() : a_("x"), b_(throwing()) {}   // b_ 构造抛异常
+    // a_ 会被析构；~A() 不会被调用
+};
+```
+3. **`noexcept` 函数内抛异常 → 不展开，直接 `terminate`**。
+4. **析构函数抛异常会 `terminate`**（若在展开过程中抛出第二个异常，C++11 起直接 terminate）。
+5. **栈展开有成本**：需要编译器生成"异常表"/"着陆垫"（landing pad）信息，这也是为什么有些项目（如 Google 风格指南的部分子集、游戏引擎）**禁用异常**（`-fno-exceptions`）—— 但要同时放弃 `std::vector::at` 等会抛的标准库设施。
+
+**与 RAII 的关系**：栈展开是 RAII 能工作的机制 —— 只要资源由局部对象的析构管理，无论正常返回还是异常退出都会被释放。这是 C++ 相比手动 `free` 的核心优势。
+
+**在构造函数中抛异常的后果**：
+- 对象不完整（部分成员已构造、部分未构造）。
+- **对象的析构函数不会调用**，所以构造函数中"已经获取的资源"必须由**成员的析构**（RAII 成员）负责，或提前在构造函数里 catch 后释放。
+
+**性能提示**：异常的**抛出开销大**（查找 handler、可能涉及 unwinding table），但**不抛时几乎零成本**（"zero-cost exceptions" 指的就是正常路径无开销）。因此异常适合"真正的异常"，不适合高频控制流。', 1),
+
+('C++', '构造函数抛异常', 3,
+ '构造函数抛异常会发生什么？析构函数能抛异常吗？',
+ '**构造函数抛异常**：
+
+1. **对象自身的析构函数不会被调用**（因为对象从未构造完成）。
+2. **已经构造完成的成员和基类会被析构**（逆序）。
+3. **已经获取的裸资源会泄漏**（如果有的话）。
+
+```cpp
+class Bad {
+    int* p_;
+    std::string s_;
+public:
+    Bad() : p_(new int(1)), s_(throwing()) {}
+    // 抛异常时：s_ 若已构造则析构；p_ 不会被 delete → 泄漏！
+    ~Bad() { delete p_; }   // 不会被调用
+};
+```
+
+**正确写法（RAII 成员）**：
+```cpp
+class Good {
+    std::unique_ptr<int> p_;     // 成员自己管理
+    std::string s_;
+public:
+    Good() : p_(std::make_unique<int>(1)), s_(throwing()) {}
+    // 抛异常时 p_ 的析构函数会自动 delete —— 无泄漏
+};
+```
+
+**函数式 try 块**（处理成员初始化列表里的异常）：
+```cpp
+class A {
+    Member m_;
+public:
+    A() try : m_(init()) {
+        // 构造函数体
+    } catch (const std::exception& e) {
+        // 这里：m_ 及已构造的基类/成员已被析构
+        throw;   // 通常要重新抛出（或转换异常类型）
+    }
+};
+```
+
+**析构函数抛异常**：
+
+- 析构默认隐式 `noexcept`。
+- 若析构在**栈展开过程中**抛出第二个异常 → **`std::terminate`**（C++11 起；C++98 是 UB）。
+- 即析构**不是**在展开过程中被调用，抛异常也可能因 `noexcept` 而 terminate。
+
+**结论：析构函数不应该抛异常。** 若内部操作可能失败（如 `fclose`、`commit`）：
+1. **在析构里 `try/catch` 并吞掉/记录**。
+2. 提供显式的 `close()` / `commit()` 方法让调用者处理失败，析构只做"尽力而为的清理"。
+
+```cpp
+~Connection() {
+    try { if (open_) doClose(); }
+    catch (...) { /* 记录日志，绝不外抛 */ }
+}
+```
+
+**设计原则**：
+- **构造函数要么成功构造完整对象，要么抛异常**（不要"半初始化"）。
+- 复杂初始化用"两段式"或工厂函数返回 `std::optional` / `expected`（C++23）。
+- 资源都交给 RAII 成员，构造失败时自动回收。', 1),
+
+('C++', '内存泄漏,工具', 2,
+ '怎么排查和避免内存泄漏？有哪些工具？',
+ '**避免（设计层面最重要）**：
+1. **RAII**：所有资源由对象生命周期管理（`unique_ptr`/`shared_ptr`/容器/`lock_guard`）。
+2. **零法则**：不手写拷贝/析构，交给标准库组件。
+3. **避免循环引用**：`shared_ptr` 互相持有 → 用 `weak_ptr` 打破。
+4. **异常安全**：用 RAII 保证异常路径也释放。
+5. **注意 `new[]`/`delete[]` 配对**，优先用 `vector`/`string`。
+6. **容器存指针时**用 `unique_ptr` 而非裸指针。
+
+**常见泄漏原因**：
+- `new` 之后忘记 `delete`（尤其提前 `return` 或异常路径）。
+- `shared_ptr` 循环引用。
+- 容器里存裸指针，`clear()` 只删指针不删对象。
+- 资源句柄（fd、socket、锁）未释放 —— 广义泄漏。
+- `setjmp/longjmp` 跳过了析构。
+
+**检测工具**：
+
+| 工具 | 特点 |
+|---|---|
+| **AddressSanitizer（ASan）** | `-fsanitize=address -g`，编译期插桩，运行时报告泄漏/越界/UAF；**首选**，快且准 |
+| **LeakSanitizer（LSan）** | 通常随 ASan 一起启用；`ASAN_OPTIONS=detect_leaks=1` |
+| **Valgrind（memcheck）** | 无需重新编译，但慢 10~50 倍；适合测试环境 |
+| **`-D_GLIBCXX_DEBUG`** | 检测 STL 迭代器误用 |
+| **`mtrace`/`mallinfo`** | glibc 自带，粗粒度 |
+| **静态分析** | clang-tidy、Coverity、PVS-Studio |
+| **`heaptrack`/`massif`** | 内存增长分析（找"泄漏点"而非"泄漏事实"） |
+| **`/proc/<pid>/status` 的 VmRSS** | 线上粗查内存增长 |
+| **tcmalloc/jemalloc 的统计接口** | 生产环境采样 |
+
+**ASan 用法**：
+```bash
+g++ -fsanitize=address -fno-omit-frame-pointer -g main.cpp
+./a.out
+# 报告 "Direct leak of N byte(s) ... allocated by ... "
+```
+
+**排查流程（线上泄漏）**：
+1. 确认是真泄漏还是缓存/碎片（观察 RSS 是否单调增长且在压力后不回落）。
+2. 用 `pmap`/`massif` 看是哪类分配（堆、mmap、线程栈）。
+3. 在测试环境用 ASan/LSan 复现。
+4. 若无法复现，用**采样分析**（tcmalloc 的 heap profiler、`gperftools`）。
+5. 检查是否有不断增长的容器/缓存（业务层面"泄漏"）。
+
+**注意**：Linux 上"内存不还给 OS"不一定是泄漏（glibc arena、jemalloc 的缓存策略）；用 `malloc_trim` 或换分配器可以改善。', 1),
+
+('C++', '内存池,分配器', 3,
+ '什么是内存池？为什么需要它？怎么实现一个简单的对象池？',
+ '**动机**：
+
+1. **`malloc`/`new` 有开销**：加锁（多线程）、查找空闲块、元数据、系统调用。
+2. **内存碎片**：频繁分配/释放不同大小会造成外部碎片。
+3. **缓存局部性**：通用分配器把对象散落各处。
+4. **确定性**：实时系统不能接受不可预测的分配延迟。
+
+**内存池的思路**：**一次性申请一大块**，自己切分管理，避免频繁进通用分配器。
+
+**最简单的定长对象池（free list）**：
+
+```cpp
+template <class T, size_t N>
+class ObjectPool {
+    union Slot { T obj; Slot* next; };      // 未使用时复用存储存 next
+    std::array<Slot, N> slots_;
+    Slot* free_ = nullptr;
+public:
+    ObjectPool() { for (size_t i = 0; i + 1 < N; ++i) slots_[i].next = &slots_[i+1];
+                   free_ = N ? &slots_[0] : nullptr; }
+
+    template <class... Args>
+    T* create(Args&&... a) {
+        if (!free_) return nullptr;
+        Slot* s = free_; free_ = s->next;
+        return new (&s->obj) T(std::forward<Args>(a)...);   // placement new
+    }
+    void destroy(T* p) {
+        p->~T();
+        Slot* s = reinterpret_cast<Slot*>(p);
+        s->next = free_; free_ = s;
+    }
+};
+```
+
+**要点**：
+- **`union` 复用存储**：空闲时存 `next` 指针，使用时存对象 —— 零额外开销。
+- **placement new / 显式析构**：手动管理对象生命周期。
+- **线程安全**：多线程需加锁，或做**线程本地池**（TLS）避免竞争。
+- **对齐**：`alignof(T)` 要考虑（`std::aligned_storage` 或 `alignas`）。
+
+**更完善的池**：
+
+| 类型 | 适用 |
+|---|---|
+| 定长对象池（free list） | 同类型对象频繁创建销毁（连接、消息） |
+| slab 分配器 | 按大小分类的多档池 |
+| arena / bump allocator | 批量申请、批量释放（编译器、解析器） |
+| `std::pmr` 内存资源 | C++17 标准化的多态分配器 |
+
+**C++17 的 `std::pmr`**：
+```cpp
+#include <memory_resource>
+std::pmr::monotonic_buffer_resource pool(buf, sizeof buf);   // 单调递增，不单独释放
+std::pmr::vector<int> v(&pool);
+```
+- `monotonic_buffer_resource`：只增不减，析构时整体释放 —— 极快。
+- `unsynchronized_pool_resource`：按大小分档的池。
+- 适合"生命周期一致的批量对象"（如一次请求的临时数据）。
+
+**经典案例**：`boost::pool`、tcmalloc/jemalloc（通用分配器内部的 thread cache + size class，本质是精细化的池）。
+
+**注意**：池会**延长内存占用时间**（不还给 OS），且**误用会导致更难查的 bug**（对象生命周期手工管理）。**先用 profile 确认分配是瓶颈**再引入。', 1),
+
+('C++', 'operator new,分配过程', 3,
+ '`new` 表达式的完整过程是怎样的？`operator new` 怎么重载？',
+ '**`new T(args)` 分两步**：
+
+1. **分配内存**：调用 `operator new(sizeof(T))`（可重载），返回未初始化的内存。
+2. **构造对象**：在这块内存上调用 `T::T(args)`。
+
+```cpp
+T* p = new T(args);
+// 等价于：
+void* mem = ::operator new(sizeof(T));      // ① 可能抛 std::bad_alloc
+T* p;
+try {
+    p = ::new (mem) T(args);                 // ② placement new 构造
+} catch (...) {
+    ::operator delete(mem);                  // 构造失败要释放内存
+    throw;
+}
+```
+
+**`delete p` 也是两步**：先调 `~T()`，再调 `operator delete(p)`。
+
+**可重载的形式**：
+
+```cpp
+// 全局重载（影响所有 new）
+void* operator new(std::size_t n);
+void* operator new[](std::size_t n);
+void operator delete(void* p) noexcept;
+void operator delete[](void* p) noexcept;
+// C++17 起还有对齐版本
+void* operator new(std::size_t n, std::align_val_t al);
+```
+
+**类内重载（只影响该类型）**：
+```cpp
+struct Small {
+    static void* operator new(std::size_t n) { return pool.alloc(n); }
+    static void operator delete(void* p) { pool.free(p); }
+};
+Small* s = new Small();   // 用类内版本
+```
+
+**placement new**（在指定地址构造，不分配）：
+```cpp
+alignas(T) unsigned char buf[sizeof(T)];
+T* p = new (buf) T(args);     // 不分配内存
+p->~T();                      // 必须手动析构
+```
+用途：容器实现（`vector` 的缓冲区）、对象池、内存映射 I/O。
+
+**nothrow 版本**：
+```cpp
+T* p = new (std::nothrow) T;   // 失败返回 nullptr 而不是抛 bad_alloc
+```
+
+**注意点**：
+1. **`new` 和 `delete` 必须配对**；`new[]`/`delete[]` 必须配对（用错是 UB，实践中会漏析构或堆损坏）。
+2. **重载 `operator new` 后必须重载 `operator delete`**（构造抛异常时要能释放）。
+3. **`operator new` 返回的指针必须满足 `alignof(std::max_align_t)` 或指定对齐**。
+4. **不要重载全局 `new`** 除非有充分理由（会影响所有代码、第三方库）。
+5. **`operator new(0)` 必须返回一个合法的非空指针**。
+6. C++17 起 `operator new` 有 **aligned 重载**，需要对齐的类型（如 SIMD）会用它。
+7. **`malloc` 与 `new` 不能混用**（`free` 不知道构造/析构，且分配器不同）。
+
+**实践**：需要控制分配行为时，优先用**自定义 `std::allocator` + `std::pmr`**，而不是重载全局 `new`。', 1),
+
+('C++', 'placement new', 2,
+ '什么是 placement new？什么时候用？',
+ '**placement new**：**在指定内存地址上构造对象，不分配内存**。
+
+```cpp
+#include <new>
+alignas(T) unsigned char buf[sizeof(T)];
+T* p = new (buf) T(args);   // 在 buf 上构造
+// ...
+p->~T();                     // 必须手动析构
+```
+
+**标准形式**：
+```cpp
+void* operator new(std::size_t, void* p) noexcept { return p; }   // 不做任何事
+```
+
+**用途**：
+
+1. **容器实现**：`std::vector` 预分配裸内存，按需 placement new 构造元素。
+```cpp
+Alloc a;
+T* p = a.allocate(n);            // 裸内存
+a.construct(p, args...);         // placement new（C++17 后被 traits 取代）
+```
+2. **对象池**：从池里取一块内存构造对象。
+```cpp
+T* obj = new (pool.alloc()) T(args);
+```
+3. **`std::optional`/`std::variant`**：内部是 union + 手动生命周期管理。
+4. **内存映射寄存器/共享内存**：在固定地址构造对象。
+5. **避免异常时的部分构造**（如实现 `make_shared` 的一次分配）。
+
+**注意点**：
+1. **必须手动调用析构**（`p->~T()`），placement new 不会自动析构。
+2. **内存必须正确对齐**（`alignas(T)` 或 `alignof`），否则 UB（ARM 上直接崩）。
+3. **必须保证 `buf` 的生命周期覆盖对象**，否则悬垂。
+4. **不要对已有对象 placement new**（会覆盖而不析构，资源泄漏）；除非是有意"复用"。
+5. **`delete p` 对 placement new 的对象是 UB**（内存不是 `operator new` 分配的）—— 只能显式析构 + 手动交还内存。
+6. **C++17 起 `std::launder`**：某些场景（const 成员、union 复用）需要用 `std::launder` 才合法地拿到新对象的指针。
+
+**与 `std::construct_at`（C++20）的关系**：
+```cpp
+std::construct_at(p, args...);   // 等价于 placement new，但可用于 constexpr
+```
+这是实现容器时更现代的选择。
+
+**反模式**：把 placement new 当作"性能优化"随便用 —— 手工生命周期管理是 bug 高发区，**优先用容器和智能指针**。', 1),
+
+('C++', '生命周期,UB', 3,
+ '什么是对象生命周期？有哪些常见的未定义行为（UB）？',
+ '**对象生命周期**：从对象**构造完成**（构造函数返回）到**析构开始**。期间对象"存在"，可以访问；之外访问就是 UB。
+
+```cpp
+struct A { int x; };
+A a;                  // 生命周期：构造完 → 离开作用域
+new (buf) A;          // 生命周期开始
+((A*)buf)->~A();      // 生命周期结束
+// 之后访问 ((A*)buf)->x 是 UB
+```
+
+**常见 UB 清单**（面试高频）：
+
+1. **有符号整数溢出**：`INT_MAX + 1`（无符号是有定义的环绕）。
+2. **空指针解引用 / 越界访问**：
+```cpp
+int a[3]; a[3] = 0;      // UB
+```
+3. **悬垂指针/引用的使用**（对象已销毁）。
+4. **未初始化的读**：`int x; std::cout << x;`
+5. **`delete` 非 `new` 分配的指针**、`free` 非 `malloc` 的指针、双重释放。
+6. **`new[]` 配 `delete`**（应配 `delete[]`）。
+7. **有符号左移溢出**、`<<` 负数是 UB；右移负数实现定义。
+8. **除零**（整数除零是 UB）。
+9. **修改字符串字面量**：
+```cpp
+char* s = "abc"; s[0] = ''x'';   // UB（C++11 起是编译错误）
+```
+10. **违反严格弱序的比较器**（`sort` 传 `<=`）。
+11. **数据竞争**（两个线程无同步访问同一内存，至少一个写）。
+12. **对象生命周期外访问**（placement new 后未构造就访问）。
+13. **`vptr` 调用时机错误**（构造/析构期间调用虚函数）。
+14. **`reinterpret_cast` 后非法解引用**（类型别名违反 strict aliasing）。
+15. **`std::vector` 扩容后用旧迭代器**。
+16. **`union` 里读非活跃成员**（除公共初始序列）。
+17. **缺少 `return` 的非 void 函数**（除 main）。
+18. **`std::memcpy` 非平凡类型**。
+
+**为什么 UB 危险**：编译器**假设 UB 不会发生**来优化。所以"在本地能跑"不代表正确 —— 换编译器/优化等级就可能崩。
+
+**检测工具**：
+- **UBSan**：`-fsanitize=undefined`，捕获有符号溢出、空指针、对齐等。
+- **ASan**：越界、UAF、泄漏。
+- **TSan**：数据竞争。
+- **MSan**：未初始化读（需要所有依赖都插桩）。
+- **静态分析**：clang-tidy、`-Wall -Wextra -Wpedantic`。
+
+**工程建议**：把 `-fsanitize=address,undefined` 加进 CI 的测试构建 —— 成本低、收益极高。', 1),
+
+('C++', 'optional,variant,any', 2,
+ '`std::optional`、`std::variant`、`std::any` 分别解决什么问题？',
+ '三者都是 C++17 引入的**词汇类型**（vocabulary types），用于表达"可能没有值"和"多类型"。
+
+**`std::optional<T>`**：表示"可能有，也可能没有 T"。
+
+```cpp
+std::optional<int> parse(const std::string&);
+if (auto v = parse(s)) { std::cout << *v; }
+int x = parse(s).value_or(0);
+```
+- 用于替代"返回 `-1` 表示失败"、"返回裸指针判空"。
+- **不是**为了表达错误原因（那用 `expected`/异常/error code）。C++23 的 `std::expected<T,E>` 才是"值或错误"。
+- 大小：`sizeof(optional<T>) >= sizeof(T)`（需要存标志位，可能 padding）。
+
+**`std::variant<Ts...>`**：**类型安全的 union**，同一时刻只存其中一个类型。
+
+```cpp
+std::variant<int, std::string> v;
+v = 42;
+v = "hi";
+std::visit([](auto&& x) { std::cout << x; }, v);   // 访问需要 visit
+if (auto p = std::get_if<int>(&v)) { /* 是 int */ }
+```
+- 用于替代"带 tag 的 union"、"基类 + dynamic_cast 的有限集合"。
+- `std::visit` 会对所有可能类型生成代码（代码膨胀）；也可以用 `if (holds_alternative<T>)`。
+- 若 `variant` 处于 `valueless_by_exception` 状态（某类型构造抛异常），访问会抛 `bad_variant_access`。
+- **大小 = 最大成员大小 + tag**（可能有 padding）。
+
+**`std::any`**：可以装**任意**类型（类型擦除）。
+
+```cpp
+std::any a = 42;
+a = std::string("x");
+if (auto p = std::any_cast<int>(&a)) { /* ... */ }
+```
+- 用于"属性字典"、动态配置、脚本绑定。
+- **代价**：可能堆分配（大类型）、每次访问有类型检查、`any_cast` 失败抛异常。
+- **性能敏感的热路径避免 `any`**（和 `std::function` 类似的开销）。
+- C++17 的 `any` 要求类型可拷贝；**C++26 有 `std::move_only_function`，但 `any` 不能存只移类型**（可用 `unique_ptr<Base>` 或自己实现）。
+
+**对比总结**：
+
+| 类型 | 表达能力 | 大小 | 典型用途 |
+|---|---|---|---|
+| `optional<T>` | 有/无 T | max(sizeof(T), 1) + 标志 | 可选返回值 |
+| `variant<Ts...>` | 是其一 | 最大成员 + tag | 状态机、JSON 值 |
+| `any` | 任意类型 | 指针 + SBO | 动态属性 |
+
+**实践建议**：优先 `optional`（语义单一、开销小）；有限类型集合用 `variant`；`any` 只在真正"无法预知类型"时用。', 1),
+
+('C++', 'string_view', 2,
+ '`std::string_view` 是什么？有哪些坑？',
+ '`std::string_view` 是**对一段字符序列的只读视图**（指针 + 长度），**不拥有**数据。
+
+```cpp
+void f(std::string_view sv);      // 接受 string、const char*、字面量，无需构造 string
+f("hello");                       // 零拷贝
+std::string s = "world";
+f(s);                             // 零拷贝
+```
+
+**优点**：
+1. **零拷贝**：传参不再需要 `const std::string&` 或临时构造。
+2. **统一的字符串参数类型**。
+3. 支持 `substr`（O(1)，返回 view 而非新串）、`remove_prefix/suffix`。
+
+**核心坑：不拥有数据，容易悬垂**。
+
+```cpp
+// ❌ 1) 绑定临时 string
+std::string_view sv = std::string("temp") + "x";   // 临时 string 已销毁 → 悬垂
+
+// ❌ 2) 返回局部 string 的 view
+std::string_view bad() {
+    std::string s = "hi";
+    return s;                       // 悬垂
+}
+
+// ❌ 3) 存进容器/成员，原串销毁后仍使用
+struct Holder { std::string_view sv; };
+Holder h{ std::string("x")};        // 悬垂
+
+// ❌ 4) 指向 string 的 view，string 扩容/移动后失效
+auto sv = std::string_view(s);      // 注意：s 修改后 sv 可能失效
+```
+
+**其它注意点**：
+1. **没有 `c_str()`** —— 不保证以 `\\0` 结尾！传给 C API 前必须转成 `std::string`。
+2. **不是 `const` 的**：`string_view` 的数据实际可写（如果原对象非 const），但标准不鼓励借它修改。
+3. **不能保证 Null-terminated**，`std::string_view(sub.begin(), sub.end())` 得到的 view 无 `\\0`。
+4. **比较是按内容**（不是按指针），所以可直接 `==`。
+5. **`std::string_view` 的 `data()` 可以为 nullptr（默认构造）**，此时 `size() == 0`。
+6. C++20 起有 `sv.contains()`、`starts_with()`、`ends_with()`。
+
+**使用建议**：
+- **只用它做函数参数**（"借用一段字符"），不要长期持有。
+- **不要**作为成员变量或返回值（除非生命周期明确）。
+- 需要长期持有 → `std::string`；需要零拷贝 → `string_view` 但保证生命周期。
+- 与 C API 交互前 `std::string(sv)`。
+
+**同类问题**：`std::span<T>`（C++20）对数组有相同的"视图"语义与生命周期风险；`std::function_ref`（C++26 提案）类似。', 1),
+
+('C++', 'TLS,线程局部存储', 2,
+ '线程局部存储（TLS）是什么？`thread_local` 有什么开销？',
+ '**TLS** 让每个线程拥有**独立的变量副本**，互相不干扰。
+
+```cpp
+thread_local int counter = 0;      // 每线程一份
+
+// 每线程一个缓冲区，避免加锁
+thread_local std::vector<char> buf;
+buf.clear();                        // 只属于当前线程，无需同步
+```
+
+**用途**：
+1. **避免锁**：每线程的缓冲/统计/缓存（真实世界的 allocator thread cache 就是 TLS）。
+2. **线程上下文**：当前请求 ID、日志上下文、事务状态。
+3. **errno 的实现**（POSIX 的 `errno` 就是 TLS）。
+4. **单例的线程版本**。
+
+**三种存储期**：
+```cpp
+thread_local int a;                    // 全局 thread_local
+void f() { static thread_local int b; } // 局部 static thread_local
+struct S { static thread_local int c; };
+```
+
+**开销**：
+1. **访问需要查表**：实现上用 **TLS 索引 + 运行期查找**（`__tls_get_addr`），比访问普通全局变量慢（一次函数调用或特殊的段寄存器偏移）。
+   - 动态库里的 TLS 甚至更慢（需要调用 `__tls_get_addr`）。
+2. **初始化开销**：函数内 `static thread_local` 有**首次初始化的守卫**（每线程都要检查），热路径要留意。
+3. **每个线程都要分配一块 TLS 空间**：线程多时内存开销可观（TLS 块 ~ 几百字节到几 KB）。
+4. **线程析构**：`thread_local` 对象的析构在**线程结束时**执行，顺序与构造相反；主线程结束时才析构。
+5. **不能跨线程共享** —— 这不是缺点，但要注意"以为共享了"的逻辑错误。
+
+**使用模式**：
+
+```cpp
+// 每线程缓存（无锁）
+struct Cache {
+    thread_local static std::unordered_map<int,int> m;
+};
+
+// 或单例（C++11 起函数内 static 是线程安全的）
+Cache& cache() { static thread_local Cache c; return c; }
+```
+
+**注意事项**：
+1. **不要用 TLS 存"应该在主线程/其他线程"的东西**，会导致数据不一致。
+2. **运行时创建大量线程 + TLS 会占用可观内存**（如线程池的每线程缓冲）。
+3. **不要在 TLS 析构里访问其他 TLS 变量**（析构顺序问题）。
+4. **TLS 会影响 `fork()`**：子进程只保留调用线程的 TLS，其他线程的 TLS 丢失。
+5. **协程（C++20）与 TLS 不兼容**：协程可能在不同线程上恢复 —— 这是 TLS 在异步框架里的主要痛点，所以异步代码更倾向显式传 context。
+
+**性能对比**：`thread_local` 通常比加锁快（特别是竞争激烈时），但比直接访问成员变量慢。**先 profile**。', 1),
+
+('C++', '协程,C++20', 3,
+ 'C++20 协程是什么？它和线程有什么区别？',
+ '**协程（coroutine）**是**可暂停、可恢复**的函数。C++20 引入三个关键字：
+
+- **`co_await`**：等待一个 awaitable，暂停当前协程。
+- **`co_yield`**：产出一个值并暂停（生成器）。
+- **`co_return`**：返回值并结束。
+
+**最简生成器示例**：
+```cpp
+Generator<int> range(int n) {
+    for (int i = 0; i < n; ++i)
+        co_yield i;
+}
+
+for (int v : range(5)) std::cout << v;   // 0 1 2 3 4
+```
+
+**与线程的本质区别**：
+
+| 维度 | 协程 | 线程 |
+|---|---|---|
+| 调度 | **用户态**协作式（显式挂起） | 内核态抢占式 |
+| 切换开销 | 极小（约几十纳秒，只保存少量寄存器/帧） | 大（微秒级，涉及内核、TLB、缓存） |
+| 数量 | 可以几十万个 | 几千个就是极限 |
+| 并发 | 单线程内可并发（无需锁） | 真并行（需同步原语） |
+| 阻塞 | 阻塞会阻塞整个线程 | 只阻塞该线程 |
+| 内存 | 每个协程一个帧（可放堆上） | 每线程 MB 级栈 |
+
+**关键点**：
+1. **协程是"单线程内的并发"** —— 适合 **I/O 密集**（大量并发连接），不适合 CPU 密集（不能利用多核）。
+2. **协程标准库不完整**：C++20 只提供了**语言机制**（`coroutine_handle`、`promise_type`、awaiter 协议），**没有提供 `task`、`generator`、调度器** —— 需要自己写或用库（cppcoro、asio、folly、libunifex）。
+3. **`promise_type` 协议**：编译器为每个协程生成一个"协程帧"和一个 promise 对象，控制 `initial_suspend`、`final_suspend`、`return_value`、`yield_value`、`await_transform`、`unhandled_exception` 等定制点。**写一个能用的 `Task` 需要几十行样板**。
+4. **`co_await` 的 awaitable 需要实现** `await_ready`、`await_suspend`、`await_resume`。
+5. **无栈协程 vs 有栈协程**：C++20 是**无栈协程**（状态存在堆上的协程帧），省内存但不能随意在任意函数里挂起（只能在协程体内）。
+6. **与 TLS 冲突**：协程可在不同线程恢复，TLS 语义不成立 → 异步框架用显式 context。
+7. **`std::generator<T>`（C++23）** 终于提供了标准生成器；**`std::execution`/`std::task`（C++26）** 在推进中。
+
+**为什么性能好**：切换只涉及保存/恢复少量寄存器和栈帧指针，且无系统调用、无内核态切换、缓存友好。
+
+**实践建议**：
+- **I/O 密集、超高并发**（百万连接、游戏服务器）→ 协程/async 框架。
+- **CPU 密集** → 线程池。
+- **想用现成方案** → C++23 的 `std::generator`、Boost.Asio 的协程支持、或者干脆用 Go/Rust 的异步生态。
+- **不要在协程里做阻塞调用**（会阻塞整个线程）。', 1),
+
+('C++', 'concepts,C++20', 2,
+ 'C++20 的 concepts 是什么？它比 SFINAE 好在哪？',
+ '**concepts** 是对模板参数**施加具名约束**的机制，把"SFINAE 的隐晦错误"变成"清晰的编译期检查"。
+
+```cpp
+// 定义 concept
+template <class T>
+concept Addable = requires(T a, T b) {
+    { a + b } -> std::convertible_to<T>;    // 要求表达式合法且返回类型可转换
+    sizeof(T) > 0;                          // 要求为真
+};
+```
+
+**三种约束写法**：
+```cpp
+// 1) 简写形式
+template <Addable T> T sum(T a, T b);
+
+// 2) requires 子句
+template <class T> requires Addable<T>
+T sum(T a, T b);
+
+// 3) 尾随 requires
+template <class T> T sum(T a, T b) requires Addable<T>;
+```
+
+**标准库的 concepts**（`<concepts>`）：`std::integral`、`std::floating_point`、`std::same_as`、`std::convertible_to`、`std::derived_from`、`std::invocable`、`std::regular`、`std::totally_ordered`、`std::ranges` 里的一大堆。
+
+**比 SFINAE 好在哪**：
+
+| 维度 | SFINAE / enable_if | concepts |
+|---|---|---|
+| 可读性 | 难懂（`enable_if_t<is_integral_v<T>, int> = 0`） | 直白（`requires std::integral<T>`） |
+| 错误信息 | 几十行模板展开噪声 | "constraint not satisfied: T doesn''t satisfy integral" |
+| 重载顺序 | 无偏序，容易二义性 | **有约束偏序**：更严格的约束优先 |
+| 组合 | 手写逻辑与 | `requires (A<T> && B<T>)` 或 `concept C = A && B` |
+| 简写用法 | 无 | `void f(std::integral auto x)` |
+
+**约束偏序（subsumption）**——这是 concepts 独有的能力：
+```cpp
+template <class T> void f(T);                          // 最弱
+template <std::integral T> void f(T);                  // 更严格 → 优先匹配
+template <std::integral T> requires (sizeof(T) > 2) void f(T);  // 更严格
+```
+调用 `f(42)` 会选最严格的那个。SFINAE 时代这需要手动设计重载。
+
+**`requires` 表达式**的四种要求：
+```cpp
+template <class T>
+concept C = requires(T a) {
+    a.size();                   // 简单要求：表达式合法
+    typename T::value_type;     // 类型要求
+    { a.begin() } -> std::input_iterator;   // 复合要求（含返回值约束）
+    requires std::copyable<T>;  // 嵌套要求
+};
+```
+
+**注意**：
+- concepts **不改变**模板实例化语义，只是把约束前置。
+- concepts 可以有**语义要求**（文档性的，编译器不检查，如 `std::regular` 要求等价性）。
+- C++20 的 concepts 让**模板错误信息**质量大幅提升，这是它最大的实用价值（编译期"报错可读性"）。
+
+**实践建议**：新代码一律用 concepts 替代 `enable_if`；`std::ranges` 就是 concepts 的最大规模应用。', 1),
+
+('C++', 'ranges,C++20', 2,
+ 'C++20 的 ranges 是什么？有什么好处？',
+ '**ranges** 把算法与**范围（range）** 结合，支持**惰性视图**和**管道组合**。
+
+```cpp
+#include <ranges>
+namespace rv = std::views;
+
+std::vector<int> v{1,2,3,4,5,6,7,8};
+
+// 旧写法
+std::vector<int> r;
+std::copy_if(v.begin(), v.end(), std::back_inserter(r),
+             [](int x){ return x % 2 == 0; });
+
+// ranges 写法
+auto even = v | rv::filter([](int x){ return x % 2 == 0; })
+              | rv::transform([](int x){ return x * x; })
+              | rv::take(3);
+for (int x : even) std::cout << x << '' '';   // 4 16 36
+```
+
+**核心改进**：
+
+1. **不用写 `begin()`/`end()`**：`std::ranges::sort(v)` 直接接受容器。
+2. **视图（views）是惰性的**：`filter`/`transform` **不立即计算**，遍历时才求值 → **零中间容器**，也不产生临时拷贝。
+3. **可组合**：`|` 管道串联，形成"处理流水线"。
+4. **借用检查（borrowed range）**：能检测出"返回 dangling 视图"的问题。
+5. **投影（projection）**：`std::ranges::sort(v, {}, &Person::age);` 直接按成员排序。
+6. **concepts 约束**：`std::ranges::input_range`、`random_access_range` 等让错误信息清晰。
+
+**常用 views**：
+```cpp
+rv::filter(pred)         // 过滤
+rv::transform(f)         // 映射
+rv::take(n), rv::drop(n) // 取/跳过前 n
+rv::take_while / drop_while
+rv::reverse
+rv::join                  // 扁平化
+rv::split(delim)          // 按分隔符切（C++20）
+rv::elements<N>           // 取 tuple 第 N 个
+rv::keys / rv::values     // map 的键/值
+rv::iota(a, b)            // 生成序列
+rv::common / rv::counted
+```
+
+**注意点**：
+1. **视图持有引用**：`auto ev = v | rv::filter(...);` 中 `ev` 引用 `v`；若 `v` 销毁则悬垂。
+   - 典型坑：函数返回视图（`return v | rv::filter(...)` 若 v 是局部变量 → 悬垂）。C++20 的 borrowed_range 检查能捕获一部分。
+2. **`std::views::filter` 的迭代器是 forward 而非 random access**，某些算法用不了。
+3. **性能**：多个视图链在遍历时**每层都有函数调用**，编译器通常能内联（等价于手写循环），但复杂链可能有开销；**先写清晰版，再 profile**。
+4. **`std::ranges::to`（C++23）** 填补了"视图转容器"的缺口：
+```cpp
+auto v = std::views::iota(1, 10) | std::ranges::to<std::vector>();
+```
+5. **C++20 缺 `zip`**（C++23 才有 `views::zip`）。
+
+**实践建议**：ranges 让"数据转换流水线"非常易读，**新代码优先用**；注意视图的**生命周期**是最大的坑。', 1),
+
+('C++', '快排优化,性能', 3,
+ '`std::vector` 遍历为什么比 `std::list` 快？性能优化的一般方法论是什么？',
+ '**缓存友好性是现代性能的第一原则。**
+
+`vector` 遍历 vs `list` 遍历：
+
+| 维度 | vector | list |
+|---|---|---|
+| 内存布局 | 连续 | 每节点一次堆分配，地址随机 |
+| cache line 利用率 | 一个 64B line 装 16 个 int | 每个节点只用到部分 line |
+| 预取（prefetcher） | 顺序访问，硬件预取命中 | 随机跳转，预取失效 |
+| 实测 | 快 5~50 倍（常见） | — |
+
+即使链表"插入是 O(1)"，在现代 CPU 上遍历的开销也让它常常输给 `vector`。
+
+**性能优化的一般方法论**：
+
+1. **先测量，不要猜**
+   - `perf stat` / `perf record`：找热点函数、cache miss、分支预测失败。
+   - **不要**凭直觉优化。
+2. **优化算法与数据结构**
+   - 复杂度降阶（O(n²) → O(n log n)）是最大的收益。
+   - 选择缓存友好的容器（默认 `vector`）。
+3. **减少内存分配**
+   - `reserve`、对象池、`std::pmr`、移动而非拷贝。
+4. **提高缓存局部性**
+   - 数据紧凑（`struct of arrays` 而非 `array of structs`，若只访问部分字段）。
+   - 热点数据放一起；伪共享隔离。
+5. **减少分支**
+   - 把常见路径放前面；避免热循环里的虚函数/间接调用；用查表替代分支。
+6. **编译器友好**
+   - `const`/`constexpr`/`noexcept`/`inline`；`[[likely]]`/`[[unlikely]]`（C++20）。
+   - 检查编译器是否真的矢量化了（`-fopt-info-vec`、`-Rpass=loop-vectorize`）。
+7. **并行化**
+   - 多线程、SIMD 向量化（`std::simd` C++26，或编译器自动向量化）。
+8. **权衡与验证**
+   - 每次改动后**重新 benchmark**；防止"优化了一个不是瓶颈的地方"。
+   - 注意 benchmark 的方法论（避免被优化掉、多次取中位数、`-O2` 且模拟真实负载）。
+
+**常见的反直觉结论**：
+1. **链表往往不如 vector**（缓存）。
+2. **`unordered_map` 常不如排序的 `vector` + 二分**（元素少时）。
+3. **虚函数在热循环里可能是瓶颈**（分支预测）。
+4. **`shared_ptr` 的原子引用计数在多核下是缓存行争用源**。
+5. **多线程不一定更快**（同步开销、伪共享、Amdahl 定律）。
+6. **`-O3` 不总是比 `-O2` 快**（代码膨胀/icache miss）。
+
+**工具清单**：`perf`、`valgrind --tool=callgrind`、`VTune`、`gprof`（旧）、`google benchmark`、`hyperfine`、`compiler explorer`（godbolt.org）看汇编。', 1),
+
+('C++', 'cout,编译期陷阱', 2,
+ '`std::cout` 为什么比 `printf` 慢？怎么加速？',
+ '**原因：C++ 流需要与 C 的 stdio 保持同步**。
+
+默认情况下，`std::ios_base::sync_with_stdio(true)` 使得每次 `std::cout` 操作都要与 `printf`/`stdout` 协调（保证混用 `printf` 和 `cout` 时输出顺序一致），这带来锁与虚函数调用的开销。
+
+**加速方法**：
+
+```cpp
+int main() {
+    std::ios::sync_with_stdio(false);   // 解除与 C stdio 的同步
+    std::cin.tie(nullptr);              // 解除 cin/cout 的绑定（避免每次 cin 前 flush cout）
+    // ...
+}
+```
+
+- `sync_with_stdio(false)`：**最大收益**，通常能让 `cin`/`cout` 快 2~5 倍，接近甚至超过 `scanf`/`printf`。
+- `cin.tie(nullptr)`：避免每次 `cin >> x` 前自动 `cout.flush()`。
+
+**注意**：
+1. 关闭同步后**不要混用 `printf` 与 `cout`**（顺序不再保证）。
+2. 关闭后 `stdout` 的缓冲行为可能与预期不同，交互式程序要注意。
+3. 多线程下 `cout` 的 `operator<<` 之间**不是原子的**（一个 `<<` 是原子的，但 `cout << a << b` 不是），并发输出需要自己加锁。
+
+**其它性能考虑**：
+- **`std::endl` 会 flush**，而 `''\\n''` 不会 —— 循环输出时用 `''\\n''`，否则每次 flush 是系统调用。
+```cpp
+for (int i = 0; i < 1e6; ++i)
+    std::cout << i << ''\\n'';    // ✅
+    // std::cout << i << std::endl;  // ❌ 慢 10~100 倍
+```
+- **格式化**：`std::format`（C++20）比 `ostream` 快且安全（类型安全、无 `%d` 不匹配），也比 `printf` 快。
+```cpp
+std::cout << std::format("{} {}\\n", 1, "x");
+```
+- **输出量大时**自己拼缓冲再一次性输出。
+
+**面试延伸**：为什么 `printf` 快？因为它直接走 `vfprintf`，没有 `ostream` 的虚函数、locale、sentry 等开销。而 `C++20 std::format` 走的是**编译期格式串解析 + 更少的间接调用**，兼顾了性能与安全。', 1),
+
+('C++', '编译器优化,内联', 2,
+ '`inline` 一定会内联吗？编译器在什么情况下内联？',
+ '**`inline` 不强制内联**。它的**本意**是允许在多个翻译单元中重复定义同一函数（ODR 例外），链接器会合并。是否真正内联由编译器决定。
+
+**编译器倾向于内联的情况**：
+1. 函数体小（如 getter/setter）。
+2. 调用点少（只有一两个调用者）。
+3. 能带来明显收益（消除调用开销、暴露更多优化机会）。
+4. `-O2`/`-O3` 下的热函数。
+5. LTO（链接期优化）可以跨翻译单元内联。
+6. 函数带 `__attribute__((always_inline))` / `__forceinline`（强制，但可能被忽略）。
+
+**编译器**不**内联的情况**：
+1. 函数体大（有启发式阈值，如 GCC 的 `-finline-limit`）。
+2. 递归（深度不确定）。
+3. 通过函数指针/虚函数调用（除非去虚化）。
+4. 取函数地址（仍然可以，但会生成一份 out-of-line 版本）。
+5. `-O0`（不优化）。
+6. 函数体包含 `setjmp`、可变参数等。
+7. `__attribute__((noinline))`。
+
+**内联的收益与代价**：
+
+| 收益 | 代价 |
+|---|---|
+| 消除调用开销 | **代码膨胀** → icache miss |
+| 暴露常量传播、死代码消除 | 编译时间增加 |
+| 更好的寄存器分配 | 调试信息更难（栈帧丢失） |
+| 使更多优化成为可能 | 可能让"热函数"被冷代码挤走 |
+
+**关键提示**：
+1. **不要手写 `inline` 来"优化性能"**（现代编译器自己会判断）。
+2. `inline` 用于**头文件里的函数定义**（避免 ODR 冲突）。
+3. 类内定义的成员函数**隐式 inline**。
+4. **虚函数可以内联**（如果能静态确定类型，或去虚化）：
+```cpp
+struct Base { virtual void f(); };
+Base b; b.f();         // 可能内联（静态确定是 Base）
+Base* p = get(); p->f(); // 通常不能
+```
+5. **`final` 有助于去虚化**：
+```cpp
+struct D final : Base {};
+D* d = get(); d->f();   // 编译器知道 D 不会再被继承 → 可内联
+```
+6. **PGO（Profile-Guided Optimization）**：用真实负载的 profile 指导内联与分支布局，收益常优于手动调优。
+7. 关注**内联决策**：`-Winline`（GCC）、`-Rpass=inline`（Clang）可以看编译器是否如你所愿。', 1),
+
+('C++', '去虚化,devirtualization', 3,
+ '什么是去虚化？有哪些手段？',
+ '**去虚化（devirtualization）** 把虚函数调用变成**直接调用**，从而可以内联、消除 vptr 解引用。
+
+**编译器自动做的**：
+
+1. **静态类型已知**：
+```cpp
+Derived d;            // 栈对象，类型确定
+d.f();                // 直接调用（若 f 是虚函数，也能知道就是 Derived::f）
+```
+
+2. **`final` 类/函数**：
+```cpp
+struct D final : Base {};
+D* p = ...; p->f();   // 知道不会有更派生的重写 → 可去虚化
+```
+
+3. **构造/析构期间**：vptr 已知。
+4. **同一次调用后的类型收窄**（speculative devirtualization）：编译器可以插入"类型检查 + 直接调用 + fallback"。
+5. **LTO** 能看到更多上下文。
+
+**手工手段**：
+
+1. **`final`**：语义清晰、零成本，是最简单的优化。
+```cpp
+struct Handler final { virtual void handle(); };
+```
+
+2. **CRTP / 模板**：编译期多态，从根本上没有虚调用（见前文 CRTP 题）。
+
+3. **类型擦除 + 内联**：把"小对象优化"放进 `std::function` 风格的封装，减少分配但仍有间接调用。
+
+4. **分支替代虚函数**（**谨慎**）：
+```cpp
+// 用枚举 + switch 替代虚函数，可能更快（分支预测友好）
+enum class Kind { A, B, C };
+switch (k) { case Kind::A: a.f(); break; ... }
+```
+优点：可内联、无间接跳转、代码在一处（icache 友好）。缺点：不开放（新增类型要改 switch）、可能代码膨胀。
+
+5. **把虚函数调用移出热循环**：
+```cpp
+// ❌ 每次循环都虚调用
+for (auto& s : shapes) s->area();
+// ✅ 先算出函数指针/结果
+```
+
+6. **值语义 + `variant` + `std::visit`**：`variant` 的 `visit` 通常被编译器优化成 switch，可比虚函数快，且无堆分配（但类型集合封闭）。
+
+**代价与权衡**：
+
+| 手段 | 收益 | 代价 |
+|---|---|---|
+| `final` | 高（零成本） | 限制继承 |
+| 模板/CRTP | 最高（可完全内联） | 代码膨胀、类型封闭 |
+| switch/variant | 高 | 类型集合封闭、难扩展 |
+| 手工类型检查 | 中 | 脆弱、易错 |
+
+**如何验证**：看汇编（`objdump -d`）里是否还有 `call *rax` 这类间接调用；或 `-Rpass=devirt`（Clang）。
+
+**实践建议**：
+1. **先 profile**，只在确认虚调用是热点时优化。
+2. **优先用 `final`**（成本最低）。
+3. **接口设计上"类型集合封闭"的场景**（渲染、状态机）可以用 `variant` 替代继承。
+4. 记住：**多态是设计工具**，不要为了性能牺牲可维护性 —— 大部分程序中虚调用开销可以忽略。', 1),
+
+('C++', 'C++11 新特性', 1,
+ '列举 C++11 引入的重要特性。',
+ '**C++11 是 C++ 的分水岭**，从"带类的 C"变成现代语言。
+
+**语言核心**：
+1. **`auto`** 类型推导、**`decltype`**。
+2. **右值引用 `&&` + 移动语义 + 完美转发**（`std::move`/`std::forward`）。
+3. **lambda 表达式**（闭包）。
+4. **可变参数模板**。
+5. **`nullptr`**（替代 `NULL`）。
+6. **统一初始化 `{}`**（initializer_list）。
+7. **`enum class`**（强类型枚举，不隐式转 int）。
+8. **`override` / `final`**。
+9. **`= default` / `= delete`**。
+10. **`static_assert`**（编译期断言）。
+11. **`constexpr`**（编译期求值，C++11 限制多）。
+12. **`alignas` / `alignof`**、`thread_local`。
+13. **`using` 别名模板**（`template<class T> using Vec = std::vector<T>;`）。
+14. **`noexcept`**。
+15. **委托构造、继承构造**。
+16. **强类型空指针、`char16_t`/`char32_t`、UTF-8 字面量**。
+17. **范围 for**（`for (auto& x : c)`）。
+18. **原始字符串字面量 `R"(...)"`**、用户自定义字面量。
+19. **属性 `[[noreturn]]` 等**。
+
+**标准库**：
+1. **`<thread>`、`<mutex>`、`<atomic>`、`<condition_variable>`、`<future>`** —— 内存模型与并发。
+2. **`<chrono>`** 时间库。
+3. **`<random>`** 随机数。
+4. **`<unordered_map>` / `<unordered_set>`**（哈希容器）。
+5. **智能指针** `unique_ptr`/`shared_ptr`/`weak_ptr`。
+6. **`std::array`、`std::tuple`、`std::function`、`std::bind`、`std::initializer_list`**。
+7. **`std::regex`**（性能一般，实践中少用）。
+8. **`std::ratio`、`std::enable_if`、`<type_traits>`**。
+
+**最重要的影响**：**移动语义 + 智能指针 + lambda + 并发库**，这四者让 C++ 从"手动管理资源"转向"RAII + 值语义 + 表达性代码"。
+
+**面试延伸**：C++11 之后各版本的关键增量：
+- **C++14**：泛型 lambda、`decltype(auto)`、变量模板、`make_unique`、`constexpr` 放宽。
+- **C++17**：结构化绑定、`if constexpr`、`std::optional/variant/any/string_view`、`std::filesystem`、折叠表达式、`inline` 变量、并行算法、**保证的拷贝消除**。
+- **C++20**：concepts、ranges、协程、modules、`std::format`、`std::span`、三路比较 `<=>`、`std::atomic` 等待/通知、日历时区。
+- **C++23**：`std::expected`、`std::print`、`std::generator`、`std::mdspan`、`std::flat_map`、`if consteval`。
+- **C++26**（进行中）**：`std::execution`（sender/receiver）、反射、契约、`std::simd`、静态分析。', 1),
+
+('C++', '三路比较,C++20', 2,
+ 'C++20 的 `<=>`（三路比较）和 `std::strong_ordering` 是什么？',
+ '> 三路比较运算符 `<=>`（俗称 **spaceship operator**）一次定义，编译器自动合成 `<`、`<=`、`>`、`>=`。
+
+```cpp
+struct Point {
+    int x, y;
+    auto operator<=>(const Point&) const = default;   // 自动生成全部比较
+};
+Point a{1,2}, b{3,4};
+if (a < b) ...;      // 自动可用
+if (a == b) ...;     // == 需要单独 default（默认不合成 ==）
+```
+
+**注意**：`operator<=>` 默认**不**生成 `==`，需要 `bool operator==(const Point&) const = default;`（或 C++20 起可写 `= default` 于两者）。
+
+**三类比较结果类型**：
+
+| 类型 | 语义 | 例子 |
+|---|---|---|
+| `std::strong_ordering` | 完全排序，`a == b` 表示**可互换** | `int`、`std::string` |
+| `std::weak_ordering` | 有序但 `a == b` 不意味可互换 | 忽略大小写的字符串 |
+| `std::partial_ordering` | 存在"不可比"（unordered） | `double`（有 NaN） |
+| `std::strong_equality` / `weak_equality` | 只比较相等（C++20 中一般用 `bool operator==`） | — |
+
+```cpp
+double a = 0.0/0.0;   // NaN
+if (auto r = (a <=> a); r == std::partial_ordering::unordered) ...
+```
+
+**返回类型可以不同**：`<=>` 的返回类型决定能合成哪些运算符：
+- 返回 `strong_ordering` → 全部六个比较可用。
+- 返回 `bool`（如 `std::optional` 的场景）→ 只生成 `==`/`!=`。
+- 返回 `std::partial_ordering` → 生成全部但含 unordered。
+
+**与 `==` 的关系**：`a != b` 现在可以由 `a == b` 自动合成（C++20 起 `operator!=` 不再需要），这修复了 C++17 中"定义了 `==` 但忘记 `!=`"的常见 bug。
+
+**实践建议**：
+1. **值类型（聚合）默认加 `= default` 的两个比较**，一行顶六个函数。
+2. 手写 `<=>` 时返回 `std::strong_ordering`，用 `std::tie` 或 `std::cmp_*` 组合：
+```cpp
+auto operator<=>(const T& o) const {
+    if (auto c = a <=> o.a; c != 0) return c;
+    return b <=> o.b;
+}
+```
+3. **浮点**：`std::partial_ordering`（NaN 存在）；需要"总序"用 `std::strong_order`。
+4. 显式写 `<` 仍然可以（比如需要与旧代码兼容），但建议统一到 `<=>`。
+5. `= default` 的比较要求**所有成员都可比较**，且顺序按**声明顺序**。', 1),
+
+('C++', 'std::format', 2,
+ '`std::format` 是什么？比 `printf` 和 `ostream` 好在哪？',
+ '`std::format`（C++20，`<format>`）是**类型安全、高效、可扩展**的格式化库，源自 `{fmt}` 库。
+
+```cpp
+#include <format>
+std::string s = std::format("{} + {} = {}", 1, 2, 3);       // 1 + 2 = 3
+std::format("{:>10}", "hi");                                // 右对齐宽度 10
+std::format("{:08.3f}", 3.14159);                           // 0003.142
+std::format("{0} {1} {0}", "a", "b");                       // a b a
+std::format("{{}}");                                        // 字面量 {} 
+```
+
+**对比**：
+
+| 维度 | `printf` | `ostream` | `std::format` |
+|---|---|---|---|
+| 类型安全 | ❌（`%d` 传 `double` 是 UB） | ✅ | ✅ |
+| 位置无关参数 | ❌（顺序必须匹配） | ✅ | ✅ |
+| 性能 | 快 | 慢（虚函数、locale、同步） | **快**（编译期解析格式串） |
+| 可读性 | 差（格式串与参数分离） | 中（链式 `<<`） | **好** |
+| 扩展自定义类型 | ❌ | 需要 `operator<<` | ✅（`std::formatter` 特化） |
+| 国际化/本地化 | 有限 | 依赖 locale | 有 `std::format_localized` |
+
+**性能**：`std::format` 在编译期解析格式串并生成直接的格式化代码，避免了 `printf` 的运行时格式解析和 `ostream` 的多次虚调用。基准测试中通常**显著快于 `ostream`**，与 `printf` 相当或更快。
+
+**相关**：
+- **`std::print`（C++23）**：直接输出，比 `std::cout << std::format(...)` 更快更简洁：
+```cpp
+std::print("{} {}", 1, 2);
+std::println("hello {}", name);
+```
+- **`std::format_to`**：输出到迭代器，避免中间 `string`：
+```cpp
+std::format_to(std::back_inserter(buf), "{}", x);
+```
+- **编译期检查**：C++23 起 `std::format` 的格式串是 `consteval` 检查的，`"{:d}"` 传字符串会在**编译期**报错。C++26 有 `std::format_string` 的编译期验证。
+
+**自定义类型的格式化**：
+```cpp
+struct Point { int x, y; };
+template <>
+struct std::formatter<Point> {
+    constexpr auto parse(auto& ctx) { return ctx.begin(); }
+    auto format(const Point& p, auto& ctx) const {
+        return std::format_to(ctx.out(), "({}, {})", p.x, p.y);
+    }
+};
+std::format("{}", Point{1,2});   // (1, 2)
+```
+
+**注意**：
+1. **不建议用 `to_string`**（不灵活、精度不可控）。
+2. `std::format` 用 `{}` 而非 `%`；要输出字面 `{}` 用 `{{`/`}}`。
+3. 对**浮点**的默认格式与 `printf` 的 `%g` 类似。
+4. **运行时格式串**（如用户输入）用 `std::vformat`（性能较低的路径）—— 正常路径都是编译期格式串。
+
+**实践建议**：新代码一律 `std::format`/`std::print`；老的 `printf` 只有在跨语言边界（如 C API 的 `printf` 族）时才保留。', 1),
+
+('C++', 'span,C++20', 2,
+ '`std::span` 是什么？什么时候用它替代指针+长度？',
+ '`std::span<T>`（C++20）是**对连续内存序列的非拥有视图**：一个指针 + 一个长度。
+
+```cpp
+void process(std::span<const int> data);
+
+std::vector<int> v{1,2,3};
+int arr[5] = {};
+std::array<int,3> a{};
+
+process(v);        // 容器
+process(arr);      // C 数组
+process(a);        // std::array
+process({v.data() + 1, 3});   // 指针 + 长度（显式）
+```
+
+**解决的问题**：函数参数需要"一段连续数据"，旧写法要么：
+- `void f(const int* p, size_t n)` —— 容易忘记传 n、可能不一致。
+- `void f(const std::vector<int>& v)` —— 强制调用者用 `vector`（不能用数组、`array`、子区间）。
+- 模板 `template<size_t N> void f(const int (&a)[N])` —— 只接受数组。
+
+`std::span` 是**统一、安全**的接口。
+
+**特性**：
+1. **轻量**：`sizeof(span) == 16`（指针 + 大小），可平凡拷贝。
+2. **支持动态与静态长度**：`std::span<int>`（运行期长度）与 `std::span<int, 3>`（编译期长度）。
+3. **`subspan` / `first` / `last`**：O(1) 取子区间（返回 span）。
+4. **可写**：`std::span<int>` 可修改元素；`std::span<const int>` 只读。
+5. **`as_bytes()` / `as_writable_bytes()`**：转换为字节视图。
+
+```cpp
+void parse(std::span<const std::byte> buf);
+```
+
+**坑（和 `string_view` 一样是视图）**：
+1. **不拥有数据** → 悬垂风险：
+```cpp
+std::span<const int> bad() {
+    std::vector<int> v{1,2,3};
+    return v;            // ❌ v 已销毁
+}
+```
+2. **构造自临时容器**同样危险：`process(std::vector<int>{1,2,3})` 在**完整表达式结束**后临时对象销毁 —— 如果函数只在该表达式内用完是安全的，跨语句保存则 UB。
+3. **不能改变大小**（不像 vector）。
+4. **`span` 不能从 `std::initializer_list` 安全构造为长期成员**（初始化列表底层数组的生命周期短）。
+5. **`std::span` 的 `extent` 是 `dynamic_extent` 时大小为运行期**。
+
+**实践建议**：
+- **函数参数**需要"连续数据"：用 `std::span<const T>` 替代 `(T*, n)` 和 `const vector<T>&`。
+- **不要**作为成员或返回值长期持有（除非生命周期明确）。
+- C++20 前用 `gsl::span`（Guidelines Support Library）或自己写。
+- 与 `string_view` 的关系：`string_view` 是"字符 span 的特化"，但有自己的字符串接口。
+
+**相关**：`std::mdspan`（C++23）是**多维**版本，用于矩阵/张量视图。', 1),
+
+('C++', '多线程,线程创建', 1,
+ '`std::thread` 怎么用？有哪些注意事项？',
+ '```cpp
+#include <thread>
+void work(int id) { /* ... */ }
+
+int main() {
+    std::thread t(work, 1);        // 启动
+    t.join();                      // 等待结束
+    // 或 t.detach();              // 分离（慎用）
+}
+```
+
+**传参**：
+```cpp
+std::thread t(f, 1, std::ref(x));   // 默认拷贝；要引用必须 std::ref
+```
+**注意**：`std::thread` 的构造函数会**拷贝/移动**参数到线程内部存储，再传给函数 —— 所以形参是**右值**。要传引用必须 `std::ref`，否则改的是副本。
+
+**生命周期风险（最大的坑）**：
+```cpp
+std::thread t([]{ std::this_thread::sleep_for(1s); });
+// t 析构时若仍 joinable → std::terminate！
+```
+`std::thread` 析构时若**仍可 join（joinable）**，会直接调用 `std::terminate`。所以必须保证：
+- 每条路径都 `join()` 或 `detach()`。
+- **RAII 包装**是标准做法：
+```cpp
+class ThreadGuard {
+    std::thread t_;
+public:
+    explicit ThreadGuard(std::thread t) : t_(std::move(t)) {}
+    ~ThreadGuard() { if (t_.joinable()) t_.join(); }
+};
+```
+
+**局部变量引用问题**：
+```cpp
+void bad() {
+    int x = 0;
+    std::thread t([&x]{ /* 用 x */ });
+    t.detach();          // ❌ x 已销毁，悬垂
+}
+```
+
+**其它**：
+1. **`detach` 后线程仍在跑**，但 `main` 结束时进程退出会**杀掉所有线程**，且不保证资源清理。
+2. **无法线程安全地获取返回值** → 用 `std::async`/`future`/`promise`。
+3. **`std::thread` 不可拷贝、只可移动** → 放进容器要 `std::move`。
+4. **`hardware_concurrency()`** 获取逻辑核数（可能为 0）。
+5. **线程局部存储**：`thread_local`。
+6. **不要在线程函数里跨线程抛异常**：未捕获的异常 → `std::terminate`；必须在线程函数内 `try/catch`。
+7. **线程 id**：`t.get_id()`、`std::this_thread::get_id()`；C++20 起可 `std::format("{}", id)`。
+8. **`std::jthread`（C++20）**：`join` 语义 + **停止令牌（stop_token）**，是更好的默认选择：
+```cpp
+std::jthread jt([](std::stop_token st) {
+    while (!st.stop_requested()) { /* work */ }
+});
+// 析构时自动请求停止并 join
+```
+
+**实践建议**：**优先用线程池**（`std::jthread` 或框架的池），避免手工 `thread` 的生命周期问题；确实需要手工管理时**一定用 RAII 守卫**。', 1),
+
+('C++', '编译流程,预处理,链接', 1,
+ 'C++ 从源码到可执行文件经历了哪些阶段？',
+ '**四个阶段**：
+
+```
+源码.cpp ──预处理──▶ 展开后的 .i ──编译──▶ 汇编 .s ──汇编──▶ 目标 .o ──链接──▶ 可执行文件
+```
+
+**1. 预处理（Preprocessing）**：`g++ -E`
+- 展开 `#include`（文本插入）、替换 `#define` 宏。
+- 处理条件编译 `#if/#ifdef`、`#pragma`，去掉注释。
+- 输出仍是**纯文本 C++ 代码**，此时还没有任何类型检查。
+
+**2. 编译（Compilation）**：`g++ -S`
+- 词法分析 → 语法分析（AST）→ 语义分析（类型检查、重载解析、模板实例化、`constexpr` 求值）。
+- 生成中间表示并优化（内联、常量传播、循环优化、向量化）。
+- 生成目标平台的汇编代码。**这是最耗时的阶段**。
+
+**3. 汇编（Assembly）**：`g++ -c`
+- 汇编器把 `.s` 翻成机器码，产出**目标文件 `.o`**（ELF/PE/Mach-O）。
+- 里面有代码段 `.text`、数据段、**符号表**、**重定位表**。
+
+**4. 链接（Linking）**
+- **符号解析**：把各 `.o` 与静态库中的符号引用和定义对上。
+- **重定位**：填好相对地址与外部符号地址。
+- 动态库（`.so`/`.dll`）在**运行时**由动态链接器加载。报 `undefined reference to ...` 就是这一步失败。
+
+```bash
+g++ -E main.cpp -o main.i   # 只看预处理
+g++ -S main.cpp -o main.s   # 生成汇编
+g++ -c main.cpp -o main.o   # 生成目标文件
+g++ main.o -o main          # 链接
+```
+
+**相关概念**：
+- **翻译单元（TU）**：一个 `.cpp` 加上它包含的所有头文件，是编译的基本单位。
+- **ODR（单一定义规则）**：同一实体在程序中只能有一个定义（`inline` 是例外）。
+- **静态链接 vs 动态链接**：前者把库代码拷进可执行文件（体积大、无外部依赖），后者运行时加载（体积小、可共享、需目标机有对应库）。
+- 排查工具：`nm`（看符号）、`objdump`/`readelf`（看目标文件）、`c++filt`（还原修饰名）。
+
+**编译慢的对策**：前置声明/PIMPL 减少头文件依赖、`extern template` 抑制模板重复实例化、ccache/distcc、预编译头（PCH）、C++20 modules。', 1),
+
+('C++', '前置声明,编译依赖', 2,
+ '什么是前置声明？它和 `#include` 该怎么选？',
+ '**前置声明**只声明类型存在，不给完整定义：
+
+```cpp
+class Foo;          // 前置声明（不完整类型）
+void f(Foo* p);     // ✅ 指针/引用可以
+```
+
+**能用不完整类型的场景**：声明指针/引用类型的形参、返回值、成员；函数原型；类型别名；模板参数。
+**必须完整定义的场景**：按值传参/返回、定义对象或值成员、继承、访问成员或调用方法、`sizeof`。
+
+```cpp
+class Foo;
+class Bar {
+    Foo* p_;      // ✅ 指针成员
+    // Foo f_;    // ❌ 值成员需要完整定义
+};
+```
+
+**好处**：
+1. **减少编译依赖**：改 `Foo` 的定义不会导致只有指针的 `Bar` 重编译。
+2. **加快编译**：少解析一个头文件（含其递归包含）。
+3. **打破循环依赖**。
+
+**风险（为什么现代实践更倾向直接 `#include`）**：
+1. **脆弱且会静默出错**：
+```cpp
+// 若 Foo 实际是 typedef、别名模板、或在命名空间里
+namespace a { class Foo; }
+class Foo;   // 实际是 a::Foo，这里声明了全局 ::Foo，静默不一致！
+```
+2. **标准库类型一律不能前置声明** —— `std::string` 是 `basic_string<char>` 的 typedef，`std::iostream` 是模板实例，前置声明是 UB。要前向声明用 `<iosfwd>`。
+3. **重构不友好**：把 class 改 struct、加命名空间后，前置声明处会静默失配。
+4. include-what-you-use（IWYU）的实践倾向"宁可多包含"。
+
+**实践建议**：
+- **普通代码直接 `#include`**（正确性优先）。
+- **大型项目的公共头文件**里，对第三方/重量级类型用前置声明或 PIMPL 优化编译时间。
+- **绝对不要前置声明 `std::` 类型**（除 `<iosfwd>` 提供的）。
+- 只需要 `std::ostream&` 形参时，`#include <iosfwd>` 而非 `<iostream>` —— 这是标准库专门为前置声明准备的。', 1),
+
+('C++', 'modules,C++20', 3,
+ 'C++20 modules 是什么？它解决了什么问题？',
+ '**modules** 用**导入模块**替代 `#include` 的文本包含，是 C++ 编译模型几十年来最大的变革。
+
+```cpp
+// math.cppm
+export module math;                 // 声明并导出模块
+export int add(int a, int b) { return a + b; }
+int helper() { return 1; }          // 不导出 → 外部不可见
+
+// main.cpp
+import math;
+int main() { return add(1, 2); }
+```
+
+**解决的问题**：
+
+| 维度 | `#include` | modules |
+|---|---|---|
+| 重复解析 | 头文件在每个 TU 里重新解析（主要编译开销） | 模块编译一次成 BMI，导入即用 |
+| 宏污染 | 宏会泄漏给包含者 | 模块默认不导出宏 |
+| 包含顺序 | 顺序会影响结果 | 无顺序依赖 |
+| 重编译范围 | 头文件改一点，所有包含者重编译 | 只有模块接口变更才影响导入者 |
+| 循环包含 | 需 include guard + 前置声明 | 模块依赖图，可处理 |
+| 隐藏实现 | 靠匿名命名空间/PIMPL | 不导出即不可见 |
+
+对大型项目（Chromium/LLVM 量级），编译时间常有数倍改善。
+
+**语法要点**：
+```cpp
+export module m;                       // 主模块接口单元
+export { int g(); class D {}; }        // 导出块
+export import other;                   // 重导出（类似头文件的聚合）
+import :part;                          // 导入模块分区
+
+// 实现单元：module m;  （无 export）
+```
+
+**模块分区（partitions）**：把大模块拆成多个文件（`export module m:part;`）再由主单元聚合，利于并行编译与组织。
+
+**现状与注意**：
+1. **编译器支持**：MSVC 较完整；Clang 16+、GCC 13+ 基本可用；**CMake 3.28+** 有官方支持。
+2. **标准库模块**（`import std;`）在 C++23 才落地，多数第三方库仍是头文件 —— **混用是常态**（模块里可以 `#include`）。
+3. **构建系统适配**（依赖扫描、BMI 缓存）是落地的主要障碍。
+4. **宏仍无法导出**，涉及宏的接口（`assert`、日志、平台检测）还要走头文件。
+5. **IDE/调试支持**相对滞后。
+6. **与 PCH 的区别**：modules 有语言级语义、依赖精确、隔离性好；PCH 只是编译器层面的加速技巧。
+
+**实践建议**：新项目可以尝试（收益主要在大项目）；存量项目迁移成本高，通常先从新代码用起、逐步演进；**不要为了用 modules 而用**。', 1),
+
+('Linux', '文件系统,目录结构', 1,
+ 'Linux 的目录结构是怎样的？FHS 规定了哪些主要目录？',
+ '**FHS（Filesystem Hierarchy Standard）** 规定了各目录的用途：
+
+| 目录 | 用途 |
+|---|---|
+| `/` | 根目录，所有路径的起点 |
+| `/bin` | 基础用户命令（现代发行版多为 `/usr/bin` 的软链接） |
+| `/sbin` | 系统管理命令 |
+| `/etc` | **配置文件**（全文本，`/etc` 不应有二进制） |
+| `/home` | 普通用户的家目录 |
+| `/root` | root 的家目录 |
+| `/tmp` | 临时文件，**重启可能被清空**，所有用户可写（有 sticky 位） |
+| `/var` | 可变数据：日志 `/var/log`、缓存 `/var/cache`、数据库文件 |
+| `/usr` | 用户程序与只读数据：`/usr/bin`、`/usr/lib`、`/usr/share`、`/usr/local`（本地安装） |
+| `/lib` | 共享库与内核模块（常为 `/usr/lib` 的软链接） |
+| `/dev` | **设备文件**（`/dev/sda`、`/dev/tty`、`/dev/null`） |
+| `/proc` | **虚拟文件系统**，反映内核与进程状态（`/proc/cpuinfo`、`/proc/<pid>`） |
+| `/sys` | 虚拟文件系统，暴露设备与驱动模型（sysfs） |
+| `/boot` | 内核镜像（`vmlinuz`）、initramfs、GRUB 配置 |
+| `/opt` | 第三方大型软件（如 `/opt/google`） |
+| `/mnt` / `/media` | 临时挂载点 / 可移动介质挂载点 |
+| `/srv` | 服务数据（如 web 根目录） |
+| `/run` | 运行期数据（PID 文件、socket），tmpfs，重启清空 |
+
+**要点**：
+1. **一切皆文件** —— 设备、管道、socket 都有文件路径。
+2. `/proc` 和 `/sys` **不占磁盘**，是内核暴露的接口（读它们就是读内核数据结构）。
+3. `/etc` 放**配置**、`/var` 放**运行时可变数据**，这是运维备份策略的基础：备份 `/etc` + `/var/lib` 就抓住了大部分状态。
+4. FHS 是**约定**不是强制，很多发行版按自己的方式组织（如 `/bin` → `/usr/bin` 合并，`usrmerge`）。', 1),
+
+('Linux', '硬链接,软链接', 1,
+ '硬链接和软链接（符号链接）有什么区别？',
+ '| 维度 | 硬链接 | 软链接（符号链接） |
+|---|---|---|
+| 本质 | **另一个目录项指向同一个 inode** | 一个独立文件，内容是目标路径字符串 |
+| inode | 与源文件**相同** | 有**自己独立的 inode** |
+| 跨文件系统 | ❌ 不可以 | ✅ 可以 |
+| 指向目录 | ❌ 一般不允许（除 `.`/`..`） | ✅ 可以 |
+| 删除源文件 | 文件仍存在（链接计数 -1） | 变成**悬空链接**（dangling） |
+| `ls -l` 显示 | 普通文件 | `l` 开头，显示 `目标 -> 路径` |
+| 创建命令 | `ln src dst` | `ln -s src dst` |
+| 相对路径 | 无所谓（同一 inode） | **相对路径相对于链接所在目录**（易踩坑） |
+
+```bash
+echo hi > a.txt
+ln a.txt hard.txt      # 硬链接
+ln -s a.txt soft.txt   # 软链接
+ls -li                 # 看 inode：hard.txt 与 a.txt 相同，soft.txt 不同
+rm a.txt
+cat hard.txt           # ✅ 仍可读（inode 还有引用）
+cat soft.txt           # ❌ No such file or directory
+```
+
+**inode 与链接计数**：`stat` 里的 `Links` 字段就是硬链接数。文件数据在**链接计数为 0 且没有进程打开**时才真正释放。
+
+**实践用途**：
+- **软链接**：版本切换（`/usr/bin/python -> python3.11`）、跨分区、指向目录。
+- **硬链接**：备份（`rsync --link-dest` 做增量快照）、节省空间的多份"副本"。
+
+**坑**：
+1. `ln -s` 的**相对路径**是相对"链接文件所在目录"，不是当前工作目录 —— 用绝对路径最稳。
+2. 软链接的权限位无意义（`lrwxrwxrwx`），权限由**目标**决定。
+3. `rm` 一个软链接删的是链接本身；`rm -r link/`（带斜杠）会**跟随进入目标目录**，很危险。
+4. `cp -a` 保留软链接，`cp -L` 解引用；`rsync` 用 `-l` 保留链接。', 1),
+
+('Linux', '权限,chmod,umask', 1,
+ 'Linux 的文件权限模型是怎样的？`umask` 有什么用？',
+ '**三组权限 × 三个对象**：
+
+```
+-rwxr-xr--  1 user group  size date file
+ │└┬┘└┬┘└┬┘
+ │ │  │  └── others: r--
+ │ │  └───── group : r-x
+ │ └──────── owner : rwx
+ └────────── 类型：- 普通文件 / d 目录 / l 符号链接 / c 字符设备 / b 块设备 / s socket / p 管道
+```
+
+**数字表示**：`r=4, w=2, x=1`，三位 8 进制，如 `755`（rwxr-xr-x）、`644`（rw-r--r--）。
+
+**目录权限的含义（容易搞错）**：
+- `r`：能**列出**目录内容（`ls`）。
+- `w`：能在目录里**创建/删除/重命名**条目。
+- `x`：能**进入**目录（`cd`）并访问其中的文件（**访问文件内容必须对目录有 x**）。
+- 只给 `w` 不给 `x`：能创建文件但列不出来。
+- **删除文件看的是目录的 `w`**，与文件自身权限无关！
+
+**`chmod`**：
+```bash
+chmod 755 file          # 数字
+chmod u+x,g-w file      # 符号：u/g/o/a + - = r/w/x
+chmod -R 750 dir        # 递归
+```
+
+**`chown` / `chgrp`**：
+```bash
+chown user:group file
+chown -R www-data:www-data /var/www
+```
+
+**`umask`**：新文件/目录的**权限掩码**，权限 = 默认值 **按位与非** umask。
+- 文件默认最大 `666`，目录默认最大 `777`（出于安全，新建文件默认不带 `x`）。
+- 常见 `umask 022` → 新文件 `644`、新目录 `755`。
+- `umask 077` → 新文件 `600`、新目录 `700`（私密）。
+```bash
+umask          # 查看
+umask 027      # 设置（当前 shell 有效；持久化写到 ~/.bashrc 或 /etc/profile）
+```
+
+**默认 ACL**：需要更细粒度的权限（给特定用户额外权限）时用 `setfacl`/`getfacl`。
+
+**注意**：
+1. `root` **无视权限检查**（除执行位），这是"以 root 跑服务很危险"的原因之一。
+2. 权限检查顺序：owner → group → others，**命中即停**（不是取并集）。
+3. 用户属于多个组时，只要**任一所属组**匹配即可。', 1),
+
+('Linux', 'suid,sgid,sticky', 2,
+ 'SUID、SGID、Sticky bit 分别是什么？',
+ '这三个是**特殊权限位**，出现在 `ls -l` 的 `x` 位置上：
+
+| 位 | 数字 | owner 位显示 | 含义 |
+|---|---|---|---|
+| SUID | 4000 | `s`（无 x 时 `S`） | 执行时**以文件属主身份**运行 |
+| SGID | 2000 | group 位显示 `s` | 执行时以**属组身份**运行；**目录上**表示新建文件继承目录的属组 |
+| Sticky | 1000 | others 位显示 `t` | **目录上**：只有文件属主/目录属主/root 能删除 |
+
+```bash
+chmod u+s file    # SUID
+chmod g+s dir     # SGID（目录）
+chmod +t dir      # Sticky
+```
+
+**典型用途**：
+
+1. **SUID**：`/usr/bin/passwd` 是 root 所有且带 SUID，普通用户执行时临时获得 root 权限去改 `/etc/shadow`。
+2. **SGID 目录**：团队共享目录（如 `/var/www`），所有新建文件自动属于该组，方便协作。
+3. **Sticky**：`/tmp` 通常是 `drwxrwxrwt` —— 任何用户可写，但**只能删自己的文件**。
+
+**安全注意**：
+1. **SUID 是提权高危点**：任何 SUID 程序有漏洞都可能被用来提权。审计命令：
+```bash
+find / -perm -4000 -type f 2>/dev/null      # 找所有 SUID 文件
+find / -perm -2000 -type f 2>/dev/null      # SGID
+```
+2. **SUID 对脚本无效**：`#!/bin/sh` 的脚本加 SUID 会被内核忽略（历史安全问题），只对二进制生效。
+3. **SUID 对目录无意义**。
+4. **SUID 只改变 euid**，不改变 ruid（`getuid`/`geteuid` 可区分）。
+5. 挂载 `nosuid` 的分区上 SUID 位不生效（`/tmp`、`/home` 常这样挂载）。
+6. **不要给 shell 加 SUID** —— 等于给所有人 root。
+7. Capabilities（`setcap`）是 SUID 的更细粒度替代：只授予某个能力（如 `cap_net_bind_service` 绑定低端口）而非完整 root。', 1),
+
+('Linux', '进程,fork,exec', 1,
+ '`fork`、`vfork`、`exec` 分别做什么？它们怎么配合？',
+ '**`fork()`**：创建一个**子进程**（父进程的完整副本）。
+- 返回值：父进程得到**子进程 PID**，子进程得到 **0**，失败返回 **-1**。
+- 子进程拥有独立的地址空间（**写时复制 COW**，见后文）、独立的文件描述符表（**但共享打开文件偏移**）。
+- 继承：环境变量、信号处理、当前工作目录、umask；不继承：PID、父进程 ID、挂起的信号、文件锁。
+
+```c
+pid_t pid = fork();
+if (pid == 0) {
+    // 子进程
+} else if (pid > 0) {
+    // 父进程：pid 是子进程 PID
+} else {
+    perror("fork");
+}
+```
+
+**`vfork()`**：创建子进程但**不复制地址空间**，子进程直接使用父进程的内存，且**父进程会被挂起**直到子进程 `exec` 或退出。用于"fork 立刻 exec"的场景以省去页表复制。**现代 Linux 上 `fork` 因 COW 已足够快，`vfork` 基本不需要**（且使用不当会 UB）。`posix_spawn` 是更安全的替代。
+
+**`exec` 家族**：**替换**当前进程的映像（不创建新进程）。
+```c
+execl("/bin/ls", "ls", "-l", NULL);
+execv("/bin/ls", argv);
+execvp("ls", argv);      // 按 PATH 查找
+execle(...); execve(...); // 带环境变量 / 系统调用本身
+```
+- 成功后**不返回**（原代码被完全替换）；失败返回 -1。
+- **`execve` 是唯一的系统调用**，其余都是库函数封装。
+- 注意：`exec` 后**文件描述符默认保留**（除非设置 `FD_CLOEXEC`），这是"泄漏 fd 到子进程"的常见坑。
+
+**经典配合模式**：
+```c
+pid_t pid = fork();
+if (pid == 0) {
+    execvp("ls", argv);      // 子进程变成 ls
+    _exit(127);              // exec 失败才到这里，用 _exit 避免刷新父进程的 stdio 缓冲
+}
+int status;
+waitpid(pid, &status, 0);    // 父进程等待
+```
+**注意用 `_exit` 而不是 `exit`**：`exit` 会刷新 stdio 缓冲并执行 `atexit` 处理器，在 fork 后被调可能**重复输出**父进程未刷新的缓冲内容。', 1),
+
+('Linux', '僵尸进程,孤儿进程', 2,
+ '什么是僵尸进程和孤儿进程？怎么处理？',
+ '**孤儿进程（orphan）**：父进程先退出，子进程还在运行。
+- **处理**：由 `init`（PID 1，现代系统是 `systemd`）**收养**，孤儿进程的父进程变为 1。
+- **无害**，是正常现象。
+
+**僵尸进程（zombie）**：子进程已退出，但父进程**没有调用 `wait`/`waitpid` 回收**，内核保留其退出状态（PID、退出码、资源使用）。
+- **不占用内存**（地址空间已释放），但**占用一个 PID 和内核 task_struct**。
+- `ps` 中状态显示为 **`Z`**，CMD 显示 `<defunct>`。
+- **危害**：PID 数量有限（`/proc/sys/kernel/pid_max`，默认 32768）。僵尸堆积会耗尽 PID → 无法创建新进程。
+
+**产生僵尸的原因**：父进程没调 `wait`，且父进程仍在运行。
+
+**处理办法**：
+
+1. **父进程正确 `wait`**：
+```c
+// 方式 A：同步等待
+waitpid(pid, &status, 0);
+
+// 方式 B：SIGCHLD 信号里回收
+signal(SIGCHLD, SIG_IGN);   // 最简单：让内核自动回收（POSIX 允许）
+
+// 方式 C：SIGCHLD handler 里循环 waitpid(-1, ..., WNOHANG)
+void handler(int) {
+    int st;
+    while (waitpid(-1, &st, WNOHANG) > 0) {}
+}
+struct sigaction sa{};
+sa.sa_handler = handler;
+sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+sigaction(SIGCHLD, &sa, nullptr);
+
+// 方式 D：双重 fork
+// 1. fork 子进程；2. 子进程再 fork 孙进程；3. 子进程立即退出（父进程回收它）
+// 4. 孙进程由 init 收养，永远不会变成僵尸
+```
+
+2. **清理已有僵尸**：僵尸**不能被杀**（`kill -9` 无效，因为它已经死了）。只能：
+- **杀掉父进程**，让僵尸被 init 收养并由 init 回收。
+```bash
+ps -eo pid,ppid,stat,cmd | awk ''$3 ~ /^Z/''
+kill <父进程PID>
+```
+
+3. **排查**：`ps aux | grep -w Z`、`top` 看 `zombie` 计数。
+
+**面试延伸**：`waitpid` 的 `WNOHANG` 表示非阻塞；`SA_NOCLDWAIT` 标志让内核不产生僵尸；容器里 PID 1（应用自己）**必须正确回收子进程**，否则僵尸堆积 —— 这是"容器里不要用 `sh -c` 当 PID 1"的原因之一（`sh` 不太会转发信号和回收）。', 1),
+
+('Linux', '守护进程,daemon', 2,
+ '怎么把一个程序变成守护进程（daemon）？',
+ '**daemon 的特征**：脱离控制终端、在后台运行、通常以 PID 1 为父进程。
+
+**经典 daemonize 步骤**（`man 7 daemon`）：
+
+```c
+// 1. fork，父进程退出 → 子进程不是进程组组长
+pid_t pid = fork();
+if (pid > 0) exit(0);
+
+// 2. setsid 创建新会话，成为会话首进程，脱离控制终端
+if (setsid() < 0) exit(1);
+
+// 3.（可选）第二次 fork，确保不是会话首进程 → 无法再获取控制终端
+pid = fork();
+if (pid > 0) exit(0);
+
+// 4. 设置 umask，避免继承干扰
+umask(0);
+
+// 5. 切换工作目录到 /（避免阻碍文件系统卸载）
+chdir("/");
+
+// 6. 关闭/重定向标准文件描述符
+close(STDIN_FILENO); close(STDOUT_FILENO); close(STDERR_FILENO);
+int fd = open("/dev/null", O_RDWR);
+dup2(fd, STDIN_FILENO); dup2(fd, STDOUT_FILENO); dup2(fd, STDERR_FILENO);
+
+// 7.（可选）写 PID 文件
+// 8.（可选）把日志写到 syslog
+```
+
+**为什么第 3 步要第二次 fork**：`setsid` 后子进程是会话首进程，**会话首进程可以重新打开控制终端**；再 fork 一次后新进程不是会话首进程，就无法获得控制终端。
+
+**现代做法（推荐）**：
+1. **不自己 daemonize**，而是让 **systemd** 管理：
+```ini
+[Unit]
+Description=My Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/myapp
+Restart=on-failure
+User=appuser
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+systemd 负责后台化、日志（journald）、崩溃重启、资源限制（cgroup）、依赖顺序。**这是当前的标准答案**。
+2. 容器中**不要 daemonize**（PID 1 应前台运行，否则容器立即退出）。
+3. 第三方库：`libdaemon`、`daemon(3)`（glibc 提供一次调用版本，但它只 fork 一次、不做 chdir/chdir 的完整语义）。
+
+**注意点**：
+1. **日志不要写 `stdout` 后关闭 fd**（会丢日志）—— 交给 journald 或写自己的日志文件。
+2. **信号处理**：daemon 应处理 `SIGHUP`（重载配置）、`SIGTERM`（优雅退出）。
+3. **PID 文件**要处理陈旧文件（进程已死但文件还在）。
+4. **不要继承父进程的 fd**（会阻止文件系统卸载）—— 用 `O_CLOEXEC` 或显式关闭。', 1),
+
+('Linux', '信号,signal', 2,
+ 'Linux 信号是什么？哪些信号不能被忽略？怎么安全地处理？',
+ '**信号**是异步通知机制，内核或其他进程发给进程的"软中断"。
+
+**编号范围**：`1~31` 是**标准信号**（不可靠，可能丢失、不排队）；`34~64` 是**实时信号**（排队、有顺序保证）。
+
+**常用信号**：
+
+| 信号 | 编号 | 默认动作 | 说明 |
+|---|---|---|---|
+| SIGHUP | 1 | 终止 | 终端挂断；daemon 常借它做配置重载 |
+| SIGINT | 2 | 终止 | `Ctrl+C` |
+| SIGQUIT | 3 | 终止+core | `Ctrl+\\` |
+| SIGKILL | 9 | 终止 | **不可捕获、不可忽略** |
+| SIGSEGV | 11 | 终止+core | 段错误 |
+| SIGPIPE | 13 | 终止 | 写已关闭的管道/socket（常需忽略） |
+| SIGALRM | 14 | 终止 | 定时器 |
+| SIGTERM | 15 | 终止 | 默认的 `kill`，**可被捕获做优雅退出** |
+| SIGCHLD | 17 | 忽略 | 子进程状态变化 |
+| SIGSTOP | 19 | **停止** | **不可捕获、不可忽略** |
+| SIGTSTP | 20 | 停止 | `Ctrl+Z` |
+| SIGCONT | 18 | 继续 | 恢复运行 |
+| SIGUSR1/2 | 10/12 | 终止 | 用户自定义 |
+
+**不可捕获/忽略的两个**：**SIGKILL（9）和 SIGSTOP（19）** —— 这是"进程一定能被杀死/停止"的最后保障。
+
+**处理方式**：`signal()`（简单，语义因实现而异）、**`sigaction()`（推荐，语义明确）**。
+
+```c
+volatile sig_atomic_t g_stop = 0;      // ⚠️ 只能用 volatile sig_atomic_t
+
+void on_term(int) { g_stop = 1; }      // handler 里只做最简单的赋值
+
+struct sigaction sa{};
+sa.sa_handler = on_term;
+sigemptyset(&sa.sa_mask);
+sa.sa_flags = SA_RESTART;              // 自动重启被中断的系统调用
+sigaction(SIGTERM, &sa, nullptr);
+
+while (!g_stop) { /* 主循环 */ }
+```
+
+**信号处理函数的限制（重要）**：
+handler 运行在**异步、可能中断任意代码**的上下文里，**只能调用 async-signal-safe 的函数**（见 `man 7 signal-safety`）。**不能用**：
+- `printf`、`malloc`、`free`
+- 大多数标准库函数
+- 加锁（可能死锁，如果主线程正持有同一把锁）
+
+安全做法：
+1. **handler 里只设置一个 `volatile sig_atomic_t` 标志**，主循环检查。
+2. 或用 **`signalfd`**（Linux 专有）把信号变成文件描述符，用 `epoll`/`select` 统一处理 —— **事件驱动程序的首选**。
+3. 或用 **`self-pipe` 技巧**：handler 里 `write()` 一个字节到管道，主循环从管道读。
+
+**其它要点**：
+1. `SA_RESTART` 让被信号中断的系统调用自动重启；不加的话 `read`/`accept` 会返回 `EINTR`，**必须处理**（生产代码的常见 bug 源）。
+2. 信号**不排队**：同一标准信号在处理期间又到达，会被合并。
+3. `fork` 后子进程继承信号处理设置；`exec` 后自定义 handler 恢复默认（被忽略的仍被忽略）。
+4. **多线程**：信号会投递给**任一线程**（不阻塞该信号的），所以常用"专门线程处理信号（`pthread_sigmask` 阻塞其他线程，只在专用线程 `sigwait`）"。
+5. `kill -9` 不能被杀死的进程通常是处于**不可中断睡眠（D，磁盘 IO）**。', 1),
+
+('Linux', '进程组,会话', 3,
+ '进程组、会话、控制终端是什么关系？',
+ '**层级关系**：
+
+```
+会话（session）
+ └── 进程组（process group）  ← 每个组是"作业控制"的单位
+      └── 进程
+```
+
+- **进程组（PGID）**：一组相关进程，**作业控制的最小单位**（`kill -PGID` 可以发给整个组）。`setpgid()` 修改。
+- **会话（SID）**：一组进程组的集合，**会话首进程**是创建会话的进程（`setsid()`）。一个会话通常对应一个登录会话。
+- **控制终端（controlling terminal）**：会话可以关联一个终端设备（`/dev/tty`）。**只有会话首进程能打开控制终端**（这也是 daemon 要二次 fork 的原因）。
+
+```bash
+ps -o pid,ppid,pgid,sid,tty,comm        # 查看 PID/父/组/会话/终端
+ps -eo pid,pgid,sid,tty,cmd
+```
+
+**为什么要这样设计（作业控制）**：
+
+```bash
+$ sleep 100 &      # 后台作业，新进程组
+$ jobs             # 查看作业
+[1]+  Running     sleep 100 &
+$ Ctrl+Z           # 暂停前台进程组
+$ bg %1            # 后台继续
+$ fg %1            # 调到前台
+```
+
+- 终端驱动根据**前台进程组**决定把 `Ctrl+C`（SIGINT）、`Ctrl+Z`（SIGTSTP）发给谁。
+- 后台进程组**读终端**会收到 **SIGTTIN**（默认停止），写终端按 `TOSTOP` 设置可能收到 SIGTTOU —— 防止后台进程抢终端输入。
+
+**关键系统调用**：
+| 调用 | 作用 |
+|---|---|
+| `setpgid(pid, pgid)` | 加入/创建进程组 |
+| `setsid()` | 创建新会话（调用者成为会话首进程和新进程组的组长），**脱离控制终端** |
+| `tcsetpgrp(fd, pgid)` | 设置终端的前台进程组（shell 做作业控制用） |
+| `tcgetpgrp(fd)` | 查询前台进程组 |
+
+**实践影响**：
+1. **daemon 必须 `setsid` + 二次 fork**，才能彻底脱离控制终端（否则终端关闭时会收到 SIGHUP 被杀）。
+2. **`nohup cmd &`** 是更简单的替代：把 SIGHUP 设为忽略。
+3. **shell 脚本里的进程组**：`set -m` 开启作业控制。
+4. **容器里的 PID 1** 要处理孤儿进程回收与信号转发（`tini`、`dumb-init` 就是干这个）。
+5. **`kill -TERM -1234`** 的负号表示"发送给进程组 1234"（常用于杀整个作业）。', 1),
+
+('Linux', '进程,线程,clone', 2,
+ 'Linux 的线程是怎么实现的？和进程在实现上有什么区别？',
+ '**核心答案：Linux 不区分进程和线程**，两者都是 **task_struct**，只是**共享资源的程度不同**。创建都用 `clone()`。
+
+**`clone()` 的 flags 决定共享什么**：
+
+| flag | 含义 |
+|---|---|
+| `CLONE_VM` | 共享地址空间 |
+| `CLONE_FS` | 共享文件系统信息（cwd、umask） |
+| `CLONE_FILES` | 共享文件描述符表 |
+| `CLONE_SIGHAND` | 共享信号处理函数 |
+| `CLONE_THREAD` | 放进同一个线程组（同 PGID/线程组 ID） |
+| `CLONE_NEWNS` 等 | 创建新的 namespace（容器的基础） |
+| `CLONE_PARENT_SETTID` 等 | 设置 TID |
+
+- **`fork()`** ≈ `clone(SIGCHLD)` —— 什么都不共享。
+- **`pthread_create()`** ≈ `clone(CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND | CLONE_THREAD | ...)` —— 共享地址空间、fd 表、信号处理等。
+
+**"线程组"**：同一进程的多个线程属于同一线程组（TGID），**TGID 就是主线程的 PID**。`getpid()` 返回 TGID（所有线程相同），`gettid()` 返回各自的 TID。
+```bash
+ls /proc/<pid>/task/      # 列出该进程的所有线程（每个 TID 一个目录）
+ps -eLf                   # 看线程（LWP 列是 TID）
+top -H -p <pid>           # 按线程显示 CPU
+```
+
+**线程创建的开销**：
+| 项 | fork | pthread_create |
+|---|---|---|
+| 地址空间 | COW 复制页表 | **共享**，不复制 |
+| 内核对象 | 新 task_struct | 新 task_struct |
+| 栈 | 新栈 | 新栈（默认 8MB 虚拟） |
+| 开销 | 较大（页表复制） | 较小 |
+
+**线程共享/私有**：
+
+| 共享 | 私有 |
+|---|---|
+| 地址空间（代码、数据、堆） | 栈 |
+| 文件描述符表 | 寄存器、errno |
+| 信号处理函数 | 信号屏蔽字（mask） |
+| 当前工作目录、umask | 线程 ID、调度优先级 |
+| 用户/组 ID | 信号挂起集 |
+
+**常见坑**：
+1. **`errno` 是线程局部的**（`__thread int errno`），这是正确的设计。
+2. **`fork` 在多线程程序中很危险**：子进程只复制**调用 fork 的那个线程**，其他线程的锁可能处于"已加锁但持有者不存在"的状态 → 死锁。**`fork` 之后在 `exec` 之前只能调用 async-signal-safe 函数**。这就是 `posix_spawn` 更受推荐的原因。
+3. **`CLONE_VM` + `CLONE_THREAD`** 意味着线程的 `kill(getpid())` 会杀整个线程组。
+4. **`vfork`** 也是共享地址空间的一种（父进程挂起）。
+5. **"轻量级进程（LWP）"** 是内核视角的线程 —— 历史上 LinuxThreads 用 LWP 实现线程，`ps -L` 显示的就是 LWP。
+
+**延伸**：`/proc/<pid>/status` 的 `Threads:` 字段给出线程数；`/proc/<pid>/task/<tid>/` 下有该线程的完整信息。', 1),
+
+('Linux', '上下文切换,调度', 3,
+ '什么是上下文切换？开销在哪？Linux 的 CFS 调度器是怎么工作的？',
+ '**上下文切换**：CPU 从执行一个任务切换到另一个任务，需要保存/恢复执行状态。
+
+**保存什么**：
+- **寄存器**（通用寄存器、PC/指令指针、栈指针、标志寄存器）。
+- **程序计数器与栈**。
+- **地址空间**（切换进程时才做，需要换页表 → **TLB 刷新**）。
+- **内核栈指针**、浮点/SIMD 寄存器状态。
+- 调度相关的记账信息。
+
+**开销来源**：
+1. **直接开销**：保存/恢复寄存器（几百纳秒）。
+2. **TLB 失效**：切换地址空间后 TLB 需重建（进程切换的主要成本）。现代 CPU 有 **PCID/ASID** 减少刷新。
+3. **cache 污染**：新任务的工作集不在 L1/L2 里，要重新填充。
+4. **模式切换**：用户态 ↔ 内核态（系统调用也涉及，但和上下文切换是两回事）。
+
+实测：一次上下文切换通常 **1~5 微秒**（含 cache 影响）。`vmstat` 的 `cs` 列是每秒上下文切换次数。
+
+**查看**：
+```bash
+vmstat 1              # cs 列 = context switches/s
+pidstat -w 1          # 每进程的 cswch/s（自愿）与 nvcswch/s（非自愿）
+cat /proc/<pid>/status | grep ctxt
+```
+
+**CFS（Completely Fair Scheduler，完全公平调度器）**：
+
+- **核心思想**：给每个任务记录"已获得的 CPU 时间"（`vruntime`，虚拟运行时间），**总是选 vruntime 最小的任务运行**。
+- **红黑树**：就绪任务按 `vruntime` 排序，取最左节点 O(log n)，通常有缓存的最左节点指针 O(1)。
+- **权重（weight）与 nice 值**：`vruntime` 的增长速度与权重成反比 —— nice 低（优先级高）的任务 vruntime 增长慢，得到更多 CPU。**nice 值范围 -20 ~ 19，权重按比例分配（每级约 1.25 倍）**，所以 nice 差 10 ≈ CPU 份额差 10 倍。
+- **调度周期（`sched_latency`，默认 6ms）** 与 **`min_granularity`（0.75ms）**：周期内每个任务至少分到最小粒度。
+
+```
+vruntime += delta_exec * (NICE_0_LOAD / weight)
+```
+
+- **新任务与睡眠任务**：`vruntime` 会被"补偿"到不超过 `min_vruntime`，避免长期睡眠的任务醒来后独占 CPU。
+- **抢占**：CFS 用 `sched_tick` 定期检查是否需要抢占；也可被更高优先级任务、I/O 唤醒抢占。
+
+**调度类（优先级从高到低）**：
+1. `stop_sched_class`（最高，迁移/停机）
+2. `dl_sched_class`（Deadline，`SCHED_DEADLINE`）
+3. `rt_sched_class`（实时，`SCHED_FIFO`/`SCHED_RR`）
+4. `fair_sched_class`（CFS，`SCHED_NORMAL`/`SCHED_BATCH`）
+5. `idle_sched_class`（最低）
+
+**其它调度策略**：
+| 策略 | 说明 |
+|---|---|
+| `SCHED_FIFO` | 实时，先进先出，不时间片，直到阻塞或被更高优先级抢占 |
+| `SCHED_RR` | 实时，时间片轮转 |
+| `SCHED_DEADLINE` | 基于 deadline（EDF），需要 `sched_setattr` |
+| `SCHED_BATCH` | 批处理，减少唤醒次数 |
+| `SCHED_IDLE` | 最低优先级（nice 19 也不够低时用） |
+
+**EEVDF（新）**：Linux 6.6 起 CFS 被 **EEVDF（Earliest Eligible Virtual Deadline First）** 取代，改善了延迟敏感任务的响应，`sched_latency` 等参数被 `sched_base_slice` 替代。', 1),
+
+('Linux', '内存布局,虚拟内存', 2,
+ 'Linux 进程的地址空间是怎么布局的？',
+ '**64 位 Linux 进程地址空间（x86-64 典型布局，从低到高）**：
+
+```
+高地址
+┌────────────────────────┐ 0x7fff_ffff_ffff
+│  内核空间（用户不可访问） │  ← 用户态访问直接 SIGSEGV
+├────────────────────────┤ 0x0000_7fff_ffff_ffff（用户空间上界，48 位）
+│  栈（stack）↓           │  从高往低增长，默认 8MB
+│  ...                   │
+├────────────────────────┤
+│  共享库 / mmap 区域      │  mmap 分配、共享库、大块 malloc
+├────────────────────────┤
+│  堆（heap）↑            │  brk 增长，malloc 的小对象
+├────────────────────────┤
+│  BSS（未初始化全局/静态） │  .bss，运行时清零
+├────────────────────────┤
+│  数据段（已初始化全局）    │  .data
+├────────────────────────┤
+│  只读数据（.rodata）      │  字符串字面量、const
+├────────────────────────┤
+│  代码段（.text）          │  可执行指令
+└────────────────────────┘ 0x400000（典型加载地址）
+低地址
+```
+
+**各段说明**：
+
+| 段 | 内容 | 权限 |
+|---|---|---|
+| `.text` | 机器指令 | `r-x` |
+| `.rodata` | 只读常量、字符串字面量 | `r--` |
+| `.data` | 已初始化的全局/静态变量 | `rw-` |
+| `.bss` | 未初始化的全局/静态变量（**不占文件空间**，运行时清零） | `rw-` |
+| heap | `malloc` 的动态内存，`brk`/`mmap` 扩展 | `rw-` |
+| stack | 局部变量、函数调用帧，向下增长 | `rw-` |
+| mmap 区 | 共享库、`mmap` 文件映射、大块分配 | 视情况 |
+
+**查看**：
+```bash
+cat /proc/<pid>/maps        # 内存映射（能看到每个段的地址范围与权限）
+cat /proc/<pid>/smaps       # 更详细（RSS、PSS、脏页）
+pmap -x <pid>               # 友好的视图
+size a.out                  # 显示 text/data/bss 大小
+readelf -S a.out            # 段表
+```
+
+**要点**：
+1. **栈向下增长、堆向上增长**，中间是空闲区域，两者靠近时会"内存耗尽"（实际由 mmap 区域先撞）。
+2. **`.bss` 不占磁盘空间**（`ls -l` 的文件大小不含 bss），这是"大数组未初始化不增大可执行文件"的原因。
+3. **共享库映射到 mmap 区**，多个进程共享同一份物理页（只读的代码段）。
+4. **`malloc` 的实现选择 `brk` 还是 `mmap`**：小分配用 `brk`（堆顶），大分配（默认阈值 `M_MMAP_THRESHOLD` = 128KB）用 `mmap` —— 后者可以直接 `munmap` 归还 OS。
+5. **栈大小限制**：`ulimit -s`（默认 8MB）。**递归过深会栈溢出（SIGSEGV）**，不是堆耗尽。
+6. **`alloca`/变长数组在栈上分配**，需谨慎。
+
+**相关命令**：`ulimit -a`、`cat /proc/self/maps`、`valgrind --tool=massif`。', 1),
+
+('Linux', '分页,页表', 2,
+ 'Linux 的虚拟内存分页机制是怎样的？多级页表为什么能省内存？',
+ '**分页基本模型**：
+- 虚拟地址被切成 **页（page）**，物理内存切成 **页框（page frame）**，大小都是 **4KB**（x86-64 默认）。
+- **页表**把虚拟页号（VPN）映射到物理页框号（PFN）+ 权限位。
+
+**多级页表**（x86-64 是 **4 级**，5 级可选）：
+
+```
+虚拟地址 48 位（有效）：
+[ PML4 (9) ][ PDPT (9) ][ PD (9) ][ PT (9) ][ 页内偏移 (12) ]
+      ↓          ↓         ↓        ↓
+   逐级查表，每级 512 项，每项 8 字节 → 每张表 4KB
+```
+
+**为什么多级能省内存**：
+- **单级页表**：48 位地址空间需 `2^36` 个页表项 × 8B = **512GB**，无法接受。
+- **多级**：只为**实际使用的**地址范围分配中间层表。进程通常只使用地址空间的很小一部分（几百 MB），所以只需几层少数表 → 几 MB 到几十 MB。
+- 代价：**一次地址翻译需要多次内存访问**（4 级 = 4 次），完全靠 **TLB** 缓解。
+
+**TLB（Translation Lookaside Buffer）**：
+- 缓存"虚拟页 → 物理页"的翻译结果（典型 64~1536 项）。
+- **TLB 命中**：一次访问搞定。
+- **TLB 未命中**：硬件页表遍历（page walk），多级查表 → 慢几十倍。
+- **进程切换需要刷新 TLB**（不同进程页表不同）→ **PCID（Process Context ID）** 允许 TLB 保留多个进程的条目，减少刷新。
+- **大页（Huge Pages）** 2MB/1GB：一个大页顶 512/262144 个 4KB 页，**TLB 覆盖范围剧增**，适合数据库/虚拟化。
+
+**页表项的关键标志位**：
+| 位 | 含义 |
+|---|---|
+| Present (P) | 页是否在内存（不在则触发**缺页中断**） |
+| Read/Write | 可写？ |
+| User/Supervisor | 用户态可访问？ |
+| Accessed (A) | 是否被访问过（供 LRU 近似算法用） |
+| Dirty (D) | 是否被写过（决定是否需要回写磁盘） |
+| NX (No-eXecute) | 不可执行（W^X 安全） |
+
+**`/proc/<pid>/pagemap`** 可以查每个虚拟页映射到哪个物理页（需要 root）。
+
+**相关概念**：
+1. **缺页中断（page fault）**：major（需要磁盘 IO）vs minor（只是建立映射/COW）。
+2. **写时复制（COW）**：fork 后父子共享只读页，任一方写才真正复制。
+3. **匿名页 vs 文件页**：前者无后端文件（堆、栈），后者对应文件（代码、mmap）。
+4. **内存回收**：`kswapd` 后台回收，回收不了就 swap 或 OOM。
+5. **透明大页（THP）**：内核自动把连续 4KB 页合并成 2MB，减少 TLB miss；但也可能造成**内存碎片和延迟抖动**（`/sys/kernel/mm/transparent_hugepage/enabled` 可关）。
+
+**性能相关计数**：`/proc/vmstat` 的 `pgfault`、`pgmajfault`；`perf stat -e dTLB-load-misses`。', 1),
+
+('Linux', '缺页中断,page fault', 2,
+ '什么是缺页中断？major fault 和 minor fault 有什么区别？',
+ '**缺页中断（page fault）**：CPU 访问的虚拟地址**没有有效的物理页映射**（PTE 的 Present 位为 0）时，触发异常，内核介入处理。
+
+**流程**：
+1. CPU 访问虚拟地址 → 硬件查页表 → Present=0 → 触发 #PF 异常。
+2. 进入内核，`do_page_fault`：
+   - 地址**合法**（在 VMA 里）→ 分配/加载页，更新页表，返回用户态**重试**那条指令。
+   - 地址**非法**（不在任何 VMA）→ 发送 **SIGSEGV**。
+
+**两类 fault**：
+
+| 类型 | 含义 | 例子 |
+|---|---|---|
+| **minor fault**（次要） | 页**已在内存**（page cache 里），只需建立页表映射 | COW 写、共享内存、page cache 命中、THP 拆分 |
+| **major fault**（主要） | 需要**磁盘 IO** 才能拿到数据 | 代码段首次加载、文件 mmap 首次读、发生 swap in |
+
+**major fault 慢得多**（毫秒级，含磁盘 IO），minor fault 是微秒级。
+
+**查看**：
+```bash
+ps -o min_flt,maj_flt -p <pid>
+cat /proc/<pid>/stat | awk ''{print "min="$10" maj="$12}''
+/usr/bin/time -v ./prog          # 输出 Minor/Major page faults
+perf stat -e page-faults,major-faults ./prog
+```
+
+**触发场景**：
+1. **首次访问**：进程启动时代码/数据不在内存 → major fault。
+2. **COW**：fork 后写共享页 → minor fault + 分配新页。
+3. **堆增长**：`brk`/`mmap` 扩展后首次触碰 → minor fault（匿名页无内容）。
+4. **swap in**：页被换出到 swap，访问时 → major fault。
+5. **mmap 文件**：读未加载的页 → major fault（从文件读）。
+6. **栈增长**：栈自动扩展时 → minor fault。
+7. **THP 合并/拆分**：minor fault。
+
+**`MADV_*` 建议**（优化手段）：
+```c
+madvise(addr, len, MADV_WILLNEED);    // 预读
+madvise(addr, len, MADV_DONTNEED);    // 主动释放（匿名页清零）
+madvise(addr, len, MADV_HUGEPAGE);    // 建议使用大页
+madvise(addr, len, MADV_SEQUENTIAL);  // 顺序访问模式 → 加大预读
+```
+
+**性能影响与优化**：
+1. **大量 major fault = 启动慢**：可用 `MAP_POPULATE`（mmap 时预读）或 `madvise(MADV_WILLNEED)`。
+2. **fork 后大量 minor fault**：COW 的必然代价；能避免 fork 就用 `posix_spawn`/`vfork`。
+3. **JVM/大型服务启动慢**常常是 page fault 主导 —— 这也是 **AOT/CDS/预热** 有效的原因。
+4. **`MAP_HUGETLB` / THP** 大幅减少 fault 次数（一次 fault 覆盖 2MB）。
+5. 用 `perf record -e page-faults` 定位 fault 热点。
+
+**面试延伸**：**"缺页中断"其实是异常（exception）而非真正的中断**，但在 Linux 中文语境里通常都叫中断。它发生在**指令执行过程中**，处理完后会**重新执行**触发它的那条指令（区别于系统调用是主动陷入）。', 1),
+
+('Linux', 'mmap,共享内存', 2,
+ '`mmap` 是什么？匿名映射和文件映射有什么区别？',
+ '**`mmap`** 把文件或匿名内存映射进进程地址空间，之后用**普通内存访问**读写。
+
+```c
+void* mmap(void* addr, size_t len, int prot, int flags, int fd, off_t off);
+int munmap(void* addr, size_t len);
+
+// 文件映射（共享）
+char* p = mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+p[0] = ''x'';                    // 直接改文件内容（脏页会回写）
+
+// 匿名映射（不是文件）
+char* a = mmap(NULL, len, PROT_READ|PROT_WRITE,
+               MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+```
+
+**两种维度**：
+
+| flags | 含义 |
+|---|---|
+| `MAP_SHARED` | 修改**可见于其他映射同一对象的进程**，会写回文件 |
+| `MAP_PRIVATE` | 写时复制（COW），修改**不写回文件**，其他进程看不到 |
+| `MAP_ANONYMOUS` | 无文件后端，内容初始为 0 |
+| `MAP_FIXED` | 强制在指定地址（危险，会覆盖已有映射） |
+| `MAP_POPULATE` | 预先建立页表（减少后续 fault） |
+| `MAP_LOCKED` | 锁定在内存（不换出） |
+| `MAP_HUGETLB` | 使用大页 |
+
+| prot | 权限 |
+|---|---|
+| `PROT_READ` | 可读 |
+| `PROT_WRITE` | 可写 |
+| `PROT_EXEC` | 可执行 |
+| `PROT_NONE` | 不可访问（作为 guard page） |
+
+**文件映射 vs 匿名映射**：
+
+| 维度 | 文件映射 | 匿名映射 |
+|---|---|---|
+| 后端 | 文件 | 无（swap 作为后备） |
+| 数据来源 | 文件内容（按需读入） | 全 0 页 |
+| 能否共享 | `MAP_SHARED` 可以 | `MAP_SHARED|MAP_ANONYMOUS` 可以（fork 后共享） |
+| 典型用途 | 读大文件、共享内存文件、动态库加载 | `malloc` 大块、线程栈、进程私有内存 |
+
+**用途**：
+1. **高效读大文件**：避免 `read` 的内核→用户拷贝，按需分页。
+2. **进程间共享内存**：
+```c
+// 匿名共享（父子进程）
+void* shm = mmap(NULL, size, PROT_READ|PROT_WRITE,
+                 MAP_SHARED|MAP_ANONYMOUS, -1, 0);   // fork 后父子共享
+// 或 POSIX 共享内存对象
+int fd = shm_open("/name", O_CREAT|O_RDWR, 0600);
+ftruncate(fd, size);
+void* p = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+```
+3. **内存映射 I/O**：映射设备寄存器（`/dev/mem`）或 GPU 显存。
+4. **动态库加载**：`ld.so` 用 `mmap` 把 `.so` 的代码段（只读、可共享）和数据段（COW）映射进来。
+5. **大块内存分配**：glibc 的 `malloc` 对 >128KB 的请求用 `mmap`。
+
+**要点与坑**：
+1. **映射长度会向上取整到页边界**，多余部分清零。
+2. **`off` 必须是页大小的整数倍**（否则 `EINVAL`）。
+3. **`MAP_SHARED` 的写入不保证立即落盘** —— 需要 `msync()` 或依赖内核回写。
+4. **`munmap` 后访问是 SIGSEGV**。
+5. **文件被 truncate 后访问映射区域 → SIGBUS**。
+6. **`MAP_PRIVATE` 的写是 COW**，不改文件；想改文件必须 `MAP_SHARED` + 文件以可写打开。
+7. **mmap 不是"零拷贝"的同义词**：仍要走 page cache，只是省了 read 的一次拷贝。
+8. **`madvise`** 可优化访问模式（预读、顺序、大页、释放）。
+
+**`/proc/<pid>/maps`** 能看到所有映射区域，包括文件路径与权限。', 1),
+
+('Linux', 'malloc,brk,mmap', 2,
+ 'glibc 的 `malloc` 是怎么实现的？`brk` 和 `mmap` 怎么选？',
+ '**glibc malloc（ptmalloc2）的层次结构**：
+
+```
+进程
+ └── arena（每个线程最多一个）        ← 减少锁竞争
+      └── heap（主 arena 用 brk，其他 arena 用 mmap）
+           └── chunk（分配单元，含 8/16 字节头部）
+```
+
+**关键机制**：
+
+1. **chunk 与 bin**：
+   - 已释放的 chunk 按大小挂到链表（**bins**）：`fastbins`（小）、`smallbins`、`largebins`、`unsorted bin`。
+   - 分配时优先从 bins 里找（**复用，不还给 OS**）。
+2. **`brk` vs `mmap` 的阈值**：
+   - 请求 < **`M_MMAP_THRESHOLD`（默认 128KB）** → 从堆顶（`brk`）分配。
+   - 请求 ≥ 阈值 → 用 `mmap` 单独映射（`munmap` 时能真正归还 OS）。
+   - 阈值**动态调整**：如果 `brk` 分配被 `free` 后继续扩张，glibc 会提高阈值（避免 mmap/munmap 频繁系统调用）。
+3. **arena 分割**：主 arena 是 `brk`，**其他线程的 arena 用 `mmap` 分配**（默认最多 `8 × 核数` 个 arena）。
+4. **`mallopt` 调参**：
+```c
+mallopt(M_MMAP_THRESHOLD, 256*1024);   // 提高 mmap 阈值
+mallopt(M_TRIM_THRESHOLD, 512*1024);   // 控制何时 shrink 堆顶
+mallopt(M_ARENA_MAX, 4);               // 限制 arena 数（省内存）
+```
+环境变量：`MALLOC_ARENA_MAX`、`MALLOC_TRIM_THRESHOLD_`、`MALLOC_MMAP_THRESHOLD_`。
+
+**"内存不还给 OS"的现象**：
+```c
+// 分配 100MB，free 后 RSS 可能不降
+void* p = malloc(100<<20);   // 用 mmap
+free(p);                      // 会 munmap，RSS 会降 ✅
+
+// 但如果分配的是很多小块（走 brk），free 后堆顶不一定收缩
+```
+`malloc_trim(0)` 可以主动收缩堆顶。
+
+**为什么"free 了内存没释放"**：
+1. 走 `brk` 的内存，`free` 只把 chunk 还给 malloc 的 bins，**不还内核**（因为堆顶以下的空洞无法释放）。
+2. 走 `mmap` 的会 `munmap`，能还给内核。
+3. **内存碎片**：小对象穿插导致无法合并大块。
+
+**替代实现**：
+
+| 分配器 | 特点 |
+|---|---|
+| **glibc ptmalloc2** | 默认，通用，多线程下 arena 会占内存 |
+| **jemalloc** | 分 size class + per-CPU arena，碎片少，Redis/Meta 常用 |
+| **tcmalloc** | Google，thread cache + 中央堆，性能好 |
+| **mimalloc** | 微软，轻量快速 |
+| **rpmalloc/snmalloc** | 更现代的轻量选择 |
+
+切换方式：`LD_PRELOAD=/usr/lib/libjemalloc.so ./prog` 或链接时指定。
+
+**排查工具**：
+```bash
+cat /proc/<pid>/status | grep -E "VmRSS|VmSize"
+pmap -x <pid>
+malloc_stats()          # glibc 提供，打印 arena 统计
+malloc_info(0, stderr)
+mtrace()                # 检测内存泄漏
+valgrind --tool=massif
+heaptrack
+```
+
+**注意**：
+1. **多线程 + 大量 arena = 内存膨胀**（每个 arena 有独立堆与碎片）→ 设 `MALLOC_ARENA_MAX=2~4`。
+2. **`malloc(0)` 返回非 NULL 的唯一指针**（可 free）。
+3. **`free` 后指针不清零** → 悬垂指针/双重释放（可用 `MALLOC_PERTURB_` 检测）。
+4. **`realloc` 可能搬移**：返回新地址，旧指针失效。
+5. **`calloc` 与 `malloc+memset` 的区别**：`calloc` 对 mmap 来的页是"免费清零"（内核保证零页），更快；且能检测乘法溢出。', 1),
+
+('Linux', 'OOM,内存回收', 3,
+ 'Linux 的 OOM killer 是什么？内存回收（reclaim）怎么工作？',
+ '**内存回收（page reclaim）**：
+
+当可用内存不足时，内核需要**回收（reclaim）**页：
+1. **优先回收文件页**（page cache）：干净页直接丢弃，脏页先回写。
+2. **回收匿名页**：需要 **swap**（换出到磁盘）。
+3. 回收算法是**双 LRU 链表**：
+   - **active/inactive × file/anon** 四个链表。
+   - 页首次访问进入 inactive；再次访问（Accessed 位）提升到 active。
+   - 回收时从 inactive 尾部取。
+4. **两种触发路径**：
+   - **后台回收**：`kswapd` 在低于 `watermark[low]` 时唤醒（异步，不阻塞）。
+   - **直接回收（direct reclaim）**：分配内存的进程发现低于 `watermark[min]` 时**自己同步回收** → **分配延迟抖动**（性能杀手）。
+5. **水位线**：`/proc/zoneinfo` 里的 `min/low/high`。`min` 之下触发直接回收并可能 OOM。
+
+**OOM killer**：
+- 当**所有回收手段都失败**（没有可回收的页、没有 swap 或 swap 已满）时触发。
+- 选择受害者：给每个进程算 **`oom_score`**（基于内存占用、`oom_score_adj`、root 惩罚等），**选分数最高的杀掉**（通常是"占内存最多"的那个）。
+- 被杀进程通常收到 **SIGKILL**，日志在 `dmesg` 里能看到 `Out of memory: Killed process ...`。
+
+**调控**：
+```bash
+# 保护关键进程（-1000 到 1000，越小越不容易被杀）
+echo -1000 > /proc/<pid>/oom_score_adj
+# 查看分数
+cat /proc/<pid>/oom_score
+# 完全禁用 OOM killer（危险，可能让系统卡死）
+echo 0 > /proc/sys/vm/oom_kill_allocating_task
+# cgroup v2 内存限制会先在 cgroup 内触发 OOM
+echo 512M > /sys/fs/cgroup/<group>/memory.max
+cat /sys/fs/cgroup/<group>/memory.events   # 看 oom 次数
+```
+
+**关键内核参数**：
+| 参数 | 说明 |
+|---|---|
+| `vm.swappiness` | 换出匿名页的倾向（0~100，默认 60；数据库常设为 1） |
+| `vm.overcommit_memory` | 0 启发式 / 1 总是允许 / 2 严格（不超 CommitLimit） |
+| `vm.overcommit_ratio` | 配合 `overcommit_memory=2` |
+| `vm.min_free_kbytes` | 保留的最小空闲内存（影响水位线） |
+| `vm.vfs_cache_pressure` | 回收 dentry/inode 缓存的倾向 |
+| `vm.dirty_ratio` / `dirty_background_ratio` | 脏页比例阈值 |
+
+**`overcommit` 的坑**：默认 `0`（启发式）会**允许过量分配** —— `malloc` 成功但首次访问时 OOM。这就是"`malloc` 返回 NULL 很少见，但进程被 OOM kill"的原因。严格模式（`2`）会让 `malloc` 直接失败。
+
+**排查 OOM**：
+```bash
+dmesg -T | grep -i -E "oom|killed process"
+journalctl -k | grep -i oom
+cat /sys/fs/cgroup/memory.events
+ps -eo pid,rss,comm --sort=-rss | head
+free -m
+cat /proc/meminfo | grep -E "MemAvailable|SwapFree|Committed_AS|CommitLimit"
+```
+
+**`MemAvailable` vs `MemFree`**：
+- `MemFree` 是**完全未使用**的内存。
+- **`MemAvailable`** 是"估算了可回收缓存后，应用还能申请的"内存 —— **判断"内存够不够"应该看它**（`free -h` 的 `available` 列）。
+- `buff/cache` 大**不是坏事**（是 kernel 的缓存，可随时回收）。
+
+**避免 OOM 的实践**：
+1. 在 cgroup 里限制内存，**让 OOM 局限在容器内**而非整机。
+2. 关键进程设 `oom_score_adj=-1000`（但容器里要小心）。
+3. 应用自己做内存限制和优雅降级。
+4. 用 **`earlyoom`/`systemd-oomd`** 在可用内存耗尽前主动杀进程，避免系统卡死。
+5. **不要禁用 swap 后又不限制内存**。
+6. 监控 `MemAvailable` 与 `pgscan`/`pgsteal`，及早发现内存压力。', 1),
+
+('Linux', 'page cache,缓冲区', 2,
+ 'Linux 的 page cache 和 buffer cache 是什么？`free` 里的 `buff/cache` 说明什么？',
+ '**page cache**：缓存**文件内容**（以页为单位），加速文件读写。
+**buffer cache**：历史上缓存**块设备的原始块**（磁盘元数据、超级块等）。**现代 Linux 两者已合并**（`buffer_head` 依然存在，用于元数据），`free` 里统一显示为 `buff/cache`。
+
+**为什么需要 page cache**：
+- 磁盘访问比内存慢几个数量级。
+- 读文件时：**先把文件对应的页加载进 page cache**，再从内核空间拷贝到用户空间。
+- 写文件时：**先写进 page cache**（标记为脏页），稍后由回写线程异步写磁盘（write-back）。
+
+**回写（writeback）机制**：
+- 脏页由 `pdflush`（旧）/ **`flusher` 线程**（现代：每设备一个 `kworker` 线程）异步回写。
+- 触发条件：
+  - **`dirty_background_ratio`**（默认 10%）：脏页超过此比例，**后台**开始回写。
+  - **`dirty_ratio`**（默认 20%）：脏页超过此比例，**写入进程被同步阻塞**直到回写 —— **IO 抖动的主要来源！**
+  - **`dirty_expire_centisecs`**（默认 30 秒）：脏页超过此时间必须回写。
+- 可用 `fsync()` / `fdatasync()` 强制落盘，`sync()` 同步所有。
+- **`O_DIRECT`** 绕过 page cache（数据库常用，自管理缓存）。
+
+**`free` 的输出解读**：
+```
+               total        used        free      shared  buff/cache   available
+Mem:           15Gi       3.0Gi       1.2Gi       200Mi        11Gi        11Gi
+Swap:         2.0Gi          0B       2.0Gi
+```
+- `free`：完全空闲。
+- `buff/cache`：**内核缓存**（可回收），**大是好事**（说明文件访问都被缓存了）。
+- **`available`**：估算"应用还能用多少" —— **判断内存是否紧张看这个**。
+- `used` = total - free - buff/cache。
+
+**常见误区**：
+1. ❌ "buff/cache 占了 11G，内存快满了" —— 缓存**随时可回收**，不是泄漏。
+2. ✅ 正确看法：看 `available` 和 swap 使用量。
+3. **压力测试后 cache 不降**是正常的（内核倾向保留缓存）。
+
+**查看与调优**：
+```bash
+free -h
+cat /proc/meminfo | grep -E "Cached|Dirty|Writeback|Buffers"
+# 手动清缓存（测试用，生产别做）
+sync; echo 3 > /proc/sys/vm/drop_caches
+# 调脏页参数
+sysctl vm.dirty_ratio
+sysctl vm.dirty_background_ratio
+```
+
+**`Cached` 的构成**（`/proc/meminfo`）：
+- `Cached`：文件页（page cache）。
+- `Buffers`：块设备元数据缓存。
+- `SReclaimable`：可回收的 slab（dentry、inode 缓存）。
+- `Shmem`：tmpfs 与共享内存（**注意：Shmem 也算在 Cached 里，但不能直接丢弃** —— 有 swap 才能换出）。
+
+**实践建议**：
+1. **不要手动 `drop_caches`**（会让性能下降，因为要重新读盘）。
+2. **数据库服务器**常用 `O_DIRECT` 或 `posix_fadvise(DONTNEED)` 自管理缓存。
+3. **`dirty_ratio` 调低**（如 5%~10%）可以减小 IO 抖动，代价是更频繁的小写入。
+4. **tmpfs 占的内存算在 Cached 里**，容器里用 tmpfs 要当心内存限制。
+5. **`meminfo` 的 `Cached` 减去 `Shmem` 才是"可丢弃的文件缓存"**。
+
+**相关**：`vmtouch` 工具可查看/控制哪些文件在 cache 里；`fincore` 显示单个文件的缓存页数。', 1),
+
+('Linux', '文件系统,inode,VFS', 2,
+ 'Linux 文件系统的核心概念：inode、dentry、VFS 分别是什么？',
+ '**VFS（Virtual File System）**：内核的抽象层，为所有文件系统提供统一接口（`open`/`read`/`write`/`stat`...）。上层系统调用只与 VFS 打交道，下层由具体文件系统（ext4/xfs/btrfs/NFS/tmpfs）实现。
+
+**四个核心对象**：
+
+| 对象 | 说明 | 内存/磁盘 |
+|---|---|---|
+| **superblock（超级块）** | 文件系统整体信息（大小、块数、inode 总数） | 磁盘 + 内存缓存 |
+| **inode（索引节点）** | **一个文件的所有元数据**（类型、权限、大小、时间戳、数据块指针、链接计数） | 磁盘 + 内存 |
+| **dentry（目录项）** | 路径中一个名字到 inode 的映射（如 `/etc` 的 `etc`） | **只在内存**（dcache） |
+| **file** | 一个进程打开的文件的上下文（当前位置、打开标志、指向 dentry/inode） | 只在内存 |
+
+**关键点：文件名不在 inode 里**。目录文件的内容是「文件名 → inode 号」的列表。
+
+```
+/var/log/syslog
+  ↑   ↑   ↑
+ dentry 链条（每个目录项指向一个 inode）
+```
+
+**inode 的内容**：
+```
+stat /etc/passwd
+  File: /etc/passwd
+  Size: 2845        Blocks: 8        IO Block: 4096   regular file
+Device: 801h/2049d Inode: 262147    Links: 1
+Access: (0644/-rw-r--r--)  Uid: (0/root)  Gid: (0/root)
+Access/Modify/Change 时间戳
+```
+
+**inode 的坑：inode 数量固定**。ext4 在 `mkfs` 时确定 inode 总数（`-N` 参数）：
+```bash
+df -i                        # 查看 inode 使用率
+# 报错 "No space left on device" 但 df 显示有空间 → 很可能是 inode 耗尽
+```
+**海量小文件**（如邮件队列、session 文件、Docker 层）最容易耗尽 inode。
+
+**为什么"删除文件后空间没释放"**：
+- 文件被 `rm` 后，如果**仍有进程打开着**，inode 与数据块不会释放（链接计数 0 但引用计数非 0）。
+```bash
+lsof +L1                  # 找出已删除但仍被打开的文件
+# 找到后：重启/杀掉进程，或 `> /proc/<pid>/fd/<fd>` 清空
+```
+- 这是"磁盘满了但 `du` 统计不出来"的经典原因（`du` 看目录，不看已删除的打开文件）。
+
+**ext4 的磁盘布局**：
+```
+[ Boot ][ Super Block ][ Group Descriptors ][ Block Bitmap ][ Inode Bitmap ][ Inode Table ][ Data Blocks ]
+                                                    ↑ 这些按块组（block group）重复
+```
+- **extent**：ext4 用 extent（起始块 + 长度）替代间接块指针，减少元数据、支持大文件。
+- **日志（journal）**：写入前先记录日志，保证崩溃一致性（`data=ordered` 默认：只记元数据，数据先写）。
+- **延迟分配（delayed allocation）**：写入时先只在 page cache 里分配，回写时才真正分配块 → 减少碎片。
+
+**其它文件系统**：
+| 文件系统 | 特点 |
+|---|---|
+| ext4 | 稳定、通用，主流选择 |
+| XFS | 大文件/高并发强，RHEL 默认 |
+| Btrfs | 快照、校验和、RAID 内置，但历史上有稳定性问题 |
+| ZFS | 最强大（校验、快照、压缩），OS 许可不兼容 Linux 内核 |
+| tmpfs | 内存文件系统，重启清空 |
+| overlayfs | 联合挂载，Docker 镜像层的基础 |
+| FUSE | 用户态文件系统（sshfs、s3fs） |
+
+**相关命令**：`df -h`/`df -i`、`du -sh`、`stat`、`debugfs`、`tune2fs -l`、`mount`。', 1),
+
+('Linux', '文件描述符,fd', 2,
+ '文件描述符是什么？`open` 时内核做了什么？fd 泄漏怎么排查？',
+ '**文件描述符（fd）**是一个**整数索引**，指向进程的**文件描述符表**中的一项。
+
+**三层结构**：
+
+```
+进程 A 的 fd 表          系统级打开文件表（open file description）      inode 表
+ ┌──────────┐                ┌─────────────────────┐              ┌──────────┐
+ │ 0 stdin  │───────────────▶│ 文件偏移、打开标志    │─────────────▶│ inode    │
+ │ 1 stdout │────┐           ├─────────────────────┤              ├──────────┤
+ │ 2 stderr │    └──────────▶│ 同一个描述（共享偏移）│─────────────▶│ inode    │
+ │ 3 (文件)  │───────────────▶│ ...                 │              └──────────┘
+ └──────────┘                └─────────────────────┘
+```
+
+- **fd 表是进程私有的**。
+- **打开文件表是系统级的**：`fork` 后父子共享同一"打开文件描述"，因此**共享文件偏移**。
+- **`dup`/`dup2` 让两个 fd 指向同一描述** → 共享偏移与标志。
+
+**标准 fd**：`0` = stdin、`1` = stdout、`2` = stderr。
+
+**`open()` 内核做了什么**：
+1. 路径解析（逐级查 dcache，未命中则读目录）。
+2. 权限检查。
+3. 找到/创建 inode。
+4. 在**系统级打开文件表**创建一项（记录偏移、标志）。
+5. 在**进程 fd 表**找最小可用槽位，返回该整数。
+6. 返回 fd（失败返回 -1，`errno` 说明原因）。
+
+**`O_CLOEXEC`**：让 fd 在 `exec` 时自动关闭 —— **现代代码应该在 `open` 时就加**，否则多线程下 `open` 与 `exec` 之间有竞态（fd 泄漏到子进程）。
+
+**`fork`/`exec` 的行为**：
+- `fork`：子进程**复制 fd 表**（指向相同的打开文件描述）。
+- `exec`：**除 `FD_CLOEXEC` 的以外全部保留** —— 这是"tcp socket 被继承到子进程"的常见坑。
+- 非 CLOEXEC 的 fd 泄漏会让服务进程持有不该持有的连接，导致"重启后端口仍被占用"。
+
+**fd 限制**（三处）：
+```bash
+ulimit -n                     # 进程级（RLIMIT_NOFILE）
+cat /proc/sys/fs/file-max     # 系统级总上限
+cat /proc/sys/fs/nr_open      # 单进程可设的最大值上限
+cat /proc/sys/fs/file-nr      # 当前已分配/未使用/上限
+```
+- 软限制与硬限制：`ulimit -Hn`（硬）与 `ulimit -Sn`（软），软不能超硬。
+- **`ulimit -n 65535` 只对当前 shell 生效**；持久化要改 `/etc/security/limits.conf` 或 systemd 的 `LimitNOFILE=`。
+- **已运行的进程无法提高硬限制**，只能重启。
+
+**fd 泄漏排查**：
+```bash
+ls -l /proc/<pid>/fd | wc -l                  # 当前 fd 数
+ls -l /proc/<pid>/fd | tail                   # 看具体是什么
+lsof -p <pid> | wc -l
+lsof -p <pid> | awk ''{print $5}'' | sort | uniq -c | sort -rn   # 按类型统计
+cat /proc/<pid>/limits | grep files           # 该进程的 fd 限制
+ss -s                                         # 系统 socket 统计
+```
+**常见泄漏源**：忘记 `close`、异常路径未释放（用 RAII/`unique_ptr<FILE, decltype(&fclose)>`）、socket/`epoll` fd 未关、日志文件反复打开。
+
+**其它要点**：
+1. **fd 用尽时的表现**：`accept`/`open` 返回 `EMFILE`（进程限制）或 `ENFILE`（系统限制）。
+2. **`select` 的 1024 限制**来自 `FD_SETSIZE`，与 `ulimit -n` 无关（`poll`/`epoll` 无此限制）。
+3. **`/proc/<pid>/fd` 是符号链接**，指向实际对象 —— 可以定位"哪个文件被打开着"。
+4. **`close` 的坑**：多线程下 `close` 一个 fd 后，该 fd 号可能立即被另一个线程 `open` 复用 —— 应先 `dup` 或加锁。
+5. **`SO_REUSEADDR`/`SO_REUSEPORT`**：解决 `TIME_WAIT` 导致的端口占用问题。', 1),
+
+('Linux', '零拷贝,sendfile', 3,
+ '什么是零拷贝？`sendfile`、`splice`、`mmap` 分别怎么减少拷贝？',
+ '**传统 read + write（4 次拷贝、4 次上下文切换）**：
+
+```
+磁盘 → [DMA] → 内核缓冲区(page cache) → [CPU] → 用户缓冲区 → [CPU] → socket 缓冲区 → [DMA] → 网卡
+        ①              ②                  ③                ④
+```
+
+- 4 次拷贝（2 次 DMA、2 次 CPU）、4 次用户态/内核态切换。
+
+**零拷贝的核心思路**：**消除内核与用户空间之间的 CPU 拷贝**，让数据在内核内部流转。
+
+**`sendfile(out_fd, in_fd, offset, count)`**（Linux 2.0+）：
+```
+磁盘 → [DMA] → page cache → [CPU 拷贝描述符] → socket 缓冲区 → [DMA] → 网卡
+```
+- **数据完全不经过用户空间** → 省掉 2 次 CPU 拷贝、2 次上下文切换。
+- 现代实现（3.0+）配合 **SG-DMA（scatter-gather）**：page cache 的**描述符**直接传给网卡，连内核内的那次 CPU 拷贝也省掉 → **真正的零拷贝**（0 次 CPU 拷贝）。
+- **典型用途**：静态文件服务器（nginx 的 `sendfile on`）、Kafka（用 `sendfile` 发消息）、FTP。
+- **限制**：不能修改数据；`in_fd` 必须是文件（不能是 socket）；只支持文件→socket。
+
+**`splice()`**（2.6.17+）：
+- 在两个 fd 之间移动数据，**至少有一端是 pipe**。
+- 用 pipe 作为"内核内的中转"，实现 socket→socket、文件→pipe 等任意组合的零拷贝。
+- **用途**：代理服务器转发数据（nginx 的 `proxy` 路径）。
+
+**`mmap + write`**：
+```
+磁盘 → [DMA] → page cache ←(映射)→ 用户空间只读 → [CPU] → socket 缓冲区 → [DMA] → 网卡
+```
+- 省掉"内核→用户"的拷贝，但用户态的 `write` 仍要"用户→socket"的 CPU 拷贝（共 3 次，1 次 CPU）。
+- 适合**需要读写文件内容**的场景（不能像 sendfile 那样完全不碰数据）。
+
+**`MSG_ZEROCOPY`**（4.14+）：socket 发送时用"引用用户页"而非拷贝，适合大块发送。
+
+**`io_uring`**：提供 `IORING_OP_SEND_ZC` 等真正的零拷贝发送。
+
+**对比表**：
+
+| 方式 | CPU 拷贝次数 | 上下文切换 | 能否修改数据 | 适用 |
+|---|---|---|---|---|
+| read+write | 2 | 4 | ✅ | 通用 |
+| mmap+write | 1 | 4 | ✅ | 需要读写文件 |
+| sendfile | 0~1 | 2 | ❌ | 文件→socket（静态服务） |
+| splice | 0 | 2 | ❌ | 任意 fd 间（需 pipe） |
+| MSG_ZEROCOPY | 0 | 2 | ❌ | socket 发送大块 |
+
+**注意**：
+1. **"零拷贝"不是"没有拷贝"**，而是"没有 CPU 参与的拷贝"（DMA 拷贝仍在）。
+2. **page cache 仍是共享的**：数据从磁盘读入 cache 后，可以发给多个客户端而无需重复读盘（Kafka 高效的关键）。
+3. **`sendfile` 在 TLS 下失效** —— 加密需要修改数据，必须回到用户态（这也是 HTTPS 静态服务性能低于 HTTP 的原因之一；`ktls` 内核 TLS 能恢复部分优势）。
+4. **`TCP_CORK`/`TCP_NODELAY`** 影响发送路径的合并与延迟。
+5. nginx 相关配置：`sendfile on; tcp_nopush on;`（`tcp_nopush` 让数据凑满一个 MSS 再发）。
+
+**面试延伸**：`splice` 需要一个 pipe，而 pipe 有一定开销（但比用户态拷贝便宜）；`copy_file_range`（4.5+）在支持的文件系统上可以在内核里直接拷贝（甚至跨设备用 reflink）。', 1),
+
+('Linux', 'IO 模型,多路复用', 2,
+ 'Linux 的 IO 模型有哪几种？`epoll` 的 LT 和 ET 有什么区别？',
+ '**五种 IO 模型**：
+
+| 模型 | 说明 | 阻塞点 |
+|---|---|---|
+| **阻塞 IO** | `read` 一直等到数据就绪并拷贝完成 | 全程 |
+| **非阻塞 IO** | `read` 立即返回 `EAGAIN`，需**轮询** | 数据拷贝阶段 |
+| **IO 多路复用** | `select`/`poll`/`epoll` 一次等待多个 fd | `select`/`epoll_wait` |
+| **信号驱动 IO** | 数据就绪时内核发 `SIGIO` | 拷贝阶段 |
+| **异步 IO（AIO/io_uring）** | 提交请求后**完全由内核完成**，通知结果 | 无（真正的异步） |
+
+前四种都是**同步 IO**（数据拷贝阶段仍阻塞），只有 **AIO/io_uring** 是真正的异步。
+
+**`select`/`poll`/`epoll` 对比**：
+
+| 维度 | select | poll | epoll |
+|---|---|---|---|
+| fd 上限 | `FD_SETSIZE`（1024） | 无（链表） | 无 |
+| 数据结构 | 位图 | 数组 | 红黑树 + 就绪链表 |
+| 每次调用 | 传全量 fd 集，内核遍历 | 同 | **只传新增/删除**，内核只报告就绪的 |
+| 复杂度 | O(n) | O(n) | **O(1)（就绪数）** |
+| 触发模式 | LT | LT | **LT + ET** |
+| 拷贝开销 | 每次拷贝 fd 集 | 每次拷贝 | 一次注册（`epoll_ctl`） |
+| 适用 | 少量连接 | 少量连接 | **海量连接** |
+
+**`epoll` 的工作机制**：
+1. `epoll_create` 创建 epoll 实例（内核里的红黑树 + 就绪链表）。
+2. `epoll_ctl(ADD/MOD/DEL)` 增删改要监控的 fd（**只做一次**）。
+3. `epoll_wait` 阻塞等待，返回**就绪链表**上的 fd —— **不需要遍历全部 fd**。
+4. 回调机制：fd 有事件时，内核通过回调把就绪的 fd 挂到就绪链表，并唤醒 `epoll_wait`。
+
+**LT（水平触发，默认）**：
+- **只要缓冲区还有数据**，每次 `epoll_wait` 都会报告该 fd。
+- 编程简单（读不完下次继续），不容易丢事件。
+- 缺点：就绪的 fd 多时，每次都报告 → 略低效。
+
+**ET（边缘触发）**：
+- **只在状态变化时**报告一次（数据从无到有）。
+- **必须一次性把数据读完**（循环 `read` 到 `EAGAIN`），否则剩余数据不会再触发事件 → **丢数据**。
+- **必须搭配非阻塞 fd**（否则最后一次 `read` 会阻塞）。
+- 效率更高（事件更少），但**编程难度大**，是很多 bug 的来源。
+
+```c
+// ET 模式下正确的读法
+while (1) {
+    ssize_t n = read(fd, buf, sizeof buf);
+    if (n > 0) { /* 处理 */ continue; }
+    if (n == 0) { /* 对端关闭 */ break; }
+    if (errno == EAGAIN || errno == EWOULDBLOCK) break;   // 读干净了
+    if (errno == EINTR) continue;
+    /* 真错误 */ break;
+}
+```
+
+**ET 的额外优势**：配合 `EPOLLONESHOT` 可以实现"一个连接同时只被一个线程处理"，简化多线程模型。
+
+**`epoll` 的惊群问题**：
+- **多个进程/线程在同一 epoll 实例上 `epoll_wait`** 时，新连接到来可能唤醒全部 → 只有一个能处理，其余白醒。
+- 解决：**`EPOLLEXCLUSIVE`**（4.5+，只唤醒一个）；或让每个线程有自己的 epoll 实例（SO_REUSEPORT 或 accept 分发）。
+
+**`io_uring`（5.1+）**：共享内存环形队列（SQ/CQ），提交/完成都不需要系统调用（`IORING_SETUP_SQPOLL` 内核线程轮询），支持真正的异步与零拷贝，是现代高性能 IO 的方向。
+
+**实践建议**：
+1. **默认用 LT**（简单正确）；只有确证是瓶颈才上 ET。
+2. **ET 必须配非阻塞 + 读到 EAGAIN**。
+3. 关注**惊群**与**单 fd 并发**问题。
+4. 新项目考虑 **io_uring**（但要评估内核版本与生态支持）。', 1),
+
+('Linux', '网络命令,排查', 2,
+ '排查网络问题常用哪些命令？各自解决什么问题？',
+ '**分层排查**（从下到上）：
+
+**1. 链路与接口**
+```bash
+ip link show                 # 接口状态（UP/DOWN）
+ip addr show                 # IP 地址
+ethtool eth0                 # 网卡速率/双工/驱动
+ip -s link                   # 收发包统计（errors/dropped）
+```
+
+**2. 路由与连通性**
+```bash
+ip route show                # 路由表
+ip route get 8.8.8.8         # 查询到某地址走哪条路由
+ping -c 4 host               # ICMP 连通性 + RTT
+traceroute host / tracepath  # 路径追踪
+mtr host                     # 持续 traceroute + 统计（更好用）
+arp -a / ip neigh            # ARP 表
+```
+
+**3. DNS**
+```bash
+dig example.com +short       # 最详细
+nslookup example.com
+host example.com
+cat /etc/resolv.conf         # DNS 配置
+cat /etc/hosts               # 本地解析
+resolvectl status            # systemd-resolved
+```
+
+**4. 端口与连接**
+```bash
+ss -lntp                     # 监听中的 TCP 端口 + 进程
+ss -antp                     # 所有 TCP 连接
+ss -s                        # 汇总统计
+ss -tn state time-wait       # 按状态过滤
+ss -tnp dst 10.0.0.1         # 过滤目标
+netstat -anp                 # 老工具（ss 更快）
+lsof -i :8080                # 谁占用了 8080
+```
+**`ss` 比 `netstat` 快得多**（直接读 `/proc/net` 的 netlink，不遍历全部 fd）。
+
+**5. 抓包与流量**
+```bash
+tcpdump -i eth0 -nn port 80               # 抓包（-nn 不解析）
+tcpdump -i any -w cap.pcap ''tcp port 443'' # 存文件后 wireshark 分析
+iftop -i eth0                              # 实时流量（按连接）
+nethogs                                    # 实时流量（按进程）
+iptraf-ng / nload                          # 接口流量
+tcpflow / tshark                           # 高级分析
+```
+
+**6. 性能与带宽测试**
+```bash
+iperf3 -s / iperf3 -c host        # 带宽测试
+sar -n DEV 1                      # 网卡历史流量
+sar -n TCP,ETCP 1                 # TCP 重传/连接统计
+nstat -az                         # 内核网络统计（含 TCP 重传）
+```
+
+**7. 内核参数与统计**
+```bash
+sysctl net.ipv4.tcp_*             # TCP 参数
+cat /proc/net/snmp                # 协议统计
+cat /proc/net/netstat             # 扩展统计（含 TcpExt）
+netstat -s                        # 协议统计（重传、错误）
+```
+
+**8. 防火墙与转发**
+```bash
+iptables -L -n -v                 # 规则（含计数）
+nft list ruleset                   # nftables
+firewall-cmd --list-all            # firewalld
+cat /proc/sys/net/ipv4/ip_forward  # 是否开启转发
+```
+
+**典型排查路径**：
+1. **能 ping 通但连不上端口** → 防火墙 / 服务未监听（`ss -lntp`）/ 只绑定 127.0.0.1。
+2. **DNS 慢** → `dig` 看解析耗时；检查 `/etc/resolv.conf`（多个 nameserver 会串行超时）。
+3. **连接建立慢** → 看 SYN 重传（`ss -ti`、`nstat`）、MTU 问题（`ping -M do -s 1472`）。
+4. **吞吐低** → 看 `ss -ti` 的 `cwnd`/`retrans`、`sar -n ETCP` 的重传率、网卡错误计数。
+5. **TIME_WAIT 太多** → `ss -s`、`net.ipv4.tcp_tw_reuse`、`SO_REUSEADDR`。
+6. **大量 CLOSE_WAIT** → **应用没调用 `close`**（代码 bug，不是内核问题）。
+
+**关键命令速记**：
+| 想知道 | 用 |
+|---|---|
+| 谁在监听端口 | `ss -lntp` |
+| 连不上 | `ping` → `traceroute` → `nc -zv host port` |
+| 数据包到没到 | `tcpdump` |
+| 带宽/重传 | `sar -n DEV,ETCP 1`、`nstat` |
+| 是 DNS 还是网络 | `dig` + `ping <IP>` 对比 |', 1),
+
+('Linux', 'TIME_WAIT,端口耗尽', 2,
+ 'TIME_WAIT 是什么？为什么会端口耗尽？怎么优化？',
+ '**TIME_WAIT** 是 TCP 主动关闭方在发送最后一个 ACK 后进入的状态，持续 **2MSL**（Linux 下 60 秒）。
+
+**为什么需要**：
+1. **保证最后的 ACK 能到达**：若 ACK 丢失，对端会重发 FIN，处于 TIME_WAIT 的一方可以重发 ACK。若直接 CLOSED，对端重发的 FIN 会得到 RST。
+2. **让旧连接的数据包在网络中消亡**：避免"旧连接的延迟包"被"新连接（相同四元组）"误收。
+
+**TIME_WAIT 是主动关闭方的状态**：
+```
+主动关闭方：FIN_WAIT_1 → FIN_WAIT_2 → TIME_WAIT → (2MSL) → CLOSED
+被动关闭方：CLOSE_WAIT → LAST_ACK → CLOSED
+```
+
+**CLOSE_WAIT 才是应用问题**：`CLOSE_WAIT` 表示"对端已关闭，我方还没 `close`" —— **大量 CLOSE_WAIT = 应用代码忘记关闭 socket**（不是内核参数能解决的）。
+
+**端口耗尽**：
+- 主动发起连接的**客户端**会积累 TIME_WAIT。可用端口范围 `/proc/sys/net/ipv4/ip_local_port_range`（默认 32768~60999，约 28k 个）。
+- 如果有大量短连接（**每秒数千次连接**），60 秒内累积的 TIME_WAIT 会耗尽端口 → `Cannot assign requested address`。
+- **注意**：如果服务端也主动关闭（如 HTTP/1.0 无 keep-alive），服务端也会积累 TIME_WAIT（用**本地端口 + 对端四元组**标识，理论上限高得多，但也可能耗尽）。
+
+**优化手段**：
+
+1. **`net.ipv4.tcp_tw_reuse = 1`**（推荐）
+   - 允许**主动建立连接**时复用 TIME_WAIT 的端口（仅当 TCP 时间戳 `tcp_timestamps` 开启且新连接的时间戳更大时）。
+   - **只影响出站连接**，安全。
+
+2. **`net.ipv4.tcp_max_tw_buckets`**（默认 262144）
+   - TIME_WAIT 数量上限，超过则**立即回收**并打警告。
+   - **调小可以快速回收，但会削弱 TIME_WAIT 的保护作用**（有风险）。
+
+3. **扩大端口范围**
+```bash
+sysctl -w net.ipv4.ip_local_port_range="1024 65535"
+```
+
+4. **用长连接替代短连接**（**最根本**）
+   - HTTP keep-alive / HTTP/2 多路复用 / 连接池。
+   - **这是唯一真正有效的方案**：减少连接数，从源头减少 TIME_WAIT。
+
+5. **`SO_REUSEADDR`**（服务端）
+   - 允许绑定处于 TIME_WAIT 的端口（重启服务时不报 `Address already in use`）。
+   - 注意：**它不能解决出站端口耗尽**。
+
+6. **`SO_REUSEPORT`**（多进程负载均衡）
+   - 多个进程 bind 同一端口，内核做分发；也减少监听队列争用。
+
+7. **`tcp_fin_timeout`**
+   - 只影响 `FIN_WAIT_2` 的超时，**不影响 TIME_WAIT 的 2MSL**。
+
+**不推荐的做法**：
+- ❌ **`tcp_tw_recycle`**（已在 Linux 4.12 **移除**）：依赖时间戳，在 NAT 环境下会错误丢弃连接，是著名的生产事故来源。
+- ❌ 让服务端直接 `RST` 关闭连接（牺牲 TIME_WAIT 保护，可能丢数据）。
+
+**监控**：
+```bash
+ss -s                                       # 汇总
+ss -tan state time-wait | wc -l             # 数量
+ss -tan state time-wait | awk ''{print $4}'' | awk -F: ''{print $2}'' | sort | uniq -c | sort -rn | head   # 按端口统计
+nstat -az | grep -i tw                      # 内核计数器
+```
+
+**实践建议**：
+1. **首选长连接/连接池**。
+2. 客户端侧开 `tcp_tw_reuse=1` + 扩大端口范围。
+3. 服务端开 `SO_REUSEADDR`。
+4. **不要动 `tcp_tw_recycle`**（已不存在）或盲目调小 `tcp_max_tw_buckets`。
+5. **大量 CLOSE_WAIT 要查代码**（忘 `close`），不是调内核参数。', 1),
+
+('Linux', 'TCP backlog,队列', 3,
+ '`listen` 的 backlog 参数是什么？TCP 的 SYN 队列和 accept 队列有什么区别？',
+ '**`listen(fd, backlog)`** 的 backlog 历史上含义模糊，现代 Linux（2.2+）表示：
+> **已完成连接队列（accept queue）的最大长度**。
+
+**两个队列**：
+
+| 队列 | 内容 | 由谁控制 |
+|---|---|---|
+| **SYN 队列**（半连接队列） | 收到 SYN、已回 SYN+ACK、**还没收到 ACK** 的连接（`SYN_RECV` 状态） | `net.ipv4.tcp_max_syn_backlog` |
+| **accept 队列**（全连接队列） | 三次握手**已完成**、等待应用 `accept()` 取走的连接（`ESTABLISHED`） | `min(backlog, net.core.somaxconn)` |
+
+**三次握手与队列的交互**：
+```
+客户端            服务端
+  SYN    ──────▶  进 SYN 队列，回 SYN+ACK
+  ◀────── SYN+ACK
+  ACK    ──────▶  从 SYN 队列移到 accept 队列（等待 accept）
+应用 accept() ◀──  从 accept 队列取出
+```
+
+**队列满时的行为（关键）**：
+1. **accept 队列满**：
+   - 默认（`tcp_abort_on_overflow=0`）：**丢弃最终的 ACK**，服务端以为没收到，客户端会重传 ACK/或重发数据 → 连接"看起来建立了"但应用拿不到。
+   - 设为 `1`：直接回 **RST**（客户端立即报错）。
+   - **常见现象**：客户端连接超时或偶发失败，`ss -lnt` 显示 `Send-Q`（accept 队列上限）与实际 `Recv-Q`（当前排队数）都很高。
+2. **SYN 队列满**：默认**丢弃新 SYN**（客户端重传），若开启 **`tcp_syncookies=1`**，则**不占用队列**、直接构造 SYN+ACK（防 SYN flood 的同时保持服务可用）。
+
+**查看队列**：
+```bash
+ss -lnt
+# State  Recv-Q  Send-Q  Local Address:Port
+# LISTEN 0       511     0.0.0.0:80     ← Send-Q 就是 accept 队列上限
+# LISTEN 12      511     0.0.0.0:80     ← Recv-Q 是当前排队等待 accept 的个数
+```
+**注意**：`ss -lnt` 中 LISTEN 状态的 `Recv-Q` 是**当前 accept 队列长度**，`Send-Q` 是**队列上限**。非 LISTEN 状态下 `Recv-Q`/`Send-Q` 表示收发缓冲的字节数。
+
+```bash
+netstat -s | grep -i -E "SYNs to LISTEN|listen queue|overflow"
+# "times the listen queue of a socket overflowed" → accept 队列溢出次数
+# "SYNs to LISTEN sockets dropped" → SYN 队列溢出
+```
+还有 **`nstat -az | grep -i listen`**、`/proc/net/netstat` 的 `ListenOverflows`/`ListenDrops`。
+
+**参数**：
+```bash
+sysctl net.core.somaxconn              # accept 队列上限（默认 4096 或 128）
+sysctl net.ipv4.tcp_max_syn_backlog    # SYN 队列上限（默认 128~1024）
+sysctl net.ipv4.tcp_abort_on_overflow  # 1 → 溢出时回 RST
+sysctl net.ipv4.tcp_syncookies         # 1 → 启用 syncookie 防 SYN flood
+sysctl net.ipv4.tcp_synack_retries     # SYN+ACK 重传次数
+```
+
+**实践要点**：
+1. **`backlog` 实际生效值 = `min(backlog, somaxconn)`** —— 改了代码里的 backlog 但没调 `somaxconn` 是无效的（nnginx 的 `listen ... backlog=511` 常被 `somaxconn=128` 限制）。
+2. **accept 队列溢出是典型的高并发问题**：应用 `accept` 太慢（单线程 accept + 慢业务）或 `accept` 后没及时（如 `accept` 与 `epoll_ctl` 之间有阻塞）。
+3. **多线程 accept**：多个进程/线程 `accept` 同一 socket 会有**惊群**（用 `EPOLLEXCLUSIVE` 或 `SO_REUSEPORT` 缓解）。
+4. **`syncookies` 的代价**：开启后放弃部分 TCP 选项（如 window scaling），高带宽长肥管道下性能有损。
+5. **容器/`SO_MAX_PACING_RATE`**：容器网络里也要注意 `somaxconn`。
+6. **调优套路**：`somaxconn=65535` + `tcp_max_syn_backlog=65535` + 应用提高 accept 速度 + 观测 `ListenOverflows`。', 1),
+
+('Linux', '启动流程,systemd', 2,
+ 'Linux 的启动流程是怎样的？systemd 做了什么？',
+ '**启动阶段**：
+
+```
+1. 固件（BIOS / UEFI）
+   → 加电自检（POST）
+   → 找到启动设备（BIOS 读 MBR/引导扇区；UEFI 读 ESP 分区里的 .efi）
+2. Bootloader（GRUB2）
+   → 加载内核（vmlinuz）与 initramfs 到内存
+   → 传递内核参数（cmdline）
+3. 内核初始化
+   → 解压、初始化内存/中断/调度
+   → 挂载 initramfs（临时的根文件系统，含加载真实根所需驱动）
+   → 探测硬件、加载模块
+   → 挂载真实根文件系统
+   → 执行 PID 1（init）
+4. init 阶段
+   → 传统：SysV init（/etc/inittab + /etc/rc.d/rc?.d 脚本，串行）
+   → 现代：systemd（并行、socket/timer 激活、cgroup 管理）
+5. 用户登录
+   → getty 提供终端登录，或 sshd 提供远程登录
+```
+
+**initramfs 为什么存在**：内核需要驱动才能读根分区（如 RAID、LVM、加密），而这些驱动不在内核里 → 用内存里的小文件系统先加载模块，再切到真实根（`switch_root`）。
+
+**systemd 的核心概念**：
+
+| 概念 | 说明 |
+|---|---|
+| **unit（单元）** | 配置的抽象，种类有 `.service`、`.socket`、`.target`、`.timer`、`.mount`、`.device`、`.path` |
+| **target** | 一组 unit 的集合，替代运行级别（`multi-user.target` ≈ runlevel 3，`graphical.target` ≈ 5） |
+| **依赖** | `Requires=`（强依赖）、`Wants=`（弱依赖，失败不影响）、`After=`/`Before=`（**只定顺序，不定依赖**） |
+| **并行启动** | 按依赖图并行拉起，比 SysV 的串行快很多 |
+| **按需启动** | `.socket`（有连接才起服务）、`.path`（文件变化才起）、`.timer`（定时） |
+| **cgroup 集成** | 每个服务在独立 cgroup，便于资源限制与统一杀进程 |
+
+**一个 service 示例**：
+```ini
+[Unit]
+Description=My Blog Server
+After=network.target mysql.service
+Wants=network-online.target
+
+[Service]
+Type=simple                 # simple/forking/oneshot/notify/dbus
+ExecStart=/usr/local/bin/task_server
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+User=blog
+WorkingDirectory=/opt/blog
+LimitNOFILE=65535
+MemoryMax=512M              # cgroup 限制
+Environment="MYSQL_HOST=localhost"
+EnvironmentFile=-/etc/blog.env
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**常用命令**：
+```bash
+systemctl start/stop/restart/reload  blog.service
+systemctl enable/disable             blog.service   # 开机自启
+systemctl status                     blog.service
+systemctl list-units --type=service  --state=failed
+systemctl daemon-reload                              # 改 unit 文件后必须执行
+systemctl cat blog.service                           # 查看 unit（含 override）
+systemctl show blog.service                          # 查看所有属性
+systemctl list-dependencies --reverse blog.service
+journalctl -u blog.service -f                        # 跟踪日志
+systemd-analyze blame / critical-chain               # 启动耗时分析
+```
+
+**`Type=` 的选择**：
+| Type | 含义 |
+|---|---|
+| `simple`（默认） | `ExecStart` 启动的进程就是主进程 |
+| `forking` | 进程自己 daemonize（传统服务） |
+| `oneshot` | 执行完就退出（用于初始化任务） |
+| `notify` | 进程通过 `sd_notify` 通知就绪（**最精确**） |
+| `dbus` | 通过 D-Bus 获取就绪 |
+
+**SysV 与 systemd 对比**：
+| | SysV init | systemd |
+|---|---|---|
+| 启动 | 串行脚本 | **依赖图并行** |
+| 配置 | 一堆 shell 脚本 | 声明式 unit 文件 |
+| 服务管理 | `service xxx start` | `systemctl` |
+| 日志 | 各服务自己写 | **journald 统一** |
+| 依赖 | 只有数字顺序 | 显式依赖 |
+| 按需启动 | 难 | socket/timer/path 激活 |
+| 资源控制 | 无 | **cgroup 集成** |
+
+**替代方案**：OpenRC（Gentoo/Alpine）、runit、s6（容器里常用，轻量）。
+
+**实践建议**：
+1. **改 unit 后必须 `systemctl daemon-reload`**。
+2. 用 `systemctl edit` 创建 override 片段，**不要直接改发行版的 unit 文件**（升级会被覆盖）。
+3. 服务**不要自己 daemonize**（`Type=simple` + systemd 后台化）。
+4. 日志走 journald，`journalctl -u` 查看；持久化要设 `/var/log/journal`（否则只在 `/run` 里，重启丢失）。
+5. `Restart=on-failure` + `RestartSec` 是简单的自愈。
+6. 用 `MemoryMax`/`CPUQuota` 做资源限制，避免单个服务拖垮整机。', 1),
+
+('Linux', 'cron,定时任务', 1,
+ 'Linux 的定时任务怎么配置？cron 和 systemd timer 有什么区别？',
+ '**cron 基础**：
+
+```bash
+crontab -e          # 编辑当前用户的定时任务
+crontab -l          # 列出
+crontab -r          # 删除全部（危险）
+```
+
+**格式**：`分 时 日 月 周 命令`
+```
+*  *  *  *  *  command
+│  │  │  │  └── 星期 (0-7, 0 和 7 都是周日)
+│  │  │  └───── 月 (1-12)
+│  │  └──────── 日 (1-31)
+│  └─────────── 时 (0-23)
+└────────────── 分 (0-59)
+```
+
+**常用例子**：
+```cron
+*/5 * * * *   /opt/scripts/check.sh              # 每 5 分钟
+0 3 * * *     /opt/scripts/backup.sh             # 每天 3:00
+0 9 * * 1-5   /opt/scripts/report.sh             # 工作日 9:00
+0 0 1 * *     /opt/scripts/monthly.sh            # 每月 1 号
+@reboot       /opt/scripts/start.sh              # 开机
+@daily / @hourly / @weekly / @monthly / @yearly  # 快捷宏
+```
+
+**位置**：
+| 路径 | 说明 |
+|---|---|
+| `/var/spool/cron/<user>` | 用户 crontab（`crontab -e` 写这里） |
+| `/etc/crontab` | 系统 crontab，**多一个"用户"字段** |
+| `/etc/cron.d/` | 系统任务片段（同样带用户字段） |
+| `/etc/cron.{hourly,daily,weekly,monthly}/` | 放脚本即可 |
+
+**cron 的经典坑（高频面试点）**：
+1. **环境变量极简**：cron 的 PATH 通常只有 `/usr/bin:/bin`，**不会读取 `~/.bashrc`**。所以脚本里要用**绝对路径**，或显式设置 `PATH`：
+```cron
+PATH=/usr/local/bin:/usr/bin:/bin
+0 3 * * * /opt/scripts/backup.sh >> /var/log/backup.log 2>&1
+```
+2. **不加载 shell 配置**：需要环境变量时在脚本里 `source`，或在 crontab 顶部定义。
+3. **标准输出/错误会发邮件**（若配置了 MTA），通常要重定向到日志文件，否则可能填满 `/var/mail`。
+4. **`%` 需要转义**（在 crontab 里 `%` 是换行符），如日期格式化 `date +\\%Y\\%m\\%d`。
+5. **秒级任务不支持**（最小粒度是分钟）；需要秒级用 systemd timer 或循环。
+6. **任务重叠**：上一个还没跑完下一个又启动（如冗长的备份）。**必须自己加锁**：
+```bash
+#!/bin/bash
+exec 9>/var/lock/backup.lock
+flock -n 9 || exit 0        # 拿不到锁就退出
+# ... 任务
+```
+7. **`cron` 服务必须运行**：`systemctl status crond`（RHEL）/ `cron`（Debian）。新版 Debian/Ubuntu 由 `cron.service` 提供，而 `anacron` 处理"错过的任务"（机器关机期间）。
+8. **邮件与 `MAILTO=""`**：不需要邮件就设 `MAILTO=""`。
+9. **时区**：cron 用系统时区（`/etc/localtime`）；跨时区部署要设 `CRON_TZ=Asia/Shanghai`（部分实现支持）。
+
+**systemd timer（推荐）**：
+
+```ini
+# /etc/systemd/system/backup.timer
+[Unit]
+Description=Daily backup
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true                 # 错过的任务开机后补跑（相当于 anacron）
+RandomizedDelaySec=300          # 抖动，避免同时打爆
+Unit=backup.service
+
+[Install]
+WantedBy=timers.target
+```
+```ini
+# /etc/systemd/system/backup.service
+[Unit]
+Description=Backup job
+[Service]
+Type=oneshot
+ExecStart=/opt/scripts/backup.sh
+User=backup
+```
+
+```bash
+systemctl enable --now backup.timer
+systemctl list-timers --all
+journalctl -u backup.service
+systemd-analyze calendar "Mon *-*-* 03:00"
+```
+
+**对比**：
+
+| 维度 | cron | systemd timer |
+|---|---|---|
+| 粒度 | 分钟 | **秒/毫秒** |
+| 日志 | 邮件/自建 | **journald 统一** |
+| 错过补跑 | 需 anacron | **`Persistent=true`** |
+| 依赖服务 | 无 | ✅（`After=network.target`） |
+| 资源限制 | ❌ | ✅（cgroup） |
+| 随机抖动 | 无 | `RandomizedDelaySec` |
+| 配置 | 一行 | 两个文件（略繁琐） |
+
+**实践建议**：**新系统优先 systemd timer**（更好的日志、依赖、资源控制、错过补跑）；老系统或简单场景用 cron。**无论哪种，任务都必须自己加锁防重叠。**', 1),
+
+('Linux', '性能排查,top,vmstat', 2,
+ '线上服务器 CPU/内存/IO 变慢，你会怎么排查？',
+ '**先建立整体印象（"黄金四指标"）**：
+
+```bash
+uptime              # 负载
+top -b -n1 | head   # CPU 概览
+vmstat 1 5          # 综合
+iostat -xz 1        # 磁盘
+free -m             # 内存
+sar -n DEV 1        # 网络
+```
+
+**1. 负载平均值（load average）**
+```bash
+uptime
+# load average: 2.10, 1.80, 1.50   ← 1 分钟 / 5 分钟 / 15 分钟
+```
+- **不是 CPU 使用率**，而是"**可运行 + 不可中断（D 状态）**"的平均任务数。
+- 判断标准：**与核数比较**。`nproc` 是核数，load ≈ 核数表示满载。
+- **load 高但 CPU 空闲** → 通常是 **IO 等待（D 状态）**，查磁盘/网络存储。
+```bash
+cat /proc/loadavg                        # 还给出了当前可运行/总进程数
+ps -eo state,pid,comm | grep ''^D''        # 找 D 状态进程
+```
+
+**2. CPU**
+```bash
+top            # 关注 us/sy/wa/id/si/hi
+mpstat -P ALL 1   # 每核
+pidstat -u 1      # 每进程
+perf top          # 函数级热点
+```
+- **`us` 高**：应用计算密集 → `perf record` 找热点函数。
+- **`sy` 高**：系统调用/内核态频繁 → `strace -c` 看哪个 syscall 多。
+- **`wa` 高**：IO 等待 → 查磁盘。
+- **`si`/`hi` 高**：中断开销大（网络/驱动）。
+- **`st`（steal）高**：虚拟机被宿主机抢占 → 找云厂商。
+- **`id` 高但很慢** → 不是 CPU 问题，查 IO/内存/锁/网络。
+
+**3. 内存**
+```bash
+free -h                    # 看 available，不是 free
+cat /proc/meminfo
+vmstat 1                   # si/so 是 swap 换入换出
+ps -eo pid,rss,comm --sort=-rss | head
+smem -t -k                  # 更准确（PSS/USS）
+```
+- **`available` 低 + `si/so` 非 0** → 内存压力大，正在 swap。
+- **RSS 高但"available 还行"** → 可能是缓存，不是问题。
+- **OOM 日志**：`dmesg -T | grep -i oom`。
+
+**4. 磁盘 IO**
+```bash
+iostat -xz 1              # 关键：%util, await, aqu-sz, r/s w/s
+iotop -o                   # 按进程
+pidstat -d 1
+```
+- **`%util` 接近 100%** → 设备饱和。
+- **`await` 高**（> 十几 ms，HDD 更敏感）→ 排队严重。
+- **`aqu-sz`** 队列深度。
+- **注意**：SSD/NVMe 的 `%util` 不完全准确（并行度高），看 `await` 与 `r_await`/`w_await`。
+```bash
+cat /proc/diskstats | grep <dev>    # 原始计数
+blktrace / bpftrace                 # 深入分析 IO 延迟
+```
+
+**5. 网络**
+```bash
+sar -n DEV,ETCP 1          # 流量 + 重传
+ss -s                       # 连接状态汇总
+ss -tan state time-wait | wc -l
+nstat -az | grep -i -E "retrans|drop"
+iftop / nethogs             # 实时流量
+tcpdump                     # 抓包
+```
+- **重传率高** → 网络质量差/拥塞/MTU 问题。
+- **大量 CLOSE_WAIT** → 应用没 close。
+- **大量 SYN_RECV** → SYN 洪泛或 accept 太慢。
+
+**6. 锁与调度**
+```bash
+perf sched latency          # 调度延迟
+perf stat -e context-switches,cpu-migrations
+cat /proc/<pid>/status | grep -E "voluntary|nonvoluntary"
+pidstat -w 1                 # 上下文切换
+```
+- **`nonvoluntary_ctxt_switches` 高** → 被抢占，可能 CPU 不足。
+- **自愿切换高** → 等 IO/锁。
+- 锁竞争：`perf lock`、`futex` 相关热点。
+
+**7. 全链路追踪**
+```bash
+perf record -g -p <pid>; perf report        # 火焰图
+perf trace                                  # 系统调用时间线
+bpftrace / bcc 工具集（execsnoop、biolatency、tcpconnect、runqlat）
+```
+**代码级**：`strace -c -p <pid>`（syscall 统计）、`gdb` 采样、语言级 profiler。
+
+**排查套路总结**：
+| 现象 | 首先看 |
+|---|---|
+| 什么都慢 | `uptime` load / `vmstat` |
+| 响应慢但 CPU 空闲 | `iostat`、D 状态进程 |
+| CPU 满 | `top` 的 us/sy/wa 分布 → `perf top` |
+| 内存相关 | `free` 的 available、`vmstat` 的 si/so、OOM 日志 |
+| 网络慢 | `sar -n ETCP` 重传、`ss -s`、`tcpdump` |
+| 间歇性卡顿 | `perf sched`、`sar` 历史、`dmesg` |
+
+**工具安装（在线排查必备）**：`sysstat`（sar/iostat/pidstat/mpstat）、`iotop`、`htop`、`perf`（linux-tools）、`bcc-tools`、`bpftrace`。', 1),
+
+('Linux', '内存指标,free', 2,
+ '`free` 的输出各项是什么意思？怎么判断内存是否真的不足？',
+ '**`free -h` 输出**：
+```
+               total        used        free      shared  buff/cache   available
+Mem:            15Gi       3.0Gi       1.2Gi       200Mi        11Gi        11Gi
+Swap:          2.0Gi          0B       2.0Gi
+```
+
+| 项 | 含义 |
+|---|---|
+| `total` | 物理内存总量 |
+| `used` | **已用** = total − free − buff/cache |
+| `free` | **完全未使用**的物理内存 |
+| `shared` | tmpfs 与共享内存（`/dev/shm`、`tmpfs` 挂载） |
+| `buff/cache` | 内核缓冲与缓存（**可回收**） |
+| **`available`** | **估算"应用还能申请多少"**（= 可回收缓存 + free 减去不可回收部分） |
+| `Swap used` | 已换出到 swap 的量 |
+
+**关键结论：判断内存是否紧张要看 `available`，不是 `free`。**
+
+- `buff/cache` 大 = **好事**：说明文件访问都被缓存了，可以随时回收。
+- `free` 小是**正常**的：Linux 倾向"用满内存做缓存"。
+- **`available` 接近 0** + **swap 使用增长** = 真的紧张。
+
+**`/proc/meminfo` 的关键字段**：
+```bash
+cat /proc/meminfo | grep -E "MemTotal|MemFree|MemAvailable|Buffers|Cached|Shmem|Dirty|Writeback|Slab|SReclaimable|SUnreclaim|Committed_AS|CommitLimit|SwapTotal|SwapFree|AnonPages|Mapped|HugePages"
+```
+
+| 字段 | 含义 |
+|---|---|
+| `MemAvailable` | 估算可用（内核用可回收页 + 水位线计算） |
+| `Cached` | page cache（**注意含 `Shmem`**） |
+| `Shmem` | tmpfs + 共享内存（**不能直接丢弃**） |
+| `SReclaimable` | 可回收的 slab（dentry/inode 缓存） |
+| `SUnreclaim` | 不可回收的 slab（内核结构） |
+| `AnonPages` | 匿名页（堆、栈、私有映射） |
+| `Dirty` / `Writeback` | 待回写/正在回写的脏页 |
+| **`Committed_AS`** | 已承诺（overcommit）的虚拟内存量 |
+| **`CommitLimit`** | 允许承诺的上限（overcommit=2 时生效） |
+
+**"可回收"与"不可回收"缓存**：
+- **可丢弃**：`Cached - Shmem`（干净的文件页）、`SReclaimable`。
+- **需 swap 才能回收**：`AnonPages`（要换出）、`Shmem`（tmpfs 内容需换出或丢弃）。
+
+**判断脚本**：
+```bash
+# 真正可用的"应用潜力"
+echo "available: $(awk ''/MemAvailable/{print $2/1024" MiB"}'' /proc/meminfo)"
+# 内存压力信号（非 0 表示正在 swap）
+vmstat 1 3 | tail -1 | awk ''{print "swap in/out:", $7, $8}''
+# 无 swap 且 available 低 → 危险
+awk ''/SwapTotal/{st=$2} /MemAvailable/{av=$2} END{
+  if (st==0 && av < 100*1024) print "⚠️ 无 swap 且可用内存 <100MiB，随时可能 OOM"
+}'' /proc/meminfo
+```
+
+**常见误区**：
+1. ❌ "free 只有 1G，内存要爆了" —— 看 `available`。
+2. ❌ "buff/cache 11G，都是泄漏" —— 可回收。
+3. ❌ "进程 RSS 加起来超过总内存" —— **共享库/共享内存被重复计算**。用 **PSS**（`smem`、`/proc/<pid>/smaps`）才准确。
+4. ❌ "内存不降就是泄漏" —— 需要观察 **PSS/USS 单调增长**且在压力后不回落。
+
+**工具**：
+```bash
+free -h                     # 概览
+smem -t -k                  # PSS/USS 汇总（最准确）
+ps_mem                      # 每进程 USS/PSS
+pmap -x <pid>               # 进程内存映射明细
+cat /proc/<pid>/smaps_rollup # 进程 PSS 汇总
+slabtop                     # 内核 slab 使用
+```
+
+**容器场景**：
+- 容器**看不到宿主机的真实内存**（`/proc/meminfo` 默认暴露宿主机视图，除非用 lxcfs）。
+- 应看 **cgroup** 的限制与用量：
+```bash
+cat /sys/fs/cgroup/memory.current      # v2
+cat /sys/fs/cgroup/memory.max
+cat /sys/fs/cgroup/memory.stat         # anon/file/slab 明细
+cat /sys/fs/cgroup/memory.events       # oom 次数
+```
+- **容器的 `page cache` 也算在 cgroup 内存里**（读大文件会顶到 limit），这是"容器内存莫名超限"的常见原因。', 1),
+
+('Linux', '内核参数,sysctl', 2,
+ '`sysctl` 是什么？生产环境常调哪些网络/内存参数？',
+ '**`sysctl`** 读写内核运行参数（`/proc/sys` 的友好接口）。
+
+```bash
+sysctl -a                         # 列出全部
+sysctl net.ipv4.tcp_syncookies    # 查
+sysctl -w net.ipv4.tcp_syncookies=1        # 临时改
+sysctl -p                          # 从 /etc/sysctl.conf 加载
+sysctl --system                    # 加载所有配置目录（/etc/sysctl.d/*.conf）
+
+# 持久化：写 /etc/sysctl.d/99-custom.conf
+net.ipv4.tcp_syncookies = 1
+```
+
+**网络参数（高频）**：
+
+| 参数 | 作用 | 常见值 |
+|---|---|---|
+| `net.core.somaxconn` | accept 队列上限 | 65535 |
+| `net.ipv4.tcp_max_syn_backlog` | SYN 队列上限 | 65535 |
+| `net.ipv4.tcp_syncookies` | SYN flood 防护 | 1 |
+| `net.ipv4.tcp_tw_reuse` | 复用 TIME_WAIT 端口（出站） | 1 |
+| `net.ipv4.ip_local_port_range` | 本地端口范围 | "1024 65535" |
+| `net.ipv4.tcp_fin_timeout` | FIN_WAIT_2 超时 | 15 |
+| `net.ipv4.tcp_keepalive_time` | 保活探测间隔 | 600 |
+| `net.ipv4.tcp_keepalive_intvl` | 探测间隔 | 30 |
+| `net.ipv4.tcp_keepalive_probes` | 探测次数 | 3 |
+| `net.core.rmem_max` / `wmem_max` | 单 socket 收发缓冲上限 | 16 MiB |
+| `net.ipv4.tcp_rmem` / `tcp_wmem` | TCP 收发缓冲（min/default/max） | "4096 87380 16777216" |
+| `net.ipv4.tcp_congestion_control` | 拥塞算法 | cubic / bbr |
+| `net.core.netdev_max_backlog` | 网卡收包队列 | 65535 |
+| `net.ipv4.tcp_max_tw_buckets` | TIME_WAIT 上限 | 262144 |
+| `net.ipv4.tcp_slow_start_after_idle` | 空闲后是否重置 cwnd | 0（长连接优化） |
+
+**⚠️ 已移除/不推荐**：
+- `net.ipv4.tcp_tw_recycle`：**Linux 4.12 已移除**（NAT 下会误杀连接）。
+- `net.ipv4.tcp_tw_reuse` 需要 `tcp_timestamps=1`（默认开）。
+
+**内存参数**：
+
+| 参数 | 作用 |
+|---|---|
+| `vm.swappiness` | 换出匿名页的倾向（0~100，默认 60）。**数据库常设 1**（只在必要时 swap），但**不要设 0**（会加剧 OOM） |
+| `vm.overcommit_memory` | 0 启发式 / 1 总是允许 / 2 严格限制 |
+| `vm.overcommit_ratio` | 配合 =2 时的比例 |
+| `vm.min_free_kbytes` | 保留的最小空闲内存（影响回收水位） |
+| `vm.dirty_ratio` | 脏页达到此比例时**写进程被阻塞**（默认 20） |
+| `vm.dirty_background_ratio` | 后台回写启动阈值（默认 10） |
+| `vm.dirty_expire_centisecs` | 脏页最长存活（默认 3000 = 30s） |
+| `vm.dirty_writeback_centisecs` | 回写线程唤醒间隔 |
+| `vm.vfs_cache_pressure` | 回收 dentry/inode 的倾向（默认 100） |
+| `vm.max_map_count` | 进程最大内存映射数（**ES/大数据组件常调大**，默认 65530） |
+| `vm.panic_on_oom` | OOM 时是否 panic |
+
+**文件/进程参数**：
+| 参数 | 作用 |
+|---|---|
+| `fs.file-max` | 系统级 fd 上限 |
+| `fs.nr_open` | 单进程 fd 硬上限 |
+| `fs.inotify.max_user_watches` | inotify watch 上限（**IDE/文件同步工具的常见坑**） |
+| `fs.epoll.max_user_watches` | epoll 监控数上限 |
+| `kernel.pid_max` | PID 上限 |
+| `kernel.shmmax` / `shmall` | System V 共享内存（**Oracle/PostgreSQL 需要**） |
+| `kernel.core_pattern` | core dump 路径 |
+| `net.ipv4.ip_forward` | 是否开启 IP 转发（网关/容器需要） |
+
+**典型调优场景**：
+
+1. **高并发 Web 服务器**：
+```ini
+net.core.somaxconn = 65535
+net.ipv4.tcp_max_syn_backlog = 65535
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.ip_local_port_range = 1024 65535
+net.ipv4.tcp_fin_timeout = 15
+fs.file-max = 1000000
+```
+
+2. **数据库服务器**：
+```ini
+vm.swappiness = 1
+vm.dirty_ratio = 10
+vm.dirty_background_ratio = 5
+vm.overcommit_memory = 2
+vm.overcommit_ratio = 80
+```
+
+3. **大数据/Elasticsearch**：
+```ini
+vm.max_map_count = 262144
+vm.swappiness = 1
+```
+
+4. **长连接/即时通讯**：
+```ini
+net.ipv4.tcp_keepalive_time = 300
+net.ipv4.tcp_keepalive_intvl = 30
+net.ipv4.tcp_keepalive_probes = 3
+net.ipv4.tcp_slow_start_after_idle = 0
+net.core.rmem_max = 16777216
+net.core.wmem_max = 16777216
+```
+
+**实践原则**：
+1. **先监控再调参**（有基线才知道有没有改善）。
+2. **一次只改一项并记录**（便于回滚）。
+3. **写进 `/etc/sysctl.d/*.conf`**（不要直改 `/etc/sysctl.conf`，发行版升级可能覆盖）。
+4. **容器里改 `sysctl` 可能受限**（`net.*` 命名空间相关可改，`vm.*` 多数是宿主机的）。
+5. **不要照抄网上的"万能调优"**（如很多人开的 `tcp_tw_recycle` 已移除，`overcommit_memory=1` 可能掩盖真实内存问题）。', 1),
+
+('Linux', 'strace,gdb,core', 2,
+ '`strace`、`gdb`、core dump 分别怎么用？',
+ '**`strace`：跟踪系统调用**
+
+```bash
+strace ./prog                       # 全量跟踪
+strace -p <pid>                     # 附加到运行中的进程
+strace -f -p <pid>                  # 跟踪所有子线程/子进程
+strace -e trace=openat,read,write ./prog   # 只跟某类调用
+strace -c ./prog                    # 统计各 syscall 的次数/耗时/错误 ⭐
+strace -T -tt ./prog                # 显示每次调用耗时与时间戳
+strace -o out.log -p <pid>          # 输出到文件
+strace -yy -p <pid>                 # 解析 fd 对应的路径（非常有用）
+```
+
+**典型用途**：
+1. **程序卡住** → 看它卡在哪个 syscall（`futex` = 等锁；`read` = 等 IO）。
+2. **`strace -c` 找"哪个系统调用被调了几百万次"** → 发现性能问题。
+3. **`No such file or directory` 排查** → 看它到底 open 了什么路径（配置文件找不到的经典排查）。
+4. **观察 `connect`/`accept` 失败**（`ECONNREFUSED`）。
+
+**代价**：`strace` 会让进程**慢几十倍**（ptrace 每次系统调用都停两次），**不要在生产热路径长时间用**。更好的选择：**`perf trace`**、**bpftrace/eBPF**（低开销）。
+
+**`ltrace`**：跟踪**库函数**调用（如 `malloc`、`strcpy`）。
+
+**`gdb`：调试器**
+
+```bash
+gdb ./prog                          # 启动
+gdb -p <pid>                        # 附加到进程 ⭐
+gdb ./prog core                     # 分析 core 文件
+
+# 常用命令
+break main / b file.c:42            # 断点
+run / r, continue / c, next / n, step / s
+print var / p *ptr                  # 打印
+bt                                  # 调用栈 ⭐
+info threads / thread 3             # 线程
+info registers / info locals
+x/16xb ptr                          # 查看内存
+watch var                           # 数据断点
+attach <pid> / detach               # 附加/脱离
+gcore                               # 生成 core 而不停进程太久
+quit
+```
+
+**无源码/优化过的二进制**：安装 `debuginfo`/`-dbg` 包（`dnf debuginfo-install`、`apt install <pkg>-dbg`）或编译时 `-g -O0`（但生产常用 `-g -O2` 配合 `-fno-omit-frame-pointer`）。
+
+**`gdb` 对多线程/死锁**：
+```bash
+gdb -p <pid>
+(gdb) thread apply all bt           # 所有线程的栈 ⭐（定位死锁的关键）
+(gdb) info sharedlibrary            # 加载了哪些库
+```
+
+**`pstack`/`eu-stack`**：不进入交互式 gdb 直接打印栈（`pstack <pid>`）。
+**`gcore <pid>`**：生产上生成 core 而不杀进程。
+
+**core dump**
+
+```bash
+ulimit -c unlimited                          # 允许生成 core（当前 shell）
+ulimit -c                                    # 查看
+cat /proc/sys/kernel/core_pattern            # core 文件路径模式
+sysctl -w kernel.core_pattern=/var/crash/core.%e.%p.%t
+```
+
+**为什么"没有 core 文件"**：
+1. `ulimit -c` 是 0（默认常为 0）。
+2. `core_pattern` 指向 `systemd-coredump`（现代发行版默认），文件在 `/var/lib/systemd/coredump/`：
+```bash
+coredumpctl list
+coredumpctl info <pid>
+coredumpctl gdb <pid>              # 直接用 gdb 打开 ⭐
+```
+3. 进程被 SIGKILL（不可捕获，不产生 core）。
+4. 文件系统空间不足。
+5. 容器里 `core_pattern` 是 `|/...` 管道而容器内没有对应程序。
+
+**分析步骤（拿到 core 后）**：
+```bash
+gdb ./prog core
+(gdb) bt                        # 崩溃点的调用栈
+(gdb) bt full                   # 带局部变量
+(gdb) frame 3                   # 切到第 3 帧
+(gdb) info locals / info args
+(gdb) print ptr                 # 看是否 nullptr
+(gdb) info registers
+```
+**常见崩溃模式**：
+- `SIGSEGV` + `bt` 指向 `0x0` → 空指针解引用。
+- `SIGABRT` + 栈里有 `abort` → `assert` 失败或 C++ 未捕获异常 / 堆损坏。
+- `SIGFPE` → 除零。
+- 堆栈里出现 `malloc`/`free` → **堆破坏**（用 ASan 更易定位）。
+
+**实践建议**：
+1. **生产开启 core dump**（`LimitCORE=infinity` in systemd + `core_pattern`）。
+2. **编译时加 `-g` 但保留优化**（`-O2 -g`），否则栈信息不可读。
+3. **优先用 ASan/UBSan 在测试阶段发现**，而不是靠线上 core 排查。
+4. **用 bpftrace/perf 做低开销在线诊断**，`strace`/`gdb` 是最后手段。
+5. **`gdb` 附加会暂停进程**，注意对生产的影响；用 `gcore` 或 `profiling` 工具替代。', 1),
+
+('Linux', '动态库,ld.so', 2,
+ '静态库和动态库有什么区别？`ld.so` 怎么找到 `.so`？',
+ '**静态库（`.a`）**：编译期把代码**拷进**可执行文件。
+**动态库（`.so`）**：运行时由**动态链接器**加载，多个进程**共享同一份物理内存**（只读的代码段）。
+
+| 维度 | 静态库 | 动态库 |
+|---|---|---|
+| 时机 | 编译/链接期 | 加载期/运行期 |
+| 体积 | 可执行文件大 | 可执行文件小，库可共享 |
+| 内存 | 每个进程各一份 | 代码段**共享**（`MAP_SHARED` 只读页） |
+| 更新 | 需要重新编译链接 | **替换 `.so` 即可**（ABI 兼容前提下） |
+| 启动 | 快（无加载开销） | 略慢（加载 + 重定位） |
+| 依赖 | 无 | 需要目标机有对应库 |
+| 符号解析 | 链接期全部确定 | 可延迟绑定（PLT/GOT） |
+| 部署 | 简单（单文件） | 需管理库版本 |
+
+**`ld.so`（动态链接器/加载器）如何找库**（按优先级）：
+
+1. **`DT_RPATH`**（ELF 里的 rpath，**已弃用**，除非没有 RUNPATH）
+2. **`LD_LIBRARY_PATH`** 环境变量（⚠️ 影响所有程序，安全风险）
+3. **`DT_RUNPATH`**（ELF 里的 runpath，现代方式；可用 `-Wl,-rpath,''$ORIGIN/lib''`）
+4. **`/etc/ld.so.cache`**（由 `ldconfig` 从 `/etc/ld.so.conf` 及 `/etc/ld.so.conf.d/*.conf` 生成）—— **标准库通常走这条**
+5. **`/lib`、`/usr/lib`**（默认路径）
+
+```bash
+# 写 rpath 让程序找同目录的 lib
+gcc main.c -L./lib -lfoo -Wl,-rpath,''$ORIGIN/lib''
+# 或
+export LD_LIBRARY_PATH=/opt/app/lib:$LD_LIBRARY_PATH
+
+# 新增库目录
+echo "/opt/app/lib" | sudo tee /etc/ld.so.conf.d/app.conf
+sudo ldconfig
+```
+
+**`$ORIGIN`**：ELF 里的特殊变量，表示"可执行文件所在目录"，让程序**自带库、免环境变量**（发布包的常用做法）。
+
+**`LD_PRELOAD`**：在**所有**动态库之前先加载指定的库，可以**覆盖函数**（hook/mock）：
+```bash
+LD_PRELOAD=/path/libmy.so ./prog
+# 常用于：替换 malloc（jemalloc）、mock 测试、性能计数
+```
+⚠️ **它是提权向量**（`LD_PRELOAD` 对 SUID 程序被忽略，但配置不当就危险），也是**故障排查利器**（`libstdbuf.so` 改缓冲、`libSegFault.so` 打印栈）。
+
+**常用工具**：
+```bash
+ldd ./prog                 # 显示依赖的库（实际是设置 LD_TRACE_LOADED_OBJECTS 运行程序，有安全风险）
+objdump -p ./prog | grep NEEDED     # 更安全的依赖查看
+readelf -d ./prog          # 动态段（RPATH/RUNPATH/NEEDED）
+patchelf --set-rpath ''$ORIGIN/lib'' ./prog   # 修改已有 ELF 的 rpath ⭐
+nm -D libfoo.so            # 看动态符号
+c++filt <符号>             # 还原 C++ 修饰名
+LD_DEBUG=libs ./prog       # 打印库搜索过程（排查找不到库的终极手段）
+strace -e openat ./prog | grep ''\\.so''       # 看它 open 了哪些库路径
+```
+
+**常见问题**：
+
+1. **`error while loading shared libraries: libXXX.so: cannot open shared object file`**
+   → 用 `ldd`/`LD_DEBUG=libs` 看搜索路径，检查 `LD_LIBRARY_PATH`、`ld.so.conf`、rpath。
+2. **`version ''GLIBC_2.34'' not found`**
+   → 在**新系统编译**的二进制拿到**老系统**跑（glibc 符号版本）→ **编译机要 ≤ 运行机 glibc 版本**，或用容器/Alpine（musl）。
+3. **替换 `.so` 后行为异常**
+   → **ABI 不兼容**（改了类布局/虚表顺序）；或**进程仍持有旧库的映射**（删文件不等于卸载）。
+4. **"删除了 `.so` 但磁盘空间没释放"** → 有进程还在用（`lsof | grep deleted`）。
+
+**实践建议**：
+1. **优先用系统包管理安装库**，不要随手手工编译安装到 `/usr/local`（会与包管理的库冲突）。
+2. **发布程序时带 `$ORIGIN` rpath** + 自带依赖库，**不要依赖 `LD_LIBRARY_PATH`**。
+3. **容器里固定基础镜像版本**，避免 glibc 不匹配。
+4. **不要用 `LD_LIBRARY_PATH` 做长期方案**（会影响所有子进程，且顺序难以预测）。
+5. 需要 **ABI 稳定**的库要遵守 C++ ABI 规则（PIMPL、避免暴露 STL 类型、不用 `inline` 影响布局）。', 1),
+
+('Linux', 'namespace,cgroup,容器', 3,
+ '容器的底层原理是什么？namespace 和 cgroup 各负责什么？',
+ '**容器 = namespace（隔离"看到什么"）+ cgroup（限制"能用多少"）+ 文件系统（rootfs/overlayfs）+ 安全（capabilities/seccomp/SELinux）**。
+
+**Namespace：隔离视图**
+
+| namespace | 隔离内容 | 隔离后 `unshare`/`clone` 标志 |
+|---|---|---|
+| **mnt** | 挂载点（文件系统树） | `CLONE_NEWNS` |
+| **pid** | 进程号空间（容器内 PID 1 = 外面的某个 PID） | `CLONE_NEWPID` |
+| **net** | 网络栈（网卡、IP、路由、端口） | `CLONE_NEWNET` |
+| **ipc** | System V IPC、POSIX 消息队列 | `CLONE_NEWIPC` |
+| **uts** | 主机名与域名 | `CLONE_NEWUTS` |
+| **user** | 用户/组 ID 映射（容器内 root = 宿主普通用户） | `CLONE_NEWUSER` |
+| **cgroup** | cgroup 根的视图 | `CLONE_NEWCGROUP` |
+| **time**（5.6+） | 时钟（单调时钟/启动时间偏移） | `CLONE_NEWTIME` |
+
+```bash
+# 手工体验
+unshare --pid --fork --mount-proc /bin/bash     # 独立的 PID 空间
+unshare --net /bin/bash                          # 独立网络（只有 lo）
+lsns                                             # 列出所有 namespace
+ls -l /proc/<pid>/ns/                            # 看某进程的 namespace
+nsenter -t <pid> -n -p ip addr                   # 进入某进程的 namespace ⭐（调试容器利器）
+```
+
+**cgroup：限制与统计资源**
+
+**cgroup v2**（统一层级）里的控制器：
+
+| 控制器 | 限制对象 | 关键文件 |
+|---|---|---|
+| `cpu` | CPU 时间（权重/上限） | `cpu.weight`、`cpu.max` |
+| `cpuset` | 绑定哪些 CPU/内存节点 | `cpuset.cpus`、`cpuset.mems` |
+| `memory` | 内存上限与统计 | `memory.max`、`memory.current`、`memory.stat` |
+| `io` | 块设备 IO 带宽/IOPS | `io.max`、`io.stat` |
+| `pids` | 进程数上限 | `pids.max` |
+
+```bash
+mount -t cgroup2 none /sys/fs/cgroup
+mkdir /sys/fs/cgroup/mygroup
+echo "512M" > /sys/fs/cgroup/mygroup/memory.max
+echo "100000 100000" > /sys/fs/cgroup/mygroup/cpu.max   # 1 个 CPU 的量
+echo $$ > /sys/fs/cgroup/mygroup/cgroup.procs
+systemd-cgtop                    # 按 cgroup 看资源占用 ⭐
+cat /proc/<pid>/cgroup
+```
+
+**v1 vs v2**：v1 每个控制器一个独立层级（可混搭），v2 是**统一层级**（单一树、更清晰的语义、`memory.max` 包含 page cache）。现代发行版默认 v2（`systemd.unified_cgroup_hierarchy=1`）。
+
+**rootfs 与镜像**：
+- **overlayfs**：把多个**只读层**（镜像层）叠加成一个可写视图，最上层是**可写层**（容器内的修改）。
+```bash
+mount -t overlay overlay -o lowerdir=lower1:lower2,upperdir=upper,workdir=work /merged
+```
+- **写时复制**：修改文件时从下层拷到上层（**第一次写大文件会慢**）。
+- **删除文件**用 whiteout 标记。
+- 镜像层是**共享**的（多个容器共用底层）→ 省磁盘。
+
+**安全隔离**（不止 namespace/cgroup）：
+| 机制 | 作用 |
+|---|---|
+| **Capabilities** | 把 root 权限拆成细粒度能力（`CAP_NET_BIND_SERVICE` 而非全 root） |
+| **seccomp** | 过滤系统调用（Docker 默认禁掉一批危险 syscall） |
+| **LSM（SELinux/AppArmor）** | 强制访问控制 |
+| **user namespace** | 容器内 root 映射为宿主非特权用户（rootless 容器） |
+| **read-only rootfs / no-new-privileges** | 减小攻击面 |
+
+**为什么"容器不是虚拟机"**：
+- **共享同一个内核**（隔离靠 namespace/cgroup，不是硬件虚拟化）。
+- 启动快（毫秒级，无内核启动）、开销小（无额外内核）。
+- **隔离性弱于 VM**：内核漏洞可以逃逸；所以有 **gVisor**（用户态内核）、**Kata**（轻量 VM）这类"更强隔离"方案。
+
+**实践要点**：
+1. **容器里 PID 1 要正确处理信号与孤儿回收**（用 `tini`/`dumb-init`，或应用自己处理）。
+2. **容器内存限制包含 page cache** —— 读大文件可能顶到 `memory.max`。
+3. **`/proc/meminfo` 在容器里默认显示宿主机数据**（用 lxcfs 才能看到真实限制）。
+4. **调试容器**：`nsenter -t <pid> -a` 进入容器的所有 namespace。
+5. **`docker stats` / `crictl stats`** 读的就是 cgroup 的数据。
+6. **不要用 `--privileged`**（等于放弃隔离）。', 1),
+
+('Linux', '中断,软中断', 3,
+ '硬中断和软中断有什么区别？为什么需要软中断？',
+ '**硬中断（硬件中断）**：
+- 由硬件（网卡、磁盘、定时器）触发，**异步**打断 CPU 当前执行。
+- 在**中断上下文**执行，**不能睡眠**（不能阻塞、不能让出 CPU）。
+- **要求尽可能短**（长时间关中断会丢中断、增加延迟）。
+
+**软中断（softirq）**：
+- **不是**"软件触发的中断"这么简单 —— 它是 Linux 内核的一种**延迟执行机制**。
+- 在**中断处理程序的后半段（下半部）**执行耗时的部分，**仍然运行在中断上下文**（不能睡眠），但**可以被硬中断打断**。
+- 有类型限制（编译期固定）：`HI_SOFTIRQ`、`TIMER_SOFTIRQ`、`NET_TX_SOFTIRQ`、`NET_RX_SOFTIRQ`、`BLOCK_SOFTIRQ`、`TASKLET_SOFTIRQ`、`RCU_SOFTIRQ` 等。
+- **每个 CPU 一个 `ksoftirqd` 内核线程**，在软中断负载过高时接管，避免用户进程被饿死。
+
+**三种下半部机制对比**：
+
+| 机制 | 上下文 | 能否睡眠 | 并行性 | 适用 |
+|---|---|---|---|---|
+| **软中断（softirq）** | 中断上下文 | ❌ | 同类型可多 CPU 并行 | 高频、性能关键（网络收发） |
+| **tasklet** | 中断上下文 | ❌ | **同类型串行**（不同 CPU 也不能并行） | 一般驱动的下半部 |
+| **工作队列（workqueue）** | **进程上下文（内核线程）** | ✅ | 并行 | 需要睡眠/耗时的操作 |
+
+**为什么需要软中断**：
+1. **硬中断要快**：关中断时间长了会导致丢中断、系统失去响应。所以把"必须立即做的"（读网卡数据到内核缓冲、确认中断）放在硬中断，把"处理数据（协议栈解析、唤醒用户进程）"推迟到软中断。
+2. **减少关中断时间**，提高系统整体响应性。
+
+**观察它们**：
+```bash
+# 软中断统计（各类型次数）
+cat /proc/softirqs
+# 中断统计（按 IRQ）
+cat /proc/interrupts
+# 每 CPU 的中断处理开销
+mpstat -I SUM 1          # 看 %soft、%irq
+top                      # 看 si（软中断）、hi（硬中断）列
+```
+
+**中断亲和性**（把中断绑定到特定 CPU）：
+```bash
+cat /proc/irq/<n>/smp_affinity
+echo 2 > /proc/irq/<n>/smp_affinity     # 绑到 CPU1
+systemctl enable irqbalance              # 自动均衡（一般保持开启）
+```
+
+**性能问题模式**：
+1. **`si`（软中断）高** → 网络包处理量巨大 → **RPS/RFS**（多队列分发到多核）、**RSS**（网卡多队列）、增大 `netdev_max_backlog`、`NAPI` 减少中断。
+2. **`hi` 高** → 中断太频繁 → 检查是否有异常设备（磁盘错误、网卡风暴）。
+3. **单个 CPU 100% 的 `si`** → 中断集中在一核 → 调 `smp_affinity` 或开 RPS。
+4. **`ksoftirqd` 占用高** → 软中断负载超出即时处理能力。
+
+**NAPI（New API）**：网络驱动的关键优化 —— **中断 + 轮询混合**：
+- 第一个包到来时禁用该设备中断，进入**轮询模式**批量处理队列里的包。
+- 队列空后重新启用中断。
+- **大幅减少高流量下的中断次数**（从"每包一次中断"变成"每批一次"）。
+
+**RPS/RFS**：
+- **RPS（Receive Packet Steering）**：软件层面把包分发到多个 CPU（单队列网卡也能多核处理）。
+- **RFS（Receive Flow Steering）**：按"流"分发（同一个连接的处理在同一个 CPU，提升 cache 命中）。
+```bash
+echo f > /sys/class/net/eth0/queues/rx-0/rps_cpus
+echo 4096 > /proc/sys/net/core/rps_sock_flow_entries
+```
+
+**其它要点**：
+1. **`preempt_count`**：中断上下文里会加计数，`sleep` 时会检查并报 "BUG: sleeping function called from invalid context"。
+2. **中断与锁**：中断上下文用 `spin_lock_irqsave`（关中断 + 自旋）。
+3. **`local_bh_disable()`** 禁用软中断（用于保护 per-CPU 数据）。
+4. **`SO_BUSY_POLL`/`SO_INCOMING_CPU`**：让应用轮询网卡/绑定 CPU，进一步降低延迟（DPDK/高性能网络常用）。
+5. **`/proc/softirqs` 各列严重不均** → 中断/软中断亲和性问题。
+
+**实践建议**：
+1. **生产环境用 `sar -n DEV` + `mpstat -I SUM` 建立基线**。
+2. 遇到"单核 si 100%"就查 **RPS/网卡队列/中断亲和**。
+3. 高吞吐网络（10G+）考虑 **多队列网卡 + RSS/RPS + XDP**。
+4. **不要随意关 `irqbalance`**（除非有明确的手工绑定策略）。', 1),
+
+('Linux', '写时复制,COW', 3,
+ '什么是写时复制（COW）？它在 Linux 里有哪些应用？',
+ '**COW（Copy-On-Write）**：多个使用者**共享同一份数据**，只有当某一方**要修改**时，才真正复制出一份私有副本。
+
+**实现机制（以 fork 为例）**：
+1. `fork` 时，父进程的页表被**复制**（页表项指向**相同的物理页**），所有页在**双方页表里都标记为只读**。
+2. 任一方**写入**某个页时，触发**写保护缺页中断（minor page fault）**。
+3. 内核分配一个新物理页，**拷贝原内容**，把写入方的页表项指向新页并设为可写。
+4. 另一方仍指向原页（内容未变）。
+
+**代价转移**：`fork` 从"复制全部内存"变成"复制页表"（快得多），代价转移到了**第一次写**时。
+
+**应用场景**：
+
+1. **`fork` + `exec`（最典型）**
+   - 子进程几乎立刻 `exec`，几乎不写内存 → COW 几乎不做任何实际拷贝。
+   - 这是 `fork` 在现代 Linux 上足够快的原因（也让 `vfork` 变得没必要）。
+
+2. **`MAP_PRIVATE` 的 mmap**
+   - 私有文件映射：读操作共享 page cache，写操作触发 COW（**不修改文件**）。
+   - 动态库的**数据段**就是这么映射的（代码段是只读共享）。
+
+3. **overlayfs / Docker 镜像层**
+   - 底层的只读镜像层被多个容器共享；容器内修改文件时，从下层**拷到上层的可写层**。
+   - 这就是"容器启动快、占磁盘少"的原因，也是"容器内改大文件第一次很慢"的原因。
+
+4. **文件系统快照（btrfs/ZFS）**
+   - 快照与当前数据共享块，修改时才写新块（`reflink`）。
+   - **`cp --reflink=auto`** 在支持的文件系统上可秒级"复制"大文件。
+
+5. **`reflink` 与 `copy_file_range`**
+   - 同一文件系统内可创建"共享扩展区"的副本。
+
+6. **git 的对象存储**（应用层 COW 思想）
+   - 内容寻址 + 不可变对象，新版本只存变化的 blob。
+
+**查看与验证**：
+```bash
+# COW 缺页计数（minor fault）
+ps -o min_flt,maj_flt -p <pid>
+/usr/bin/time -v ./prog | grep -i "page faults"
+
+# 观察 COW 的效果：fork 后 RSS 不翻倍
+# 用 smem/PSS 看共享内存
+```
+
+**性能陷阱**：
+
+1. **`fork` 在大型进程上仍然有开销**：复制页表本身要遍历所有页表项（几 GB 的进程页表拷贝要几毫秒），且会**复制 `task_struct` 与 fd 表**。
+   - 解决：`posix_spawn`（内部可能用 `clone(CLONE_VM|CLONE_VFORK)`，连页表都不复制）。
+2. **`fork` 后的"第一次写"很贵**：大量 minor fault。
+3. **`fork` 在多线程程序中危险**：只复制调用线程，锁状态可能不一致。
+4. **THP + COW**：2MB 大页触发 COW 时要复制整个 2MB → **延迟尖刺**（这是 THP 被诟病的点之一）。
+5. **COW 与 `madvise(MADV_DONTFORK)`**：可以让某些映射不被 `fork` 继承（如 DPDK 的巨页）。
+
+**相关内核机制**：
+- **`page->_refcount`**：物理页的引用计数，>1 时写入要 COW。
+- **反向映射（rmap）**：找到所有映射了该物理页的页表项，用于 COW 时更新它们。
+- **KSM（Kernel Same-page Merging）**：主动扫描相同的匿名页并合并（去重），写时再 COW 分裂 —— 虚拟机/容器密集场景可省大量内存，但有 CPU 开销。
+  ```bash
+  echo 1 > /sys/kernel/mm/ksm/run
+  cat /sys/kernel/mm/ksm/pages_shared
+  ```
+
+**面试延伸**：COW 是"**延迟到必要时才做**"这一思想的经典应用；同类的还有**延迟分配（delayed allocation）**、**惰性求值**、**`optional`/`lazy` 初始化**。', 1),
+
+('Linux', '文件锁,fuser', 2,
+ 'Linux 有哪几种文件锁？怎么防止同一个程序被重复运行？',
+ '**三类锁**：
+
+| 类型 | 接口 | 语义 |
+|---|---|---|
+| **`flock`（BSD 锁）** | `flock(fd, LOCK_EX/LOCK_SH/LOCK_UN)` | **整个文件**加锁，**不区分进程**（同一进程多个 fd 也可能互斥） |
+| **`fcntl` 记录锁（POSIX 锁）** | `fcntl(fd, F_SETLK/F_SETLKW, &flock)` | 可**按字节区间**加锁，**按进程**（同一进程不会自己阻塞自己） |
+| **`open(O_EXCL)`** | 原子创建 | 创建文件本身作为"锁"（最常见） |
+
+**特点对比**：
+
+| 维度 | flock | fcntl 记录锁 |
+|---|---|---|
+| 粒度 | 整个文件 | 字节区间 |
+| 跨 `fork` | **子进程共享同一把锁** | **不继承**（可 `FD_CLOEXEC`） |
+| 跨 `exec` | 保留 | 保留（除非关闭 fd） |
+| NFS | 需要 `NFS` 支持（现代 NFSv4 可） | 历史上不可靠 |
+| 语义 | 建议性 | 建议性 |
+
+**两者互相独立**：`flock` 与 `fcntl` 锁在 Linux 上是**两套独立的锁**，各自不干扰（不要混用！）。
+
+**建议性 vs 强制性**：
+- Linux 的文件锁**默认都是建议性的（advisory）** —— 只有**双方都主动加锁**才生效，不会阻止不守规矩的进程读写。
+- 强制锁（mandatory）需要挂载 `mand` 选项 + 设置 setgid 位，**现代内核已基本废弃**。
+
+**防止重复运行（最常用手法）**：
+
+**方式 1：`flock` + 后台 shell**
+```bash
+#!/bin/bash
+exec 9>/var/lock/myapp.lock
+flock -n 9 || { echo "already running"; exit 1; }
+# ... 主逻辑（脚本结束/进程退出时锁自动释放）
+```
+**关键：fd 9 必须在整个脚本生命周期内保持打开**（`exec 9>file` 就是为此）。进程退出时内核自动释放锁 —— **无需清理残留**（这与 PID 文件不同）。
+
+**方式 2：C 代码里 `flock`**
+```c
+int fd = open("/var/lock/myapp.lock", O_RDWR|O_CREAT, 0644);
+if (flock(fd, LOCK_EX|LOCK_NB) != 0) {
+    fprintf(stderr, "already running\\n");
+    exit(1);
+}
+// 保持 fd 打开；进程退出自动释放
+```
+**`LOCK_NB`**：非阻塞，拿不到立刻返回 `EWOULDBLOCK`。
+
+**方式 3：`open(O_EXCL)` 创建 PID 文件（传统做法，有坑）**
+```c
+int fd = open("/var/run/myapp.pid", O_RDWR|O_CREAT|O_EXCL, 0644);
+if (fd < 0) { /* 文件已存在 */ 
+    // 必须检查：读到 PID 后 `kill(pid, 0)` 判断进程是否真的还活着
+    // 否则上次崩溃残留的文件会让程序永远无法启动！
+}
+```
+**坑**：进程崩溃时文件残留 → **"陈旧 PID 文件"**。必须人工清理或写复杂逻辑判断。**因此 `flock` 优于 PID 文件**（锁随进程消失自动释放）。
+
+**方式 4：`systemd`（最省事）**
+- 用 `Type=simple` + systemd 保证单实例，配合 `Restart=` 自愈。
+- 无需自己加锁。
+
+**实际案例**：
+```bash
+# cron 里的任务防重入（最经典的需求）
+*/5 * * * * flock -n /tmp/myjob.lock /opt/scripts/job.sh
+# 或脚本内
+exec 9>/tmp/myjob.lock; flock -n 9 || exit 0
+```
+
+**其它要点**：
+1. **锁文件放 `/var/lock` 或 `/run`**（`/tmp` 有 sticky 位但也可能被清理；`/run` 是运行时目录，重启清空）。
+2. **`fcntl` 记录锁的"按进程"语义**：同一进程内多次加锁不会阻塞自己（可能误以为"锁住了"）。
+3. **`flock` 在 `fork` 后子进程共享**（同一把锁），所以子进程退出不会释放它 —— 要小心。
+4. **NFS 上锁**要用 `lockd`/`NLM`，或直接用 `NFSv4` 的内置锁。
+5. **`F_SETLK`（非阻塞）vs `F_SETLKW`（阻塞）vs `F_OFD_SETLK`（open file description 锁，更接近 flock 语义，避免同一进程问题）**。
+6. **锁与 `chmod`/`unlink` 的交互**：`unlink` 锁文件后新进程可以创建同名新文件并加锁（"锁逃逸"）。**稳妥做法：锁文件不要删，只加锁/解锁。**
+
+**实践建议**：**优先 `flock`**（简单、自动释放、跨退出安全）；需要字节区间锁（如数据库）用 `fcntl`；**不要用"检查 PID 文件是否存在"这种朴素做法**（有 TOCTOU 竞态 + 残留问题）。', 1),
+
+('Linux', 'ulimit,资源限制', 2,
+ '`ulimit` 是什么？常用的限制项有哪些？怎么持久化？',
+ '**`ulimit`** 查看/设置**当前 shell 及其子进程**的资源限制（内核的 `RLIMIT_*`）。
+
+```bash
+ulimit -a           # 列出全部
+ulimit -n           # 打开文件数（最常用）
+ulimit -c           # core dump 大小
+ulimit -u           # 最大进程/线程数
+ulimit -s           # 栈大小
+ulimit -v           # 虚拟内存
+```
+
+**软限制与硬限制**：
+- **软限制（soft）**：当前生效值，**普通用户可提高**（到硬限制）。
+- **硬限制（hard）**：上限，**只有 root 能提高**。
+- 子进程**继承**父进程的限制。
+
+```bash
+ulimit -Sn            # 软限制
+ulimit -Hn            # 硬限制
+ulimit -n 65535       # 同时设软和硬（若能）
+ulimit -S -n 65535    # 只设软
+```
+
+**常用限制项**：
+
+| 选项 | RLIMIT | 说明 | 常见问题 |
+|---|---|---|---|
+| `-n` | NOFILE | 打开 fd 数 | **高并发服务的头号坑** |
+| `-u` | NPROC | 用户可创建的进程/线程数 | 线程创建失败（`EAGAIN`） |
+| `-c` | CORE | core dump 大小 | 默认 0 → 没有 core 文件 |
+| `-s` | STACK | 栈大小 | 递归深了 SIGSEGV |
+| `-v` | AS | 虚拟地址空间 | JVM 会预留大量虚拟内存，调小会起不来 |
+| `-m` | RSS | 常驻内存 | 已基本无效（现代内核忽略） |
+| `-f` | FSIZE | 单文件大小 | 写大文件失败 |
+| `-t` | CPU | CPU 时间（秒） | 长任务被杀 |
+| `-l` | MEMLOCK | 可锁定的内存 | **大页/DPDK/Redis 需要调大** |
+| `-i` | SIGPENDING | 挂起信号数 | — |
+| `-q` | MSGQUEUE | POSIX 消息队列字节 | — |
+| `-x` | LOCKS | 文件锁数 | — |
+
+**持久化**：
+
+1. **`/etc/security/limits.conf`**（PAM 加载）
+```
+# <domain>  <type>  <item>    <value>
+*           soft    nofile    65535
+*           hard    nofile    65535
+@devs       soft    nproc     4096
+root        soft    nofile    65535
+```
+2. **`/etc/security/limits.d/*.conf`**（片段，优先级高）
+3. **systemd 服务**（**最常见，也最容易漏**）：
+```ini
+[Service]
+LimitNOFILE=65535
+LimitNPROC=65535
+LimitCORE=infinity
+LimitMEMLOCK=infinity
+```
+> 注意：**`limits.conf` 对 systemd 管理的服务不生效**（systemd 不通过 PAM 的 limits 模块，除非 `PAMName=`）。必须用 `LimitXXX=` 显式设置。
+4. **`/etc/systemd/system.conf`** 的 `DefaultLimitNOFILE=`（所有服务的默认）。
+5. **容器**：`docker run --ulimit nofile=65535:65535`；k8s 用 `securityContext` 或 Pod 的 `ulimits`。
+
+**验证**：
+```bash
+cat /proc/<pid>/limits          # 某进程的实际限制 ⭐（权威）
+prlimit --pid <pid>             # 查看/修改运行中进程的限制
+systemctl show <svc> -p LimitNOFILE
+cat /proc/sys/fs/file-max       # 系统级总上限
+cat /proc/sys/fs/nr_open        # 单进程可设的最大值上限
+```
+
+**高频问题**：
+
+1. **`Too many open files`** / `accept: EMFILE`
+   - 服务进程的 `LimitNOFILE` 太小（默认 1024 常见）。
+   - 排查：`ls /proc/<pid>/fd | wc -l`；`lsof -p <pid>`。
+   - 修复：systemd unit 加 `LimitNOFILE=65535` + 重启。
+
+2. **`unable to create new native thread`**（Java 常见）
+   - `nproc` 限制太小 或 **cgroup pids 限制** 或 内存不足（线程栈）。
+   - 检查：`ulimit -u`、`cat /sys/fs/cgroup/pids.max`、线程栈大小（`-Xss`）。
+
+3. **`Cannot allocate memory` 但内存充足**
+   - 可能是 `vm.max_map_count` 或 `-v`（虚拟内存）限制。
+
+4. **改了 `limits.conf` 不生效**
+   - **95% 的情况是服务由 systemd 启动**（不读 PAM limits）→ 用 `LimitNOFILE=`。
+   - 或是**修改的是当前 shell，但服务在别处启动**。
+   - 或**需要重新登录**（PAM 只在登录时读取）。
+
+5. **`ulimit -n` 设不上去**
+   - 非 root 不能超过硬限制；或系统级 `fs.nr_open` 更低。
+
+**实践建议**：
+1. 高并发服务统一设 `LimitNOFILE=65535`（或 1048576）**在 systemd unit 里**。
+2. **同时调 `net.core.somaxconn` 与 `fs.file-max`**。
+3. **监控 fd 数**（`node_exporter` 有 `process_open_fds`），设置告警。
+4. **容器里也要设**（宿主机的 limits 不会自动继承给容器）。
+5. **生产开启 core dump**（`LimitCORE=infinity` + `kernel.core_pattern`）。', 1),
+
+('Linux', 'io_uring,异步IO', 3,
+ '`io_uring` 是什么？它比 `epoll` 和传统 AIO 好在哪？',
+ '**`io_uring`**（Linux 5.1+，Jens Axboe）是新一代**异步 IO 接口**，用**共享内存环形队列**实现"提交/完成"零系统调用（可选）。
+
+**核心结构**：
+```
+用户空间                        内核空间
+┌──────────────┐               ┌──────────────┐
+│ SQ（提交队列）│──共享内存──▶  │ 内核消费提交  │
+│ CQ（完成队列）│◀─共享内存──  │ 内核写完成    │
+└──────────────┘               └──────────────┘
+```
+
+- **SQ（Submission Queue）**：用户写"要做什么"（`IORING_OP_READ/WRITE/ACCEPT/SEND/RECV/...`）。
+- **CQ（Completion Queue）**：内核写"做完了"（结果、返回值）。
+- **SQE / CQE**：队列里的条目。
+
+**三种运行模式**：
+
+| 模式 | 系统调用 | 说明 |
+|---|---|---|
+| 默认 | `io_uring_enter` 提交并等待 | 至少 1 次系统调用，但可**批量** |
+| `IORING_SETUP_SQPOLL` | **0 次** | 内核线程**轮询** SQ（消耗 CPU 换延迟） |
+| `IORING_SETUP_IOPOLL` | 0 次 | 内核**轮询设备**（O_DIRECT，极低延迟） |
+
+**对比**：
+
+| 维度 | 传统 AIO（`libaio`） | `epoll` + 非阻塞 | `io_uring` |
+|---|---|---|---|
+| 异步程度 | 只支持 `O_DIRECT` 文件 IO | 只**通知就绪**，读写还要自己做 | **真正的异步**（内核完成读写） |
+| 系统调用 | 每个操作 1~2 次 | 每个就绪事件 1+ 次 | **可批量/可 0 次** |
+| 支持的操作 | 有限 | 网络/管道 | **几乎所有**（读、写、accept、connect、send、fsync、splice、timeout...） |
+| 缓冲注册 | ❌ | ❌ | ✅ `IORING_REGISTER_BUFFERS`（**零拷贝**） |
+| 文件描述符注册 | ❌ | ❌ | ✅ 注册后无需传 fd |
+| 批量提交 | ❌ | ❌ | ✅ |
+| 队列深度 | 有限 | — | 参数化 |
+
+**为什么快**：
+1. **减少系统调用**：可以一次 `io_uring_enter` 提交多个操作、收割多个完成。
+2. **零拷贝选项**：注册固定缓冲（`IORING_REGISTER_BUFFERS`）后，内核直接使用这些页，避免每次的地址校验和 pin。
+3. **SQPOLL 模式完全免系统调用**（代价是内核线程轮询的 CPU 开销）。
+4. **统一的接口**：网络 + 文件 IO 用同一套 API（传统上 epoll 管网络、libaio 管文件，两套机制）。
+
+**典型使用（liburing）**：
+```c
+#include <liburing.h>
+struct io_uring ring;
+io_uring_queue_init(256, &ring, 0);
+
+struct io_uring_sqe* sqe = io_uring_get_sqe(&ring);
+io_uring_prep_read(sqe, fd, buf, len, offset);
+io_uring_sqe_set_data(sqe, my_context);
+
+io_uring_submit(&ring);
+
+struct io_uring_cqe* cqe;
+io_uring_wait_cqe(&ring, &cqe);
+// cqe->res 是返回值，io_uring_cqe_get_data(cqe) 是上下文
+io_uring_cqe_seen(&ring, &cqe);
+```
+
+**限制与注意**：
+1. **内核版本要求**：5.1 基础，5.6+ 才比较完善；**很多新特性（如 `IORING_OP_*` 的扩展）需要 5.10/5.15+**。发行版如 CentOS 7（3.10）**完全不支持**。
+2. **`io_uring` 曾多次出安全问题**（CVE），部分发行版/容器运行时**默认禁用它**（seccomp 过滤 `io_uring_setup`）—— Google 在 ChromeOS/Android 上禁用了。**启用前先确认内核与安全策略**。
+3. **O_DIRECT 与 buffered IO**：早期 io_uring 对 buffered IO 是"用 worker 线程模拟"（不是真异步）；后续内核对此有改进，但**buffered IO 的异步性要确认内核版本**。
+4. **编程模型复杂**：需要管理 SQ/CQ、处理 `-EAGAIN`、注册资源、考虑并行度。
+5. **监控支持**：`perf`、`bpftrace` 对 io_uring 的支持在逐步完善。
+
+**生态**：
+- **liburing**：官方用户态库，简化使用。
+- **Rust**：`tokio-uring`、`glommio`、`monoio`。
+- **C++**：`liburing` 直接封装。
+- **Nginx** 有 io_uring 实验分支；**RocksDB** 支持 io_uring；**ScyllaDB/Redpanda** 用 io_uring 提升吞吐。
+
+**实践建议**：
+1. **先确认内核版本与安全策略**（很多容器默认禁止）。
+2. **CPU-bound 场景不需要**（io_uring 是 IO 密集的优化）。
+3. **`epoll` 仍然完全够用** —— 除非确认 IO 系统调用开销是瓶颈，不要为了"新"而迁移。
+4. 用 **SQPOLL** 时要注意 CPU 占用（要有空闲核）。
+5. **配合 `IORING_REGISTER_BUFFERS`/`REGISTER_FILES`** 才能吃到大部分性能收益。
+
+**面试延伸**：io_uring 的设计借鉴了 Windows 的 IOCP（**完成通知模型**）与 Solaris 的 AIO；与 `epoll`（**就绪通知模型**）的核心区别是：epoll 告诉你"可以做 IO 了"，io_uring 直接帮你**做完 IO** 再通知你。', 1),
+
+('Linux', '内核模块,设备', 2,
+ '字符设备和块设备有什么区别？`/dev` 里的文件是怎么工作的？',
+ '**Linux 的设备分类**：
+
+| 类型 | `ls -l` 首字符 | 访问单位 | 特点 | 例子 |
+|---|---|---|---|---|
+| **字符设备** | `c` | 字节流 | **顺序访问**，无缓冲（或简单缓冲） | `/dev/tty`、`/dev/null`、`/dev/random`、鼠标 |
+| **块设备** | `b` | 块（512B~4KB） | **随机访问**，有缓冲（page cache）、可挂载文件系统 | `/dev/sda`、`/dev/nvme0n1`、`/dev/loop0` |
+| 网络设备 | — | 包 | **没有设备文件**（用 socket 接口） | `eth0`、`lo` |
+
+**设备文件里的"两个号"**：
+```bash
+$ ls -l /dev/sda /dev/null
+brw-rw---- 1 root disk 8, 0 /dev/sda
+crw-rw-rw- 1 root root 1, 3 /dev/null
+```
+- **主设备号（major）**：对应**哪个驱动**。
+- **次设备号（minor）**：对应**该驱动下的哪个设备实例**。
+- 内核通过 `major` 找到 `file_operations`（驱动的函数表），从而把 `read`/`write` 路由到驱动。
+
+```bash
+cat /proc/devices        # 已注册的主设备号
+ls -l /sys/dev/char/1:3  # 通过 sysfs 看设备
+```
+
+**创建方式**：
+```bash
+mknod /dev/mydev c 240 0        # 手工创建设备文件
+udev / systemd-udevd            # 现代系统自动创建（响应内核 uevent）
+```
+
+**`/dev` 的常见特殊设备**：
+| 设备 | 作用 |
+|---|---|
+| `/dev/null` | 丢弃写入，读返回 EOF |
+| `/dev/zero` | 读返回无限零字节 |
+| `/dev/random` | 阻塞式随机源（熵不足会阻塞） |
+| `/dev/urandom` | 非阻塞随机源（现代内核两者等价，推荐 urandom） |
+| `/dev/full` | 写总是返回 ENOSPC（测试用） |
+| `/dev/stdin`、`/dev/stdout`、`/dev/stderr` | 指向当前进程的 fd 0/1/2 |
+| `/dev/fd/N` | 指向 fd N |
+| `/dev/loop0` | 把一个文件当块设备（挂载 ISO 用） |
+| `/dev/tty`、`/dev/pts/N` | 终端 / 伪终端 |
+| `/dev/shm` | tmpfs（共享内存目录） |
+
+**伪设备 vs 真实设备**：`/dev/null`、`/dev/zero`、`/dev/random` **不对应任何硬件**，是内核提供的特殊字符设备。
+
+**块设备的层次**（以 NVMe SSD 为例）：
+```
+/dev/nvme0n1（块设备）
+   ├── nvme0n1p1（分区）
+   ├── nvme0n1p2
+   └── 文件系统（ext4/xfs）→ 挂载点
+或
+   └── LVM PV → VG → LV → 文件系统
+或
+   └── RAID 成员
+```
+查看：
+```bash
+lsblk                     # 块设备树（最直观）⭐
+lsblk -f                  # 带文件系统/挂载点
+blkid                     # 设备 UUID
+fdisk -l / parted -l      # 分区表
+df -h / df -i             # 文件系统用量
+```
+
+**内核模块（LKM）**：
+```bash
+lsmod                     # 已加载模块
+modinfo <mod>             # 模块信息（依赖、参数、路径）
+modprobe <mod> [param=val]# 加载（自动解决依赖）⭐
+modprobe -r <mod>         # 卸载
+insmod file.ko / rmmod    # 低层（不处理依赖）
+depmod -a                 # 重建依赖表
+
+# 持久化
+echo "modname param=1" > /etc/modules-load.d/modname.conf   # 开机加载
+echo "blacklist badmod" > /etc/modprobe.d/blacklist.conf    # 禁止加载
+```
+
+**`/sys` 与 `/proc` 的作用**：
+- `/sys`（sysfs）：**设备与驱动的结构化视图**（`/sys/class/net/eth0/`、`/sys/block/sda/`），可写以调整参数。
+- `/proc`：**进程与内核的统计视图**（`/proc/cpuinfo`、`/proc/meminfo`、`/proc/<pid>/`）。
+
+**实践要点**：
+1. **不要把设备文件当普通文件复制**（`cp /dev/sda` 会无限读）。
+2. **`dd` 要小心**（写错设备会毁数据）：`dd if=x of=/dev/sdX` 前务必 `lsblk` 确认。
+3. **`/dev/sda` vs `/dev/sda1`**：前者是整个磁盘，后者是分区。
+4. **`O_DIRECT` 绕过 page cache**（数据库用）；块设备默认走缓存。
+5. **设备号在重启后可能变化** → 用 **UUID/LABEL** 挂载（`/etc/fstab` 用 `UUID=`）。
+6. **`/dev/random` 阻塞问题**：老系统上启动时熵不足会卡（现在都用 `urandom` 或 `getrandom(2)`）。
+7. **不要 `chmod 666 /dev/sda`**（等于给所有用户裸盘访问）。', 1),
+
+('Linux', '系统调用,syscall', 2,
+ '系统调用是怎么实现的？`strace` 看到的那些调用有哪些开销？',
+ '**系统调用（syscall）**是用户程序请求内核服务的**唯一合法入口**。
+
+**x86-64 的调用流程**：
+
+```
+用户态                              内核态
+1. 把系统调用号放入 rax
+2. 参数放入 rdi, rsi, rdx, r10, r8, r9
+3. 执行 syscall 指令 ──────────▶  4. CPU 切换到 ring 0，跳转到 entry_SYSCALL_64
+                                  5. 保存用户寄存器到内核栈
+                                  6. 通过 rax 查 sys_call_table 找到处理函数
+                                  7. 执行 sys_xxx()
+8. ◀────────── 9. 把返回值放 rax，执行 sysret 回到用户态
+```
+
+- **参数最多 6 个**（寄存器限制），超过要用指针传结构体。
+- **返回值**：负数是错误码（`-errno`），libc 包装后设置 `errno` 并返回 -1。
+- **老方式 `int 0x80`**（32 位）比 `syscall` 指令慢（要过中断门）。
+
+**开销来源**：
+1. **模式切换（用户态 ↔ 内核态）**：保存/恢复寄存器、换栈（~100ns）。
+2. **安全检查**：参数校验、权限检查（`CAP_*`）、路径解析。
+3. **可能的上下文切换**：如果操作阻塞（如 `read` 等磁盘），进程被换出 → 微秒级。
+4. **cache/TLB 影响**：内核代码/数据不在用户的工作集里。
+5. **`ptrace` 附加**：被 `strace` 跟踪时**每条 syscall 停两次** → **慢 10~100 倍**。
+
+**为什么"系统调用慢"是重要问题**：
+- 典型 `read` 一次 ~1 微秒；如果程序每秒做 100 万次小 `read`，光是 syscall 就吃掉 1 秒 CPU。
+- **优化方向**：批量（`readv`/`writev`/`io_uring`）、减少调用（缓冲、`mmap`）、用 vDSO 免陷入。
+
+**vDSO（virtual DSO）**：
+- 某些调用**不需要陷入内核**，内核把实现映射到用户空间直接执行。
+- **`gettimeofday`、`clock_gettime`、`time`、`getcpu`** 都走 vDSO → 调用这些几乎是普通函数调用。
+- 这就是"`clock_gettime` 比 `gettimeofday` 还快"的现象来源。
+
+**查看**：
+```bash
+strace -c ./prog                     # 各 syscall 次数/耗时 ⭐
+strace -T -tt ./prog                 # 每次调用的耗时
+perf trace ./prog                    # 低开销的系统调用追踪
+ltrace ./prog                        # 库函数（不是 syscall）
+cat /proc/<pid>/syscall              # 查看进程当前卡在哪个 syscall ⭐
+cat /proc/<pid>/stack                # 内核栈
+ausyscall --dump                     # 列出所有系统调用号
+```
+
+**常见的"系统调用热点"**：
+| 模式 | 优化 |
+|---|---|
+| 大量小 `read`/`write` | 加缓冲、`readv`/`writev`、`sendfile` |
+| 大量 `open`/`close` | 复用 fd、缓存文件内容 |
+| `futex` 热点 | 锁竞争（减少锁粒度、无锁） |
+| `epoll_wait` 频繁返回 | 批量处理、调 `maxevents` |
+| `nanosleep`/`clock_gettime` | 用 vDSO；减少定时器精度 |
+| `brk`/`mmap` 频繁 | 用内存池 |
+
+**关于 `strace` 的正确使用**：
+1. **`strace -c` 很有用**（先看统计再决定跟谁）。
+2. **`strace -f -p <pid>` 会拖慢整个服务** —— 生产上优先 `perf trace` 或 eBPF。
+3. **`strace -yy`** 能把 fd 解析成路径，排查"打开了哪个文件"配 `-e trace=openat` 极其高效。
+4. **`strace` 会改变竞态行为**（时序变化可能让 bug 消失），这是"海森堡 bug"的经典来源。
+
+**安全相关**：
+1. **seccomp** 能按 syscall 过滤（Docker 默认禁掉一批危险调用）。
+2. **`ptrace` 被滥用**（注入进程）→ `yama/ptrace_scope` 限制。
+3. **`io_uring_setup` 在新版被部分环境禁用**（安全考虑）。
+
+**面试延伸**：**系统调用 vs 库函数 vs 内核中断**：
+- 库函数（`printf`）可能**不涉及** syscall（缓冲）；也可能包装若干 syscall。
+- **系统调用**是"陷入内核"的显式请求；**异常**（缺页、除零）是**被动**陷入。
+- **`strace` 追的是 syscall**，`ltrace` 追的是**库函数**，`gdb` 是**用户态代码**。', 1),
+
+('Linux', '管道,IPC 对比', 2,
+ 'Linux 的进程间通信方式有哪些？各自适合什么场景？',
+ '| 方式 | 方向 | 是否跨主机 | 性能 | 典型场景 |
+|---|---|---|---|---|
+| **匿名管道 pipe** | 半双工（单向） | ❌ | 高（内核缓冲） | shell 的 `|`、父子进程 |
+| **命名管道 FIFO** | 半双工 | ❌ | 高 | 无亲缘关系的进程 |
+| **消息队列（SysV/POSIX）** | 双向 | ❌ | 中 | 结构化消息、有边界 |
+| **共享内存（shm）** | 双向 | ❌ | **最快** | 大数据量共享 |
+| **信号量 semaphore** | 同步 | ❌ | — | 配合共享内存做互斥/同步 |
+| **信号 signal** | 单向通知 | ❌ | 高 | 事件通知（不带数据） |
+| **socket（Unix domain）** | 双向 | ❌ | 高 | 本机 IPC + fd 传递 |
+| **socket（TCP/UDP）** | 双向 | ✅ | 中 | 跨主机 |
+| **文件 + 文件锁** | 双向 | ❌ | 低 | 简单持久化交换 |
+| **eventfd / signalfd / timerfd** | 事件 | ❌ | 高 | 与 epoll 集成 |
+
+**四种主要方式详解**：
+
+**1. 匿名管道（pipe）**
+```c
+int fd[2];
+pipe(fd);           // fd[0] 读端，fd[1] 写端
+// fork 后父子各持一份
+write(fd[1], "hi", 2);
+read(fd[0], buf, sizeof buf);
+```
+- **单向**（半双工）；要双向通信需要两根管道。
+- **只能用于有亲缘关系的进程**（fd 是继承的）。
+- **容量有限**（默认 64KB，`F_GETPIPE_SZ`）；写满阻塞，`O_NONBLOCK` 时返回 `EAGAIN`。
+- 写端全关闭后读端 `read` 返回 0（EOF）。
+- **`SIGPIPE`**：读端全关闭后写入会收到 SIGPIPE（默认终止进程）—— 网络编程里常先 `signal(SIGPIPE, SIG_IGN)`。
+
+**2. 命名管道（FIFO）**
+```bash
+mkfifo /tmp/myfifo
+echo hello > /tmp/myfifo &     # 一个进程写
+cat /tmp/myfifo                # 另一个进程读
+```
+- **有文件系统路径**，任意进程（同一台机器）可打开。
+- 其余语义与匿名管道相同。
+
+**3. 共享内存（最快）**
+```c
+// POSIX
+int fd = shm_open("/myshm", O_CREAT|O_RDWR, 0600);
+ftruncate(fd, 4096);
+void* p = mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+// 或 System V: shmget/shmat
+```
+- **零拷贝**：数据直接映射到双方地址空间。
+- **必须自己同步**（用信号量、`futex`、互斥锁的 `PTHREAD_PROCESS_SHARED` 属性）。
+- **注意 shm 里的指针**：不同进程映射的地址可能不同，**不能存绝对指针**，要存偏移量。
+
+**4. Unix domain socket（本机 IPC 首选）**
+```c
+int s = socket(AF_UNIX, SOCK_STREAM, 0);
+struct sockaddr_un addr;
+addr.sun_family = AF_UNIX;
+strcpy(addr.sun_path, "/tmp/mysock");
+bind(s, (void*)&addr, sizeof addr);
+```
+- **比 TCP loopback 快**（不走网络协议栈、不校验和）。
+- 支持 `SOCK_STREAM`（可靠字节流）和 `SOCK_DGRAM`（消息边界）。
+- **权限控制**：通过 socket 文件的权限位控制访问。
+- **可以传递文件描述符**（`SCM_RIGHTS`）—— 这是 TCP 做不到的，**极其有用**（nginx/系统服务把监听的 fd 传给 worker）。
+- **`SO_PEERCRED`** 可以拿到对端 PID/UID/GID（做权限校验）。
+- **Docker/PostgreSQL/MySQL 本机连接都用它**（也是"挂载 socket 到容器"的原因）。
+
+**eventfd / signalfd / timerfd**（现代事件驱动）：
+```c
+int efd = eventfd(0, EFD_NONBLOCK);      // 一个可读写的计数器 fd
+int sfd = signalfd(-1, &mask, 0);        // 把信号变成可读事件
+int tfd = timerfd_create(CLOCK_MONOTONIC, 0);  // 定时器变成 fd
+```
+**优势**：可以统一交给 `epoll`/`io_uring` 处理，**避免信号处理的异步陷阱**。
+
+**选择建议**：
+1. **同一台机器、性能优先** → **共享内存 + 信号量**。
+2. **同一台机器、通用/需要 fd 传递/需要权限校验** → **Unix domain socket**。
+3. **父子进程简单通信** → **pipe**。
+4. **纯事件通知（无数据）** → **signal** 或 **eventfd**。
+5. **需要跨主机** → **TCP/UDP socket**。
+6. **与 epoll 集成的事件驱动程序** → **socketpair + eventfd/signalfd**（self-pipe 技巧）。
+
+**对比记忆口诀**：**管道简单单向、共享内存最快但要自己同步、UDS 通用且能传 fd、socket 唯一能跨机**。', 1),
+
+('Linux', 'CPU 亲和性,NUMA', 3,
+ 'CPU 亲和性和 NUMA 是什么？对性能有什么影响？',
+ '**CPU 亲和性（affinity）**：把一个进程/线程**绑定**到特定的 CPU 核上，不参与调度迁移。
+
+**为什么需要**：
+1. **cache 局部性**：线程在同一核上运行，L1/L2 缓存保持热态；迁移到别的核要重新填充。**跨 NUMA 节点迁移代价更大**（L3 也是分片的）。
+2. **确定性延迟**：避免被调度到繁忙的核。
+3. **隔离干扰**：把关键线程与噪音线程分开。
+4. **配合中断亲和**：把网卡中断与处理线程放在同一 NUMA 节点。
+
+**查看与设置**：
+```bash
+nproc                                   # 核数
+lscpu                                   # CPU 拓扑（socket/core/thread）
+cat /proc/cpuinfo | grep -E "processor|physical id|core id"
+
+taskset -c 0,1 ./prog                   # 绑定到 CPU 0 和 1 ⭐
+taskset -pc 2 <pid>                     # 修改运行中进程的亲和性
+taskset -p <pid>                        # 查看
+
+# 代码里
+#include <sched.h>
+cpu_set_t set; CPU_ZERO(&set); CPU_SET(2, &set);
+sched_setaffinity(0, sizeof set, &set);
+
+# 线程级（pthread）
+pthread_setaffinity_np(th, sizeof set, &set);
+```
+
+**NUMA（Non-Uniform Memory Access）**：
+
+多路服务器上，每个 CPU 有**本地内存**，访问本地内存快、访问其他节点的内存慢（跨节点要走互联总线）。
+
+```
+NUMA node 0                  NUMA node 1
+  CPU 0-15  ◀── QPI/UPI ──▶  CPU 16-31
+  本地内存                   本地内存
+  访问延迟 100ns             远端访问延迟 ~180ns
+```
+
+**查看**：
+```bash
+numactl --hardware            # 节点与内存分布 ⭐
+numastat                      # 每个节点的命中统计
+numastat -p <pid>             # 某进程的跨节点访问情况
+lscpu | grep NUMA
+cat /sys/devices/system/node/node0/meminfo
+```
+
+**控制**：
+```bash
+numactl --cpunodebind=0 --membind=0 ./prog      # 绑到 node0 的 CPU 与内存 ⭐
+numactl --interleave=all ./prog                 # 交错分配（带宽优先）
+numactl --preferred=0 ./prog
+```
+
+**numa_balancing**（内核自动迁移）：`/proc/sys/kernel/numa_balancing`（默认 1）。内核会周期性检测"内存访问与所在 CPU 不匹配"的页并迁移，但**有额外开销**，某些负载（数据库）会关掉它。
+
+**性能影响（实测经验）**：
+1. **跨 NUMA 访问延迟增加 ~40%~80%**，带宽下降（受互联总线限制）。
+2. **"远端内存"过多会成为瓶颈**：`numastat` 显示 `numa_foreign`（本该本地却分配到了远端的页）高 → 需要 `--membind` 或调整分配策略。
+3. **第一次触碰（first-touch）原则**：内存分配到"第一次访问它的 CPU"所在节点 —— 所以**多线程程序要在目标线程上初始化它要用的内存**（否则主线程初始化、其他线程访问 = 全跨节点）。
+4. **线程池与 NUMA 对齐**：按 NUMA 节点分组线程和内存，是高性能服务的常见优化。
+
+**相关工具与内核特性**：
+| 特性/工具 | 作用 |
+|---|---|
+| `numactl` | 绑定 CPU 与内存策略 |
+| `numad` | 自动 NUMA 守护进程（HPC 用） |
+| `hwloc` | 查看/操作硬件拓扑（含 cache、PCI） |
+| `lstopo` | 可视化拓扑图 ⭐ |
+| `perf stat -e node-loads,node-load-misses` | 跨节点访问计数 |
+| `migratepages` | 手工迁移页 |
+| `MPOL_*`（`mbind`/`set_mempolicy`） | 代码里设置内存策略 |
+
+**中断与 NUMA**：
+```bash
+cat /proc/interrupts                    # 每个 IRQ 在各 CPU 上的分布
+cat /sys/class/net/eth0/device/numa_node
+# 把网卡中断绑到与处理线程同一节点
+echo <mask> > /proc/irq/<n>/smp_affinity
+```
+**最佳实践**：网卡 → 同节点的 CPU → 同节点的内存，避免数据"跨节点来回跑"。
+
+**实践建议**：
+1. **先用 `numastat -p` 确认是否有跨节点问题**，再考虑绑定。
+2. **不要盲目 `numactl --interleave=all`**（带宽优先但延迟变差）；延迟敏感用 `--membind`。
+3. **注意"first touch"**：让使用内存的线程自己初始化。
+4. **容器环境**：`cpuset` cgroup 限制 CPU，但 **NUMA 策略要单独配置**（k8s 的 `topologyManager` 可做）。
+5. **单路机器没有 NUMA 问题**（只有一个节点）。
+6. **`lstopo` 是理解硬件拓扑最快的方式**（包括超线程、cache、NUMA、PCI 设备归属）。', 1),
+
+('Linux', 'HugePages,内存优化', 3,
+ '什么是 HugePages（大页）？为什么数据库和虚拟机要用它？',
+ '**大页（HugePages）**：用比默认 4KB 大得多的页（x86-64 上是 **2MB** 和 **1GB**）。
+
+**为什么大页更快**：
+
+1. **TLB 覆盖范围剧增**：
+   - 4KB 页 × 1536 个 TLB 项 = 6MB 覆盖。
+   - 2MB 页 × 1536 个 TLB 项 = **3GB 覆盖**（500 倍）。
+   - → **TLB miss 大幅减少**，页表遍历（几百个周期）几乎消失。
+2. **页表更小**：2MB 页省掉最后一级页表（一个页表项覆盖 2MB 而非 4KB）→ 页表内存占用减少数百倍。
+3. **缺页中断更少**：一次 fault 覆盖 2MB。
+4. **减少内核管理开销**：更少的 `struct page`、更少的 LRU 操作。
+
+**两种大页**：
+
+| 类型 | 说明 |
+|---|---|
+| **显式 HugePages（hugetlbfs）** | 需预先保留（`nr_hugepages`），**不会被换出**，确定性好 |
+| **透明大页（THP）** | 内核自动把连续 4KB 页合并成 2MB，**无需配置** |
+
+**显式 HugePages 配置**：
+```bash
+# 预留 1024 个 2MB 大页（= 2GB）
+echo 1024 > /proc/sys/vm/nr_hugepages
+
+# 查看
+cat /proc/meminfo | grep -i huge
+# HugePages_Total:    1024
+# HugePages_Free:      980
+# Hugepagesize:       2048 kB
+
+# 持久化
+echo "vm.nr_hugepages = 1024" > /etc/sysctl.d/99-hugepages.conf
+
+# 按 NUMA 节点预留
+echo 512 > /sys/devices/system/node/node0/hugepages/hugepages-2048kB/nr_hugepages
+```
+**使用**：
+```bash
+mount -t hugetlbfs none /mnt/huge
+# 或 mmap with MAP_HUGETLB
+void* p = mmap(NULL, len, PROT_READ|PROT_WRITE,
+               MAP_PRIVATE|MAP_ANONYMOUS|MAP_HUGETLB, -1, 0);
+```
+
+**透明大页（THP）**：
+```bash
+cat /sys/kernel/mm/transparent_hugepage/enabled
+# [always] madvise never
+```
+| 值 | 行为 |
+|---|---|
+| `always` | 尽可能用大页（默认在很多发行版上） |
+| `madvise` | 只用 `madvise(MADV_HUGEPAGE)` 标记的区域 |
+| `never` | 禁用 |
+
+**THP 的问题（为什么很多数据库建议关掉）**：
+1. **延迟尖刺**：后台 `khugepaged` 合并页时会暂停进程（分配 2MB 连续内存需要整理）；COW 时一个 4KB 写的 fault 要复制整个 2MB。
+2. **内存浪费**：只用一个字节也要占满 2MB（除非内核做拆分）。
+3. **不可预测**：分配延迟抖动，对延迟敏感的服务（Redis、MongoDB）不友好。
+4. **碎片**：长期运行的系统可能无法分配 2MB 连续物理内存。
+
+**因此的实践**：
+- **Redis**：官方建议 `never` 或 `madvise`。
+- **MongoDB**：建议 `never`。
+- **MySQL**：用**显式 HugePages**（`innodb_buffer_pool_size` 配合大页）更好。
+- **HPC / DPDK / 虚拟机（KVM）**：强烈推荐大页。
+
+**谁在用**：
+| 场景 | 用法 |
+|---|---|
+| **KVM/QEMU 虚拟机** | 用 2MB/1GB 大页做 guest 内存后端，显著提升性能 |
+| **数据库** | InnoDB buffer pool、Oracle SGA 用大页 |
+| **DPDK/高性能网络** | 必须用大页（配合 `--membind`） |
+| **JVM** | `-XX:+UseLargePages` |
+| **Redis** | 一般**不用**（反而受 THP 影响） |
+
+**1GB 大页**：需要内核参数 `hugepagesz=1G hugepages=N`（**只能在启动时配置**），适合大内存的数据库/虚拟化。
+
+**相关参数**：
+| 参数 | 作用 |
+|---|---|
+| `vm.nr_hugepages` | 2MB 大页数量 |
+| `vm.nr_overcommit_hugepages` | 允许超额（不足时从普通页池补） |
+| `kernel.shmmax` | 共享内存段上限（大页常见搭配） |
+| `vm.hugetlb_shm_group` | 允许用大页的用户组 |
+| `transparent_hugepage/enabled` | THP 开关 |
+| `transparent_hugepage/defrag` | THP 碎片整理策略 |
+
+**监控**：
+```bash
+cat /proc/meminfo | grep -i huge
+grep -i huge /proc/vmstat           # 大页相关的 vmstat 计数
+perf stat -e dTLB-load-misses       # 对比大页前后的 TLB miss
+```
+
+**实践建议**：
+1. **先测再上** —— 大页的效果高度依赖工作集大小与访问模式。
+2. **延迟敏感服务的常见配置**：`THP=never` 或 `madvise`，避免抖动。
+3. **数据库/虚拟化**：用**显式 HugePages**（可控、不换出）。
+4. **预留大页会"吃掉"内存**（`HugePages_Total` 应接近实际需求，避免浪费）。
+5. **注意 NUMA 节点上分别预留**（跨节点用大页会失去意义）。
+6. **容器里用大页**需要显式挂载 `hugetlbfs` 并配置 cgroup。', 1),
+
+('Linux', '日志,journald', 2,
+ 'Linux 的日志系统是怎样的？怎么排查日志问题？',
+ '**两条并行的日志体系**：
+
+| 体系 | 组件 | 存储 | 特点 |
+|---|---|---|---|
+| **传统 syslog** | `rsyslog`/`syslog-ng` | 文本文件 `/var/log/*` | 简单、可读、易解析 |
+| **systemd journal** | `systemd-journald` | 二进制 `/var/log/journal/` 或 `/run/log/journal/` | 结构化、索引快、带元数据 |
+
+现代发行版**两者都在**：应用写 syslog → journald 收集 → 也可转发到 rsyslog 落文本文件。
+
+**传统日志文件**：
+```
+/var/log/messages         # 系统消息（RHEL 系）
+/var/log/syslog           # 系统消息（Debian 系）
+/var/log/auth.log         # 认证日志（登录、sudo）
+/var/log/secure           # 认证日志（RHEL）
+/var/log/kern.log         # 内核日志（dmesg 的来源）
+/var/log/dmesg            # 启动时的内核日志快照
+/var/log/cron             # 定时任务
+/var/log/nginx/*.log      # 应用日志
+/var/log/audit/audit.log  # auditd
+```
+
+**journald 常用命令**：
+```bash
+journalctl                          # 全部（按时间倒序的分页）
+journalctl -f                       # 实时跟踪（tail -f）⭐
+journalctl -u blog.service          # 按 unit ⭐
+journalctl -u blog.service -f
+journalctl -u blog.service --since "10 min ago"
+journalctl -u blog.service --since today --until "2 hours ago"
+journalctl -p err -b                # 本次启动的错误及以上
+journalctl -b                       # 本次启动；-b -1 上次启动 ⭐
+journalctl -k                       # 内核消息（等价 dmesg）⭐
+journalctl _PID=1234                # 按 PID
+journalctl /usr/sbin/sshd           # 按可执行文件
+journalctl -o json-pretty -n 1      # JSON 输出（含全部元数据）⭐
+journalctl -n 100 --no-pager
+journalctl --disk-usage
+journalctl --vacuum-size=500M       # 清理到 500M
+journalctl --vacuum-time=7d
+```
+
+**字段过滤**（journald 是结构化的）：
+```bash
+journalctl _COMM=nginx _PID=1234
+journalctl _SYSTEMD_UNIT=blog.service PRIORITY=3
+journalctl SYSLOG_IDENTIFIER=myapp
+```
+
+**持久化 journal**：
+```bash
+mkdir -p /var/log/journal
+systemd-tmpfiles --create --prefix /var/log/journal
+systemctl restart systemd-journald
+# 或编辑 /etc/systemd/journald.conf: Storage=persistent
+```
+**不持久化时**日志只存在 `/run/log/journal`（内存），**重启即失**（这是排障时"上次崩溃的日志找不到了"的原因）。
+
+**journald 配置**（`/etc/systemd/journald.conf`）：
+```ini
+[Journal]
+Storage=persistent
+SystemMaxUse=500M
+SystemMaxFileSize=50M
+MaxRetentionSec=1month
+ForwardToSyslog=yes
+RateLimitIntervalSec=30s
+RateLimitBurst=10000        # 默认限制！日志突发会被丢弃 ⭐
+```
+**`RateLimitBurst` 是常见坑**：默认每秒只允许有限条，日志量大时会被静默丢弃（`journalctl` 里能看到 "Suppressed N messages"）。**排查"日志缺失"时先看这个。**
+
+**`dmesg`**（内核环形缓冲）：
+```bash
+dmesg -T                     # 带人类可读时间 ⭐
+dmesg -T -l err,warn         # 只显示错误/警告
+dmesg -w                     # 实时跟踪
+dmesg | grep -i -E "oom|error|fail|panic"
+```
+**注意**：环形缓冲有大小限制（`kernel.printk`、`log_buf_len`），**日志会被覆盖**。
+
+**日志排查思路**：
+1. **服务起不来** → `journalctl -u <svc> -n 100 --no-pager` + `systemctl status`（含最后几行）。
+2. **莫名重启** → `journalctl -b -1`（上次启动）+ `dmesg -T | grep -i oom`。
+3. **日志丢了** → 检查 `Storage=`、`RateLimitBurst`、磁盘空间（`df -h /var`）。
+4. **时间对不上** → 检查时区（`timedatectl`）与 `--utc`。
+5. **`ssh` 登录失败** → `journalctl -u sshd` 或 `/var/log/auth.log`。
+6. **磁盘满是日志** → `journalctl --disk-usage`、`du -sh /var/log/*`、配额与轮转。
+
+**日志轮转（logrotate）**：
+```bash
+/etc/logrotate.conf
+/etc/logrotate.d/*
+# 手动触发
+logrotate -f /etc/logrotate.d/nginx
+```
+**注意**：应用若不支持 `reopen`（`SIGHUP` 或 `copytruncate`），轮转后仍写旧的 inode → **日志"消失"**（实际写到已删除文件）。用 `lsof | grep deleted` 可确认。
+
+**应用日志的最佳实践**：
+1. **写 stdout/stderr，交给 journald/容器运行时收集**（12-factor）。
+2. **不要自己管理轮转**（除非文件很大）。
+3. **结构化（JSON）日志**便于检索。
+4. **分级**（error/warn/info/debug），生产用 info 及以上。
+5. **带 request id** 便于跨服务追踪。
+
+**关键工具**：
+| 工具 | 用途 |
+|---|---|
+| `journalctl` | systemd 日志 |
+| `dmesg` | 内核日志 |
+| `logrotate` | 日志轮转 |
+| `rsyslog`/`syslog-ng` | 集中转发 |
+| `logger` | 命令行写 syslog：`logger -t mytag "msg"` |
+| `ELK`/`Loki`/`Graylog` | 集中式日志平台 |', 1),
+
+('Linux', '磁盘,RAID,LVM', 2,
+ '磁盘分区、RAID、LVM 分别解决什么问题？',
+ '**三个层次**：
+
+```
+物理磁盘 /dev/sda
+  └── 分区表（MBR/GPT）→ /dev/sda1, /dev/sda2
+       └── 可选：RAID（mdadm）/ LVM（PV → VG → LV）
+            └── 文件系统（ext4/xfs）
+                 └── 挂载点
+```
+
+**1. 分区表**
+
+| | MBR（msdos） | GPT |
+|---|---|---|
+| 最大磁盘 | 2 TiB | **9.4 ZiB** |
+| 分区数 | 4 主分区（或 3 主 + 扩展） | **128 个**（默认） |
+| 引导 | BIOS + MBR 引导代码 | UEFI + ESP 分区 |
+| 备份 | ❌（分区表损坏=全丢） | ✅（头部+尾部双份） |
+| 校验 | ❌ | ✅ CRC32 |
+
+**新装机一律用 GPT**（`parted -s /dev/sda mklabel gpt`）。
+
+**2. RAID（冗余或性能）**
+
+| 级别 | 最少盘 | 容错 | 容量利用率 | 说明 |
+|---|---|---|---|---|
+| RAID 0 | 2 | ❌ 无 | 100% | 条带化，**性能最高，坏一块全丢** |
+| RAID 1 | 2 | ✅ 1 块 | 50% | 镜像，读性能好 |
+| RAID 5 | 3 | ✅ 1 块 | (n-1)/n | 奇偶校验，**写惩罚**，重建风险高 |
+| RAID 6 | 4 | ✅ 2 块 | (n-2)/n | 双校验，重建更安全 |
+| RAID 10 | 4 | ✅ 每组 1 块 | 50% | **镜像+条带，生产最常用** ⭐ |
+
+**软 RAID**：
+```bash
+mdadm --create /dev/md0 --level=10 --raid-devices=4 /dev/sd[b-e]
+cat /proc/mdstat                    # 状态（含重建进度）⭐
+mdadm --detail /dev/md0
+mdadm /dev/md0 --fail /dev/sdb1 --remove /dev/sdb1     # 模拟/处理故障
+mdadm /dev/md0 --add /dev/sdf1                          # 加新盘重建
+```
+
+**硬 RAID vs 软 RAID**：
+- 硬 RAID 卡有电池保护缓存（BBU），写性能好，但成本高、有厂商锁定。
+- 软 RAID（mdraid）灵活免费，CPU 开销在现代多核上可接受。
+- **云上一般直接用云厂商的云盘**，不需要自己 RAID（但可用 RAID 0 提升吞吐）。
+
+**3. LVM（Logical Volume Manager）—— 灵活管理**
+
+**三层**：
+```
+PV（物理卷，Physical Volume）   ← /dev/sdb1, /dev/md0
+  └── VG（卷组，Volume Group）  ← 把多个 PV 合成一个池
+       └── LV（逻辑卷，Logical Volume） ← 从池里切出的"虚拟分区"，/dev/vg0/lv_data
+```
+
+```bash
+# 创建
+pvcreate /dev/sdb1 /dev/sdc1
+vgcreate vg0 /dev/sdb1 /dev/sdc1
+lvcreate -L 100G -n lv_data vg0
+mkfs.ext4 /dev/vg0/lv_data
+mount /dev/vg0/lv_data /data
+
+# 查看
+pvs / vgs / lvs
+lsblk
+
+# 扩容（LVM 的核心价值 —— 在线扩容）⭐
+lvextend -L +50G /dev/vg0/lv_data
+resize2fs /dev/vg0/lv_data          # ext4 在线扩容
+# 或 xfs_growfs /data                # xfs 扩容
+
+# 快照
+lvcreate -L 10G -s -n lv_snap /dev/vg0/lv_data
+```
+
+**LVM 的核心价值**：
+1. **在线扩容**（不用停机改分区）。
+2. **跨磁盘的卷**（一个 LV 可以横跨多个 PV）。
+3. **快照**（备份用）。
+4. **thin provisioning**（精简置备，超额分配）。
+5. **条带/镜像**（`lvcreate -i 2 -I 256k`、`--mirrors`）。
+
+**LVM vs 分区**：
+| | 传统分区 | LVM |
+|---|---|---|
+| 扩容 | 需要空闲相邻空间，风险高 | **在线，任意空间** |
+| 跨盘 | ❌ | ✅ |
+| 快照 | ❌ | ✅ |
+| 性能 | 略好（无映射层） | 略微开销（可忽略） |
+| 复杂度 | 低 | 中 |
+
+**关键实践**：
+1. **`/etc/fstab` 用 UUID 或 LVM 路径**（设备名可能变）。
+2. **不要把整个磁盘分给根分区**（留空间或全给 LVM，便于扩容）。
+3. **RAID 10 是生产首选**（性能 + 容错兼顾）；RAID 5 在大盘下**重建期间二次故障风险高**，慎用。
+4. **重建 RAID 时不要做高负载运维**（重建压力最大）。
+5. **定期验证备份可恢复**（RAID 不是备份！）。
+6. **云盘扩容**：先扩云盘 → 扩分区（`growpart`）→ 扩文件系统（`resize2fs`/`xfs_growfs`）。
+7. **监控**：`smartctl -a /dev/sda`（SMART 健康）、`cat /proc/mdstat`（RAID 状态）、`iostat -x`。
+
+**相关命令速查**：
+| 目的 | 命令 |
+|---|---|
+| 看块设备树 | `lsblk` |
+| 看分区表 | `fdisk -l` / `parted -l` |
+| 在线扩分区 | `growpart /dev/sda 1` |
+| 扩 ext4 | `resize2fs` |
+| 扩 xfs | `xfs_growfs <挂载点>` |
+| RAID 状态 | `cat /proc/mdstat` |
+| 磁盘健康 | `smartctl -a /dev/sda` |
+| IO 性能 | `iostat -xz 1` / `fio` |', 1),
+
+('Linux', '管道,重定向', 1,
+ 'Shell 的管道和重定向是怎么实现的？`2>&1` 是什么意思？',
+ 'Shell 的管道和重定向本质上是**对文件描述符的 `dup2` 操作**。
+
+**重定向**：
+
+| 写法 | 含义 |
+|---|---|
+| `> file` | stdout 重定向到文件（截断） |
+| `>> file` | stdout 追加到文件 |
+| `< file` | stdin 来自文件 |
+| `2> file` | stderr 重定向到文件 |
+| `2>&1` | **把 fd 2 复制成 fd 1 的当前目标** |
+| `&> file` / `> file 2>&1` | stdout 和 stderr 都到文件 |
+| `2>/dev/null` | 丢弃 stderr |
+| `<<EOF` | here-document |
+| `<<< "str"` | here-string |
+| `&>` | bash 扩展（两者都重定向） |
+
+**`2>&1` 的顺序很重要**：
+```bash
+cmd > file 2>&1      # ✅ 两者都进 file
+cmd 2>&1 > file      # ❌ stderr 还是到终端！先复制了当时的 stdout（终端）
+```
+因为 `2>&1` 是"把 fd 2 复制为**当前** fd 1 指向的目标"。所以**必须先重定向 stdout，再复制**。
+
+**实现（C 伪代码）**：
+```c
+// cmd > file
+int fd = open("file", O_WRONLY|O_CREAT|O_TRUNC, 0666);
+dup2(fd, STDOUT_FILENO);      // 让 fd 1 指向 file
+close(fd);
+execvp(...);
+
+// cmd1 | cmd2
+int p[2]; pipe(p);            // p[0] 读端，p[1] 写端
+if (fork() == 0) {            // 子进程 = cmd1
+    dup2(p[1], STDOUT_FILENO); close(p[0]); close(p[1]);
+    execvp("cmd1", ...);
+}
+if (fork() == 0) {            // 子进程 = cmd2
+    dup2(p[0], STDIN_FILENO);  close(p[0]); close(p[1]);
+    execvp("cmd2", ...);
+}
+close(p[0]); close(p[1]);     // 父进程必须关掉两端，否则读端不会 EOF
+wait(NULL); wait(NULL);
+```
+**注意**：父进程必须关闭管道两端，否则**读端不会收到 EOF**（因为写端还没全关）。
+
+**管道的特点**：
+1. **并行执行**（不是先跑完左边再跑右边）→ `cmd1 | cmd2` 两者同时跑。
+2. **默认只连 stdout → stdin**，stderr 仍到终端（所以要 `2>&1 |`）。
+3. **管道容量有限**（默认 64KB，`ulimit -p` 相关）；满了写端阻塞（这是"背压"机制）。
+4. **`set -o pipefail`**：让管道中任一环节失败导致整体失败（默认只看最后一个命令的退出码）。
+```bash
+set -o pipefail
+cmd1 | cmd2 || echo "有命令失败"
+```
+5. **`PIPESTATUS`** 数组保存每个命令的退出码。
+
+**其它相关**：
+| 语法 | 作用 |
+|---|---|
+| `cmd \\| tee file` | 既输出到终端又写文件 |
+| `cmd \\|& tee file` | 含 stderr |
+| `exec 3>file` | 打开 fd 3 供后续使用 |
+| `cmd > >(tee a) 2> >(tee b >&2)` | 进程替换（process substitution） |
+| `{ cmd1; cmd2; } > file` | 命令组重定向 |
+| `cmd \\| xargs ...` | 把输出变成参数 |
+
+**`/dev/fd/N`** 与 **`/dev/stdout`** 是"用文件名表示 fd"的桥梁，让只接受文件名的程序也能配合重定向。
+
+**实践**：
+```bash
+# 同时看输出和保存日志
+./server 2>&1 | tee server.log
+
+# 丢弃所有输出
+cmd >/dev/null 2>&1
+
+# 分离正常输出与错误输出
+cmd > out.log 2> err.log
+
+# 逐行处理
+grep ERROR app.log | awk ''{print $1}'' | sort | uniq -c | sort -rn
+```', 1),
+
+('Linux', 'grep,sed,awk,find', 2,
+ '`grep`、`sed`、`awk`、`find` 的常用用法有哪些？',
+ '**`grep`：文本搜索**
+```bash
+grep -i "error" app.log            # 忽略大小写
+grep -r "TODO" src/                # 递归
+grep -rn --include="*.cpp" "TODO" .# 只搜 cpp，带行号
+grep -v "DEBUG" app.log            # 反向（不含）
+grep -c "error" app.log            # 计数
+grep -E "err(or|ors)" app.log      # 扩展正则
+grep -P "\\d{4}-\\d{2}" app.log      # Perl 正则
+grep -A 3 -B 3 "panic" app.log     # 前后 3 行上下文 ⭐
+grep -o ''"[^"]*"'' file             # 只输出匹配部分
+grep -l "pattern" *.log            # 只列出文件名
+grep -w "test" file                # 整词匹配
+grep -m 5 "x" file                 # 最多匹配 5 次
+grep -q "x" file && echo found     # 静默（只看退出码）
+# 排除目录
+grep -rn "x" . --exclude-dir=.git --exclude-dir=node_modules
+```
+**`ripgrep`（rg）** 是现代替代（默认递归、忽略 `.gitignore`、快得多）。
+
+**`sed`：流编辑器**
+```bash
+sed ''s/old/new/'' file              # 替换（每行第一个）
+sed ''s/old/new/g'' file             # 全局替换 ⭐
+sed -i ''s/old/new/g'' file          # 原地修改 ⭐
+sed -i.bak ''s/a/b/g'' file          # 原地修改 + 备份
+sed -n ''10,20p'' file               # 打印 10~20 行
+sed -n ''/start/,/end/p'' file       # 打印区间
+sed ''3d'' file                      # 删除第 3 行
+sed ''/pattern/d'' file              # 删除匹配行
+sed ''s/^/PREFIX /'' file            # 行首插入
+sed -E ''s/(\\w+)@(\\w+)/\\2@\\1/'' file # 扩展正则 + 反向引用
+sed ''/PATTERN/a\\追加的行'' file      # 匹配行后追加（GNU）
+```
+**注意**：`sed -i` 在 macOS 上要 `sed -i '''' `（BSD sed 差异）。
+
+**`awk`：结构化文本处理**
+```bash
+awk ''{print $1, $3}'' file          # 打印第 1、3 列
+awk -F: ''{print $1}'' /etc/passwd   # 指定分隔符
+awk ''NR>1 {sum += $2} END {print sum}'' file   # 求和
+awk ''$3 > 100 {print}'' file        # 条件过滤
+awk ''/ERROR/ {count++} END {print count}'' file
+awk ''BEGIN{print "start"} {print} END{print "end"}'' file
+awk ''{a[$1]++} END {for (k in a) print k, a[k]}'' file   # 分组计数 ⭐
+awk ''NR%2==0'' file                 # 偶数行
+awk ''length($0) > 80'' file
+awk -v x=10 ''$1 > x'' file          # 外部变量
+awk ''{printf "%-10s %5d\\n", $1, $2}'' file   # 格式化输出
+```
+**内置变量**：`$0`（整行）、`$1..$n`（字段）、`NF`（字段数）、`NR`（行号）、`FNR`（当前文件行号）、`FS`（输入分隔符）、`OFS`（输出分隔符）。
+
+**`find`：文件查找**
+```bash
+find /var/log -name "*.log"                    # 按名字
+find . -iname "*.LOG"                          # 忽略大小写
+find . -type f -size +100M                     # 大于 100M 的普通文件 ⭐
+find . -type d -name ".git" -prune -o -name "*.cpp" -print   # 排除目录
+find . -mtime -7                               # 7 天内修改
+find . -mmin -60                               # 60 分钟内修改
+find . -newer file.txt                         # 比某文件新
+find . -perm -4000 -type f                     # SUID 文件
+find . -empty                                  # 空文件/目录
+find . -user nginx -o -group www               # 按属主/属组
+find . -name "*.tmp" -delete                   # 删除（危险！先 -print 验证）
+find . -name "*.log" -exec gzip {} \\;          # 逐个执行
+find . -name "*.log" -exec gzip {} +           # 批量执行（更快）⭐
+find . -name "*.txt" -print0 | xargs -0 rm     # 处理含空格的文件名 ⭐
+```
+
+**组合威力示例**：
+```bash
+# 找出最大的 10 个文件
+find / -type f -size +100M -exec du -h {} + 2>/dev/null | sort -rh | head
+
+# 统计 nginx 日志中访问量 top10 的 IP
+awk ''{print $1}'' /var/log/nginx/access.log | sort | uniq -c | sort -rn | head
+
+# 统计各状态码
+awk ''{print $9}'' access.log | sort | uniq -c | sort -rn
+
+# 批量重命名
+find . -name "*.jpeg" -exec bash -c ''mv "$0" "${0%.jpeg}.jpg"'' {} \\;
+
+# 按小时统计日志量
+awk ''{print substr($4, 2, 14)}'' access.log | uniq -c
+```
+
+**性能提示**：
+1. **`grep -r` 在大目录上慢** → 用 `rg`（ripgrep）或 `ag`。
+2. **`find -exec ... \\;` 每个文件一次进程** → 用 `+` 或 `xargs`。
+3. **`xargs` 要配 `-0`** 处理含空格文件名。
+4. **`sort` 大文件**：`sort -S 2G` 加大内存缓冲、`--parallel`、`LC_ALL=C` 加速排序（字节序比较更快）。
+5. **管道越短越好**（每个阶段都是一次进程 + IO）。', 1),
+
+('Linux', '用户,组,认证', 2,
+ 'Linux 的用户和组是怎么管理的？`/etc/passwd`、`/etc/shadow` 分别是什么？',
+ '**四个关键文件**：
+
+| 文件 | 内容 | 权限 |
+|---|---|---|
+| `/etc/passwd` | 用户账号信息（含 UID/GID/home/shell） | `644` 所有人可读 |
+| `/etc/shadow` | **密码哈希**与密码策略 | `640`（或 `000`），**只有 root 可读** ⭐ |
+| `/etc/group` | 组信息（组名、GID、成员） | `644` |
+| `/etc/gshadow` | 组的加密密码与管理员 | `640` |
+
+**`/etc/passwd` 字段**：
+```
+root:x:0:0:root:/root:/bin/bash
+ │   │ │ │  │     │      └── 登录 shell
+ │   │ │ │  │     └───────── 家目录
+ │   │ │ │  └─────────────── 描述（GECOS）
+ │   │ │ └─────────────────  主组 GID
+ │   │ └───────────────────  UID
+ │   └─────────────────────  密码占位符（x 表示在 shadow 里）
+ └─────────────────────────  用户名
+```
+**UID 约定**：
+- `0` = root；`1~999` 系统账号（服务用）；`1000+` 普通用户。
+
+**`/etc/shadow` 字段**：
+```
+user:$6$salt$hash:19000:0:99999:7:::
+      │            │   │  │   │ └─ 过期前警告天数
+      │            │   │  │   └─── 密码最长有效天数
+      │            │   │  └─────── 两次修改最小间隔
+      │            │   └────────── 最后修改日（从 1970-01-01 起的天数）
+      │            └────────────── 距过期还有多少天时可改
+      └─────────────────────────── 密码哈希（$6$ = SHA-512）
+```
+> **密码哈希前缀**：`$1$` MD5（已弃用）、`$5$` SHA-256、`$6$` SHA-512、`$y$` yescrypt（现代）。哈希**加盐**，用于防彩虹表。
+
+**用户管理命令**：
+```bash
+useradd -m -s /bin/bash -G sudo,docker alice    # 建用户 + 家目录 + shell + 附加组 ⭐
+passwd alice                                     # 设密码
+usermod -aG docker alice                         # 追加组（不加 -a 会覆盖！）⭐
+userdel -r alice                                 # 删除用户与家目录
+id alice                                         # 查看 UID/GID/所属组 ⭐
+groups alice
+who / w / last / lastlog                          # 谁登录了
+chage -l alice                                    # 密码过期策略
+chage -M 90 -W 7 alice                            # 最长 90 天，提前 7 天警告
+```
+**组管理**：
+```bash
+groupadd devs
+groupmod -n newname oldname
+gpasswd -a alice devs        # 加成员
+gpasswd -d alice devs        # 移成员
+```
+**su 与 sudo**：
+```bash
+su - user             # 切换用户并加载其环境（- 重要）
+sudo cmd              # 以 root 执行
+sudo -u nginx cmd     # 以指定用户执行
+sudo -i               # 交互式 root shell
+sudo -l               # 查看自己被允许的命令 ⭐
+visudo                # 安全编辑 /etc/sudoers（会做语法检查）⭐
+```
+**`/etc/sudoers` 语法**：
+```
+# 用户 主机=(可切换用户) 命令
+alice ALL=(ALL:ALL) ALL
+%sudo ALL=(ALL:ALL) ALL              # % 表示组
+www-data ALL=(root) NOPASSWD: /bin/systemctl restart nginx
+Defaults    env_reset, timestamp_timeout=15
+```
+**推荐把自定义规则放 `/etc/sudoers.d/*`**（不要改主文件，升级会覆盖）。
+
+**认证相关**：
+| 机制 | 说明 |
+|---|---|
+| **PAM**（`/etc/pam.d/`） | 可插拔认证模块，控制登录、密码策略、`su`/`sudo` |
+| **NSS**（`/etc/nsswitch.conf`） | 名字服务来源顺序（files → ldap → sss ...） |
+| **LDAP/AD/SSSD** | 集中式用户目录（企业环境） |
+| **SSSD** | 缓存 LDAP/Kerberos 认证 |
+| **Kerberos** | 票据式认证 |
+
+**SSH 密钥登录（生产必备）**：
+```bash
+# 客户端生成
+ssh-keygen -t ed25519 -C "me@example.com"        # ed25519 现代首选
+# 上传公钥
+ssh-copy-id user@host
+# 或手工追加到远端 ~/.ssh/authorized_keys
+
+# 服务端 /etc/ssh/sshd_config
+PermitRootLogin no                    # 禁止 root 直登 ⭐
+PasswordAuthentication no             # 只用密钥 ⭐
+PubkeyAuthentication yes
+Port 2222                             # 改端口（弱化扫描）
+AllowUsers alice                      # 白名单
+```
+**排查 SSH 登录失败**：
+```bash
+ssh -v user@host                      # 详细日志 ⭐
+journalctl -u sshd -n 50
+cat /var/log/auth.log | grep sshd
+ls -ld ~/.ssh ~/.ssh/authorized_keys  # 权限必须 700 / 600 ⭐
+```
+**权限是常见坑**：`~/.ssh` 必须 `700`、`authorized_keys` 必须 `600`、家目录不能被组/其他写 —— 否则 `sshd` **拒绝使用密钥**（`StrictModes`）。
+
+**安全实践**：
+1. **禁用 root 直接登录**（`PermitRootLogin no`），用普通用户 + `sudo`。
+2. **禁用密码登录**（只用密钥），并给密钥设 passphrase。
+3. **不要用 `usermod -aG` 时漏掉 `-a`**（会覆盖用户的所有附加组）。
+4. **`/etc/shadow` 权限不能松**（否则可离线爆破）。
+5. **服务账号用 `nologin` shell**：`useradd -r -s /usr/sbin/nologin svcuser`。
+6. **定期审计**：`lastlog`（哪些账号从未登录）、`awk -F: ''$3>=1000'' /etc/passwd`（有哪些普通用户）。
+7. **`sudo` 记录到日志**（`/var/log/auth.log` 或 `journalctl -u sudo`）。', 1),
+
+('Linux', '包管理,rpm,deb', 2,
+ 'Linux 的包管理体系是怎样的？`rpm` 和 `deb` 有什么区别？',
+ '**两大体系**：
+
+| | RPM 系 | DEB 系 |
+|---|---|---|
+| 发行版 | RHEL/CentOS/Fedora/openEuler/Anolis/SUSE | Debian/Ubuntu/Kali |
+| 底层工具 | `rpm` | `dpkg` |
+| 高层工具 | `yum`（旧）/ `dnf`（新）/ `zypper` | `apt`（底层 `apt-get`） |
+| 包格式 | `.rpm` | `.deb` |
+| 元数据 | `repodata/` | `Packages.gz` |
+| 配置目录 | `/etc/yum.repos.d/` | `/etc/apt/sources.list`、`/etc/apt/sources.list.d/` |
+| 缓存 | `/var/cache/dnf/` | `/var/cache/apt/` |
+
+**常用命令对照**：
+
+| 操作 | RPM 系（dnf） | DEB 系（apt） |
+|---|---|---|
+| 更新索引 | `dnf makecache` | `apt update` |
+| 安装 | `dnf install pkg` | `apt install pkg` |
+| 卸载 | `dnf remove pkg` | `apt remove pkg`（保留配置）/ `purge`（连配置删） |
+| 升级全部 | `dnf upgrade` | `apt upgrade` / `full-upgrade` |
+| 搜索 | `dnf search kw` | `apt search kw` |
+| 查信息 | `dnf info pkg` | `apt show pkg` |
+| 列出已装 | `dnf list installed` | `dpkg -l` |
+| 某文件属于哪个包 | `dnf provides /bin/ls` | `apt-file search /bin/ls` / `dpkg -S` |
+| 列出包内文件 | `rpm -ql pkg` | `dpkg -L pkg` |
+| 装本地包 | `dnf install ./x.rpm` / `rpm -ivh x.rpm` | `apt install ./x.deb` / `dpkg -i x.deb` |
+| 修复依赖 | `dnf install --skip-broken` | `apt -f install` ⭐ |
+| 清理 | `dnf clean all` | `apt clean` / `autoclean` |
+
+**底层工具（少用，除非必须）**：
+```bash
+rpm -ivh pkg.rpm               # 安装（不自动解决依赖！）
+rpm -Uvh pkg.rpm               # 升级
+rpm -e pkg                     # 卸载
+rpm -qa                        # 列出所有
+rpm -qf /usr/bin/ls            # 文件属于哪个包
+rpm -ql pkg                    # 包里的文件
+rpm -q --changelog pkg
+rpm -V pkg                     # 校验文件是否被改动 ⭐
+
+dpkg -i pkg.deb                # 安装（不解决依赖）
+dpkg -r pkg / -P pkg           # 移除 / 彻底清除
+dpkg -l | grep foo
+dpkg -S /usr/bin/ls            # 文件属于哪个包
+dpkg -L pkg
+dpkg-reconfigure pkg           # 重新配置（重新弹出交互界面）
+```
+**`dpkg -i` 报依赖错误时用 `apt -f install` 修复** —— 这是最常见的"装本地包失败"的解法。
+
+**仓库配置**：
+```bash
+# DEB
+cat /etc/apt/sources.list
+ls /etc/apt/sources.list.d/
+# 加第三方源（现代方式，推荐）
+curl -fsSL https://example.com/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/example.gpg
+echo "deb [signed-by=/usr/share/keyrings/example.gpg] https://... stable main" \\
+  | sudo tee /etc/apt/sources.list.d/example.list
+
+# RPM（dnf）
+ls /etc/yum.repos.d/
+cat > /etc/yum.repos.d/example.repo <<''EOF''
+[example]
+name=Example
+baseurl=https://example.com/repo
+enabled=1
+gpgcheck=1
+gpgkey=https://example.com/RPM-GPG-KEY
+EOF
+```
+
+**依赖地狱与解决**：
+- **RPM 系的 `--nodeps`**：强装（危险，运行时可能崩）。
+- **`--skip-broken`**：跳过有依赖问题的包。
+- **`dnf repoquery --whatrequires pkg`**：谁依赖它。
+- **DEB 系的 `aptitude`** 有更好的依赖求解。
+- **混用源码编译与包管理**会导致"文件冲突"和"升级被覆盖" —— **尽量避免**。
+
+**`apt` 的实用细节**：
+```bash
+apt list --upgradable              # 哪些可升级
+apt-mark hold pkg                  # 锁定版本（不升级）⭐
+apt-mark unhold pkg
+apt list --installed | wc -l
+apt-get autoremove                 # 清理不再需要的依赖
+dpkg --get-selections > pkgs.txt   # 导出清单
+dpkg --set-selections < pkgs.txt   # 恢复清单
+```
+**`dnf` 的实用细节**：
+```bash
+dnf history                        # 操作历史 ⭐
+dnf history undo <id>              # 回滚某次操作 ⭐
+dnf versionlock add pkg            # 锁定版本（需插件）
+dnf module list / dnf module enable nginx:1.24   # 模块流（AppStream）
+dnf autoremove
+dnf groupinstall "Development Tools"
+```
+
+**离线/内网环境**：
+```bash
+# 下载包及其依赖（不安装）
+dnf download --resolve --alldeps pkg          # 或 dnf install --downloadonly
+apt-get install --download-only pkg
+# 用本地目录做仓库
+createrepo_c /path/to/rpms
+dpkg-scanpackages /path/to/debs /dev/null | gzip > Packages.gz
+```
+
+**容器里装包的最佳实践**：
+1. **`apt update && apt install && rm -rf /var/lib/apt/lists/*` 写在同一层**（否则缓存留在镜像层）。
+2. **用 `--no-install-recommends`** 减少体积。
+3. **固定版本**（`pkg=1.2.3-4`）保证可复现。
+4. **多阶段构建**：编译依赖不留在最终镜像。
+
+**常见问题**：
+| 现象 | 原因/解法 |
+|---|---|
+| `Could not get lock /var/lib/dpkg/lock` | 另一个 apt 在跑，或上次异常退出 → `dpkg --configure -a` |
+| 依赖冲突 | `apt -f install` / `dnf check`；检查第三方源 |
+| GPG 签名错误 | 缺 key（导入 `gpgkey`）或系统时间不对 |
+| 升级后服务起不来 | `dnf history undo` / 检查配置变更（`.rpmnew`/`.dpkg-dist` 文件）⭐ |
+| 磁盘被缓存占满 | `dnf clean all` / `apt clean` |', 1),
+
+('Linux', 'iptables,防火墙', 3,
+ 'iptables 的四表五链是什么？怎么写一条 NAT 规则？',
+ '**netfilter** 是内核的包过滤框架，**iptables** 是它的用户态工具（新版是 **nftables**）。
+
+**四表（按优先级链）**：
+
+| 表 | 作用 | 内置链 |
+|---|---|---|
+| **raw** | 连接跟踪豁免（`-j NOTRACK`），最先处理 | PREROUTING, OUTPUT |
+| **mangle** | 修改包（TTL、TOS、MARK） | 全部 5 个 |
+| **nat** | 地址转换 | PREROUTING（DNAT）、OUTPUT、POSTROUTING（SNAT） |
+| **filter** | **过滤（默认表）** | INPUT, FORWARD, OUTPUT |
+
+**五链（处理时机）**：
+
+```
+入站包：  PREROUTING → [路由判断] → INPUT → 本地进程
+转发包：  PREROUTING → [路由判断] → FORWARD → POSTROUTING → 出站
+出站包：  本地进程 → OUTPUT → [路由判断] → POSTROUTING → 出站
+```
+
+| 链 | 时机 |
+|---|---|
+| **PREROUTING** | 包刚到达网卡，路由判断**之前**（做 DNAT） |
+| **INPUT** | 目标是本机的包 |
+| **FORWARD** | 需要转发（不经过本机进程）的包 |
+| **OUTPUT** | 本机进程发出的包 |
+| **POSTROUTING** | 即将离开网卡的包（做 SNAT） |
+
+**常见命令**：
+
+```bash
+# 查看（-n 不做 DNS 解析，-v 显示计数，--line-numbers 显示编号）
+iptables -t filter -L -n -v --line-numbers
+iptables -t nat -L -n -v
+
+# 默认策略
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT ACCEPT
+
+# 放行已建立的连接 + 本机回环（必备前两条）
+iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -A INPUT -i lo -j ACCEPT
+
+# 放行端口
+iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+iptables -A INPUT -p tcp -m multiport --dports 80,443 -j ACCEPT
+iptables -A INPUT -p icmp --icmp-type echo-request -j ACCEPT
+iptables -A INPUT -s 10.0.0.0/8 -p tcp --dport 3306 -j ACCEPT   # 只允许内网
+
+# 插入到最前
+iptables -I INPUT 1 -s 1.2.3.4 -j DROP
+
+# 删除
+iptables -D INPUT 3                      # 按编号
+iptables -D INPUT -s 1.2.3.4 -j DROP     # 按规则内容
+
+# 保存与恢复（重启不丢）
+iptables-save > /etc/iptables/rules.v4
+iptables-restore < /etc/iptables/rules.v4
+# 或装 iptables-persistent / 用 firewalld
+```
+
+**NAT 规则（关键）**：
+
+```bash
+# 1) 开启 IP 转发（做网关的前提）
+sysctl -w net.ipv4.ip_forward=1
+echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/99-forward.conf
+
+# 2) SNAT：让内网通过本机上网（出站改写源地址）
+iptables -t nat -A POSTROUTING -s 192.168.1.0/24 -o eth0 -j MASQUERADE
+# 或指定固定公网 IP（更高效）
+iptables -t nat -A POSTROUTING -s 192.168.1.0/24 -o eth0 -j SNAT --to-source 1.2.3.4
+
+# 3) DNAT：端口转发（把公网 8080 转到内网 192.168.1.10:80）
+iptables -t nat -A PREROUTING -p tcp --dport 8080 -j DNAT --to-destination 192.168.1.10:80
+# 别忘了放行 FORWARD
+iptables -A FORWARD -p tcp -d 192.168.1.10 --dport 80 -j ACCEPT
+```
+
+**DNAT 后为什么还要 FORWARD 规则**：DNAT 只改目标地址（在 PREROUTING），包仍要经过 FORWARD 链的过滤。
+
+**连接跟踪（conntrack）**：
+- `-m conntrack --ctstate NEW/ESTABLISHED/RELATED/INVALID`
+- **`ESTABLISHED,RELATED -j ACCEPT`** 是防火墙必备（让回包通过），否则所有出站请求的响应都会被 INPUT 拦掉。
+- 连接跟踪表可能满：`/proc/sys/net/netfilter/nf_conntrack_max`、`conntrack -L | wc -l`。
+  - 症状：`nf_conntrack: table full, dropping packet`。
+
+**匹配扩展（`-m`）**：
+| 模块 | 用途 |
+|---|---|
+| `conntrack` | 连接状态 |
+| `multiport` | 多端口（`--dports 80,443`） |
+| `iprange` | IP 段 |
+| `recent` | 防暴力破解（记录近期连接） |
+| `limit` | 限速（`--limit 10/s`） |
+| `state` | 老版状态匹配（已被 conntrack 取代） |
+| `string` | 字符串匹配（性能差） |
+| `owner` | 按进程（仅 OUTPUT） |
+| `comment` | 给规则加注释 |
+
+**防暴力破解示例**：
+```bash
+iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW \\
+  -m recent --set --name SSH
+iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW \\
+  -m recent --update --seconds 60 --hitcount 4 --name SSH -j DROP
+```
+
+**`firewalld`（RHEL 系默认，更友好）**：
+```bash
+systemctl enable --now firewalld
+firewall-cmd --state
+firewall-cmd --get-active-zones
+firewall-cmd --zone=public --add-port=8080/tcp --permanent
+firewall-cmd --zone=public --add-service=http --permanent
+firewall-cmd --reload
+firewall-cmd --list-all
+```
+**`firewalld` 底层其实还是 nftables/iptables**，规则由它生成。
+
+**`nftables`（现代替代）**：
+```bash
+nft list ruleset
+nft add table inet filter
+nft add chain inet filter input ''{ type filter hook input priority 0; policy drop; }''
+nft add rule inet filter input ct state established,related accept
+nft add rule inet filter input tcp dport { 22, 80, 443 } accept
+```
+**优势**：单一工具替代 iptables/ip6tables/arptables/ebtables、语法更清晰、性能更好、原子更新。
+
+**实践建议**：
+1. **先加"放行 SSH"再改默认策略为 DROP**（否则会把自己关在门外）。用 `iptables -I INPUT 1 ...` 保证在最前。
+2. **生产用 `iptables-save`/`firewalld --permanent` 持久化**，别只在 shell 里敲。
+3. **云环境**：**云厂商的安全组在 iptables 之前生效**（流量根本没到主机）—— 排查"端口不通"时先看安全组。
+4. **`DOCKER-USER` 链**：Docker 会插入自己的规则；**自定义规则要放 `DOCKER-USER`**（`FORWARD` 里的 Docker 链会覆盖）。
+5. **先 `-L` 看现状再改**（避免和 Docker/firewalld 的规则打架）。
+6. **`conntrack` 表满**是"包被莫名丢弃"的常见原因（调 `nf_conntrack_max`）。', 1),
+
+('Linux', 'docker 网络,容器网络', 3,
+ 'Docker 的网络模式有哪几种？容器之间怎么互通？',
+ '**五种网络模式**：
+
+| 模式 | 说明 | 隔离性 |
+|---|---|---|
+| **bridge**（默认） | 每个容器接一个虚拟网桥（`docker0`），分配私有 IP，通过 NAT 出网 | 中 |
+| **host** | 直接用宿主机的网络栈（无独立 netns） | 无 |
+| **none** | 只有 `lo`，无网络 | 最高 |
+| **container:<name>** | 共享另一个容器的网络栈（k8s Pod 的原理） | — |
+| **overlay** | 跨主机的虚拟网络（Swarm/k8s） | — |
+| **macvlan** | 容器直接获得 MAC/IP，像物理机一样接入网络 | — |
+
+**bridge 模式的实现**：
+
+```
+容器 eth0 (172.17.0.2)
+    ↕ veth pair（一对虚拟网卡，一端在容器，一端在宿主）
+docker0 网桥 (172.17.0.1)
+    ↕ iptables NAT (MASQUERADE)
+宿主机 eth0 → 外网
+```
+
+1. **`veth pair`**：一对虚拟网卡，像"网线"连接容器与宿主网桥。
+2. **`docker0`**：Linux bridge，容器默认网关是它（172.17.0.1）。
+3. **SNAT**：容器出网时 iptables 做 `MASQUERADE`（源地址改成宿主 IP）。
+4. **端口映射（`-p 8080:80`）**：在 `DOCKER` 链里加 **DNAT** 规则，把宿主 8080 转到容器 IP:80。
+5. **容器之间**：同一 bridge 上可通过 IP 直接互通（二层转发）；**Docker 内置 DNS（127.0.0.11）** 让容器可以用**容器名**互相发现（**仅在用户自定义 bridge 网络里，默认 bridge 不支持**）。
+
+```bash
+# 创建自定义网络（推荐）
+docker network create mynet
+docker run --network mynet --name app nginx
+docker run --network mynet --name db mysql
+# app 里可以直接 ping db / 连 db:3306
+
+docker network ls
+docker network inspect mynet
+ip link show type bridge
+brctl show / bridge link           # 看网桥与端口
+```
+
+**查看容器的网络命名空间**：
+```bash
+docker inspect -f ''{{.State.Pid}}'' <container>       # 拿到宿主机上的 PID
+nsenter -t <pid> -n ip addr                          # 进入容器的 netns ⭐
+nsenter -t <pid> -n ss -lntp
+```
+
+**为什么"容器内端口通、宿主不通"**：
+- `-p` 只在**宿主**加 DNAT，容器内看不到；
+- 或云安全组没开；
+- 或应用只绑定 `127.0.0.1`（容器内 `127.0.0.1` 是容器自己！不能从宿主访问）。
+
+**为什么"容器内连不上别的容器"**：
+- 用了**默认 bridge**（不支持 DNS 名字解析）→ 用自定义网络。
+- **iptables FORWARD 策略是 DROP**（Docker 的规则在 FORWARD 链，但自定义规则可能覆盖）→ 规则要放 `DOCKER-USER` 链。
+- `icc=false` 或网络被隔离。
+
+**k8s 的网络模型（对比理解）**：
+- **每个 Pod 一组网络命名空间**，Pod 内容器共享（`container:` 模式）。
+- **要求"扁平网络"**：Pod IP 在整个集群内可直接路由（无 NAT）。
+- 实现方案：**CNI** 插件（Calico 用 BGP/路由，Flannel 用 VXLAN overlay，Cilium 用 eBPF）。
+- **Service 是虚拟 IP（VIP）**：由 kube-proxy（iptables/IPVS）或 eBPF 实现负载均衡到 Pod。
+- **DNS**：CoreDNS 提供 `service.namespace.svc.cluster.local` 解析。
+
+**overlay 网络（跨主机）**：
+- **VXLAN** 把二层帧封装在 UDP 里（默认端口 4789），跨主机形成虚拟二层网络。
+- 缺点：**MTU 开销**（50 字节）+ 封装解封装的 CPU 开销。
+- 云环境常用 VPC 路由替代（性能更好）。
+
+**macvlan**：容器直接拿一个"真实"IP（和宿主机同网段），**但宿主机与容器通常不能直接通信**（需要额外配置）。
+
+**排查容器网络问题**：
+```bash
+# 1. 容器是否有 IP
+docker exec <c> ip addr
+# 2. 容器能否出网
+docker exec <c> ping 8.8.8.8
+docker exec <c> ping google.com          # 测 DNS
+# 3. 宿主上的 iptables NAT 规则
+iptables -t nat -L -n -v | head -40
+iptables -t filter -L DOCKER-USER -n -v
+# 4. 是否有端口映射
+docker port <c>
+ss -lntp | grep <port>
+# 5. DNS
+docker exec <c> cat /etc/resolv.conf
+docker exec <c> nslookup <other>
+# 6. 抓包（在容器的 netns 里抓，最直接）
+nsenter -t <pid> -n tcpdump -i eth0 -nn
+```
+
+**实践建议**：
+1. **总是用自定义 bridge 网络**（有 DNS 服务发现，可隔离）。
+2. **不要用 `--link`**（已过时）。
+3. **`--network host` 有性能优势但失去隔离**（只用端口时会冲突）—— 高性能场景（如高频交易）会用。
+4. **注意 MTU**：overlay/VPN 环境要把 Docker 的 MTU 调小（`--mtu=1400`），否则大包会丢（表现为"小请求正常、大请求卡住"）。
+5. **`DOCKER-USER` 链**放自定义防火墙规则。
+6. **容器内不要用 `127.0.0.1` 暴露服务**（绑 `0.0.0.0`）。
+7. **k8s 里**：应用绑 `0.0.0.0`，用 Service/Ingress 暴露，不要依赖 Pod IP（会变）。', 1),
+
+('Linux', 'eBPF,bpftrace', 3,
+ 'eBPF 是什么？`bpftrace` 能解决什么问题？',
+ '**eBPF（extended Berkeley Packet Filter）**：内核里可安全运行的**沙箱字节码**，让用户在不改内核、不加载模块的情况下**在内核事件上执行自定义逻辑**。
+
+**为什么重要**：
+1. **可编程内核**（无需编译内核/加载模块）。
+2. **安全**：验证器（verifier）静态检查字节码（禁越界、禁无限循环），不会导致内核崩溃。
+3. **低开销**：JIT 编译成本地指令；**无需 ptrace**（不像 strace 每条 syscall 停两次）。
+4. **可观测 + 可编程网络**：tracing（观测）与 networking（XDP/tc）两大方向。
+
+**挂载点（hook 点）**：
+
+| 类型 | 挂载点 | 用途 |
+|---|---|---|
+| **kprobe/kretprobe** | 内核函数入口/返回 | 观测内核函数 |
+| **uprobe/uretprobe** | 用户态函数 | 观测应用函数 |
+| **tracepoint** | 内核静态埋点（稳定 ABI） | 推荐（比 kprobe 稳定） |
+| **USDT** | 用户态静态探针 | 应用自带埋点 |
+| **perf_event** | 性能计数器 | 采样分析 |
+| **XDP** | 网卡驱动早期 | **超高性能**包处理/丢弃 |
+| **tc（traffic control）** | 网络栈 | 流量控制、负载均衡 |
+| **socket filter** | socket 层 | 包过滤 |
+| **LSM** | 安全钩子 | 安全策略 |
+| **cgroup** | cgroup 事件 | 按容器统计/限制 |
+
+**bpftrace**：eBPF 的高层语言（类似 awk/DTrace 语法），**一行命令就能观测**。
+
+```bash
+# 跟踪新进程（谁在频繁 fork/exec）
+bpftrace -e ''tracepoint:syscalls:sys_enter_execve { printf("%s -> %s\\n", comm, str(args->filename)); }''
+
+# 统计各进程的 read 字节数
+bpftrace -e ''tracepoint:syscalls:sys_exit_read { @[comm] = sum(args->ret); }''
+
+# 每个进程的 on-CPU 时间（火焰图数据源）
+bpftrace -e ''profile:hz:99 { @[comm] = count(); }''
+
+# 跟踪 open 慢的调用
+bpftrace -e ''tracepoint:syscalls:sys_enter_openat { @start[tid] = nsecs; }
+             tracepoint:syscalls:sys_exit_openat /@start[tid]/ {
+               @ns[comm] = hist(nsecs - @start[tid]); delete(@start[tid]); }''
+
+# 跟踪某个函数的调用栈
+bpftrace -e ''kprobe:vfs_read { @[kstack] = count(); }''
+
+# 按 PID 跟踪 IO 延迟
+bpftrace -e ''kprobe:blk_account_io_start { @start[arg0] = nsecs; }
+             kprobe:blk_account_io_done /@start[arg0]/ {
+               @us = hist((nsecs - @start[arg0]) / 1000); delete(@start[arg0]); }''
+```
+
+**bpftrace 语法要点**：
+| 元素 | 说明 |
+|---|---|
+| `tracepoint:cat:name` / `kprobe:func` | 探针类型与位置 |
+| `/filter/` | 过滤条件 |
+| `{ actions }` | 触发时执行 |
+| `@name` | 聚合变量（map） |
+| `count()` `sum()` `hist()` `avg()` `min()` `max()` | 聚合函数 |
+| `comm` `pid` `tid` `nsecs` `arg0..argN` `args->field` `retval` | 内置变量 |
+| `kstack` / `ustack` | 内核/用户调用栈 |
+| `str(ptr)` `printf()` `delete()` `exit()` `interval:s:1` | 常用函数 |
+
+**BCC 工具集**（Python + eBPF 封装，开箱即用）：
+```bash
+execsnoop            # 跟踪新进程执行 ⭐
+opensnoop            # 跟踪 open 调用（找出打开了什么文件）⭐
+biolatency           # 块 IO 延迟分布 ⭐
+biotop               # 按进程的 IO 排行 ⭐
+tcpconnect/tcpaccept # 连接追踪
+tcpretrans           # TCP 重传追踪 ⭐
+runqlat              # 调度延迟分布（CPU 饱和诊断）⭐
+runqlen              # 运行队列长度
+offcputime           # 线程离开 CPU 的时间与栈（阻塞分析）⭐
+profile              # CPU 采样（火焰图数据源）
+funccount            # 函数调用计数
+argdist              # 参数分布
+```
+**这套工具把"以前要改内核/上 DTrace"的能力变成了开箱可用**。
+
+**性能对比**：
+
+| 手段 | 开销 | 能否自定义 | 需要重启 |
+|---|---|---|---|
+| `strace` | **极高**（ptrace 两停） | ❌ | ❌ |
+| `perf` | 低（采样） | 有限 | ❌ |
+| **eBPF** | **极低**（JIT，可采样可精确） | ✅✅ | ❌ |
+| 内核模块 | 零 | ✅ | ✅（危险） |
+
+**限制**：
+1. **内核版本**：4.x 基础，5.x 才完善（很多特性要 5.4/5.8/5.15+）。CentOS 7（3.10）**不支持**（需 BCC 加 backport 或升级）。
+2. **需要 root/CAP_BPF**（部分探针也要求 `CAP_PERFMON`）。
+3. **验证器限制**：循环次数有上限、栈深度有限（512 字节）、指令数有限（早期 4096，现 100 万）。
+4. **不能随意调用内核函数**（只能调白名单 helper）。
+5. **容器里默认受限**（需要 `--privileged` 或 `--cap-add=CAP_BPF`）。
+6. **安全**：eBPF 曾是提权攻击面（多个 CVE）—— **生产上要限制谁能加载 eBPF**（`kernel.unprivileged_bpf_disabled=1`）。
+
+**实践应用**：
+1. **可观测性**：Cilium（用 eBPF 做 k8s 网络）、Pixie、Parca、Falco（安全）。
+2. **性能分析**：火焰图（`perf` 或 `bpftrace` 出栈数据 + FlameGraph.pl）。
+3. **网络加速**：XDP 做 DDoS 防护、负载均衡（Facebook 的 Katran）。
+4. **安全**：实时检测异常系统调用。
+5. **按 cgroup 统计**：容器粒度的资源归因。
+
+**实践建议**：
+1. **优先用现成的 BCC/bpftrace 工具**，不要一上来就写 C。
+2. **用 `tracepoint` 而非 `kprobe`**（ABI 稳定，跨版本不易失效）。
+3. **先 `bpftrace -l ''tracepoint:*''` 找到可用探针**。
+4. **`-d` 干跑（dry run）** 检查语法与探针是否可用。
+5. **注意输出量**（`printf` 在热路径会拖慢系统，用聚合 `@`）。
+6. **生产使用要注意权限与性能影响**（尤其 kprobe 在超高频函数上）。', 1),
+
+('Linux', 'perf,火焰图', 3,
+ '`perf` 怎么用？火焰图怎么生成和解读？',
+ '**`perf`** 是 Linux 的**性能分析工具**，基于 `perf_events` 子系统（内核的采样与计数器框架）。
+
+**核心子命令**：
+
+| 命令 | 用途 |
+|---|---|
+| `perf stat` | 统计（IPC、cache miss、分支预测） |
+| `perf record` / `perf report` | **采样 + 分析**（最常用）⭐ |
+| `perf top` | 实时热点（类似 top，但是函数级） |
+| `perf trace` | 类似 strace 但**低开销** |
+| `perf sched` | 调度延迟分析 |
+| `perf lock` | 锁竞争分析 |
+| `perf mem` | 内存访问分析 |
+| `perf c2c` | **cache line 竞争**（伪共享）分析 |
+| `perf annotate` | 汇编级热点 |
+| `perf diff` | 对比两次 profile |
+
+**常用命令**：
+
+```bash
+# 1. 先看基本面
+perf stat -a sleep 5
+# 关注：task-clock, context-switches, page-faults, cycles, instructions,
+#      IPC, cache-misses, branch-misses
+
+perf stat -e cache-misses,cache-references,dTLB-load-misses ./prog
+
+# 2. 采样（关键）
+perf record -g -F 99 -p <pid> -- sleep 30      # -g 记录调用栈，-F 采样频率 ⭐
+perf record -g -a -- sleep 30                  # 全系统
+perf record -g -e cpu-clock ./prog             # 指定事件
+perf record -g -e page-faults ./prog
+
+# 3. 分析
+perf report                    # 交互式（可展开调用栈）⭐
+perf report --stdio -g graph,0.5,caller
+perf report --no-children      # 只看自身开销
+perf top                       # 实时
+perf top -p <pid>
+
+# 4. 调度
+perf sched record -- sleep 10
+perf sched latency             # 每条任务的最大/平均延迟 ⭐
+
+# 5. 锁
+perf lock record ./prog
+perf lock report
+
+# 6. cache 竞争（伪共享）
+perf c2c record -a -- sleep 10
+perf c2c report --stdio
+```
+
+**`perf stat` 的关键指标解读**：
+
+| 指标 | 含义 |
+|---|---|
+| `task-clock` | CPU 使用时间（ms） |
+| `context-switches` | 上下文切换 |
+| `page-faults` | 缺页（`minor`/`major`） |
+| `cycles` / `instructions` | 周期数 / 指令数 |
+| **`IPC`** | `instructions / cycles`。**<1 通常是内存/io 瓶颈；>2 说明指令级并行好** |
+| `cache-misses` / `cache-references` | 缓存缺失率 |
+| `branch-misses` | 分支预测失败 |
+| `stalled-cycles-frontend/backend` | 前端（取指）/后端（执行）停顿 |
+| `LLC-load-misses` | 最后一级缓存缺失（通常是内存访问瓶颈） |
+
+**火焰图（Flame Graph）**：
+
+**原理**：把采样的**调用栈**聚合成一张图：
+- **X 轴**：不是时间，而是**采样占比**（越宽 = 越常出现）。**顺序无意义**（已按字母排序聚合）。
+- **Y 轴**：调用栈深度（下面是调用者，上面是被调用者）。
+- **颜色**：通常随机（仅用于区分），或按语言/状态着色（on-CPU 红黄、off-CPU 蓝）。
+
+**生成（最常用路径）**：
+```bash
+# 1. 采样
+perf record -F 99 -g -p <pid> -- sleep 30
+# 2. 展开栈（把二进制地址转成符号）
+perf script > out.perf
+# 3. 折叠
+git clone https://github.com/brendangregg/FlameGraph
+FlameGraph/stackcollapse-perf.pl out.perf > out.folded
+# 4. 出图
+FlameGraph/flamegraph.pl out.folded > flame.svg
+```
+**更简单**：`perf script | FlameGraph/stackcollapse-perf.pl | FlameGraph/flamegraph.pl > flame.svg`（或 `FlameGraph/flamegraph.pl --title "..." --colors java`）。
+
+**其它火焰图类型**（Brendan Gregg 的分类）：
+
+| 类型 | 数据源 | 回答的问题 |
+|---|---|---|
+| **on-CPU** | `perf record -g` | CPU 花在哪 |
+| **off-CPU** | `offcputime`（BCC）/ `perf sched` | **为什么阻塞**（等锁/IO）⭐ |
+| **内存** | `perf record -e page-faults` | 缺页来源 |
+| **Java** | `perf -e cpu-clock --call-graph dwarf` + `perf-map-agent` | JVM 内热点（需符号） |
+| 差分火焰图 | 两次 profile 相减 | 优化前后对比 |
+
+**如何解读**：
+1. **找最宽的"平顶"**（plateau）—— 那是**自身开销集中在叶子函数**。
+2. **自底向上看调用链**：看到某个函数的所有调用者，判断"是这个函数慢"还是"被上层拖累"。
+3. **注意 `[unknown]`** —— 缺符号（JIT/优化过/无 debuginfo）会让图失去意义。
+4. **看 `[kernel.kallsyms]`** —— 内核态占比（syscall/IO/锁）。
+5. **对比基线**：单张图只能看"哪宽"，差分图才能看"变化"。
+
+**符号问题（最常见的坑）**：
+```bash
+# 缺符号的表现：[unknown] / 只有十六进制地址
+# 解决：
+# - 应用：编译加 -g -fno-omit-frame-pointer
+perf record -g --call-graph dwarf ./prog        # dwarf 解析（不需 frame pointer，但更慢）
+# - JVM：-XX:+PreserveFramePointer + perf-map-agent
+# - 内核：安装 debuginfo（dnf debuginfo-install kernel）
+# - 容器：注意符号文件路径与 /proc/sys/kernel/perf_event_paranoid
+```
+
+**`perf_event_paranoid`**：
+```bash
+cat /proc/sys/kernel/perf_event_paranoid
+# 2（默认）：只能分析自己的进程
+# 1：可以分析别人的进程（需 CAP_PERFMON）
+# -1：全开放（**不安全，生产不要**）
+sysctl -w kernel.perf_event_paranoid=1
+```
+
+**实践流程**：
+1. **先 `perf stat`** 看是不是 CPU 饱和 / cache miss / IPC 低。
+2. **`perf top`** 快速看热点函数（不用落盘）。
+3. **`perf record -g` + 火焰图** 定位具体调用链。
+4. **如果 CPU 不高但很慢** → 用 **off-CPU 火焰图**（`offcputime`）找阻塞点。
+5. **如果怀疑伪共享** → `perf c2c`。
+6. **如果怀疑调度** → `perf sched latency`。
+7. **改动后再采样对比**（差分火焰图）。
+
+**容器里用 perf**：需要 `--cap-add=SYS_ADMIN` 或 `--privileged`，且 `/sys/kernel/debug` 可挂载；k8s 里用 `bpftrace` 的 sidecar 或 node-level DaemonSet 采集。
+
+**替代工具**：
+| 工具 | 优势 |
+|---|---|
+| `bpftrace` | 可编程、低开销 |
+| `async-profiler`（Java） | JVM 专用，含分配/锁火焰图 |
+| `py-spy`（Python） | 无侵入 Python profiling |
+| `pprof`（Go） | Go 内置 |
+| `Intel VTune` | 硬件级分析（PMU、微架构） |
+| `Parca/Pyroscope` | 持续 profiling 平台 |', 1),
+
+('Linux', '块IO,IO调度器', 3,
+ '块层的 IO 是怎么走的？IO 调度器有什么用？怎么调优磁盘 IO？',
+ '**块 IO 的完整路径**（以 buffered write 为例）：
+
+```
+1. 应用 write()
+2. VFS → 文件系统（ext4/xfs）定位逻辑块
+3. page cache（写：标记脏页后返回；读：命中直接返回）
+4. 回写线程 / 直接 IO 进入块层
+5. 块层：合并/排序请求 → **IO 调度器** → 派发队列
+6. 设备驱动 → HBA/SSD 控制器 → 磁盘
+7. 完成：中断 → 软中断 → 唤醒等待者
+```
+
+**块层的两个概念**：
+| | 含义 |
+|---|---|
+| **bio** | 块 IO 请求（描述"读写哪段数据"） |
+| **request** | 经过合并/排序后交给设备的请求 |
+| **合并（merge）** | 相邻的 bio 合成一个 request（**减少 IO 次数，最重要的优化**） |
+| **plug/unplug** | 短暂攒住请求再一起下发（提高合并率） |
+
+**IO 调度器（elevator）**：
+
+| 调度器 | 特点 | 适用 |
+|---|---|---|
+| **none / noop** | FIFO，只做简单合并 | **SSD/NVMe**（硬件本身快且并行）、虚拟机 |
+| **mq-deadline** | 每个请求有 deadline（读优先），防止饿死 | 通用、数据库 |
+| **bfq**（Budget Fair Queueing） | 按进程分配带宽，**交互性好**，开销大 | 桌面、多任务 |
+| **kyber** | 基于延迟目标（读/同步写/异步写） | 低延迟场景 |
+| **cfq**（已移除） | 老的按进程公平队列 | 4.20 后删除（被 bfq 取代） |
+
+**查看与设置**：
+```bash
+cat /sys/block/sda/queue/scheduler
+# [none] mq-deadline kyber bfq      ← 方括号是当前
+echo mq-deadline > /sys/block/sda/queue/scheduler
+# 持久化
+# udev 规则：/etc/udev/rules.d/60-iosched.rules
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/scheduler}="mq-deadline"
+ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/scheduler}="none"
+```
+**现代实践：NVMe/云盘用 `none`（或 `mq-deadline`），HDD 用 `mq-deadline`/`bfq`。**
+
+**关键队列参数**：
+```bash
+cat /sys/block/sda/queue/
+# nr_requests          队列深度
+# read_ahead_kb        预读大小（顺序读优化）⭐
+# max_sectors_kb       单次请求最大扇区
+# rotational           1=机械盘 0=SSD
+# rq_affinity          完成中断绑到发起 CPU
+# nomerges             合并策略
+# scheduler
+```
+```bash
+# 加大预读（顺序读场景）
+echo 4096 > /sys/block/sda/queue/read_ahead_kb
+# 云盘/SSD 调大队列深度
+echo 1024 > /sys/block/sda/queue/nr_requests
+```
+
+**监控**：
+```bash
+iostat -xz 1
+# 关键列：
+#  r/s w/s      每秒读写次数（IOPS）
+#  rkB/s wkB/s  每秒读写字节（吞吐）
+#  r_await w_await  平均读写延迟（ms）⭐ 最重要的指标
+#  aqu-sz       平均队列长度
+#  %util       设备利用率（HDD 上接近 100% 表示饱和；SSD 上不准确）
+```
+```bash
+pidstat -d 1                # 按进程的 IO
+iotop -o                    # 按进程实时 IO
+cat /proc/diskstats          # 原始计数
+blktrace / btt               # 块层追踪（IO 分解到各阶段）
+biosnoop（BCC）              # 每个 IO 的延迟与进程 ⭐
+biolatency（BCC）            # IO 延迟直方图 ⭐
+```
+
+**诊断"IO 慢"**：
+
+| 现象 | 可能原因 |
+|---|---|
+| `%util` 100% + `await` 高 | 设备饱和 |
+| `await` 高但 `%util` 低 | 队列排队/驱动问题/网络存储（云盘） |
+| IOPS 低但吞吐高 | 大块顺序 IO（正常） |
+| IOPS 高但吞吐低 | 小块随机 IO（HDD 的噩梦，SSD 正常） |
+| `w_await` 远高于 `r_await` | 写入放大/page cache 回写压力 |
+| 延迟有长尾（p99 高） | 队列调度/GC/写放大（SSD） |
+
+**调优手段**：
+1. **减少 IO 次数**：合并小写（应用层缓冲）、批量提交、`O_DIRECT` 避免双缓冲。
+2. **顺序化**：`read_ahead_kb` 调大、`fadvise(SEQUENTIAL)`。
+3. **异步化**：`io_uring`、`libaio`、多线程。
+4. **分离读写**（不同磁盘/设备）。
+5. **加大队列深度**（`nr_requests`、`io.max` cgroup 限制）。
+6. **`O_DIRECT`**：绕过 page cache（数据库自管理缓存，避免双份内存占用与双向拷贝）。
+7. **`fdatasync` 代替 `fsync`**（只同步数据，不同步元数据，快一点）。
+8. **RAID/条带化** 提升并发（RAID 10）。
+9. **SSD 的 TRIM**（`fstrim` / `discard`）保持性能。
+10. **云盘选型**：ESSD PL1/PL2/PL3 的 IOPS 与吞吐差异巨大；**小规格云盘的 IOPS 上限很低**是常见瓶颈。
+
+**`iostat -x` 的关键判断**：
+```bash
+iostat -xz 1 5
+# Device   r/s   w/s  rkB/s  wkB/s  rrqm/s wrqm/s  %rrqm %wrqm r_await w_await aqu-sz %util
+# sda     1200  800  48000  32000    ...      ...      ...   ...    1.20    8.50   3.2  99.5
+#   → 设备饱和（%util 99.5），读延迟 1.2ms 尚可，写延迟 8.5ms 偏高
+```
+**看 `await` 而不是只看 `%util`**：NVMe 上 `%util` 100% 但 `await` 很低是正常的（并行度高）。
+
+**`vmstat` 的 IO 相关**：
+```bash
+vmstat 1
+# bi/bo       块设备读入/写出块数（blocks/s）
+# wa          IO 等待占 CPU 时间百分比
+```
+**`wa` 高 + `bo` 高 → 写回压力**（检查 `dirty_ratio`）。', 1),
+
+('Linux', '时间,时区,NTP', 1,
+ 'Linux 的时间和时区是怎么管理的？怎么同步时间？',
+ '**两类时钟**：
+
+| 时钟 | 说明 |
+|---|---|
+| **RTC（硬件时钟）** | 主板上的电池供电时钟，关机后仍走 |
+| **系统时钟（内核）** | 开机时从 RTC 读取，之后由内核维护；由 NTP 校准 |
+
+**RTC 存的是 UTC 还是本地时间？** 两种约定：
+- **UTC（推荐）**：`timedatectl set-local-rtc 0`（`/etc/adjtime` 里 `UTC`）。操作系统按自身时区显示。
+- 本地时间：多系统（Linux + Windows 双启动）常用（Windows 默认把 RTC 当本地时间）。
+
+**时区**：
+```bash
+timedatectl                          # 查看时间/时区/NTP 状态 ⭐
+timedatectl list-timezones | grep Asia
+timedatectl set-timezone Asia/Shanghai
+ls -l /etc/localtime                 # 指向 /usr/share/zoneinfo/Asia/Shanghai
+ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime   # 手动方式
+```
+**容器里的时区**：容器默认继承宿主机内核的 UTC，需要在镜像里装 `tzdata` 并设 `TZ` 环境变量或挂载 `/etc/localtime`：
+```bash
+docker run -e TZ=Asia/Shanghai ...
+docker run -v /etc/localtime:/etc/localtime:ro ...
+```
+
+**`date` 常用**：
+```bash
+date                                 # 当前时间
+date -u                              # UTC
+date +"%Y-%m-%d %H:%M:%S"
+date -d "2026-01-01" +%s             # 转 Unix 时间戳
+date -d @1735689600                  # 时间戳转日期
+date -d "yesterday" / "+3 days" / "-1 hour"
+date -r file.txt                     # 文件的修改时间
+TZ=America/New_York date             # 临时改时区
+```
+**注意**：Unix 时间戳**与时区无关**（是 UTC 秒数）。
+
+**文件时间戳**：
+```bash
+stat file
+# atime（访问）、mtime（内容修改）、ctime（inode 变更，如权限）
+touch -d "2020-01-01" file           # 改时间
+# 挂载 noatime 可以减少 atime 更新带来的写 IO ⭐
+```
+
+**NTP 时间同步**：
+
+```bash
+# 方式 1：chrony（现代默认，RHEL8+/Ubuntu 18+）⭐
+systemctl status chronyd
+chronyc sources -v                   # 时间源与状态 ⭐
+chronyc tracking                     # 同步状态与偏差
+chronyc makestep                     # 立即跳变（大偏差时）
+cat /etc/chrony.conf
+# server ntp.aliyun.com iburst
+# makestep 1.0 3                     # 前 3 次允许跳变
+
+# 方式 2：systemd-timesyncd（轻量，桌面/简单服务器）
+timedatectl set-ntp true
+systemctl status systemd-timesyncd
+timedatectl timesync-status
+
+# 方式 3：ntpd（传统）
+systemctl status ntpd
+ntpq -p
+ntpdate -u ntp.aliyun.com            # 一次性同步（**必须先停 ntpd**）
+```
+
+**为什么用 chrony 而不是 ntpd**：
+1. **同步更快**（`iburst` 大幅缩短初始同步时间）。
+2. **对间歇性网络/VPN/虚拟机更友好**。
+3. **更好的时钟频率校正**（斜差率估计）。
+4. **支持硬件时间戳**。
+
+**`makestep` 的坑**：
+- NTP **默认不会"跳变"时间**（避免应用时间倒退），而是**缓慢调整**（slew）。
+- 如果时间偏差太大（如虚拟机挂起后），缓慢调整要很久 → 需要 `makestep`（chrony）或 `ntpd -gq` 允许大跳变。
+- **跳变会让依赖单调时间的程序出错**（如定时器、衡量耗时）→ 应用应该用**单调时钟**（`CLOCK_MONOTONIC`）测耗时。
+
+**时区与程序**：
+- **`TZ` 环境变量**覆盖系统时区（`TZ=UTC ./prog`）。
+- **`/etc/timezone`**（Debian 系）与 `/etc/localtime`（符号链接）要保持一致。
+- **JVM** 常需要显式 `-Duser.timezone=Asia/Shanghai`（否则可能读错）。
+- **数据库**：MySQL 的 `time_zone`、PostgreSQL 的 `timezone` 要显式设置（否则跨时区数据会错）。
+- **日志时间**：统一用 UTC 存储、展示时转换（否则跨时区排查很痛苦）。
+
+**排查时间问题**：
+```bash
+timedatectl                          # 总览
+date && date -u                      # 本地 vs UTC
+chronyc sources -v && chronyc tracking
+cat /etc/timezone 2>/dev/null; ls -l /etc/localtime
+hwclock --show                       # 硬件时钟
+dmesg | grep -i -E "clock|time"
+# 虚拟机时间漂移
+cat /sys/devices/system/clocksource/clocksource0/current_clocksource
+```
+
+**虚拟机的时钟问题**：
+1. **挂起/恢复后时间漂移** → 装 `qemu-guest-agent` 或 `open-vm-tools`，或用 `kvm-clock`。
+2. **时钟源**：`tsc`（快但可能不稳）、`kvm-clock`（KVM 下推荐）、`hpet`、`acpi_pm`。
+3. **NTP 在虚拟机里要更频繁同步**。
+
+**实践建议**：
+1. **所有服务器必须开 NTP**（分布式系统的时间偏差会导致日志乱序、token 失效、分布式事务异常）。
+2. **统一用 UTC 存储，展示时转换**。
+3. **用 `chrony`**（配置 `iburst` + 多个源）。
+4. **容器里显式设 `TZ`**。
+5. **测耗时用单调时钟**（`CLOCK_MONOTONIC`/`steady_clock`），不要用墙上时间（会被 NTP 调整）。
+6. **监控时钟偏差**（`chronyc tracking` 的 `System time`；Prometheus 的 `node_timex_offset_seconds` 告警）。', 1),
+
+('Linux', 'locale,编码', 2,
+ 'Linux 的 locale 和字符编码是怎么工作的？中文乱码怎么排查？',
+ '**locale** 决定了**语言、日期格式、数字格式、字符分类、排序规则、字符编码**。
+
+**分类（`LC_*`）**：
+
+| 变量 | 影响 |
+|---|---|
+| `LANG` | 默认值（其他未设时用） |
+| `LC_CTYPE` | **字符分类与编码**（乱码多与此相关） |
+| `LC_COLLATE` | 字符串排序 |
+| `LC_TIME` | 日期时间格式 |
+| `LC_NUMERIC` | 数字格式（小数点/千分位） |
+| `LC_MESSAGES` | 程序消息语言 |
+| `LC_MONETARY` | 货币格式 |
+| `LC_ALL` | **覆盖以上全部**（调试用） |
+
+**查看与设置**：
+```bash
+locale                    # 当前生效值 ⭐
+locale -a                 # 系统已生成的 locale 列表 ⭐
+localectl status          # systemd 方式
+localectl set-locale LANG=en_US.UTF-8
+```
+**持久化**：`/etc/locale.conf`（systemd）或 `/etc/default/locale`（Debian）。
+**生成**：`localedef -i zh_CN -f UTF-8 zh_CN.UTF-8`（Debian 用 `locale-gen`）。
+
+**推荐的服务器配置**：**`en_US.UTF-8`**
+```bash
+LANG=en_US.UTF-8
+LC_ALL=en_US.UTF-8
+```
+**理由**：UTF-8 编码是必须的；`en_US` 让错误信息/日期格式是英文（便于搜索与脚本解析），且大部分服务器软件默认假设 `C`/`en_US`。
+
+**⚠️ 关键坑：`LC_ALL=C` 的排序**
+```bash
+export LC_ALL=C
+ls        # 按字节序排序（大写在小写前）
+sort      # 字节序（**快得多**，大数据量排序可提速数倍）⭐
+```
+- **`LC_ALL=C` 让 `sort`/`grep`/`awk` 快 2~10 倍**（UTF-8 的分组/排序规则计算昂贵）。
+- **代价**：中文排序变成按字节序（不是拼音序）；某些正则（如 `[a-z]`）行为不同。
+- **实践**：处理大文件时 `LC_ALL=C sort`；需要正确中文排序时才用 `zh_CN.UTF-8`。
+
+**字符编码基础**：
+
+| 编码 | 说明 |
+|---|---|
+| **ASCII** | 7 位，0~127，只覆盖英文 |
+| **ISO-8859-1 / Latin-1** | 8 位，西欧字符（0~255） |
+| **GB2312 / GBK / GB18030** | 中文国标（GB18030 兼容 Unicode 全部字符） |
+| **UTF-8** | **变长（1~4 字节）**，ASCII 兼容（英文 1 字节），**事实标准** ⭐ |
+| **UTF-16/32** | 定长/半定长，Windows 内部用 |
+| **cp1252** | Windows 西欧（Latin-1 的 Windows 变体） |
+
+**UTF-8 的关键性质**：
+- **ASCII 兼容**：0~127 与 ASCII 完全相同（所以纯英文的 UTF-8 文件就是 ASCII）。
+- **中文字符 3 字节**（BMP 内），emoji 4 字节。
+- **自同步**：任何字节都能判断是不是字符首字节（高位模式）。
+- **不会出现 0x00**（所以与 C 字符串兼容）。
+
+**乱码的三种形态（重要）**：
+
+| 现象 | 原因 | 能否救回 |
+|---|---|---|
+| `?` | **写入时**目标字符集表示不了该字符，被**替换** | ❌ 不可逆，只能重新导入 |
+| `çš„å¼•ç”¨`（mojibake） | **UTF-8 字节被当成 Latin-1/cp1252 解释** | ✅ 字节还在，可转回 |
+| `ÖÐÎÄ`（GBK 被当 Latin-1） | GBK 字节被当 Latin-1 | ✅ 一般可转回 |
+
+**`?` 与 mojibake 的区别很关键**：前者字节已丢，后者只是"解释方式错了"。**判断方法是用 `file`/`hexdump`/`iconv` 看原始字节**。
+
+**排查工具**：
+```bash
+file -i file.txt                     # 猜测编码 ⭐
+file --mime-encoding file.txt
+hexdump -C file.txt | head           # 看原始字节 ⭐
+xxd file.txt | head
+iconv -f GBK -t UTF-8 file.txt       # 转码
+iconv -f UTF-8 -t GBK//TRANSLIT      # 不可表示的字符用近似字符
+iconv -l | grep -i utf               # 列出支持的编码
+chardetect file.txt                  # python chardet
+enca file.txt
+```
+
+**典型排查流程**：
+1. **`file -i`** 猜编码 → 报 `charset=unknown-8bit` 说明不是合法 UTF-8。
+2. **`hexdump -C`** 看字节：`E4 B8 AD` 是"中"的 UTF-8；`D6 D0` 是"中"的 GBK；`3F` 是 `?`（已丢）。
+3. **判断是不是 mojibake**：如果字节看起来像"UTF-8 的字节被重复编码"（`C3 A4 C2 B8...`），就是双重编码。
+4. **用 `iconv` 尝试转码**（先备份！）。
+
+**`LANG` 引起的乱码**：
+```bash
+# 表现：终端里 ls 中文显示成 ??? 或问号方块
+# 原因：LANG 不是 UTF-8（如 C 或 POSIX）
+locale                 # 看 LC_CTYPE
+export LANG=en_US.UTF-8
+```
+**服务/脚本环境里 LANG 常是 `C`**（cron、systemd、Docker），导致：
+1. 程序输出中文乱码。
+2. **Python 3 的文件默认编码是 UTF-8**（不受影响），但 **Python 2 会受影响**。
+3. **`sort`/`grep` 的字符类行为不同**。
+→ **在 cron/systemd 里显式设置 `LANG=en_US.UTF-8`**。
+
+**文件内容的编码转换**：
+```bash
+iconv -f GBK -t UTF-8 -o out.txt in.txt
+# 批量转换
+find . -name "*.txt" -exec sh -c ''iconv -f GBK -t UTF-8 "$0" > "$0.utf8" && mv "$0.utf8" "$0"'' {} \\;
+```
+**文件名本身的编码**（乱码的另一种）：
+```bash
+convmv -f GBK -t UTF-8 -r --notest /path     # 转换文件名编码 ⭐
+```
+
+**实践建议**：
+1. **统一 UTF-8 end-to-end**（文件、数据库、终端、HTTP 响应头）。
+2. **服务器设 `LANG=en_US.UTF-8`**（必须有 UTF-8）。
+3. **cron/systemd/容器里显式设 `LANG`/`LC_ALL`**。
+4. **数据库**：库、表、列、连接四处字符集要一致（MySQL 用 `utf8mb4`）。
+5. **HTTP**：响应头带 `Content-Type: text/html; charset=utf-8`。
+6. **处理大文件时用 `LC_ALL=C`** 提速（注意排序语义变化）。
+7. **看到 `?` 先别急着转码** —— 先确认是"写入时丢失"还是"解释错误"，两者的解法完全不同。
+8. **换行符**：Windows `\\r\\n` vs Unix `\\n` → `dos2unix`/`unix2dos` 或 `sed -i ''s/\\r$//''`。', 1),
+
+('Linux', '软链接,PATH,hook', 2,
+ '`LD_PRELOAD` 是什么？为什么不建议长期用它？',
+ '**`LD_PRELOAD`** 让动态链接器在加载**所有其他**动态库之前先加载指定的库，从而**符号覆盖**后续同名符号。
+
+```bash
+LD_PRELOAD=/path/libmymalloc.so ./prog
+```
+
+**原理**：动态链接器按顺序解析符号，先加载的库里的定义**优先命中** → 可以"劫持"（hook）函数。
+
+**典型用途**：
+
+1. **替换分配器**（最常见）：
+```bash
+LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 ./myapp
+LD_PRELOAD=/usr/lib/libtcmalloc.so ./myapp
+```
+2. **mock 测试**：拦截 `time()`、`rand()`、`open()` 让测试可复现。
+3. **性能统计**：包一层 `malloc`/`free` 统计分配。
+4. **调试**：
+```bash
+LD_PRELOAD=/lib/x86_64-linux-gnu/libSegFault.so ./prog    # 崩溃时打印栈
+LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdbuf.so stdbuf -o0 ./prog   # 改缓冲
+```
+5. **修改已有二进制行为**（无源码，不想 `patchelf`）。
+
+**写一个 hook 的骨架**：
+```c
+#define _GNU_SOURCE
+#include <dlfcn.h>
+#include <stdio.h>
+
+static void* (*real_malloc)(size_t) = NULL;
+
+void* malloc(size_t n) {
+    if (!real_malloc) real_malloc = dlsym(RTLD_NEXT, "malloc");   // 找下一个定义
+    void* p = real_malloc(n);
+    // ... 记录
+    return p;
+}
+```
+```bash
+gcc -shared -fPIC -o libhook.so hook.c -ldl
+LD_PRELOAD=./libhook.so ./prog
+```
+**关键：`dlsym(RTLD_NEXT, "malloc")`** 绕过自己，找到真实的 `malloc`（否则无限递归）。
+
+**为什么"不建议长期用"**：
+
+1. **安全风险**：
+   - `LD_PRELOAD` 是经典的**提权攻击面** —— 任何能设置环境变量的地方，攻击者就能注入代码。
+   - 因此 **`LD_PRELOAD` 对 SUID/SGID 程序会被动态链接器忽略**（`AT_SECURE`），但配置不当（如 `sudo` 的 `env_keep`）就危险。
+2. **难以预测的影响范围**：
+   - **影响所有子进程**（包括 shell、git、编辑器），一处设置全环境生效，容易造成"某工具莫名崩溃"。
+   - 与程序的其它库**冲突**（同一符号被判两个）。
+3. **ABI 脆弱**：
+   - 依赖内部符号/结构体布局，库升级后 hook 就失效或崩溃。
+4. **可观测性差**：
+   - 出问题时报错信息完全看不出是 `LD_PRELOAD` 引起的，排查成本高。
+5. **不能被静态链接的程序使用**。
+6. **容器里可能被 seccomp/权限限制**（且 `LD_PRELOAD` 不会进入容器，除非显式传递）。
+
+**更稳妥的替代**：
+| 需求 | 更好的做法 |
+|---|---|
+| 换分配器 | 编译时链接（`-ljemalloc`）或配置系统级 `malloc` 替换（glibc 的 `malloc` 钩子已废弃，但可在链接时指定） |
+| 全局替换分配器 | **编译/链接期指定**，或 `systemd` 的 `Environment=LD_PRELOAD=...`（限定该服务） |
+| hook 函数 | **eBPF uprobe**（无侵入、可观测、可随时关闭）⭐ |
+| 修改二进制 | `patchelf`（改 rpath/依赖）、重新编译 |
+| 测试 mock | 依赖注入、`--wrap` 链接选项、`faketime`（专门工具） |
+
+**限定作用范围的技巧**：
+```bash
+# 只对一个命令生效（推荐）
+LD_PRELOAD=/path/lib.so ./cmd
+
+# systemd 服务级别（不污染全局）
+# [Service]
+# Environment=LD_PRELOAD=/path/lib.so
+
+# 避免 LD_PRELOAD 泄漏到子进程
+env -u LD_PRELOAD cmd
+# 或（GNU coreutils）仅对指定变量生效
+```
+
+**`/etc/ld.so.preload`**：系统级 `LD_PRELOAD`（内容是一个路径列表）。**极其危险** —— 一旦里面的库有问题，**全系统所有动态程序都无法启动**（连 `ls` 都跑不了，要用救援模式修复）。**不要用它**，除非你有非常明确的理由并且知道怎么救。
+
+**相关工具（正规军）**：
+| 工具 | 用途 |
+|---|---|
+| `LD_DEBUG=libs,bindings` | 动态链接器调试（看符号绑定来源） |
+| `ltrace` | 跟踪库函数调用 |
+| `bpftrace` uprobe | **推荐的 hook 方式** |
+| `faketime` | 专门的"伪造时间"工具 |
+| `jemalloc` 的 `MALLOC_CONF` | 分配器参数（无需 hook） |
+
+**实践建议**：
+1. **不要写进 shell 的全局配置文件**（`/etc/profile`、`~/.bashrc`）。
+2. **优先用 `systemd` 的 `Environment=` 限定到单个服务**。
+3. **需要全局替换分配器**时，考虑在**链接时**指定或改容器基础镜像。
+4. **调试用一次就撤**，不要长期留。
+5. **`LD_PRELOAD` 对静态链接程序无效**（无动态链接器）。
+6. **容器里要用 `--env LD_PRELOAD=...` 显式传**（宿主的不继承）。', 1),
+
+('Linux', 'rsync,备份', 2,
+ '`rsync` 怎么用？增量备份怎么实现？',
+ '**`rsync`** 是"**远程/本地文件同步**"工具，核心优势是**增量传输**（只传差异）与丰富的过滤规则。
+
+**三种工作模式**：
+```bash
+# 1. 本地
+rsync -av /src/ /dst/
+# 2. 通过 SSH（推荐）
+rsync -avz /src/ user@host:/dst/
+rsync -avz user@host:/src/ /dst/
+# 3. rsync daemon（rsync://，需要服务端跑 rsyncd）
+rsync -av rsync://host/module/
+```
+
+**⚠️ 最经典的坑：结尾斜杠**
+```bash
+rsync -a /src/  /dst/     # 同步 src 的**内容** → /dst/file
+rsync -a /src   /dst/     # 创建 /dst/src/ 并同步内容 → /dst/src/file
+```
+**带斜杠 = 同步目录内容；不带 = 把目录本身放进去。** 这是 rsync 事故的头号来源。
+
+**常用选项**：
+
+| 选项 | 含义 |
+|---|---|
+| `-a` | **归档模式**（= `-rlptgoD`：递归、保留链接/权限/时间/属组/属主/设备文件）⭐ |
+| `-v` | 详细输出 |
+| `-z` | 传输时压缩（CPU 换带宽；局域网可不用） |
+| `-P` | = `--partial --progress`（断点续传 + 进度）⭐ |
+| `-h` | 人类可读大小 |
+| `-n` / `--dry-run` | **干跑，不实际改动** ⭐（**重要操作前必做**） |
+| `--delete` | 删除目标端多余文件（**做成镜像**）⚠️ 危险 |
+| `--exclude` / `--include` / `--exclude-from` | 过滤规则 |
+| `--exclude-from=file` | 从文件读规则 |
+| `-e ssh` | 指定远程 shell（如换端口：`-e "ssh -p 2222"`） |
+| `--bwlimit=1000` | 限速（KB/s） |
+| `--password-file` | 免交互（daemon 模式） |
+| `--link-dest` | **硬链接增量备份** ⭐⭐ |
+| `--backup --backup-dir=` | 保留被覆盖/删除的文件 |
+| `--checksum` | 按校验和判断（默认按大小+时间） |
+| `--numeric-ids` | 不映射用户/组 |
+| `--sparse` | 稀疏文件优化 |
+| `-x` | 不跨文件系统 |
+| `--chown=user:group` | 强制指定属主 |
+
+**典型用法**：
+```bash
+# 安全迁移（先干跑）
+rsync -avhn --delete /src/ user@host:/dst/
+# 确认无误后去掉 -n
+
+# 带进度 + 续传
+rsync -avzP file user@host:/path/
+
+# 排除规则
+rsync -av --exclude=''*.log'' --exclude=''.git/'' --exclude-from=.gitignore /src/ /dst/
+
+# 只同步特定文件
+rsync -av --include=''*/'' --include=''*.py'' --exclude=''*'' /src/ /dst/
+
+# 限速（避免打满带宽）
+rsync -avz --bwlimit=5000 /data/ host:/backup/
+
+# 保持源目录不被修改（--delete 会删目标多余文件）
+rsync -av --delete /src/ /mirror/     # 做成镜像 ⚠️ 源删了目标也删
+```
+
+**增量备份（`--link-dest` 硬链接快照）**——**rsync 最强大的用法**：
+
+```bash
+#!/bin/bash
+# 每天一份快照，未变化的文件用硬链接，几乎不占额外空间
+SRC=/data/
+DEST=/backup
+DATE=$(date +%Y%m%d)
+LATEST=$(ls -1d $DEST/*/ 2>/dev/null | tail -1)
+
+rsync -av --delete \\
+      --link-dest="$LATEST" \\
+      "$SRC" "$DEST/$DATE/"
+
+# 清理 30 天前的
+find $DEST -maxdepth 1 -type d -mtime +30 -exec rm -rf {} +
+```
+**原理**：未变化的文件在 `$DATE/` 里创建**硬链接**指向上一份快照的同一 inode → **多份快照共享数据块，只占一份空间**（变化的部分才占新空间）。这是"**时间机器式备份**"，也是 `rsync` 比 `cp -r` 更有价值的场景。
+
+**恢复**：直接 `cp -a` 或 `rsync -a $DEST/20261009/ /restore/`（硬链接会被 `cp -a` 保留或展开，视选项）。
+
+**与其它工具对比**：
+
+| 工具 | 特点 |
+|---|---|
+| `scp` | 简单，**无法增量**，大文件传一半断了要从头来 |
+| `rsync` | **增量、可续传、过滤、镜像、硬链接快照** ⭐ |
+| `cp -r` | 本地，无增量 |
+| `tar + ssh` | 适合一次性打包传输 |
+| `restic`/`borgbackup` | **去重 + 加密 + 增量**的现代备份工具 ⭐（推荐用于重要数据） |
+| `rdiff-backup` | 基于 rsync 的增量备份 |
+
+**`scp` 已被 rsync 取代**：`scp` 的协议较老且慢（新实现用 SFTP），`rsync -zP` 更好。
+
+**rsync daemon 模式**（`/etc/rsyncd.conf`）：
+```ini
+[backup]
+path = /srv/backup
+read only = no
+auth users = backup
+secrets file = /etc/rsyncd.secrets
+hosts allow = 192.168.1.0/24
+```
+```bash
+systemctl enable --now rsyncd
+rsync -av --password-file=/etc/rsync.pass backup@host::backup/ /local/
+```
+
+**性能调优**：
+| 场景 | 优化 |
+|---|---|
+| 大量小文件 | 用 `tar` 打包后传输（减少元数据往返），或用 `--whole-file` |
+| 大文件 | 用 `-z`（若带宽受限）、`--partial` 续传 |
+| 高延迟链路 | 减少往返（rsync 的算法对延迟敏感） |
+| 文件多且变化少 | 保持默认（增量比对），但首轮可能很慢 |
+| 排除无关目录 | 用 `--exclude` 大幅减少扫描（如 `.git`、`node_modules`、缓存） |
+
+**备份的关键原则**：
+1. **`--dry-run` 先看**（`-n`），**确认后再执行**。
+2. **`--delete` 要非常小心**（源端误删会同步到备份）。
+3. **备份不是只做一次**：脚本化 + 定时（cron/systemd timer）。
+4. **一定要验证可恢复**（定期演练恢复流程）。
+5. **考虑 3-2-1 原则**（3 份副本、2 种介质、1 份异地）。
+6. **加密**（重要数据用 `restic`/`borg` 或加密后再传）。
+7. **监控备份结果**（失败要告警，别让"以为有备份"变成事故）。', 1),
+
+('Linux', 'SSH,隧道,免密', 2,
+ 'SSH 的原理是什么？端口转发怎么做？',
+ '**SSH（Secure Shell）**提供加密的远程登录与隧道能力，默认端口 22。
+
+**连接过程（简化）**：
+```
+1. TCP 连接
+2. 协商协议版本与算法（密钥交换、加密、MAC、压缩）
+3. 密钥交换（DH/ECDH）→ 协商出会话密钥 + 验证服务器主机密钥
+4. 用户认证（公钥 / 密码 / keyboard-interactive / GSSAPI）
+5. 认证通过 → 建立会话通道（可多个）
+```
+
+**主机密钥验证**：
+- 服务器有自己的主机密钥（`/etc/ssh/ssh_host_*_key`）。
+- 客户端首次连接时把指纹存到 `~/.ssh/known_hosts`。
+- **`WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!`** 出现时：
+  - 服务器重装/换了密钥（正常）→ 删掉旧条目：
+    `ssh-keygen -R host` 或 `sed -i ''/host/d'' ~/.ssh/known_hosts`
+  - **也可能是中间人攻击** → 通过带外渠道核对指纹（`ssh-keyscan -t ed25519 host | ssh-keygen -lf -`）。
+
+**免密登录（公钥认证）**：
+```bash
+# 1. 生成密钥对
+ssh-keygen -t ed25519 -C "me@example.com"        # ed25519 现代首选 ⭐
+# 老环境兼容：ssh-keygen -t rsa -b 4096
+# 2. 上传公钥
+ssh-copy-id user@host
+# 或手工
+cat ~/.ssh/id_ed25519.pub | ssh user@host ''mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys''
+# 3. 免密注意权限（否则 sshd 拒绝）
+chmod 700 ~/.ssh; chmod 600 ~/.ssh/authorized_keys; chmod 600 ~/.ssh/id_ed25519
+chmod g-w,o-w ~            # 家目录不能被组/其他写（StrictModes）
+```
+
+**`~/.ssh/config`（强烈推荐）**：
+```
+Host blog
+    HostName lazycat.cc
+    User root
+    Port 2222
+    IdentityFile ~/.ssh/id_ed25519
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+    Compression yes
+
+Host *
+    AddKeysToAgent yes
+    IdentitiesOnly yes
+```
+之后 `ssh blog` 即可。
+
+**`ssh-agent`（避免重复输 passphrase）**：
+```bash
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_ed25519
+ssh-add -l
+```
+
+**端口转发（隧道）**：
+
+| 类型 | 命令 | 用途 |
+|---|---|---|
+| **本地转发（-L）** | `ssh -L 8080:localhost:80 user@jump` | 把**本地** 8080 转到**远端能访问的** localhost:80 |
+| **远程转发（-R）** | `ssh -R 8080:localhost:80 user@public` | 把**远端** 8080 转到**本地** 80（内网穿透）⭐ |
+| **动态转发（-D）** | `ssh -D 1080 user@host` | **SOCKS5 代理**（浏览器配置 127.0.0.1:1080 即可翻墙/内网访问）⭐ |
+| **跳板（-J）** | `ssh -J jumpuser@jump target` | 通过跳板机连接（ProxyJump）⭐ |
+
+**`-L` 示意图**：
+```
+本地 8080 ──SSH 加密隧道──▶ jump 主机 ──▶ 目标 host:port
+ssh -L 8080:db.internal:3306 user@jump
+# 之后连本地 127.0.0.1:8080 就等于连 db.internal:3306
+```
+
+**`-R`（内网穿透）示意图**：
+```
+public 主机 8080 ──SSH 隧道──▶ 本地 80
+ssh -R 8080:localhost:80 user@public
+# 别人访问 public:8080 就能访问你本地的 80
+# 需要 public 的 sshd 有 GatewayPorts yes（否则只绑 127.0.0.1）
+```
+
+**多层跳转**：
+```bash
+ssh -J a@host1,b@host2 c@host3
+# 或
+ssh -o ProxyCommand="ssh -W %h:%p user@jump" user@target
+```
+
+**保持连接（防止断开）**：
+```bash
+# 客户端（~/.ssh/config）
+ServerAliveInterval 60
+ServerAliveCountMax 3
+# 服务端（/etc/ssh/sshd_config）
+ClientAliveInterval 60
+ClientAliveCountMax 3
+TCPKeepAlive yes
+```
+
+**常用工具与技巧**：
+
+| 场景 | 命令 |
+|---|---|
+| 执行远程命令 | `ssh host ''df -h''` |
+| 传文件 | `rsync -avzP dir/ host:/dst/`（首选）；`scp file host:/path` |
+| 复用连接（快） | `~/.ssh/config` 里 `ControlMaster auto` + `ControlPath ~/.ssh/cm-%r@%h:%p` ⭐ |
+| 反向 DNS 慢 | sshd 里 `UseDNS no` |
+| 调试 | `ssh -vvv user@host` ⭐ |
+| 看服务器指纹 | `ssh-keyscan -t ed25519 host` |
+| 强制某认证方式 | `ssh -o PreferredAuthentications=publickey` |
+| 禁止密码登录 | sshd: `PasswordAuthentication no` |
+
+**服务端加固（`/etc/ssh/sshd_config`）**：
+```
+Port 2222                    # 换端口（降低扫描噪音，非安全手段）
+PermitRootLogin no           # 禁止 root 直登 ⭐
+PasswordAuthentication no    # 只用密钥 ⭐
+PubkeyAuthentication yes
+PermitEmptyPasswords no
+MaxAuthTries 3
+LoginGraceTime 30
+AllowUsers alice deploy      # 白名单
+X11Forwarding no
+UseDNS no
+```
+**改完要先语法检查再 reload**（否则可能把自己关在门外）：
+```bash
+sshd -t                      # 语法检查 ⭐
+systemctl reload sshd        # reload 而不是 restart（保持现有连接）
+```
+> **务必保留一个已登录的会话**，改配置后**用新会话测试**，确认能登再关旧的。
+
+**SSH 的性能提升**：
+1. **算法选择**：`chacha20-poly1305` 或 `aes128-gcm`（快）；`KexAlgorithms curve25519-sha256`。
+2. **关闭压缩**（局域网/已压缩数据）：`Compression no`（压缩反而慢）。
+3. **关闭 DNS 反查**：`UseDNS no`（登录慢的经典原因）。
+4. **`ControlMaster` 复用**（省略密钥交换）。
+5. **`mosh`**：移动/高延迟网络下比 SSH 体验好得多（本地回显 + UDP）。
+
+**常见问题**：
+| 现象 | 原因 |
+|---|---|
+| `Permission denied (publickey)` | 权限不对（`~/.ssh` 需 700）、公钥没传对、`AllowUsers` 限制、SELinux |
+| 登录很慢（十几秒） | `UseDNS yes` + DNS 慢；或 GSSAPI 超时 |
+| `Connection refused` | sshd 没跑/端口不对/防火墙/安全组 |
+| `Host key verification failed` | `known_hosts` 里有旧条目 → `ssh-keygen -R` |
+| `Too many authentication failures` | agent 里密钥太多 → `IdentitiesOnly yes` |', 1),
+
+('Linux', '软件编译,make', 2,
+ '在 Linux 上从源码编译安装软件的流程是什么？有哪些坑？',
+ '**经典五步**：
+```bash
+./configure --prefix=/usr/local/myapp   # 1. 检测环境、生成 Makefile
+make -j$(nproc)                         # 2. 编译 ⭐
+sudo make install                       # 3. 安装
+# 4. 配置环境（PATH/LD_LIBRARY_PATH/ldconfig）
+# 5. 验证
+```
+
+**各步骤说明**：
+
+**1. `./configure`**
+- 由 **Autotools**（`autoconf`/`automake`/`libtool`）生成，检测编译器、头文件、库、系统特性。
+- 常用参数：
+```bash
+./configure --prefix=/usr/local        # 安装前缀（默认 /usr/local）
+            --bindir=/usr/local/bin
+            --sysconfdir=/etc
+            --with-openssl=/usr/local/ssl
+            --enable-debug / --disable-shared / --enable-static
+            --host=x86_64-linux-gnu    # 交叉编译
+```
+- **看到 `checking for xxx... no` 就是缺依赖** → 装 `-devel`/`-dev` 包。
+- `configure` 的结果在 `config.log`（报错时**先看它**）。
+
+**2. `make`**
+```bash
+make -j$(nproc)             # 并行编译（注意内存：某些大文件并行会 OOM）
+make -j4
+make V=1                    # 详细输出（看实际编译命令）
+make -n                     # 干跑（只看要做什么）
+```
+- **`make -j` 导致 OOM** 时降并发（`-j2`）或加 swap。
+- 一些项目用 **CMake / Meson / Ninja / Cargo** 而非 autotools：
+```bash
+# CMake
+mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . -j$(nproc)
+cmake --install .
+
+# Meson
+meson setup build --prefix=/usr/local
+ninja -C build
+ninja -C build install
+
+# Rust / Go
+cargo build --release; go build
+```
+
+**3. `make install`**
+- 会往 `${prefix}` 写文件。**用 `make -n install` 先看它会装到哪**（避免污染系统）⭐。
+- **`DESTDIR`** 用于打包（装到临时目录）：
+```bash
+make install DESTDIR=/tmp/pkgroot
+```
+
+**4. 让系统能找到**
+```bash
+# 可执行文件
+export PATH=/usr/local/bin:$PATH            # 持久化写 /etc/profile.d/xxx.sh
+
+# 动态库（关键！）
+sudo ldconfig                              # 重建 /etc/ld.so.cache ⭐
+# 或显式配置目录
+echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/local.conf
+sudo ldconfig -v | grep mylib
+
+# pkg-config（供其他程序找到你）
+export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
+```
+
+**常见错误**：
+
+| 报错 | 原因/解决 |
+|---|---|
+| `configure: error: C compiler cannot create executables` | 缺编译器：`dnf groupinstall "Development Tools"` / `apt install build-essential` |
+| `xxx.h: No such file` | 缺开发包：`apt install libssl-dev` / `dnf install openssl-devel` |
+| `cannot find -lxxx` | 缺库或库路径不对（用 `-L` / `ldconfig` / `LIBRARY_PATH`） |
+| `undefined reference to` | 链接顺序问题（**被依赖的库要放后面**）、缺库、C++ 符号（用 `extern "C"` 或加 `-lstdc++`） |
+| `error while loading shared libraries: libxxx.so` | `ldconfig` 没跑 / `LD_LIBRARY_PATH` 没设 / 装了但路径不在搜索路径 |
+| `fatal error: Killed`（编译时） | **OOM**（`-j` 太大）→ 降并发或加内存/swap |
+| `No space left on device` | 磁盘满（编译中间文件很大） |
+| 版本冲突（系统已有旧版） | 装到独立 `--prefix`（如 `/opt/app-1.2`），用环境变量切换 |
+
+**`-devel` / `-dev` 包**：
+- 运行时库是 `libssl`，**编译需要 `libssl-dev`/`openssl-devel`**（头文件 + `.so` 符号链接 + pkg-config 文件）。
+- 这是"为什么编译报缺头文件"的最常见答案。
+
+**为什么"不要随便 `./configure && make install` 到系统目录"**：
+1. **与包管理器冲突**：包管理器不知道你手工装的文件，升级时可能覆盖或冲突。
+2. **可能覆盖系统库** → 导致整个系统工具崩溃（尤其升级 glibc/openssl 时）⭐。
+3. **卸载困难**（`make uninstall` 不一定可靠）。
+4. **难以复现**（新机器要重来一遍）。
+
+**推荐做法**：
+1. **优先用包管理器**；需要新版/自定义参数时用：
+   - **官方仓库的 RPM/DEB**（如 `nginx.org`、`packages.elastic.co`）
+   - **容器**（最隔离）
+   - **`--prefix=/opt/app-<version>`** 独立目录 + 显式环境变量
+2. **用 `checkinstall`** 把 `make install` 变成装包（可被包管理器管理）：
+```bash
+sudo checkinstall make install
+```
+3. **用 `stow`** 管理 `/usr/local/stow/*` 的软链接。
+4. **绝对不要**手工 `make install` 到 `/usr`、`/lib` 覆盖系统库。
+
+**交叉编译**：
+```bash
+./configure --host=aarch64-linux-gnu --build=x86_64-linux-gnu --prefix=/opt/arm
+```
+
+**编译优化选项**：
+```bash
+CFLAGS="-O2 -march=native -pipe" CXXFLAGS="-O2 -march=native" ./configure
+# -march=native 针对本机 CPU 优化（不能跨机器分发）
+# -pipe 减少临时文件
+```
+> ⚠️ **`-march=native` 编译的二进制不能在别的 CPU 上跑**（`Illegal instruction`）。**只在本地使用时才用**。
+
+**并行/分布式编译**：
+```bash
+make -j$(nproc)                     # 本地并行
+# ccache（缓存编译结果，重复编译提速数倍）⭐
+sudo dnf install ccache
+export CC="ccache gcc" CXX="ccache g++"
+# 或全局把 /usr/lib64/ccache 加进 PATH
+ccache -s                           # 统计命中率
+# distcc（跨机器分布式编译）
+# buildbox / sccache（Rust/云缓存）
+```
+
+**检查依赖与文档**：
+```bash
+cat README / INSTALL                # 大多数项目有安装说明 ⭐
+cat configure --help | less
+pkg-config --modversion openssl     # 检查库版本
+ldd ./binary                        # 检查运行时依赖
+```
+
+**实践建议**：
+1. **先 `cat INSTALL` / `README.md`**（不同项目流程不同）。
+2. **`./configure` 失败先看 `config.log`**。
+3. **缺头文件 = 缺 `-dev`/`-devel` 包**。
+4. **`make -j` 报 Killed = OOM**，降并发。
+5. **`ldconfig` + `-dev` 包 + `pkg-config`** 是三方库集成的三要点。
+6. **生产环境优先容器/包**，源码编译只在前两者不可行时使用，且装到独立 prefix。', 1),
+
+('Linux', 'keepalived,VIP,高可用', 3,
+ '`keepalived` 和 VRRP 是怎么实现高可用的？',
+ '**`keepalived`** 是 Linux 上实现**高可用（HA）** 的常用工具，核心是 **VRRP 协议** + **健康检查**。
+
+**VRRP（Virtual Router Redundancy Protocol）**：
+- 一组机器组成一个**虚拟路由器**，共享一个**虚拟 IP（VIP）**。
+- 一台是 **MASTER**（持有 VIP），其余是 **BACKUP**。
+- MASTER 周期性发 VRRP 通告（组播/单播）；BACKUP 收不到就接管 VIP。
+- **优先级（priority）** 决定谁当 MASTER（大者胜，默认 100）。
+
+**典型拓扑（主备）**：
+```
+客户端 → VIP 1.2.3.4
+            │
+    ┌───────┴────────┐
+MASTER(1.2.3.5)   BACKUP(1.2.3.6)
+  绑定 VIP          待命，收不到通告则接管 VIP
+```
+
+**配置（`/etc/keepalived/keepalived.conf`）**：
+
+```ini
+vrrp_instance VI_1 {
+    state MASTER                 # MASTER / BACKUP
+    interface eth0
+    virtual_router_id 51         # 同一组必须一致（0-255）
+    priority 100                 # 越大越优先
+    advert_int 1                 # 通告间隔（秒）
+    authentication {
+        auth_type PASS
+        auth_pass 12345678
+    }
+    unicast_src_ip 1.2.3.5       # 用单播（云环境常禁组播）
+    unicast_peer { 1.2.3.6 }
+    virtual_ipaddress {
+        1.2.3.4/24 dev eth0
+    }
+}
+
+# 健康检查：nginx 挂了就降优先级/切换
+vrrp_script chk_nginx {
+    script "/usr/bin/killall -0 nginx"
+    interval 2
+    weight -20                   # 失败时优先级 -20
+    fall 2                       # 连续 2 次失败才算失败
+    rise 2                       # 连续 2 次成功才算恢复
+}
+
+vrrp_instance VI_1 {
+    # ...
+    track_script {
+        chk_nginx
+    }
+}
+```
+
+```bash
+systemctl enable --now keepalived
+ip addr show eth0                     # 看 VIP 是否在本机 ⭐
+journalctl -u keepalived -f
+```
+
+**工作原理细节**：
+1. MASTER 每 `advert_int` 秒发 VRRP 通告。
+2. BACKUP 在 `3 * advert_int + skew` 内没收到通告 → 认为 MASTER 挂了 → **接管 VIP**（发免费 ARP 通知交换机/网关更新 MAC 表）。
+3. **原 MASTER 恢复后**：
+   - 若 `state MASTER` 且优先级最高 → **抢回**（可能造成抖动）。
+   - 设置 **`nopreempt`** 让恢复后不抢回（更稳定）。
+4. **VIP 漂移速度**：通常 1~3 秒（取决于 `advert_int`）。
+
+**健康检查**：
+- `vrrp_script` 执行脚本，退出码 0 为成功。
+- `weight` 正数表示成功时加分，负数表示失败时减分。
+- 也可用 **`MISC_CHECK`** 做 HTTP/TCP 检查。
+- 检查的粒度要合理（太敏感会频繁切换，太迟钝会长期不可用）。
+
+**常见架构**：
+| 架构 | 说明 |
+|---|---|
+| **主备（active-passive）** | 一台干活，一台待命。资源利用率 50%，但简单可靠 |
+| **主主（active-active）** | 两个 VIP，各挂一个，互为主备（**注意有状态的连接**） |
+| **LVS + keepalived** | keepalived 同时管理 VIP 和 LVS 规则（`virtual_server` 段）⭐ |
+| **多级（LVS → Nginx → App）** | 逐层 HA |
+
+**LVS 集成（负载均衡场景）**：
+```ini
+virtual_server 1.2.3.4 80 {
+    delay_loop 6
+    lb_algo rr               # 轮询 / wrr / lc / sh
+    lb_kind DR               # Direct Routing（性能最好）
+    protocol TCP
+    real_server 10.0.0.10 80 {
+        weight 1
+        HTTP_GET {
+            url { path /health  status_code 200 }
+            connect_timeout 3
+            nb_get_retry 3
+            delay_before_retry 3
+        }
+    }
+    real_server 10.0.0.11 80 { ... }
+}
+```
+
+**云环境注意**：
+| 问题 | 说明 |
+|---|---|
+| **组播被禁** | 云 VPC 通常禁 VRRP 组播 → **必须用 `unicast_peer`** ⭐ |
+| **VIP 不在子网内** | 传统 VRRP 要求 VIP 与节点同子网；云上可能需**辅助 IP/弹性 IP** |
+| **云厂商的 HA 方案** | 很多云提供"高可用虚拟 IP（HAVIP）"，**由云平台做 VIP 漂移**，不需要自己跑 keepalived |
+| **安全组/网络 ACL** | 要放行 VRRP 协议（112）或单播端口 |
+| **`arp_ignore`/`arp_announce`** | 做 LVS DR 时必须调（否则 ARP 冲突） |
+
+**LVS DR 模式的 ARP 参数**（RealServer 上必配）：
+```bash
+# 只回答目标 IP 是自己网卡 IP 的 ARP 请求
+echo 1 > /proc/sys/net/ipv4/conf/all/arp_ignore
+echo 2 > /proc/sys/net/ipv4/conf/all/arp_announce
+```
+
+**其它 HA 方案对比**：
+| 方案 | 特点 |
+|---|---|
+| **keepalived** | 独立工具，轻量，VRRP + 健康检查 |
+| **Pacemaker + Corosync** | 功能强大（资源组、约束、STONITH 隔离），复杂 |
+| **云厂商 HAVIP** | 托管，省心 |
+| **DNS 轮询** | 简单但无健康检查、有 TTL 缓存问题 |
+| **代理层（nginx/haproxy）** | 应用层高可用，可做 7 层路由 |
+
+**关键实践（重要）**：
+1. **必须解决"脑裂"（split-brain）**：网络分区时两台都以为自己是 MASTER → **同时绑 VIP → IP 冲突**。
+   - 缓解：**额外的心跳线**（独立网络/串口）、Pacemaker 的 **STONITH**（直接断电对端）、云上的仲裁。
+   - keepalived 的 VRRP 本身**不能完全避免脑裂**，只适合简单场景。
+2. **健康检查要覆盖真实依赖**（不只是"进程在"，而是"能响应请求"）。
+3. **防抖动**：`fall`/`rise`、`nopreempt`。
+4. **VIP 切换后要通知下游**（免费 ARP 可能不被某些云网络正确处理）。
+5. **应用要无状态或共享状态**（否则切过去后 session 丢失）→ 用 Redis/DB 存 session。
+6. **监控 VIP 归属**（`ip addr` 检查、脚本告警），否则"VIP 掉到没人管的机器上"可能长期不被发现。
+7. **测试切换**（定期演练，包括**主备都重启**的场景）。', 1),
+
+('Linux', '防火墙放行,排查端口不通', 2,
+ '服务端口不通，你会怎么一步步排查？',
+ '**这是一个非常高频的实战题。按"从下到上、由近及远"的固定顺序排查**：
+
+**第 0 步：确认现象与范围**
+- 是本机访问不通，还是外部访问不通？
+- 是所有端口都不通，还是只有某个端口？
+- 换台机器/换个网络试（排除客户端问题）。
+- 报什么错：`Connection refused`（有响应但没人监听）、`Connection timed out`（被丢包/防火墙）、`No route to host`（路由/ARP）。
+
+**第 1 步：服务是否在监听？（最常见）**
+```bash
+ss -lntp | grep :8080
+# 关键：看监听地址！
+#   0.0.0.0:8080   → 所有网卡都能访问 ✅
+#   127.0.0.1:8080 → **只有本机能访问** ❌ 外部连不上
+```
+- **只绑 `127.0.0.1` 是"外部不通"的头号原因**（应用配置问题，如 `bind 127.0.0.1`、`listen localhost`）。
+- 检查应用日志：`journalctl -u svc -n 100`、应用自己的日志文件。
+
+**第 2 步：本机能不能连？（区分"应用"与"网络"）**
+```bash
+curl -v http://127.0.0.1:8080/           # 本机 loopback
+curl -v http://<本机内网IP>:8080/         # 走网卡
+nc -zv 127.0.0.1 8080                    # 只测 TCP 连通 ⭐
+nc -zvu 127.0.0.1 8080                   # UDP
+```
+- **loopback 通、网卡 IP 不通** → 应用只绑了 127.0.0.1（回到第 1 步）。
+- **两者都不通** → 应用没起来/端口不对/进程挂了。
+
+**第 3 步：本机防火墙**
+```bash
+iptables -L -n -v --line-numbers
+iptables -t nat -L -n -v
+nft list ruleset
+firewall-cmd --list-all                  # firewalld
+firewall-cmd --state
+```
+- **常见坑**：`INPUT` 默认策略是 `DROP`，但忘了放行新端口。
+- **`DOCKER-USER` 链**：Docker 会插入规则，你的自定义规则可能被覆盖。
+- **临时验证**：`iptables -I INPUT 1 -p tcp --dport 8080 -j ACCEPT` 试一下。
+
+**第 4 步：云安全组（**最常被忽略**）**
+- **云厂商的安全组在主机之前生效**（流量根本没到达主机）。
+- **排查特征**：`tcpdump` 在主机上**抓不到任何包** → 说明被上游拦了。
+- 检查：云控制台的**入站规则**、**网络 ACL**（子网级）、**安全组绑定的网卡**。
+- **这是"iptables 全开但还是不通"的答案**。
+
+**第 5 步：抓包确认包到没到（决定性证据）** ⭐
+```bash
+# 在服务端抓
+tcpdump -i any -nn port 8080
+# 同时从客户端发起请求
+nc -zv <server> 8080
+```
+| 抓包结果 | 结论 |
+|---|---|
+| **看到 SYN，也看到 SYN-ACK 发出** | 服务端正常，问题在**客户端或回程路径** |
+| **看到 SYN，没有 SYN-ACK** | 服务端防火墙丢弃，或服务没监听 |
+| **完全抓不到 SYN** | 被**上游（安全组/路由器/中间网络）** 拦截 |
+| **看到 SYN 被 RST** | 端口没监听（但主机可达） |
+
+**第 6 步：路由与中间网络**
+```bash
+ping <server>                      # 基本连通
+traceroute <server> / mtr <server> # 路径在哪断
+ip route get <server>              # 走哪条路由
+ping -M do -s 1472 <server>        # MTU 测试（MTU 问题会导致"小包通、大包卡"）⭐
+```
+- **MTU 问题**：TCP 握手成功但**传输大数据时卡住**（大包被丢且 ICMP 被过滤）→ 典型症状是"能连上但下载不动"。
+- **回程路由**：多网卡机器可能"去程走 A 网卡、回程走 B 网卡" → 用 `tcpdump` 在两张网卡上都抓。
+
+**第 7 步：应用层与代理**
+```bash
+# 反向代理（nginx/haproxy）配置
+nginx -T | grep -A5 "listen\\|proxy_pass"
+# 上游服务是否可达（从代理机器测）
+curl -v http://upstream:port/health
+# TLS 问题
+openssl s_client -connect host:443 -servername example.com
+```
+- **代理配了但上游不通**、**超时配置太短**、**TLS 证书/SNI 问题**。
+
+**第 8 步：端口耗尽/资源限制**
+```bash
+ss -s                                  # 连接数汇总
+ulimit -n / cat /proc/<pid>/limits     # fd 限制
+dmesg | tail                           # 是否有 "nf_conntrack: table full"
+netstat -s | grep -i overflow
+```
+- `nf_conntrack: table full` → 丢包。
+- `accept queue overflow` → 应用 accept 太慢。
+- fd 耗尽 → `EMFILE`。
+
+**排查命令速查表**：
+
+| 目的 | 命令 |
+|---|---|
+| 是否在监听 | `ss -lntp` |
+| 监听在哪个地址 | `ss -lntp`（看 Local Address） |
+| 本机能否连 | `nc -zv 127.0.0.1 <port>` |
+| 防火墙 | `iptables -L -n -v` / `firewall-cmd --list-all` |
+| 云安全组 | 云控制台 |
+| 包到没到 | `tcpdump -i any -nn port <port>` |
+| 路径 | `mtr <host>` |
+| MTU | `ping -M do -s 1472 <host>` |
+| 进程是否活着 | `ps aux \\| grep svc`、`systemctl status svc` |
+| 应用日志 | `journalctl -u svc -n 100` |
+| 连接状态 | `ss -tan state time-wait`、`ss -s` |
+
+**排查口诀**：
+1. **先看监听地址**（127.0.0.1 是最常见的坑）。
+2. **本机 loopback 先通**（排除网络，聚焦应用）。
+3. **本机防火墙 → 云安全组**（从内到外）。
+4. **抓包定位"包到没到"**（最有信息量的一步）。
+5. **`Connection refused` = 没监听；`timeout` = 被拦/丢包**。
+
+**实践建议**：
+1. **部署新服务时按顺序验证**：进程起来了 → 本机 curl 通 → 绑定地址正确 → 防火墙放行 → 安全组放行 → 外部可访问。
+2. **写一个 `check_port.sh`**（`ss` + `nc` + `iptables` 一起看）固化流程。
+3. **生产变更前先 `tcpdump` 抓一次**（有基线才知道变化）。
+4. **不要忘记容器**：端口映射（`docker port`）、容器网络（`--network host` vs bridge）、k8s 的 Service/Ingress/NetworkPolicy。', 1),
+
+('Linux', 'nohup,后台运行', 1,
+ '怎么让程序在后台运行、关掉终端也不退出？有哪些方式？',
+ '**四种方式，按推荐度排序**：
+
+**1. systemd（生产首选）⭐**
+```ini
+# /etc/systemd/system/myapp.service
+[Unit]
+Description=My App
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/myapp
+Restart=on-failure
+RestartSec=3
+User=appuser
+WorkingDirectory=/opt/app
+EnvironmentFile=-/etc/myapp.env
+StandardOutput=journal
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+```
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now myapp
+systemctl status myapp; journalctl -u myapp -f
+```
+**优势**：开机自启、崩溃自动重启、日志统一、资源限制（cgroup）、依赖管理、无终端依赖。**所有持久化服务都该这么做。**
+
+**2. `nohup`（临时/简单场景）**
+```bash
+nohup ./myapp > app.log 2>&1 &
+nohup ./myapp > app.log 2>&1 &      # 记下 PID
+echo $! > app.pid
+```
+- **`nohup` 的作用**：忽略 `SIGHUP`（终端关闭时发给会话的信号），所以关终端不会杀它。
+- **必须重定向输出**，否则 nohup 会写到 `nohup.out`（可能填满磁盘）。
+- **`&`** 让它在后台运行。
+- **注意**：`nohup` **不会**让进程脱离控制终端（不像 `setsid`），仍然能收到其他信号。
+
+**3. `setsid`（完全脱离会话）**
+```bash
+setsid ./myapp > app.log 2>&1 < /dev/null &
+```
+- `setsid` 创建新会话，**完全脱离控制终端**（daemon 化的一种简化方式）。
+- **`< /dev/null`** 让 stdin 不再指向终端（否则某些程序会读终端）。
+
+**4. `&` + `disown`（已启动后想"脱离"）**
+```bash
+./myapp &
+jobs
+disown -h %1              # 从 shell 的作业表移除（收到 SIGHUP 也不转发）
+```
+
+**5. `screen`/`tmux`（交互式场景）**
+```bash
+tmux new -s work
+# Ctrl+B, D 分离
+tmux attach -t work
+```
+- 适合**需要交互**的长期任务（编译、跑脚本、看日志）。
+- **比 `nohup` 更可靠**：进程的终端是伪终端，且有完整的会话管理。
+- **`tmux` 推荐给 `screen`**（更现代）。
+
+**关键区别**：
+
+| 方式 | 脱离终端 | 开机自启 | 崩溃重启 | 日志管理 | 推荐场景 |
+|---|---|---|---|---|---|
+| systemd | ✅ | ✅ | ✅ | ✅ | **生产服务** ⭐ |
+| nohup | 部分（忽略 SIGHUP） | ❌ | ❌ | 手动 | 临时任务 |
+| setsid | ✅ | ❌ | ❌ | 手动 | 脚本里启后台 |
+| screen/tmux | ✅ | ❌ | ❌ | 手动 | 交互式长期任务 |
+| `&` 单独用 | ❌ | ❌ | ❌ | 手动 | 立即返回的后台任务 |
+
+**常见坑**：
+
+1. **关掉终端后进程还是死了**
+   - 原因：没 `nohup`/`setsid`，进程收到 **SIGHUP**。
+   - 或者：**stdin 被关闭读不到数据**导致程序退出。
+   - 解决：`nohup cmd > log 2>&1 < /dev/null &`。
+
+2. **`screen`/`tmux` 里跑还是被杀了**
+   - 可能被 `OOM killer` 杀了（`dmesg | grep -i oom`）。
+   - 或被外部脚本 `pkill`。
+
+3. **`nohup` 会忽略 `SIGINT`（Ctrl+C）吗？**
+   - **不会**！`nohup` 只处理 `SIGHUP`。但因为它在后台运行，终端不会把 Ctrl+C 发给它。
+
+4. **进程"假死"**
+   - 用 `ps -o stat` 看状态：`D`（不可中断的 IO，通常是磁盘/网络存储卡住）→ **`kill -9` 也杀不掉**。
+   - `Z`（僵尸）→ 父进程没 `wait`。
+
+5. **`&` 之后 shell 退出会怎样**
+   - 交互式 bash 默认**不**给后台作业发 SIGHUP（除非 `huponexit` 开启）；但**非交互式脚本**里会。
+   - 这是"脚本里 `cmd &` 后脚本结束、cmd 也被杀"的原因。
+
+6. **`nohup.out` 越来越大**
+   - 忘了重定向输出 → 磁盘被打满。
+   - **一定要 `> /path/app.log 2>&1`**，并考虑 `logrotate`。
+
+7. **`kill` 找不到进程**
+   - 用 `pgrep -af myapp`、`ps aux | grep myapp`。
+   - **不要用 `pkill -f myapp`**（可能误杀 `grep myapp` 或路径相似的进程）。
+
+**实用脚本模板**（无 systemd 时的替代）：
+```bash
+#!/bin/bash
+APP=/usr/local/bin/myapp
+LOG=/var/log/myapp.log
+PIDFILE=/var/run/myapp.pid
+
+start() {
+    [ -f "$PIDFILE" ] && kill -0 "$(cat $PIDFILE)" 2>/dev/null && { echo "already running"; return 1; }
+    nohup "$APP" >> "$LOG" 2>&1 < /dev/null &
+    echo $! > "$PIDFILE"
+    echo "started pid $(cat $PIDFILE)"
+}
+stop() {
+    [ -f "$PIDFILE" ] || { echo "not running"; return; }
+    kill "$(cat $PIDFILE)" && rm -f "$PIDFILE"
+}
+case "$1" in
+    start) start ;;
+    stop)  stop ;;
+    restart) stop; sleep 1; start ;;
+    status) [ -f "$PIDFILE" ] && kill -0 "$(cat $PIDFILE)" && echo running || echo stopped ;;
+    *) echo "usage: $0 {start|stop|restart|status}" ;;
+esac
+```
+**注意 PID 文件的"陈旧"问题**（进程崩了但文件还在）→ 用 `kill -0` 校验（更好的是用 `flock`，见文件锁一题）。
+
+**信号与优雅退出**：
+```bash
+kill -TERM <pid>     # 请求退出（应用应捕获并优雅关闭）⭐
+kill -KILL <pid>     # 强杀（不可捕获，不给清理机会）
+kill -HUP  <pid>     # 常被 daemon 用于"重载配置"
+```
+**用 `-TERM` 而不是 `-9`**，给应用时间回收资源（关闭连接、落盘、释放锁）。
+
+**排查"后台进程莫名消失"**：
+```bash
+journalctl -b | grep -i -E "oom|killed"
+dmesg -T | grep -i oom
+grep -i "killed process" /var/log/*      # 旧系统
+# 是否有其他进程/supervisor 杀了它
+ps -ef --forest | grep -B5 myapp
+```
+**`systemd` 的好处在这里特别明显**：它会记录"为什么停"（`systemctl status` 显示 `signal=KILL`、`Main process exited`、`Failed with result ''oom-kill''`）。', 1),
+
+('Linux', '内核编译,升级', 3,
+ 'Linux 内核怎么编译和升级？升级后驱动（如网卡）没了怎么办？',
+ '**编译内核的完整流程**：
+
+```bash
+# 1. 准备工具
+sudo apt install build-essential libncurses-dev bison flex libssl-dev libelf-dev
+# 或 dnf install gcc make ncurses-devel bison flex elfutils-libelf-devel openssl-devel
+
+# 2. 获取源码
+cd /usr/src
+wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.6.tar.xz
+tar xf linux-6.6.tar.xz && cd linux-6.6
+
+# 3. 配置（关键步骤）
+make menuconfig               # 交互式 TUI ⭐
+# 或
+make oldconfig                # 基于现有 .config 只问答新选项（**升级推荐**）⭐
+cp /boot/config-$(uname -r) .config && make olddefconfig
+make localmodconfig           # 只编译当前加载的模块（**大幅减少编译量与体积**）⭐
+make defconfig                # 发行版默认（通用）
+make nconfig                  # 更好的 TUI
+
+# 4. 编译（很耗时，用并行）
+make -j$(nproc)               # 编译内核镜像与模块 ⭐
+make -j$(nproc) modules_install
+# 或一步：make -j$(nproc) && sudo make modules_install
+
+# 5. 安装
+sudo make install             # 装到 /boot（vmlinuz + System.map）
+sudo mkinitramfs -o /boot/initrd.img-6.6 6.6      # Debian
+# 或 sudo dracut -f /boot/initramfs-6.6.img 6.6   # RHEL
+sudo update-grub              # 更新 GRUB 菜单 ⭐（否则重启进不了新内核）
+# 或 sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+
+# 6. 重启并从新内核启动
+reboot
+uname -r
+```
+
+**关键配置文件**：
+
+| 方式 | 说明 |
+|---|---|
+| `menuconfig` | 交互式，功能最全 |
+| `oldconfig` | 只问新增项（**升级时用**） |
+| `olddefconfig` | 新增项用默认值（不交互） |
+| `localmodconfig` | 只保留当前用到的（**编译快、体积小**） |
+| `defconfig` | 目标架构默认配置 |
+| `/boot/config-$(uname -r)` | **当前内核的配置**（编译新内核时拷它最省事） |
+| `.config` | 编译产出，**要备份** |
+
+**「编译完重启，网卡/键盘/文件系统没了」——最经典的内核升级事故**：
+
+**原因**：新 `.config` 缺少对应**驱动**（没编译进内核，也没编译成模块）。
+
+**预防（重要）**：
+1. **一定从当前内核配置出发**：
+```bash
+cp /boot/config-$(uname -r) .config
+make olddefconfig
+```
+2. **不要轻易用 `localmodconfig`**，除非你确定所有需要的驱动都已加载（**U 盘启动救援设备、虚拟机的 virtio 驱动、非当前挂载的存储控制器都可能漏掉**）。
+3. **`localmodconfig` 后手工加回关键驱动**（在 `menuconfig` 里搜索）：
+   - 存储：`CONFIG_ATA`、`CONFIG_SATA_AHCI`、`CONFIG_VIRTIO_BLK`、`CONFIG_NVME_CORE`、RAID/LVM
+   - 文件系统：`CONFIG_EXT4_FS`、`CONFIG_XFS_FS`、`CONFIG_BTRFS_FS`
+   - 网络：对应厂商驱动（`CONFIG_E1000E`、`CONFIG_VIRTIO_NET`、`CONFIG_MLX5_CORE`）
+   - 虚拟化：`CONFIG_VIRTIO_*`、`CONFIG_XEN_*`、`CONFIG_HYPERV_*`
+4. **initramfs 要重新生成**（否则启动时挂不上根文件系统）—— **这一步漏掉是最常见的"启动直接 kernel panic"原因**。
+5. **保留旧内核**，别删 `make install` 之前的老 vmlinuz 与 initrd。
+6. **先在有控制台/救援能力的机器上试**（云主机改内核风险高，很多云不支持自定义内核）。
+
+**救援流程（新内核起不来）**：
+1. **重启时在 GRUB 菜单选旧内核**（GRUB 默认保留多个条目）→ 系统能起来。
+2. 或用**云控制台的 VNC/串口控制台**登录。
+3. 起来后：检查 `dmesg` 缺什么驱动、`/boot` 里文件是否齐全、GRUB 是否更新。
+4. 修好后**再次验证 initramfs**（`lsinitramfs /boot/initrd.img-xxx | grep 驱动`）。
+
+**内核模块相关命令**：
+```bash
+uname -r                       # 当前内核版本
+lsmod                          # 已加载模块
+modinfo <mod>                  # 模块信息（vermagic 要匹配内核！）
+modprobe -v <mod>              # 加载（含依赖）
+dmesg | tail                   # 加载失败的原因
+# 编译单个模块（在内核源码树里）
+make M=drivers/net/ethernet/intel/e1000e modules
+insmod ./e1000e.ko
+```
+**`vermagic` 不匹配**：模块与内核版本/配置不一致 → `insmod: ERROR: could not insert module: invalid module format`。
+
+**DKMS（动态内核模块支持）**：
+- 让**第三方驱动**（NVIDIA、VirtualBox、ZFS、某些网卡）在**每次内核升级后自动重编译**。
+```bash
+dkms status
+sudo dkms autoinstall
+# 更新内核前先确认 DKMS 支持
+```
+**没有 DKMS 的第三方驱动 + 升级内核 = 驱动失效**（NVIDIA 显卡最常见的坑）。
+
+**发行版内核 vs 自编译内核**：
+| | 发行版内核 | 自编译 |
+|---|---|---|
+| 维护 | 自动更新、安全补丁 | 完全自己管 |
+| 驱动 | 全打包 | **可能漏** |
+| 配置 | 通用（体积大） | 精简（快、省内存） |
+| 适用 | **绝大多数场景** ⭐ | 特殊需求（实时性、特定补丁、裁剪嵌入式） |
+| 风险 | 低 | **高** |
+
+**实践建议**：
+1. **99% 的场景不要自己编译内核** —— 用发行版内核或官方 backport（如 `elrepo-kernel`、Ubuntu 的 `linux-generic-hwe`）。
+2. **需要新内核特性**时优先用发行版的更新仓库。
+3. **真要编译**：`cp /boot/config-$(uname -r) .config` + `olddefconfig` + **务必 `make install` + 生成 initramfs + `update-grub`**。
+4. **在虚拟机/测试环境先跑通**，确认能启动、驱动齐全、`lsmod` 正常，再上生产。
+5. **备份 `/boot` 和当前内核包**（`dnf install kernel` 式的包安装比手工 `make install` 好 — 包管理器会处理好 GRUB 与 initramfs）。
+6. **云主机**：多数云不支持自定义内核（用云厂商的 `cloud-kernel`）；需要新特性优先**升级发行版**或换用支持自定义内核的实例类型。
+7. **内核参数**（`/etc/default/grub` 的 `GRUB_CMDLINE_LINUX`）改完要 `update-grub`。
+8. **不要在生产直接 `apt upgrade` 内核后立即重启** —— 评估 DKMS 驱动、`/boot` 空间、GRUB 条目，并在维护窗口操作。', 1),
+
+('Linux', '磁盘满,空间排查', 2,
+ '磁盘满了怎么排查？"`df` 和 `du` 结果不一致"是怎么回事？',
+ '**第一步：确认是"空间满"还是"inode 满"**
+```bash
+df -h                     # 空间 ⭐
+df -i                     # inode ⭐
+```
+| 现象 | 结论 |
+|---|---|
+| `df -h` 显示 100% | 空间满 |
+| `df -h` 未满但 `df -i` 100% | **inode 耗尽**（海量小文件） |
+| `df -h` 未满、`df -i` 也正常，但报 `No space left on device` | 可能是**保留块**、**已删除但被占用**、**磁盘配额** |
+
+**inode 耗尽**：
+```bash
+df -i
+# 找到 inode 最多的目录（逐层深入）
+for d in /*; do echo "$d: $(find $d -xdev -printf ''.'' 2>/dev/null | wc -c)"; done
+# 常见罪魁：session 文件、邮件队列、Docker 层、缓存目录
+find /var -xdev -type f | wc -l
+```
+**解决**：清理小文件；对将来，`mkfs.ext4 -N <更大数量>` 或改用 XFS（XFS 动态分配 inode）。
+
+**第二步：定位是哪个目录/文件**
+```bash
+du -xh --max-depth=1 / | sort -rh | head -20        # 逐层下钻 ⭐
+du -xh --max-depth=1 /var | sort -rh | head
+find / -xdev -type f -size +1G -exec ls -lh {} + 2>/dev/null   # 大文件 ⭐
+ls -lhS /var/log | head                            # 最大的日志
+# 更快的工具
+ncdu /var                                          # 交互式磁盘使用分析 ⭐
+duf                                                # df 的现代替代
+```
+
+**常见"吃空间"的地方**：
+| 位置 | 说明 |
+|---|---|
+| `/var/log` | 日志（尤其未轮转的应用日志、journal） |
+| `/var/lib/docker` | 镜像与容器层（`docker system prune`） |
+| `/var/cache` | 包缓存（`dnf clean all`/`apt clean`） |
+| `/tmp` | 临时文件 |
+| journal | `journalctl --disk-usage`、`--vacuum-size=500M` |
+| 数据库数据目录 | binlog、WAL、慢查询日志 |
+| 用户家目录 | 缓存、下载、`.cache` |
+| 内核 `/usr/lib/modules` | 多版本内核未清理 |
+
+**⚠️ 第三步（关键）：`df` 与 `du` 不一致**
+
+**症状**：`df` 说满了，`du` 加起来远小于容量。
+
+**原因 1：文件被删除但仍被进程打开（最常见）** ⭐
+- 文件 `unlink` 后，`du`（遍历目录）看不到它，但**inode 和数据块仍被占用**（进程还持有 fd）。
+- 这是"删了大文件但空间没释放"的经典原因。
+
+```bash
+lsof +L1                       # 列出 link count < 1 的打开文件 ⭐
+lsof | grep deleted
+# 或
+ls -l /proc/*/fd/* 2>/dev/null | grep deleted
+# 找到后：
+#   a) 重启/杀掉持有它的进程（释放）
+#   b) 或不停进程直接清空（对日志文件有效）
+> /proc/<pid>/fd/<fd>          # 截断（小心：会改变文件内容的可见性）
+```
+
+**原因 2：文件系统保留块**
+- ext4 默认给 root 保留 **5%** 空间（`mke2fs -m 0` 或 `tune2fs -m 1` 可调）。
+- 非 root 用户看到的 `df` 可用空间比 root 少 5%。
+
+**原因 3：挂载覆盖（mount 背后有文件）**
+```bash
+# 挂载点下面原本有文件，挂载后被"遮住"，du 看不到但确实占空间
+# 卸载后能看到
+umount /mnt && du -sh /mnt
+# 检查是否有嵌套挂载
+findmnt -R /        # 或 cat /proc/mounts
+```
+
+**原因 4：稀疏文件、快照**
+- 稀疏文件的 `ls` 显示大小 ≠ 实际占用（用 `du` 看实际，`ls -s`、`stat` 的 Blocks）。
+- **LVM 快照**会占空间（`lvs`、`lvdisplay`）。
+- **XFS 的 reflink**、**Btrfs/ZFS 的快照**会保留旧数据块。
+
+**原因 5：`df` 统计的是文件系统，`du` 只统计你指定的目录**
+- `du /var` 不会算 `/home` 的占用。
+- **跨文件系统**：`du -x` 限制在单个文件系统。
+
+**原因 6：ext4 的 journal、文件系统元数据**
+- 少量差异正常。
+
+**第四步：清理（**先归档，不要 `rm -rf`**）**
+```bash
+# 日志
+journalctl --vacuum-size=500M
+journalctl --vacuum-time=7d
+find /var/log -name "*.gz" -mtime +30 -delete
+# 包缓存
+dnf clean all / apt clean
+# Docker
+docker system df                 # 查看占用 ⭐
+docker system prune -a           # 清理（**会删未使用的镜像**，确认后再执行）
+# 找出并处理"已删除但被占用"的文件
+lsof +L1 | awk ''{print $1, $2, $7, $9}''
+```
+**清理原则**：
+1. **先看再删**（`du`/`ncdu`/`lsof` 确认）。
+2. **日志优先归档/截断，不直接 rm**（保持 inode 不变，服务不用重启）。
+3. **不要 `rm -rf /var/log/*`**（有些服务持有文件句柄）。
+4. **清理 Docker 要小心**（`prune -a` 会删所有未运行容器的镜像）。
+
+**第五步：预防**
+```bash
+# 监控
+df -h | awk ''NR>1 && $5+0 > 80 {print "⚠️", $6, $5}''
+# 告警（Prometheus 的 node_filesystem_avail_bytes）
+# 配额
+quota / edquota / xfs_quota
+# 日志轮转（logrotate 配置）
+# 分离日志与数据分区（避免日志写满打挂数据库）⭐
+# 应用限制日志大小（如 nginx access_log 的滚动）
+```
+
+**特殊场景**：
+| 场景 | 说明 |
+|---|---|
+| **容器磁盘满** | 检查 `docker system df`、容器日志（`/var/lib/docker/containers/*/*-json.log` 默认**无限制**！）→ 配 `log-opts` 的 `max-size`/`max-file` ⭐ |
+| **overlay 层写入** | 容器内写大量数据落在 `/var/lib/docker/overlay2` |
+| **tmpfs 满** | `/dev/shm` 默认是内存的一半；容器里小（64MB），应用写 shared memory 会报 `No space` |
+| **NFS 满** | 显示的是服务端容量 |
+| **云盘扩容后没生效** | 要 `growpart` + `resize2fs`/`xfs_growfs`（见 RAID/LVM 一题） |
+| **`/boot` 满** | 内核更新失败 → 清理旧内核（`dnf remove --oldinstallonly`、`apt autoremove --purge`）⭐ |
+
+**排查口诀**：
+1. **`df -h` + `df -i`** 一起看（空间 vs inode）。
+2. **`du -xh --max-depth=1`** 逐层下钻。
+3. **`lsof +L1`** 查"已删除但被占用"（**df/du 不一致的答案**）。
+4. **`ncdu`** 交互式找大目录。
+5. **清理前先确认**，日志用截断而非删除。
+6. **Docker 的 json 日志无上限**是高发坑。', 1),
+
+('Linux', '系统卡死,hung task', 3,
+ '系统负载很高但 CPU 空闲，或者系统完全无响应，你会怎么排查？',
+ '**先分清"卡"的两种形态**：
+
+| 现象 | 可能原因 |
+|---|---|
+| **load 高、CPU 空闲** | **IO 等待 / D 状态进程**（最常见） |
+| **系统完全无响应（SSH 都连不上）** | 内核死锁、OOM 抖动、存储彻底失效、中断风暴 |
+| **响应极慢但能动** | 内存压力（swap 抖动）、锁竞争、单核被打满 |
+
+**第一步：load 高但 CPU 空闲 → 找 D 状态进程** ⭐
+```bash
+uptime                       # load 与核数比较
+cat /proc/loadavg
+ps -eo pid,stat,wchan:30,comm | awk ''$2 ~ /D/''      # D 状态进程与内核等待点 ⭐
+ps -eo state,pid,ppid,comm | grep ''^D''
+# 内核栈（看卡在哪个函数）
+cat /proc/<pid>/stack
+```
+- **`wchan`** 显示进程在内核里等待什么（如 `rpc_wait_bit_killable` = NFS 卡住）。
+- **D 状态是"不可中断睡眠"**，`kill -9` **杀不掉**（要等 IO 返回或超时）。
+- **常见来源**：NFS/网络存储不可达、磁盘故障、`fsync` 卡在坏盘、某些驱动的 bug。
+
+**第二步：IO 层**
+```bash
+iostat -xz 1
+#  await 很高 + %util 高 → 设备饱和
+#  await 很高但 %util 低 → 网络存储/驱动问题
+vmstat 1
+#  b 列（阻塞进程数）持续 > 核数 → IO 瓶颈
+cat /proc/pressure/io        # PSI：IO 压力指标 ⭐
+cat /proc/pressure/cpu
+cat /proc/pressure/memory
+```
+**PSI（Pressure Stall Information）** 是现代内核（4.20+）最有用的"系统是否被拖慢"指标：
+```
+some avg10=12.34 avg60=... total=...
+```
+- `some`：至少一个任务被拖慢的时间占比。**avg10 > 10% 就已经有问题**。
+
+**第三步：内存压力与 swap 抖动**
+```bash
+free -h                        # available
+vmstat 1                       # si/so 非 0 = 正在 swap ⭐
+cat /proc/pressure/memory
+dmesg -T | grep -i -E "oom|killed"
+```
+- **swap 抖动（thrashing）**：内存不足 + 频繁换入换出 → 系统像卡死。
+- **解决**：加内存、减少工作集、调 `vm.swappiness`、限制应用内存。
+
+**第四步：中断与软中断**
+```bash
+cat /proc/interrupts
+cat /proc/softirqs
+mpstat -P ALL 1               # 看 %irq/%soft 是否集中在某个核
+```
+- **中断风暴**（某个设备狂发中断）会让单核 100% 且系统响应变差。
+- **原因**：故障网卡、硬件问题、驱动 bug。
+
+**第五步：内核卡死/死锁**
+```bash
+dmesg -T | tail -100
+journalctl -k -n 100
+# 关键关键字
+dmesg | grep -i -E "hung_task|soft lockup|hard lockup|NMI watchdog|BUG:|Oops|panic|blocked for more than"
+```
+| 关键字 | 含义 |
+|---|---|
+| **`task X blocked for more than 120 seconds`** | **hung task**：进程在 D 状态超过阈值（`kernel.hung_task_timeout_secs`） |
+| **`soft lockup - CPU#N stuck for Xs`** | 内核代码在单核上跑了很久（软锁） |
+| **`hard lockup`** / `NMI watchdog` | 中断被长时间关闭（硬锁，通常要重启） |
+| **`BUG: unable to handle kernel paging request`** | 内核空指针/越界 |
+| **`call trace` + `Oops`** | 内核崩溃（可能还能活，也可能 panic） |
+| **`INFO: rcu_preempt detected stall`** | RCU 停顿（内核卡住） |
+| **`Out of memory: Killed process`** | OOM |
+
+**第六步：无法 SSH 登录时的应急手段** ⭐
+
+**用 SysRq 键**（需要 `kernel.sysrq` 允许；云主机可用控制台的"发送 SysRq"）：
+```bash
+echo 1 > /proc/sys/kernel/sysrq        # 启用全部 SysRq
+# 通过 /proc/sysrq-trigger（串口/控制台能敲时）
+echo w > /proc/sysrq-trigger    # 显示所有 D 状态任务的栈 ⭐
+echo t > /proc/sysrq-trigger    # 显示所有任务栈
+echo m > /proc/sysrq-trigger    # 显示内存信息
+echo l > /proc/sysrq-trigger    # 显示所有 CPU 的栈（看是否死锁）
+echo s > /proc/sysrq-trigger    # 同步磁盘
+echo u > /proc/sysrq-trigger    # 重新挂载为只读
+echo b > /proc/sysrq-trigger    # **立即重启**（最后手段，可能丢数据）
+# 记忆：REISUB（Raising Elephants Is So Utterly Boring）
+# r=恢复键盘  e=发 SIGTERM  i=发 SIGKILL  s=同步  u=只读挂载  b=重启
+```
+> 用**串口控制台/IPMI/云控制台**才能敲这些。
+
+**第七步：其它可能性**
+| 现象 | 排查 |
+|---|---|
+| **文件句柄耗尽** | `ls /proc/<pid>/fd | wc -l`、`ulimit -n` |
+| **`nf_conntrack` 表满** | `dmesg | grep conntrack`、`conntrack -C` vs `nf_conntrack_max` |
+| **进程数/PID 耗尽** | `cat /proc/sys/kernel/pid_max`，是否有僵尸堆积 |
+| **锁竞争** | `perf lock`、`cat /proc/lock_stat` |
+| **文件系统只读**（磁盘错误触发 remount-ro） | `dmesg` 里的 `EXT4-fs error`、`mount | grep ro` |
+| **磁盘坏道** | `smartctl -a /dev/sda`、`dmesg | grep -i "I/O error"` |
+| **云主机被宿主机限制** | `top` 的 `st`（steal）列高 |
+| **网络存储（NFS/云盘）不可达** | D 状态进程的 `wchan` 指向 `rpc_*` |
+
+**排查顺序总结（"卡死"专用）**：
+```
+1. uptime / PSI / vmstat      → 是 CPU、IO 还是内存问题？
+2. ps 找 D 状态               → IO/存储问题（最常见）
+3. dmesg 找 hung_task/lockup  → 内核层面问题
+4. iostat                     → 设备是否饱和
+5. free + vmstat si/so        → 内存抖动？
+6. 无法登录时用 SysRq (w/t/l)  → 拿栈信息
+7. SysRq b                    → 最后手段重启
+```
+
+**预防与配置**：
+```bash
+# hung task 检测（默认 120 秒）
+sysctl kernel.hung_task_timeout_secs=120
+sysctl kernel.hung_task_panic=0        # 1 = 直接 panic（配合 kdump 抓现场）
+# soft lockup 检测
+sysctl kernel.softlockup_panic=1
+kernel.softlockup_all_cpu_backtrace=1  # 打印所有 CPU 栈 ⭐
+# 启用 SysRq（生产常用 1 或限制值 176）
+sysctl kernel.sysrq=1
+# kdump（内核崩溃时自动保存 vmcore）⭐
+systemctl enable --now kdump
+```
+**kdump**：配置好后内核 panic 会自动保存 vmcore，可用 `crash` 工具分析 —— 这是排查"内核崩溃/卡死"的**唯一可靠手段**（生产必备）。
+
+**实践建议**：
+1. **load 高先找 D 状态进程**（80% 的"卡死"是 IO/存储问题）。
+2. **`/proc/pressure/*` 是判断"系统是否被拖慢"的最佳单一指标**。
+3. **生产开启 `kdump` + `hung_task` 告警 + PSI 监控**。
+4. **NFS 用 `hard` 挂载会把进程钉在 D 状态**（改为 `soft` 或加 `intr` 更可控，但有数据风险）。
+5. **定期演练"系统不可登录"的应急流程**（控制台、SysRq、重启脚本）。
+6. **监控要覆盖 load、PSI、dmesg 关键字**（很多卡死是"悄悄地"发生的）。', 1),
+
+('Linux', 'systemd 依赖,target,服务依赖', 2,
+ 'systemd 的 unit 依赖与启动顺序是怎么控制的？服务起不来怎么排查？',
+ '**依赖与顺序是两回事**（最容易混淆的点）：
+
+| 指令 | 作用 |
+|---|---|
+| `Requires=A` | **强依赖**：A 失败则本单元也失败；A 停止则本单元也停 |
+| `Wants=A` | **弱依赖**：A 失败不影响本单元（**推荐**） |
+| `BindsTo=A` | 更严格的 Requires（A 消失则立即停本单元） |
+| `PartOf=A` | 反向依赖：A 重启/停止时，本单元也跟着 |
+| `After=A` / `Before=A` | **只定义启动顺序**，不建立依赖 ⭐ |
+| `Conflicts=A` | 互斥（启动本单元会停 A） |
+| `Requisite=A` | 要求 A 已启动（否则立即失败，但不会去启动 A） |
+
+**关键：`Wants` 不等于 `After`**。
+```ini
+[Unit]
+Wants=mysql.service
+After=mysql.service      # ← 这两行通常要成对出现
+```
+- 只有 `Wants`：systemd **并行**启动两者（可能你的服务先起来，连不上 MySQL）。
+- 只有 `After`：**如果 MySQL 没被别的地方拉起，它不会启动**。
+- **所以"启动顺序 + 依赖"要分别写**。
+
+**为什么不用 `Requires`**：`Requires` 会连带"停"和"失败传播"，容易造成级联失败。**系统服务的实践是 `Wants` + `After`**。
+
+**Target（目标）**：
+
+| Target | 对应旧运行级别 | 含义 |
+|---|---|---|
+| `poweroff.target` | 0 | 关机 |
+| `rescue.target` | 1 | 单用户 |
+| `multi-user.target` | 3 | **多用户无图形**（服务器）⭐ |
+| `graphical.target` | 5 | 图形界面 |
+| `reboot.target` | 6 | 重启 |
+| `default.target` | — | 默认（通常软链到上面之一） |
+
+```bash
+systemctl get-default
+systemctl set-default multi-user.target
+systemctl isolate rescue.target        # 切换到某 target
+systemctl list-dependencies multi-user.target
+systemctl list-dependencies --reverse blog.service   # 谁依赖我
+```
+
+**Unit 状态与排查**：
+```bash
+systemctl status blog.service          # 关键信息：Active、Main PID、退出码、最后日志 ⭐
+systemctl --failed                     # 所有失败单元 ⭐
+systemctl list-units --type=service --all
+systemctl list-unit-files --state=enabled
+systemctl cat blog.service             # 完整配置（含 override 片段）
+systemctl show blog.service            # 所有属性（含实际生效的值）
+systemctl edit blog.service            # 创建 override 片段（推荐）
+systemctl daemon-reload                # **改 unit 后必须执行** ⭐
+journalctl -u blog.service -n 100 --no-pager
+systemd-analyze verify blog.service    # 语法与依赖检查
+```
+
+**`ExecStart`/`ExecStop` 的坑**：
+1. **必须用绝对路径**（systemd 不做 PATH 查找，除非 `Environment=PATH=...` 且用 `/bin/sh -c`）。
+2. **`ExecStop` 默认先发 SIGTERM**；`KillMode=` 决定杀谁：
+   - `control-group`（**默认**）：杀死 cgroup 内**所有**进程。
+   - `process`：只杀主进程。
+   - `mixed`：SIGTERM 给主进程，SIGKILL 给其余。
+   - `none`：不杀（你负责）。
+3. **`KillSignal`/`TimeoutStopSec`**：优雅退出的等待时间（默认 90s）。
+```ini
+KillSignal=SIGTERM
+TimeoutStopSec=30
+KillMode=mixed
+```
+
+**`Type=` 影响 `systemctl start` 何时返回**：
+| Type | 何时认为"启动完成" |
+|---|---|
+| `simple`（默认） | `ExecStart` 的进程 fork 出来即算成功 ⚠️（**即使它马上崩溃**） |
+| `exec` | `exec()` 成功后才算（比 simple 严格一点） |
+| `forking` | 父进程退出（传统 daemon） |
+| `oneshot` | `ExecStart` 执行完毕 |
+| `notify` | 进程发 `sd_notify(READY=1)` ⭐ 最准确 |
+| `dbus` | 拿到 D-Bus 名字 |
+| `idle` | 等其他任务空闲 |
+
+**`Type=simple` 的陷阱**：应用启动后立刻崩溃（如配置错），`systemctl start` 仍返回成功 → 加 `Restart=on-failure` + 检查 `status`。
+
+**服务起不来的排查清单**：
+
+| 症状 | 检查 |
+|---|---|
+| `status` 显示 `inactive (dead)` | 从未启动成功；看 `ExecStart` 路径、权限 |
+| `status` 显示 `failed` + 退出码 | `journalctl -u` 看具体错误 |
+| `code=exited, status=203/EXEC` | **`ExecStart` 路径不对或没有执行权限** ⭐ |
+| `status=200/CHDIR` | `WorkingDirectory` 不存在 |
+| `status=226/NAMESPACE` | 权限/命名空间问题（`ProtectSystem=` 等限制过严） |
+| `status=1/FAILURE` | 应用自身退出码 1 |
+| `Main process exited, code=killed, signal=KILL` | 被 OOM 杀 或 `KillMode` 杀了 |
+| `Failed with result ''oom-kill''` | cgroup 内存限制（`MemoryMax=`） |
+| `Address already in use` | 端口被占（`ss -lntp`）；可能上次没停干净 |
+| `Permission denied` | `User=` 权限不足、文件属主、能力（`AmbientCapabilities=`/`CapabilityBoundingSet=`） |
+| 一直 `activating`（卡住） | `Type=notify` 但应用没发通知；或 `TimeoutStartSec` 未到 |
+| 循环重启 | `Restart=always` + 应用秒退 → `journalctl` 看真实原因 |
+
+**示例：一个不易踩坑的服务定义**
+```ini
+[Unit]
+Description=Blog Server
+Documentation=https://example.com/docs
+After=network-online.target mysql.service
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5               # 60 秒内最多重启 5 次，防止无限重启
+
+[Service]
+Type=notify                      # 或 simple（按应用支持）
+ExecStart=/usr/local/bin/task_server
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+User=blog
+Group=blog
+WorkingDirectory=/opt/blog
+EnvironmentFile=-/etc/blog.env   # 前缀 - 表示文件不存在也不报错
+Environment=LANG=en_US.UTF-8
+LimitNOFILE=65535
+MemoryMax=1G
+CPUQuota=200%
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/blog
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=blog
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**override 与 drop-in**：
+```bash
+systemctl edit blog.service            # 创建 /etc/systemd/system/blog.service.d/override.conf
+```
+```ini
+# override.conf —— 只写要改的字段（同名字段会覆盖）
+[Service]
+Environment=LANG=zh_CN.UTF-8
+```
+**注意**：**同名字段的"重置"语义** —— 想清空某字段要写 `Field=`（空值）；多个 `Environment=` 会**累加**（不是覆盖）。
+
+**依赖相关的调试**：
+```bash
+systemd-analyze critical-chain blog.service    # 启动关键路径与耗时 ⭐
+systemd-analyze blame                          # 各服务启动耗时排行 ⭐
+systemd-analyze plot > boot.svg                # 启动时序图
+journalctl -b -u blog.service
+systemctl list-dependencies blog.service --all
+```
+
+**实践建议**：
+1. **`Wants` + `After` 成对使用**（不要只用 `Wants`）。
+2. **改完务必 `daemon-reload`**。
+3. **`systemctl edit` 创建 override**，不要直改发行版 unit。
+4. **`Type=simple` 下要配 `Restart=on-failure` + `StartLimitBurst`** 防止无限重启。
+5. **用 `LimitNOFILE` 而不是 `limits.conf`**（systemd 不读 PAM limits）⭐。
+6. **`ProtectSystem=strict` 之类的加固常导致"权限不够起不来"**（`ReadWritePaths=` 要写清）。
+7. **`PrivateTmp=yes`** 会让服务看不到 `/tmp`（调试时要注意）。
+8. **日志走 journald**，`journalctl -u` 是最快的排查入口。', 1),
+
+('Linux', 'man,帮助文档', 1,
+ 'Linux 下怎么查帮助？`man` 的章节是怎么划分的？',
+ '**`man` 的九个章节**：
+
+| 章节 | 内容 | 例子 |
+|---|---|---|
+| **1** | 用户命令 | `man 1 ls` |
+| **2** | 系统调用（syscall） | `man 2 open` |
+| **3** | 库函数（C 标准库） | `man 3 printf` |
+| **4** | 特殊文件（设备、`/dev`） | `man 4 null` |
+| **5** | 文件格式与约定 | `man 5 fstab`、`man 5 crontab` ⭐ |
+| **6** | 游戏与屏保 | — |
+| **7** | 杂项（协议、概念、宏） | `man 7 tcp`、`man 7 signal`、`man 7 daemon` ⭐ |
+| **8** | 系统管理命令 | `man 8 mount` |
+| **9** | 内核例程 | — |
+
+**同名冲突时必须指定章节**：
+```bash
+man open        # 默认第 1 章（命令）
+man 2 open      # 系统调用
+man 3 open      # 库函数（如果有）
+man -a open     # 依次显示所有章节
+man -k "pattern"       # 按关键字搜索（= apropos）⭐
+apropos "copy files"   # 更强大（需要 mandb 索引）
+whatis ls              # 一句话摘要
+man -f ls              # = whatis
+```
+
+**`man` 的常用操作**：
+| 键 | 作用 |
+|---|---|
+| `/pattern` | 向下搜索 ⭐ |
+| `?pattern` | 向上搜索 |
+| `n` / `N` | 下一个 / 上一个匹配 |
+| `g` / `G` | 首 / 尾 |
+| `q` | 退出 |
+| `h` | man 自身的帮助 |
+| `Space` / `b` | 翻页 |
+| `m`（在某字母上） | 设置标记 |
+| `''''` | 返回上一个位置 |
+
+**`man` 的段落结构**：
+```
+NAME            名称与一句话说明
+SYNOPSIS        语法（[] 可选，| 二选一，... 重复）
+DESCRIPTION     详细说明
+OPTIONS         选项
+EXIT STATUS     退出码
+ENVIRONMENT     环境变量
+FILES           相关文件
+NOTES           备注（**很多坑写在这里**）⭐
+BUGS            已知问题
+EXAMPLES        示例（**最有用**）⭐
+SEE ALSO        相关条目 ⭐（**看这个能形成知识网**）
+```
+
+**`--help` 与 `man` 的关系**：
+```bash
+cmd --help          # 快速看选项（GNU 风格）
+cmd -h              # 有些命令用 -h
+ls --help | less
+# 注意：不是所有命令都有高质量的 --help
+```
+
+**其它帮助来源**：
+
+| 来源 | 说明 |
+|---|---|
+| `/usr/share/doc/<pkg>/` | 发行版包的文档（含 README、示例配置）⭐ |
+| `info <cmd>` | GNU info 格式（`coreutils` 的更详细文档） |
+| `help <builtin>` | **bash 内建命令**的帮助（`man` 里没有！）⭐ |
+| `type <cmd>` | 判断是内建、别名还是外部命令 ⭐ |
+| `pkg-config --cflags lib` | 库的编译参数 |
+| 程序的 `-v` / `--version` | 版本（决定文档该看哪一版） |
+| `/etc/<app>/` 示例配置 | 常带注释 |
+| `man 7 ascii` / `man 7 utf-8` | 编码相关 |
+| `man perlre` | PCRE 正则（跨工具通用） |
+
+**bash 内建命令**要这样查：
+```bash
+help cd
+help -d          # 简短描述
+help -m          # man 风格
+man bash         # 巨大的一份（搜索 `^  builtin`）
+compgen -b       # 列出所有内建命令
+```
+
+**常见"man 里找不到"的情况**：
+| 找不到 | 原因 |
+|---|---|
+| `man cd` | **内建命令** → `help cd` |
+| `man ```` | 语法符号 → `man 1 bash` 搜 |
+| `man docker` | 新工具没装 man → `docker --help` |
+| `man top` 内容怪 | 可能是别的 `top`；`man 1 top` |
+| 只装了 `-dev` 包 | 库文档在 `-doc` 包 |
+| `no manual entry` | `mandb` 索引没建 / man 包未装 |
+
+**建立索引**：
+```bash
+sudo mandb            # 重建 whatis 数据库（apropos 依赖它）⭐
+sudo makewhatis        # 老系统
+man -w <cmd>           # 显示 man 文件路径（判断有没有装）
+echo $MANPATH          # man 搜索路径
+```
+
+**`man` 的显示格式**：
+```bash
+man ls | col -b > ls.txt      # 去掉退格控制符（导出为纯文本）
+man ls | cat                  # 用 cat 看（适合管道处理）
+man --html=... ls             # 部分实现支持输出 HTML
+```
+**颜色**：`man` 用 `less` 显示，颜色由 `LESS_TERMCAP_*` 或 `MANPAGER` 控制：
+```bash
+export MANPAGER=''less -R''
+```
+
+**高效查 man 的技巧**：
+1. **先 `man -k <keyword>`** 找到正确的条目名。
+2. **看 `EXAMPLES` 和 `SEE ALSO`**（最快理解与实际用法）。
+3. **看 `NOTES`**（坑都在这）。
+4. **`SYNOPSIS` 要会读**：`[]` 可选、`|` 二选一、`...` 可重复、**加粗是字面量**、*斜体*是占位符。
+5. **想查"某个函数在哪个头文件"** → `man 3 func` 顶部的 `#include`。
+6. **想查"某个概念"** → `man 7 <topic>`（`tcp`、`signal`、`socket`、`epoll`、`daemon`、`cgroups` 都有）⭐。
+
+**其它参考**：
+| 资源 | 用途 |
+|---|---|
+| `tldr <cmd>` | **示例优先**的简化手册（最好用）⭐ |
+| `cheat <cmd>` | 命令行速查表 |
+| `explainshell.com` | 解析命令的每个部分 |
+| `cheat.sh`（`curl cht.sh/ls`） | 在线速查 |
+| `grep` 源码树的 `Documentation/` | 内核文档 |
+| `info coreutils ''ls invocation''` | GNU 工具的详细信息 |
+
+**实践建议**：
+1. **`tldr` 和 `man` 配合用**：`tldr` 快速上手，`man` 查细节。
+2. **`man 7 tcp` 之类的"概念手册"价值极高**（比搜索引擎更准）。
+3. **脚本里要检查命令是否有对应 man**（`man -w cmd >/dev/null`）。
+4. **`help` 是查 bash 内建的第一步**（很多"man 里没有"的问题都源于此）。
+5. **`/usr/share/doc` 里的示例配置**是配置服务的最快路径。', 1),
+
+('Linux', 'cgroup 限制,资源隔离', 2,
+ '怎么限制一个进程/服务/容器的 CPU 和内存？',
+ '**三种主要手段**：
+
+| 手段 | 粒度 | 持久性 | 特点 |
+|---|---|---|---|
+| **`ulimit`** | 单进程（fd/栈/进程数） | 会话或 systemd | 简单的资源上限 |
+| **systemd 的 `MemoryMax`/`CPUQuota`** | 服务（cgroup） | ✅ | **生产推荐**（声明式） |
+| **直接操作 cgroup** | 任意进程组 | 需重建 | 最灵活 |
+| **容器（`docker --memory/--cpus`）** | 容器 | ✅ | 本质是 cgroup |
+| **`nice`/`cpulimit`** | 单进程 | 不持久 | 只调优先级，不硬限制 |
+| **`chrt`（实时调度）** | 单进程 | 不持久 | 设置调度策略/优先级 |
+
+**1. systemd（推荐）**
+```ini
+[Service]
+# CPU：最多用 2 个核（200%）
+CPUQuota=200%
+# CPU：权重（相对份额，cgroup v2 是 1~10000）
+CPUWeight=100
+# 绑定到指定核
+AllowedCPUs=0-3
+# 内存硬上限
+MemoryMax=1G
+MemoryHigh=800M          # 软上限（超过会回收）
+MemorySwapMax=0          # 禁止 swap
+# IO
+IOWeight=100
+IOReadBandwidthMax=/dev/sda 50M
+# 进程数
+TasksMax=512
+```
+```bash
+systemctl daemon-reload && systemctl restart svc
+systemctl show svc -p MemoryMax -p CPUQuota
+systemd-cgtop                     # 按 cgroup 看资源占用 ⭐
+```
+
+**2. cgroup v2 直接操作**
+```bash
+mount | grep cgroup2              # 确认是 v2
+ls /sys/fs/cgroup/
+
+mkdir /sys/fs/cgroup/mygroup
+# 内存
+echo 512M > /sys/fs/cgroup/mygroup/memory.max
+echo 400M > /sys/fs/cgroup/mygroup/memory.high
+# CPU（100000 = 1 个核；限制为 0.5 核 → 50000）
+echo "50000 100000" > /sys/fs/cgroup/mygroup/cpu.max
+# CPU 权重
+echo 200 > /sys/fs/cgroup/mygroup/cpu.weight
+# 绑定 CPU
+echo "0-3" > /sys/fs/cgroup/mygroup/cpuset.cpus
+echo "0"   > /sys/fs/cgroup/mygroup/cpuset.mems
+# 进程数
+echo 100 > /sys/fs/cgroup/mygroup/pids.max
+# 加入进程
+echo $$ > /sys/fs/cgroup/mygroup/cgroup.procs
+
+# 查看用量
+cat /sys/fs/cgroup/mygroup/memory.current
+cat /sys/fs/cgroup/mygroup/memory.stat
+cat /sys/fs/cgroup/mygroup/cpu.stat
+cat /sys/fs/cgroup/mygroup/memory.events    # oom 次数 ⭐
+```
+
+**关键文件对照（v1 → v2）**：
+
+| 功能 | v1 | v2 |
+|---|---|---|
+| 内存上限 | `memory/memory.limit_in_bytes` | `memory.max` |
+| 内存软限 | `memory.soft_limit_in_bytes` | `memory.high` |
+| 内存用量 | `memory.usage_in_bytes` | `memory.current` |
+| CPU 配额 | `cpu/cpu.cfs_quota_us` + `period_us` | `cpu.max` |
+| CPU 权重 | `cpu.shares`（1024 基准） | `cpu.weight`（100 基准） |
+| 进程数 | `pids/pids.max` | `pids.max` |
+| 设备访问 | `devices/devices.allow` | **eBPF**（v2 用 BPF 程序） |
+
+**3. `docker` / `k8s`**
+```bash
+docker run --memory=512m --memory-swap=512m --cpus=1.5 \\
+           --cpuset-cpus=0-2 --pids-limit=200 nginx
+docker stats                       # 实时占用 ⭐
+docker inspect -f ''{{.HostConfig.Memory}}'' <c>
+
+# k8s
+# resources:
+#   requests: { cpu: "500m", memory: "256Mi" }
+#   limits:   { cpu: "1",    memory: "1Gi" }
+```
+**k8s 的 `requests`/`limits`**：
+- `requests` 影响**调度**（选节点）与 QoS 等级。
+- `limits` 通过 cgroup 强制。
+- **CPU 超 limit** → 被限流（throttle，表现为延迟）；**内存超 limit** → **OOMKilled**。
+- **`limits` 不设** → 可能吃光节点；**`requests` 不设** → 调度不准。
+
+**注意 `memory.max` 包含 page cache**（这是"容器内存莫名超限"的常见原因）：
+```bash
+cat /sys/fs/cgroup/memory.stat | grep -E "^(anon|file|slab)"
+# file 是 page cache，读大文件会顶到 memory.max
+```
+
+**CPU 限制的常见误解**：
+1. **`CPUQuota=100%` = 1 个核**（不是"占满整机"）。
+2. **限流（throttle）不是"降频"**：超限的进程会被**强制暂停到下一个 CFS 周期**（默认 100ms）→ **延迟抖动的来源**。
+   ```bash
+   cat /sys/fs/cgroup/<grp>/cpu.stat
+   # nr_throttled / throttled_usec 高 → 被限流严重 ⭐
+   cat /sys/fs/cgroup/<grp>/cpu.max.burst     # 允许的突发额度
+   ```
+3. **`cpuset`（绑核）与 `cpu.max`（配额）是两回事**：
+   - `cpuset` 限制"能用哪些核"（可能造成核间负载不均）。
+   - `cpu.max` 限制"用多少时间"（不限定具体核）。
+4. **多线程程序被限流时延迟会变差**（因为线程可能同时被挂起）。
+
+**内存限制的行为差异**：
+| 设置 | 行为 |
+|---|---|
+| `MemoryMax`（`memory.max`） | **硬限**：超过则 **OOM kill**（cgroup 内选受害者） |
+| `MemoryHigh`（`memory.high`） | **软限**：超过则**积极回收**（page cache → swap），拖慢但不杀 |
+| `MemorySwapMax=0` | 禁止 swap（避免抖动，但也更容易 OOM） |
+| 完全不设 | 用多少都行（会被整机 OOM killer 盯上） |
+
+**推荐策略**：
+- **设 `MemoryHigh` 为目标的 80%**（提前回收，避免突然 OOM）。
+- **设 `MemoryMax` 硬限**（防止单个服务拖垮整机）。
+- **配合 `MemorySwapMax=0`**（对延迟敏感的服务，避免 swap 抖动）。
+
+**监控**：
+```bash
+systemd-cgtop                                  # 按 cgroup 实时
+cat /sys/fs/cgroup/<grp>/memory.events         # low/high/max/oom 次数 ⭐
+cat /sys/fs/cgroup/<grp>/cpu.stat              # 限流统计
+# Prometheus（node_exporter 的 cgroup 采集 / cAdvisor）
+# k8s: kubectl top pod / kubectl describe pod（看 OOMKilled 与 limits）
+```
+
+**实践建议**：
+1. **服务用 systemd 的 `MemoryMax`/`CPUQuota`**（声明式、持久、有日志）。
+2. **容器必须设 `limits`**（否则一个容器能吃光节点）。
+3. **内存 limit 要留意 page cache**（读大文件会顶到限制）。
+4. **CPU 限流会带来延迟抖动** → 延迟敏感服务**宁可不限 CPU**（或用 `cpuset` 绑核）。
+5. **`memory.events` 是排查"容器为什么被杀"的第一手证据**。
+6. **`ulimit` 与 cgroup 是互补的**（前者管进程级上限如 fd，后者管资源量）。
+7. **不要设 `CPUQuota` 太低**（应用会因限流而"随机变慢"，很难定位）。', 1),
+
+('Linux', '源码阅读,运维脚本', 2,
+ '写一个健壮的 Linux 运维脚本要注意什么？',
+ '**一个健壮的 bash 脚本模板**：
+
+```bash
+#!/usr/bin/env bash
+set -Eeuo pipefail              # ⭐⭐⭐ 最重要的三行
+#   -e  命令失败即退出
+#   -u  使用未定义变量报错
+#   -o pipefail  管道中任一环节失败即失败
+#   -E  ERR trap 在子函数/shell 中也生效
+
+IFS=$''\\n\\t''                     # 只按换行和制表符分词（避免空格踩坑）
+
+# 出错时打印行号与调用栈
+trap ''echo "[ERROR] line $LINENO: $BASH_COMMAND (exit $?)" >&2'' ERR
+trap ''cleanup'' EXIT             # 无论怎么退出都清理
+
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_NAME="$(basename "$0")"
+
+log()  { echo "[$(date ''+%F %T'')] $*" >&2; }
+die()  { log "FATAL: $*"; exit 1; }
+
+usage() { echo "Usage: $SCRIPT_NAME [-n] <args>"; exit 1; }
+
+cleanup() {
+    # 删除临时文件、释放锁、关闭 fd
+    [[ -n "${TMPDIR_CREATED:-}" ]] && rm -rf "$TMPDIR_CREATED"
+}
+```
+
+**核心要点**：
+
+**1. `set -euo pipefail`**
+- **`-e` 的例外**：`if cmd; then`、`cmd || true`、`! cmd` 里的命令失败**不会**导致退出（这是设计如此）。
+- 想明确忽略某个失败：`cmd || true` 或 `if ! cmd; then ...; fi`。
+- **子 shell 与函数**：`-e` 在函数里生效，但 `$(...)` 里的失败会传给外层（配合 `-E` 更可靠）。
+
+**2. 引号（最经典的坑）**
+```bash
+# ❌ 文件名有空格就炸
+for f in $(ls); do rm $f; done
+# ✅
+find . -maxdepth 1 -type f -print0 | while IFS= read -r -d '''' f; do rm -- "$f"; done
+rm -- "$file"
+
+# ❌ 变量展开
+rm -rf $dir/*            # 若 dir 为空 → rm -rf /*
+# ✅
+[[ -n "$dir" ]] || die "dir is empty"
+rm -rf -- "${dir:?}/"*
+```
+**规则**：**变量一律加双引号** `"$var"`；**用 `--` 结束选项解析**（防止文件名以 `-` 开头）。
+
+**3. 检查前置条件**
+```bash
+[[ $EUID -eq 0 ]] || die "must run as root"
+command -v jq >/dev/null || die "jq not found"
+[[ -f "$config" ]] || die "config not found: $config"
+[[ -d "$target" ]] || die "not a directory"
+for arg in "$@"; do [[ -n "$arg" ]] || die "empty argument"; done
+```
+
+**4. 危险操作的保护**
+```bash
+# 干跑模式
+DRY_RUN=0
+while getopts "n" opt; do case $opt in n) DRY_RUN=1;; esac; done
+run() { if (( DRY_RUN )); then echo "[dry-run] $*"; else "$@"; fi; }
+
+# 二次确认
+read -r -p "Delete $target? [y/N] " ans
+[[ "$ans" == [yY] ]] || exit 1
+
+# 路径白名单
+case "$target" in
+    /data/*|/var/backup/*) ;;
+    *) die "refuse to operate on $target" ;;
+esac
+
+# 防误删根目录
+[[ "$target" != "/" && "$target" != "" ]] || die "refusing to delete /"
+```
+
+**5. 并发防重（flock）**
+```bash
+exec 9>/var/lock/"$SCRIPT_NAME".lock
+flock -n 9 || die "another instance is running"
+```
+**这是 cron 任务必须做的**（见文件锁一题）。
+
+**6. 日志与输出**
+```bash
+# 时间戳、级别、输出到 stderr
+log() { printf ''[%s] %s\\n'' "$(date +''%F %T'')" "$*" >&2; }
+# 重定向到文件并同时显示
+exec > >(tee -a "$LOG_FILE") 2>&1
+# 或用 logger 写 syslog
+logger -t "$SCRIPT_NAME" "message"
+```
+**规范**：**正常数据输出到 stdout**（供管道消费），**日志与错误输出到 stderr**。
+
+**7. 参数解析**
+```bash
+# 简单场景
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -n|--dry-run) DRY_RUN=1; shift ;;
+        -f|--file)    FILE="${2:?missing value}"; shift 2 ;;
+        -h|--help)    usage ;;
+        --)           shift; break ;;
+        -*)           die "unknown option: $1" ;;
+        *)            POSITIONAL+=("$1"); shift ;;
+    esac
+done
+set -- "${POSITIONAL[@]}"       # 恢复位置参数
+
+# 复杂场景用 getopts（只支持短选项）
+while getopts ":nf:h" opt; do :; done
+```
+
+**8. 临时文件**
+```bash
+# 安全创建
+TMPDIR_CREATED="$(mktemp -d)"
+trap ''rm -rf "$TMPDIR_CREATED"'' EXIT
+# 不要用可预测的名字（/tmp/myfile，会被竞争攻击）
+# 不要用 $$ 作临时文件名（可能被复用）
+```
+
+**9. 兼容性**
+```bash
+#!/bin/bash                     # 明确用 bash（不要用 /bin/sh，可能是 dash）
+# 或用 #!/usr/bin/env bash（更可移植）
+# 检查 bash 版本
+[[ ${BASH_VERSINFO[0]} -ge 4 ]] || die "bash >= 4 required"
+```
+**常见不兼容**：`[[ ]]`（bash 专有）、数组、`${var^^}`（大小写转换，bash 4+）、`read -d`（bash 专有）。
+
+**10. 测试与风格**
+```bash
+# shellcheck 静态检查（必装）⭐
+shellcheck myscript.sh
+# -x 追踪执行（调试）⭐
+bash -x myscript.sh
+# 语法检查
+bash -n myscript.sh
+# 单元测试
+# bats-core / shunit2
+```
+
+**11. 幂等性**
+- 脚本应该**可以重复执行而不产生副作用**（"再跑一次也没事"）。
+- 检查存在性：`[[ -f x ]] || touch x`、`mkdir -p`、`ln -sfn`。
+- 避免 `>>` 反复追加（改用检查或截断策略）。
+
+**12. 其它实用技巧**
+```bash
+# 超时控制
+timeout 30s long_cmd || die "timeout"
+# 重试
+for i in {1..3}; do cmd && break || sleep 2; done
+# 并行
+xargs -P 8 -I{} do_something {}
+# 等待端口就绪
+until nc -z localhost 8080; do sleep 1; done
+# 时间测量
+SECONDS=0; work; echo "took ${SECONDS}s"
+# 数组安全遍历
+for x in "${arr[@]}"; do echo "$x"; done
+```
+
+**反面示例（常见错误）**：
+```bash
+# ❌ 没有 set -e，前面的错误被忽略
+# ❌ 变量不加引号，路径有空格就炸
+# ❌ 用 ls 解析文件名
+# ❌ for i in $(cat file)（按空白分词）
+# ❌ rm -rf $dir/*（dir 为空时灾难）
+# ❌ 不检查命令是否存在
+# ❌ 用 /bin/sh 但写了 bash 语法
+# ❌ 没有并发锁（cron 重叠执行）
+# ❌ 硬编码路径/IP/密码（用环境变量或配置文件）
+# ❌ 输出混进 stdout（破坏管道）
+# ❌ 不记日志（出了问题无从追溯）
+```
+
+**实践建议**：
+1. **第一行 `set -Eeuo pipefail`**，第二步 `shellcheck`。
+2. **变量一律加引号**，用 `--` 结束选项。
+3. **危险操作加 `--dry-run` + 路径白名单 + 二次确认**。
+4. **cron 任务必加 `flock`**。
+5. **日志到 stderr、数据到 stdout**。
+6. **`trap EXIT` 做清理**。
+7. **超 100 行考虑用 Python**（可测试性、错误处理、库生态都更好）。
+8. **敏感信息走环境变量/`EnvironmentFile`，不要硬编码**（git 里尤其危险）。', 1),
+
+('Linux', 'inotify,文件监控', 2,
+ '怎么实时监控文件变化？`inotify` 有什么限制？',
+ '**`inotify`** 是内核提供的文件系统事件通知机制。
+
+**命令行工具**：
+```bash
+inotifywait -m -r /etc \\
+  -e modify,create,delete,move,attrib \\
+  --format ''%T %e %w%f'' --timefmt ''%F %T''
+
+inotifywatch -t 60 -r /var/log      # 统计一段时间内的事件
+```
+**`inotifywait` 的常用事件**：
+| 事件 | 含义 |
+|---|---|
+| `create` / `delete` | 创建/删除 |
+| `modify` | 内容修改 |
+| `attrib` | 属性（权限/时间）变化 |
+| `move` / `moved_to` / `moved_from` | 移动/重命名 |
+| `close_write` | 关闭可写打开（**"写完了"的可靠信号**）⭐ |
+| `open` / `access` / `close_nowrite` | 打开/访问/关闭 |
+| `delete_self` / `move_self` | 被监控对象本身被删/移 |
+
+**编程（C）**：
+```c
+int fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+int wd = inotify_add_watch(fd, "/etc", IN_MODIFY | IN_CREATE | IN_DELETE);
+// fd 是可读的 → 可以放进 epoll
+struct inotify_event ev;
+read(fd, &ev, sizeof ev);
+```
+**关键：`inotify` 的 fd 可以进 `epoll`**（与其它事件统一处理），这是它比轮询优雅的地方。
+
+**⚠️ 核心限制（面试重点）**：
+
+1. **`max_user_watches` 上限**（每个用户可监控的**目录/文件数**）：
+```bash
+cat /proc/sys/fs/inotify/max_user_watches      # 默认常为 8192（老系统更低）
+cat /proc/sys/fs/inotify/max_user_instances    # 每个用户的 inotify 实例数
+cat /proc/sys/fs/inotify/max_queued_events     # 事件队列长度
+```
+```bash
+sudo sysctl -w fs.inotify.max_user_watches=524288
+echo "fs.inotify.max_user_watches=524288" > /etc/sysctl.d/99-inotify.conf
+```
+**这是"编辑器/文件同步工具报 `ENOSPC`"的经典原因**（`ENOSPC` 通常让人以为是磁盘满，实际是 watch 用尽）。
+
+2. **递归监控需要为每个子目录单独 watch**：
+- 内核**不**提供递归监控 → 库（如 Linux 的 `fanotify` 或自实现）要遍历所有子目录加 watch。
+- **目录多时 watch 会爆**（`node_modules` 是经典杀手）。
+
+3. **事件队列会溢出**：队列满时产生 `queue overflow` 事件（**会丢失事件**），必须处理。
+
+4. **事件不携带"谁改的"**：只知道哪个文件被改了，**不知道是哪个进程**（要审计得用 `fanotify` + `FAN_OPEN_PERM` 或 `audit`）。
+
+5. **网络文件系统（NFS/CIFS）不可靠**：inotify 依赖本地内核，远端修改**不会产生事件**。
+
+6. **符号链接/硬链接**：`inotify` 跟随/不跟随的语义要留意（`IN_DONT_FOLLOW`）。
+
+7. **竞态**：`inotify` 只是"事后通知"，从事件发生到处理之间有窗口期（文件可能已被改两次）。
+
+**替代/增强方案**：
+
+| 方案 | 特点 |
+|---|---|
+| **`fanotify`**（2.6.36+） | 支持**整个挂载点**监控（无需逐个目录）⭐、可提供访问决策（权限控制）、可拿到 PID |
+| **`epoll` + inotify** | 事件驱动程序的正确组合 |
+| **`watch` 命令** | 轮询（简单但低效） |
+| **`systemd .path` 单元** | 声明式文件监控（内部用 inotify）⭐ |
+| **`rsync` + `--delete` 定时** | 轮询，对 NFS 有效 |
+| **`auditd`** | 审计场景（含 PID、UID、可执行文件） |
+
+**`systemd.path` 例子**：
+```ini
+# /etc/systemd/system/watch-config.path
+[Path]
+PathModified=/etc/myapp/config.yaml
+
+[Install]
+WantedBy=multi-user.target
+```
+```ini
+# watch-config.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl reload myapp
+```
+
+**典型用途**：
+1. **配置热重载**（文件变了就 reload）。
+2. **文件同步**（`lsyncd`、`syncthing`）。
+3. **构建工具**（`watchexec`、`entr`、`nodemon`）。
+4. **安全监控**（敏感文件被改 → 告警）。
+5. **日志收集**（`filebeat` 的 tail 用 inotify 感知轮转）。
+
+**实用命令**：
+```bash
+# 监控某个目录的变化并触发动作
+inotifywait -m -e close_write /etc/nginx/ | while read -r path action file; do
+    nginx -t && systemctl reload nginx
+done
+
+# entr：文件变化就重跑命令
+find . -name ''*.c'' | entr -c make
+
+# 统计谁的 watch 用得多
+find /proc/*/fd -lname anon_inode:inotify 2>/dev/null | \\
+  cut -d/ -f3 | sort | uniq -c | sort -rn | head
+```
+
+**实践建议**：
+1. **先调大 `max_user_watches`**（生产标配，尤其跑 IDE/同步工具的机器）。
+2. **递归监控用 `fanotify` 或成熟库**，不要自己遍历所有目录。
+3. **必须处理队列溢出**（否则静默丢事件）。
+4. **NFS 场景不要依赖 inotify**（改用轮询）。
+5. **`close_write` 比 `modify` 更适合"文件写完了"**（避免读到写一半的内容）。
+6. **注意监控范围**（监控 `/` 会瞬间用尽 watch）。', 1),
+
+('Linux', '磁盘配额,quota', 2,
+ 'Linux 的磁盘配额（quota）怎么配置？',
+ '**quota** 限制**用户或组**在文件系统上可用的**空间（blocks）**与**文件数（inodes）**。
+
+**前提条件**：
+1. **文件系统支持**：ext4（`usrquota`/`grpquota`）、XFS（`uquota`/`gquota`）、btrfs 支持。
+2. **挂载时启用**（编辑 `/etc/fstab`）：
+```
+/dev/vg0/lv_data  /data  ext4  defaults,usrquota,grpquota  0 0
+# XFS 用：defaults,uquota,gquota
+```
+```bash
+mount -o remount /data          # 或 umount/mount
+```
+
+**ext4 的配置流程**：
+```bash
+# 1. 检查并创建配额文件
+quotacheck -cugm /data          # -c 创建, -u 用户, -g 组, -m 不重挂载
+# 生成 aquota.user / aquota.group
+
+# 2. 启用配额
+quotaon -avug                   # 全部启用
+# 或 quotaon /data
+
+# 3. 设置配额
+edquota -u alice                # 交互式编辑
+# 或批量
+setquota -u alice 1048576 2097152 10000 20000 /data
+#               软限空间  硬限空间  软限文件  硬限文件（KB / 个数）
+
+# 4. 查看
+quota -u alice                  # 用户自己看
+repquota -a                     # 报表 ⭐
+quota -v alice
+```
+
+**XFS 的配置（不同命令）**：
+```bash
+# 挂载时启用 uquota,gquota
+xfs_quota -x -c ''report -h'' /data
+xfs_quota -x -c ''limit bsoft=1g bhard=2g isoft=10000 ihard=20000 alice'' /data
+xfs_quota -x -c ''report -h -u'' /data
+```
+
+**软限 vs 硬限**：
+| | 行为 |
+|---|---|
+| **软限（soft）** | **允许超过**，但有**宽限期（grace period，默认 7 天）**；期内必须降回软限以下，否则软限变成硬限 |
+| **硬限（hard）** | **绝对上限**，超过则写入失败（`EDQUOT`） |
+| **宽限期** | `edquota -t` 设置（默认 7 天） |
+
+**用户侧**：
+```bash
+quota -s                        # 看自己的（-s 人类可读）
+# Disk quotas for user alice (uid 1001):
+#  Filesystem  blocks   quota   limit   grace   files   quota   limit  grace
+#  /dev/sdb1   1234560  1048576 2097152   6days    1234   10000   20000
+```
+
+**配额 vs 其它限制方式**：
+
+| 方式 | 粒度 | 说明 |
+|---|---|---|
+| **quota** | 用户/组 × 文件系统 | 传统，文件系统层面 |
+| **XFS project quota** | 目录（项目） | **XFS 独有**，可以给"目录树"配额 ⭐ |
+| **cgroup** | 进程组/容器 | 内存/CPU/IO（不是磁盘空间） |
+| **容器 storage-opt** | 容器 | Docker 的 `--storage-opt size=10G`（需要 overlay2 + xfs pquota） |
+| **应用层** | 应用内部 | 最灵活（如 S3 的存储桶限额） |
+
+**XFS project quota 用在容器**：
+```bash
+# 挂载 xfs 时带 pquota
+# /dev/sdb1 /var/lib/docker xfs defaults,pquota 0 0
+xfs_quota -x -c ''project -s -p /var/lib/docker/overlay2/<id> 1001'' /var/lib/docker
+xfs_quota -x -c ''limit -p bhard=10g 1001'' /var/lib/docker
+```
+**这是 Docker 的 `--storage-opt size=` 的底层机制**。
+
+**容器场景的磁盘限制**：
+```bash
+docker run --storage-opt size=10G ...
+# 注意：只对 overlay2 + xfs(pquota) 或 devicemapper 有效；
+#      且**不含**容器日志（json 日志是另一个文件）
+```
+
+**排查配额问题**：
+```bash
+quota -u <user>                 # 当前用量
+repquota -a                     # 全部
+# 报错 EDQUOT（Disk quota exceeded）时：
+#   1. quota -u 看是否真的超了
+#   2. 注意 inode 配额（文件数）也可能超
+#   3. 注意"已删除但被打开"的文件也计入（因为 inode 还在）
+```
+
+**实践建议**：
+1. **服务器上给用户家目录加配额**（防止单个用户填满整盘）。
+2. **XFS 的 project quota 更适合"目录级"限制**（配额粒度比用户/组更符合实际）。
+3. **软限 + 宽限期**比硬限更友好（给用户缓冲时间）。
+4. **注意 inode 配额**（海量小文件场景）。
+5. **容器磁盘限制**推荐用 **cgroup 的 `io` 控制器 + 日志大小限制**，而不是 quota（更简单可靠）。
+6. **`df` 不显示配额**，要用 `quota`/`repquota` 查。
+7. **配额与 LVM 的区别**：LVM 是"固定大小的卷"（整个卷满了就满），quota 是"共享文件系统内的按人分配"。', 1),
+
+('Linux', 'bash,作业控制', 1,
+ 'bash 的作业控制（job control）和常用快捷键有哪些？',
+ '**作业控制**：
+
+```bash
+sleep 100 &              # 后台运行（[1] 12345）
+jobs -l                  # 列出作业（含 PID）⭐
+fg %1                    # 把作业 1 调到前台
+bg %1                    # 让暂停的作业在后台继续
+kill %1                  # 按作业号杀
+Ctrl+Z                   # 挂起当前前台作业（发 SIGTSTP）
+Ctrl+C                   # 中断（发 SIGINT）
+disown -h %1             # 让作业收不到 SIGHUP
+wait                     # 等所有后台作业
+wait $!                   # 等最后一个后台进程
+```
+
+**`nohup cmd &` vs `cmd &`**：见"后台运行"一题。
+
+**bash 快捷键（`emacs` 模式默认）**：
+
+| 快捷键 | 作用 |
+|---|---|
+| `Ctrl+A` / `Ctrl+E` | 行首 / 行尾 ⭐ |
+| `Ctrl+B` / `Ctrl+F` | 左移 / 右移一个字符 |
+| `Alt+B` / `Alt+F` | 左移 / 右移一个单词 |
+| `Ctrl+U` | **删除到行首** ⭐ |
+| `Ctrl+K` | **删除到行尾** ⭐ |
+| `Ctrl+W` | 删除光标前一个单词 |
+| `Alt+D` | 删除光标后一个单词 |
+| `Ctrl+Y` | 粘贴（yank）刚删的内容 ⭐ |
+| `Ctrl+L` | 清屏（= `clear`）⭐ |
+| `Ctrl+R` | **反向增量搜索历史** ⭐⭐ |
+| `Ctrl+G` | 取消当前搜索 |
+| `Ctrl+P` / `Ctrl+N` | 上一条 / 下一条历史 |
+| `Ctrl+D` | 输入结束（EOF）/ 退出 shell |
+| `Ctrl+C` | 取消当前命令 |
+| `Ctrl+Z` | 挂起当前命令 |
+| `Alt+.` | 插入上一条命令的最后一个参数 ⭐ |
+| `Ctrl+XX` | 在行首与光标位置切换 |
+| `Tab` | 补全（连按两次列出候选）⭐ |
+| `Alt+*` | 插入所有可能的补全 |
+
+**历史与搜索**：
+```bash
+history                     # 全部历史
+history 20                  # 最近 20 条
+!!                          # 上一条命令 ⭐
+!$                          # 上一条命令的最后一个参数 ⭐
+!500                        # 第 500 条
+!grep                       # 最近一条以 grep 开头的命令
+sudo !!                     # 给上一条命令加 sudo ⭐⭐
+^old^new                    # 把上一条命令里的 old 替换成 new ⭐
+Ctrl+R                      # 反向搜索（再按 Ctrl+R 继续往前）
+history -c / history -w     # 清空 / 写出
+```
+**`HISTCONTROL`**（`~/.bashrc`）：
+```bash
+export HISTCONTROL=ignoreboth      # 忽略重复与以空格开头的命令（**隐藏敏感命令**）⭐
+export HISTSIZE=10000
+export HISTFILESIZE=20000
+export HISTTIMEFORMAT=''%F %T ''     # 显示时间
+export HISTIGNORE=''ls:cd:pwd:history''
+```
+
+**常用 bash 特性**：
+```bash
+# 花括号展开
+echo {1..10}                # 1 2 3 ... 10
+echo {a,b,c}{1,2}           # a1 a2 b1 b2 c1 c2
+mkdir -p project/{src,test,docs}
+
+# 命令替换
+now=$(date +%s)
+files=$(ls *.txt)
+
+# 算术
+echo $(( (1+2)*3 ))
+(( i++ ))
+
+# 流程控制
+if [[ -f x && -n "$y" ]]; then ...; fi
+for i in {1..5}; do ...; done
+while read -r line; do ...; done < file
+case "$x" in a|b) ...;; *) ...;; esac
+
+# 参数的默认值/替换
+${var:-default}             # var 未设或空 → default
+${var:=default}             # 同时赋值
+${var:?message}             # 未设则报错退出 ⭐（用于必填参数）
+${var:+alt}                 # var 已设 → alt
+${#var}                     # 长度
+${var#prefix} / ${var##prefix}   # 删最短/最长前缀
+${var%suffix} / ${var%%suffix}   # 删最短/最长后缀 ⭐
+${var/old/new}              # 替换第一个
+${var//old/new}             # 替换全部 ⭐
+${var^^} / ${var,,}         # 大写 / 小写（bash 4+）
+
+# 数组
+arr=(a b c)
+echo "${arr[0]}" "${#arr[@]}"
+for x in "${arr[@]}"; do ...; done
+
+# 关联数组（bash 4+）
+declare -A m
+m[key]=value
+for k in "${!m[@]}"; do echo "$k=${m[$k]}"; done
+```
+
+**重定向进阶**：
+```bash
+cmd 2>&1 | tee log          # 合并 + 同时显示
+exec 3>&1                   # 备份 stdout
+exec > log                  # 重定向全部输出
+cmd |& cat                  # = 2>&1 |
+cmd > >(tee a) > >(tee b)   # 多路输出（进程替换）
+diff <(cmd1) <(cmd2)        # 比较两个命令的输出 ⭐
+```
+
+**安全的 bash 设置**（`~/.bashrc` 或脚本头）：
+```bash
+set -o noclobber            # > 不覆盖已存在文件（防止误覆盖）
+set -o ignoreeof            # Ctrl+D 不退出 shell
+set -o vi                   # vi 模式（若习惯 vi）
+shopt -s checkwinsize       # 自动更新 LINES/COLUMNS
+shopt -s histappend         # 多终端历史追加（不覆盖）⭐
+shopt -s cdspell            # cd 拼写纠错
+shopt -s globstar           # 允许 ** 递归通配 ⭐
+shopt -s nullglob           # 无匹配时展开为空（而非保留模式串）
+```
+
+**`bash_profile` vs `bashrc`**：
+| 文件 | 何时加载 |
+|---|---|
+| `/etc/profile` | 登录 shell（所有用户） |
+| `~/.bash_profile` / `~/.bash_login` / `~/.profile` | **登录 shell**（按顺序取第一个存在的） |
+| `~/.bashrc` | **交互式非登录 shell**（每次开新终端） ⭐ |
+| `/etc/bashrc` / `/etc/bash.bashrc` | 系统级 bashrc |
+
+**常见配置**：
+```bash
+# ~/.bashrc 里通常有：
+[ -f ~/.bash_profile ] && source ~/.bash_profile
+# 这样登录 shell 和交互式 shell 都能拿到相同的环境
+```
+
+**实践建议**：
+1. **`Ctrl+R` 和 `!!`/`sudo !!` 是效率神器**（配合 `HISTCONTROL=ignorespace` 避免记录敏感命令）。
+2. **`HISTCONTROL=ignoreboth`** 能避免历史里出现重复与带密码的命令。
+3. **`shopt -s histappend`** 让多个终端的 history 不互相覆盖。
+4. **`Alt+.`** 快速复用上一条命令的参数。
+5. **`${var:?msg}`** 是脚本里校验必填参数的最简写法。
+6. **`set -o noclobber`** 防止 `>` 误覆盖文件（但要习惯 `>|` 强制覆盖）。
+7. **找命令用 `type`/`which`/`command -v`**（`type` 最准，能识别别名与内建）。', 1),
+
+('Linux', 'iperf,网络性能', 2,
+ '怎么测网络的带宽和延迟？`iperf3` 怎么用？',
+ '**网络性能的四个维度**：
+| 指标 | 含义 | 工具 |
+|---|---|---|
+| **带宽（throughput）** | 单位时间能传多少 | `iperf3`、`nuttcp` |
+| **延迟（latency / RTT）** | 一来一回多久 | `ping`、`mtr`、`hping3` |
+| **抖动（jitter）** | 延迟的波动 | `iperf3 -u`、`mtr` |
+| **丢包（loss）** | 丢了多少 | `ping`、`mtr`、`nstat` |
+
+**`iperf3` 基本用法**：
+```bash
+# 服务端
+iperf3 -s                       # 默认 5201
+iperf3 -s -p 5201 -D            # 后台
+
+# 客户端（TCP 上行：客户端→服务端）
+iperf3 -c <server>              # 默认 10 秒
+iperf3 -c <server> -t 30        # 跑 30 秒 ⭐
+iperf3 -c <server> -P 4         # 4 个并行流 ⭐（单流常吃不满带宽）
+iperf3 -c <server> -R           # 反向（服务端→客户端）⭐
+iperf3 -c <server> -bidir       # 双向（3.7+）
+iperf3 -c <server> -w 512K      # 窗口大小（长肥管道要调大）⭐
+iperf3 -c <server> -i 1         # 每秒报告一次
+
+# UDP（测丢包与抖动）
+iperf3 -c <server> -u -b 100M   # 目标带宽 100Mbps ⭐
+iperf3 -c <server> -u -b 0      # 不限速（打满）— 慎用
+iperf3 -c <server> -u -l 1200   # 包大小（贴近 VoIP 场景）
+
+# 输出 JSON（便于脚本处理）
+iperf3 -c <server> -J
+```
+
+**输出解读**：
+```
+[ ID]   Interval         Transfer     Bitrate         Retr
+[  5]   0.00-10.00 sec   1.10 GBytes   941 Mbits/sec   12    sender
+[  5]   0.00-10.00 sec   1.09 GBytes   938 Mbits/sec        receiver
+```
+| 字段 | 含义 |
+|---|---|
+| `Transfer` | 传输量 |
+| `Bitrate` | **带宽（注意单位是 bits，不是 bytes）** |
+| **`Retr`** | **TCP 重传次数**（非 0 说明网络有问题）⭐ |
+| `Cwnd` | 拥塞窗口（`-i 1` 时可见） |
+| UDP 的 `Lost/Total` | 丢包率 ⭐ |
+| UDP 的 `Jitter` | 抖动 |
+
+**为什么实测带宽远低于链路带宽？**
+
+| 原因 | 排查 |
+|---|---|
+| **单流受 RTT 限制** | BDP = 带宽 × RTT；窗口不够 → 用 `-P` 多流或调 `-w` ⭐ |
+| **CPU 瓶颈** | `top` 看 `si`（软中断）是否 100%；用 `-P` 多核分摊；开 RSS/RPS |
+| **网卡/虚拟机限速** | 云主机的带宽上限；`ethtool` 看速率；云监控看是否到顶 |
+| **MTU 问题** | 大包被分片/丢弃 → `ping -M do -s 1472` 测 |
+| **丢包导致降窗** | `Retr` 高 → 拥塞控制降速 |
+| **磁盘 IO** | `iperf3` 是内存到内存，但如果 `-F` 读文件就受磁盘限制 |
+| **中断集中** | `mpstat -P ALL` 看是否单核 `si` 100% |
+
+**其它网络测试工具**：
+
+| 工具 | 用途 |
+|---|---|
+| `ping` | RTT、丢包 |
+| `mtr` | **路径 + 每跳延迟/丢包**（比 traceroute 好）⭐ |
+| `traceroute` | 路径 |
+| `hping3` | 自定义包（TCP/UDP/ICMP）、防火墙测试、SYN flood 测试 |
+| `nuttcp` | 另一个带宽测试（更接近 netperf） |
+| `netperf` | 老牌，支持多种测试模式 |
+| `sockperf` | 低延迟（微秒级）测量 |
+| `qperf` | 通用性能测试 |
+| `nc`（netcat） | 简单连通与数据管道测试 |
+| `curl -w` | HTTP 各阶段耗时 ⭐ |
+
+**`curl` 测 HTTP 性能**：
+```bash
+curl -o /dev/null -s -w ''\\nDNS: %{time_namelookup}s\\nTCP: %{time_connect}s\\nTLS: %{time_appconnect}s\\nTTFB: %{time_starttransfer}s\\nTotal: %{time_total}s\\nSpeed: %{speed_download} B/s\\n'' \\
+     https://example.com
+```
+**这是定位"HTTP 慢在哪一段"的最快方法**（DNS / TCP / TLS / 服务处理）。
+
+**延迟与抖动的测量**：
+```bash
+# 简单 RTT
+ping -c 100 -i 0.2 <host> | tail -3          # 含 min/avg/max/mdev（mdev 是抖动）
+# 更精确（需要 root）
+mtr --report --report-cycles 100 <host>      # 每跳的丢包与延迟 ⭐
+hping3 -S -p 80 -c 100 <host>                # TCP 层 RTT
+sockperf ping-pong -i <server>                # 微秒级
+```
+
+**排查网络性能问题的顺序**：
+1. **`ping` 测 RTT 与丢包**（先确认基础连通与质量）。
+2. **`mtr` 定位是哪一跳丢包/延迟高**（区分本地/中间/对端）。
+3. **`iperf3` 测纯带宽**（排除应用因素）。
+4. **`ethtool -S <iface>` 看网卡错误计数**（`rx_errors`、`rx_dropped`）。
+5. **`ss -ti` 看 TCP 内部状态**（`cwnd`、`rtt`、`retrans`、`bytes_retrans`）⭐
+6. **`sar -n ETCP 1` / `nstat -az`** 看重传与错误统计。
+7. **`mpstat -P ALL 1`** 看是否 CPU/软中断瓶颈。
+8. **`tcpdump`** 抓包看 TCP 行为（窗口、重传、乱序）。
+
+**`ethtool` 关键用法**：
+```bash
+ethtool eth0                     # 速率/双工/链路状态
+ethtool -S eth0 | grep -i -E "error|drop|discard"
+ethtool -k eth0                  # 卸载特性（TSO/GRO/GSO）
+ethtool -K eth0 gro off          # 关闭 GRO（调试用）
+ethtool -g eth0                  # 环形缓冲大小
+ethtool -G eth0 rx 4096          # 调大环形缓冲（高流量下减少丢包）⭐
+```
+
+**`ss -ti` 的宝藏信息**：
+```bash
+ss -ti dst 10.0.0.1
+# ... rtt:0.5/0.3 rttvar:... cwnd:10 ... retrans:0/0 ...
+```
+| 字段 | 含义 |
+|---|---|
+| `rtt` | 平滑 RTT / 方差 |
+| `cwnd` | 拥塞窗口（小且不增长 = 有丢包或窗口受限） |
+| `retrans` | 重传/总发送 |
+| `bytes_retrans` | 重传字节数 |
+| `unacked` | 未确认的段 |
+| `pacing_rate` | 发送速率（BBR 的指标） |
+
+**实践建议**：
+1. **先 `ping`/`mtr` 再 `iperf3`**（分层定位）。
+2. **`iperf3` 一定用 `-P 4` 及以上**（单流测不出真实带宽）。
+3. **关注 `Retr`（重传）**，非 0 就是网络有问题。
+4. **长肥管道要调 `-w`**（或开 `tcp_bbr` 拥塞控制）。
+5. **云主机看云监控的带宽曲线**（可能是云平台的限速）。
+6. **`ss -ti` 是"为什么 TCP 慢"的第一手证据**。
+7. **`ethtool -S` 的 drop 计数**能发现环形缓冲不足（调 `-G` 解决）。', 1),
+
+('Linux', 'SELinux,AppArmor', 2,
+ 'SELinux 是什么？为什么它会导致"权限明明对但就是访问不了"？',
+ '**SELinux（Security-Enhanced Linux）**是内核的 **MAC（强制访问控制）** 实现：即使传统权限（DAC，`rwx` + 属主）允许，**SELinux 策略仍可能拒绝**。
+
+**DAC vs MAC**：
+| | DAC（传统权限） | MAC（SELinux/AppArmor） |
+|---|---|---|
+| 依据 | 用户/组 + rwx | **安全上下文（label）** + 策略 |
+| root | 通常全能 | **root 也会被拒绝** ⭐ |
+| 配置 | 文件属性 | 全局策略 |
+
+**安全上下文（context）**：
+```bash
+ls -Z /var/www/html/           # 查看文件的 context
+ps -eZ | grep nginx            # 查看进程的 context
+# system_u:object_r:httpd_sys_content_t:s0
+#  │         │        │              └── MLS 级别
+#  │         │        └───────────────── 类型（最重要）⭐
+#  │         └────────────────────────── 角色
+#  └──────────────────────────────────── 用户
+```
+**判定主要看"类型（type）"**：策略规定"什么类型的进程能访问什么类型的文件"。
+
+**三种模式**：
+```bash
+getenforce                     # Enforcing / Permissive / Disabled
+sestatus                       # 详细状态
+setenforce 0                   # 切到 Permissive（临时，重启恢复）
+setenforce 1                   # 切回 Enforcing
+# 持久化：/etc/selinux/config 的 SELINUX=enforcing|permissive|disabled
+```
+| 模式 | 行为 |
+|---|---|
+| **Enforcing** | **拦截并记录**（拒绝生效） |
+| **Permissive** | **只记录不拦截**（用于调试，"会拒绝的"都写日志） ⭐ |
+| **Disabled** | 完全关闭（**需要重启**；且会改变文件系统上的标签行为） |
+
+**典型排障流程（"权限对但访问不了"）**：
+
+```bash
+# 1. 确认是否是 SELinux
+getenforce                       # Enforcing？
+# 2. 看审计日志（关键）⭐
+sudo ausearch -m AVC -ts recent
+sudo grep AVC /var/log/audit/audit.log | tail
+journalctl -t audit | grep AVC
+# 3. 用 sealert 读懂（安装了 setroubleshoot 后）
+sealert -a /var/log/audit/audit.log
+# 4. 临时验证：切 Permissive
+setenforce 0
+# 如果问题消失 → 确认是 SELinux
+```
+
+**AVC 拒绝日志的样子**：
+```
+type=AVC msg=audit(...): avc:  denied  { read } for  pid=1234 comm="nginx"
+  name="index.html" dev="sda1" ino=123
+  scontext=system_u:system_r:httpd_t:s0
+  tcontext=unconfined_u:object_r:user_home_t:s0      ← 类型不对！
+  tclass=file permissive=0
+```
+**读法**：`httpd_t` 类型的进程试图读 `user_home_t` 类型的文件 → 被拒。**修法是把文件类型改成 `httpd_sys_content_t`**。
+
+**常见场景与修法**：
+
+**1. 网站目录放错位置**（把站点放在 `/home/user/www` 而不是 `/var/www`）：
+```bash
+# 办法 A（推荐）：用正确的目录（/var/www）
+# 办法 B：改标签
+semanage fcontext -a -t httpd_sys_content_t "/home/user/www(/.*)?"
+restorecon -Rv /home/user/www          # 应用（必须！）⭐
+
+# 查看当前的 fcontext 规则
+semanage fcontext -l | grep httpd
+```
+
+**2. 非标准端口**（nginx 监听 8080）：
+```bash
+semanage port -l | grep http_port_t
+semanage port -a -t http_port_t -p tcp 8080
+semanage port -m -t http_port_t -p tcp 8080
+```
+
+**3. 服务需要连接数据库/网络**：
+```bash
+setsebool -P httpd_can_network_connect 1          # 持久（-P）⭐
+setsebool -P httpd_can_network_connect_db 1
+getsebool -a | grep httpd
+semanage boolean -l | grep nis_enabled
+```
+
+**4. 家目录不可访问**：
+```bash
+setsebool -P httpd_enable_homedirs 1
+```
+
+**5. 生成自定义策略模块（兜底方案）**：
+```bash
+# 从 AVC 日志生成策略（谨慎，会放行这些操作）
+audit2allow -a -M mypolicy
+semodule -i mypolicy.pp
+# 更推荐先看具体拒绝内容：
+audit2why -a
+```
+**⚠️ 用 `audit2allow -M` 是最简单但也最粗暴的方式**（放行了所有被拒的操作）；**应先尝试"用正确的标签/布尔值"**。
+
+**关键命令**：
+```bash
+# 文件标签
+ls -Z, ps -Z, id -Z
+chcon -t httpd_sys_content_t file          # 临时改（restorecon 会还原）
+semanage fcontext -a -t TYPE "path(/.*)?"  # 永久规则
+restorecon -Rv /path                       # 应用规则 ⭐
+matchpathcon /path                         # 查"应该是什么标签"
+
+# 端口
+semanage port -l
+semanage port -a -t http_port_t -p tcp 8080
+
+# 布尔值
+getsebool -a
+setsebool -P name 1
+
+# 策略模块
+semodule -l
+semodule -i x.pp / semodule -r x
+
+# 排障
+ausearch -m AVC -ts today
+sealert -a audit.log
+audit2why < avc.txt
+```
+
+**AppArmor（Ubuntu/SUSE 用）**：
+- 与 SELinux 目标类似，但**机制不同**：基于**路径**（不是标签），**按程序**加载 profile。
+```bash
+aa-status                      # 状态
+aa-enforce /etc/apparmor.d/usr.sbin.nginx
+aa-complain /etc/apparmor.d/usr.sbin.nginx     # 只记录（= Permissive）
+apparmor_parser -r /etc/apparmor.d/usr.sbin.nginx
+journalctl -k | grep -i apparmor
+dmesg | grep -i "apparmor.*denied"             # 拒绝日志
+```
+- **更易上手**（路径匹配直观），但**隔离粒度比 SELinux 粗**。
+- Ubuntu 默认装 AppArmor，RHEL/CentOS 默认装 SELinux。
+
+**对比**：
+| | SELinux | AppArmor |
+|---|---|---|
+| 机制 | 标签（label） | 路径（path） |
+| 粒度 | 细（类型、角色、用户、MLS） | 中 |
+| 学习曲线 | 陡 | 缓 |
+| 发行版 | RHEL/CentOS/Fedora | Ubuntu/SUSE |
+| 对"移动文件" | 标签跟着文件（**要 restorecon**） | 路径不变即无影响 |
+
+**实践建议**：
+1. **不要直接 `setenforce 0` 或禁用 SELinux** —— 这是**降低系统安全性**来"解决问题"，应该修标签/布尔值。
+2. **调试时用 `Permissive` + `ausearch`** 收集完整的拒绝列表，再统一修。
+3. **`restorecon` 是"文件标签不对"的标准解法**（`chcon` 是临时的，会被还原）⭐。
+4. **用标准目录**（`/var/www` 而非 `/home/x/www`）能避免 90% 的 SELinux 问题。
+5. **`setsebool -P`** 解决"服务需要额外能力"（网络、家目录、数据库）。
+6. **容器里**：SELinux 会给容器打标签（`:z`/`:Z` 挂载选项）；RHEL 系要留意。
+7. **`audit2allow` 是兜底**，但**务必看清它放行了什么**（可能是提权漏洞）。
+8. **`Permissive` 模式是"只记录不拒绝"，非常适合先观察再收紧**。', 1),
+
+('Linux', 'chroot,隔离', 2,
+ '`chroot` 是什么？它能提供安全隔离吗？',
+ '**`chroot`** 把进程的根目录（`/`）改成指定目录，进程就只能看到该目录下的文件。
+
+```bash
+chroot /newroot /bin/bash
+chroot --userspec=user:group /newroot /bin/sh
+```
+**编程接口**：`chroot() + chdir("/")`（**必须 chdir**，否则工作目录还在旧根之外）。
+
+**典型用途**：
+1. **修复系统**：从 Live CD 启动后 `chroot` 进受损系统，重装 GRUB/内核、改配置。
+2. **构建/打包**：在干净的根文件系统里构建，避免污染宿主。
+3. **测试软件兼容性**：不同发行版的用户态环境。
+4. **服务隔离（历史上）**：FTP 服务器把用户限制在家目录（**现在已不推荐仅靠 chroot**）。
+5. **容器的基础**：Docker 等会做 `pivot_root`（比 chroot 更彻底）。
+
+**⚠️ 关键结论：`chroot` 不是安全边界！**
+
+**为什么**：
+1. **root 可以逃逸**：
+```c
+// 经典逃逸：在 chroot 目录外保留一个 fd，然后 fchdir 出去
+mkdir /tmp/escape; chroot /jail; chdir("/");
+// 若 chroot 之前就打开了外层目录的 fd：
+fchdir(outer_fd); chroot(".");        // 逃出去
+```
+2. **`chroot` 不隔离其它资源**：
+   - 进程仍共享**同一套 PID/网络/用户/IPC**（`ps` 能看到外面的进程，能 `kill`，能连网络）。
+   - 没有 CPU/内存限制。
+3. **特权操作仍可用**：能加载内核模块、改系统时钟、访问设备（`/dev` 若可见）。
+4. **只有一次性的路径限制**（不是持续的强制访问控制）。
+
+**真正的隔离方案**：
+| 方案 | 隔离强度 | 说明 |
+|---|---|---|
+| `chroot` | 最弱 | 仅改根目录 |
+| **namespaces** | 强 | PID/NET/MNT/USER/IPC/UTS 隔离（容器的基础）⭐ |
+| **cgroups** | — | 资源限制（与 namespace 配合） |
+| **seccomp** | 强 | 系统调用过滤 |
+| **capabilities** | 中 | 细粒度权限 |
+| **SELinux/AppArmor** | 强 | MAC |
+| **容器（Docker）** | 中强 | namespace + cgroup + capabilities + seccomp |
+| **gVisor** | 很强 | 用户态内核 |
+| **KVM 虚拟机** | 最强 | 硬件虚拟化 |
+
+**`pivot_root` vs `chroot`**：
+- `pivot_root` 把旧根**移走**并卸载，是"真正换根"。
+- **容器运行时用 `pivot_root`**（配合 mount namespace），比 `chroot` 更难逃逸。
+
+**`chroot` 的实用细节**：
+
+**缺少库文件会导致程序起不来**：
+```bash
+# 把需要的动态库拷进去
+ldd /bin/bash
+for lib in $(ldd /bin/bash | awk ''{print $3}'' | grep ''^/''); do
+    mkdir -p "/newroot$(dirname "$lib")"
+    cp "$lib" "/newroot$lib"
+done
+# 或一次拷全
+for f in /bin/bash /bin/ls /usr/bin/env; do
+    cp --parents "$f" /newroot
+    ldd "$f" | awk ''{print $3}'' | grep ''^/'' | while read -r l; do cp --parents "$l" /newroot; done
+done
+# /dev 需要（设备文件）
+mknod /newroot/dev/null c 1 3
+```
+
+**工具**：
+| 工具 | 用途 |
+|---|---|
+| `chroot` | 基本换根 |
+| `debootstrap` | 构建 Debian/Ubuntu 根文件系统 ⭐ |
+| `dnf --installroot=` | 构建 RHEL 系根文件系统 ⭐ |
+| `arch-chroot` | Arch 的封装（自动挂载 /proc /sys /dev） |
+| `proot` | **无需 root** 的 chroot（用户态 syscall 拦截） |
+| `bwrap`（bubblewrap） | 轻量沙箱（flatpak 用），比 chroot 安全 |
+| `unshare` | 手工创建 namespace |
+| `systemd-nspawn` | 基于 systemd 的轻量容器 |
+| `firejail` | 应用沙箱（含 seccomp） |
+
+**修复系统时的标准流程**：
+```bash
+# 从 Live 环境
+mount /dev/sda2 /mnt
+mount /dev/sda1 /mnt/boot
+mount --bind /dev  /mnt/dev
+mount --bind /dev/pts /mnt/dev/pts
+mount --bind /proc /mnt/proc
+mount --bind /sys  /mnt/sys
+mount --bind /run  /mnt/run          # 现代系统需要
+chroot /mnt /bin/bash
+# 在 chroot 里工作
+grub-install /dev/sda && update-grub
+exit
+umount -R /mnt
+```
+**必须 bind mount `/dev`、`/proc`、`/sys`** —— 否则很多命令（`grub-install`、`apt`）会失败。
+
+**实践建议**：
+1. **`chroot` 只用于"换根做运维"**（修复、构建），**不要当作安全隔离**。
+2. **需要隔离用 namespace（`unshare`/`bwrap`/容器）**；需要限制资源用 cgroup。
+3. **修复系统时务必 bind mount `/dev`、`/proc`、`/sys`、`/run`**，退出后 `umount -R`。
+4. **`ldd` 检查依赖库**（chroot 里"命令找不到"通常是缺库或缺 `/dev`）。
+5. **`arch-chroot`/`systemd-nspawn` 比裸 `chroot` 省事**。
+6. **不要把 `chroot` 当作"容器"**（它不是 —— 没有 namespace、没有 cgroup、root 可逃逸）。
+7. **`proot` 可在无 root 权限时模拟**（但性能有损，且依赖 ptrace）。', 1),
+
+('Linux', 'PATH,环境变量,安全', 2,
+ '环境变量是怎么工作的？`PATH` 有什么安全陷阱？',
+ '**环境变量**是"进程私有的键值对"，通过 `fork`/`exec` **继承给子进程**（不是全局的）。
+
+**查看与设置**：
+```bash
+env                        # 全部
+printenv PATH
+echo "$PATH"
+export VAR=value           # 设置并导出给子进程 ⭐
+VAR=value cmd              # 只对这条命令生效 ⭐
+unset VAR
+env -i cmd                 # 清空所有环境变量运行
+env -u PATH cmd            # 移除某个变量
+```
+**`export` 与不导出的区别**：
+```bash
+X=1              # shell 变量（子进程看不到）
+export X=1       # 环境变量（子进程能看到）
+```
+**注意**：**shell 变量改了不会影响父进程**（`bash` 里的 `export` 不会改变调用它的那个 shell 的环境）。
+
+**`PATH` 的解析**：
+```bash
+echo "$PATH"               # /usr/local/bin:/usr/bin:/bin:...
+type ls                    # 判断是不是别名/内建/外部
+command -v ls              # 只找外部命令路径
+which -a ls                # 所有匹配（可能有多个）
+```
+**查找规则**：**从左到右**，第一个匹配的先执行。**当前目录不在 PATH 里**（出于安全），所以要运行当前目录的程序必须写 `./prog`。
+
+**`PATH` 常见坑**：
+
+1. **`PATH` 被覆盖而不是追加**：
+```bash
+PATH=/new/path             # ❌ 丢失了原来的所有路径
+export PATH="/new/path:$PATH"   # ✅ 追加
+export PATH="$PATH:/new/path"   # ✅ 追加到末尾
+```
+2. **`.` 或空条目在 PATH 里**（`PATH=.:$PATH`）→ 任意目录下的恶意程序可被"意外执行"（历史漏洞）。
+3. **`~/.bashrc` 里反复 `export PATH=$PATH:...`** → 每次 source 都追加一次 → `PATH` 越来越长（用去重或只在未包含时追加）。
+
+**安全陷阱**：
+
+**1. `sudo` 与环境变量**：
+- `sudo` **默认重置环境**（`env_reset`），只保留白名单（`secure_path`）。
+- `sudo PATH=... cmd` **不会**改变实际使用的 PATH（被 `secure_path` 覆盖）。
+- 配置 `env_keep` 要非常小心（保留 `LD_PRELOAD`、`PYTHONPATH` 是提权路径）⭐
+
+**2. `LD_PRELOAD`/`LD_LIBRARY_PATH`**
+- 见前文：**SUID 程序会忽略它们**（安全设计），但配置不当（`sudo` 保留、`setcap` 程序）就危险。
+- **不要全局设置 `LD_LIBRARY_PATH`**（影响所有程序、破坏顺序）。
+
+**3. `IFS` 注入**：
+- 若脚本用 `$IFS` 分割且环境被污染，可导致命令注入。
+
+**4. 未加引号的环境变量**：
+```bash
+# ❌ 环境变量含空格/通配符时会展开
+rm -rf $DIR/*
+# ✅
+rm -rf -- "${DIR:?}"/*
+```
+
+**5. `BASH_ENV`/`ENV` 注入**：
+- `BASH_ENV` 指定非交互式 bash 启动时执行的脚本 → 可注入代码。
+
+**6. `PATH` 劫持（提权路径）** ⭐
+```bash
+# 若服务脚本里这样写（没有绝对路径）：
+#!/bin/bash
+tar -czf /backup/x.tar.gz /data       # 依赖 PATH
+
+# 而 cron 的 PATH 可能包含攻击者可写目录 → 攻击者放一个假的 tar
+```
+**修复：脚本里用绝对路径**（`/usr/bin/tar`）或**开头设置安全的 PATH**：
+```bash
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+```
+
+**7. `~/.bashrc` 被劫持**：
+- 若攻击者能写某个用户的 `~/.bashrc`，则该用户每次登录都会执行恶意代码。
+- **家目录权限要严**（`chmod 700 ~`）。
+
+**环境变量的加载顺序（bash 登录 shell）**：
+```
+/etc/profile
+  → /etc/profile.d/*.sh
+  → ~/.bash_profile（或 ~/.bash_login 或 ~/.profile，取第一个存在的）
+      → 通常 source ~/.bashrc
+          → /etc/bashrc（/etc/bash.bashrc）
+```
+**非登录交互式 shell**：只加载 `~/.bashrc`。
+**非交互式 shell**（脚本）：只加载 `BASH_ENV`（若设置）。
+**systemd 服务**：**不读以上任何文件**！只有：
+- unit 里的 `Environment=` / `EnvironmentFile=`
+- `DefaultEnvironment=`（`/etc/systemd/system.conf`）
+- `/etc/environment`（PAM 的 `pam_env` 读取，**但 systemd 服务不经过 PAM**）
+
+**这也是"cron/systemd 里跑脚本找不到命令/环境变量不对"的根因。**
+
+**推荐的配置组织**：
+```bash
+# /etc/profile.d/myapp.sh（系统级，所有用户）
+export PATH="/opt/myapp/bin:$PATH"
+export MYAPP_HOME=/opt/myapp
+
+# /etc/environment（简单 KEY=VALUE，无 shell 语法）
+MYAPP_HOME=/opt/myapp
+LANG=en_US.UTF-8
+
+# systemd 服务
+[Service]
+EnvironmentFile=/etc/myapp/env
+Environment=LANG=en_US.UTF-8
+```
+
+**排查环境变量问题**：
+```bash
+# 看进程实际的环境变量 ⭐
+cat /proc/<pid>/environ | tr ''\\0'' ''\\n''
+sudo strings /proc/<pid>/environ | grep PATH
+
+# 看服务的环境
+systemctl show myapp -p Environment -p EnvironmentFiles
+systemd-run --pty --property=Environment=FOO=bar bash   # 测试
+
+# 排查 PATH 问题
+env -i /bin/bash --noprofile --norc -c ''echo $PATH''     # 干净环境
+strace -f -e trace=execve ./script | grep PATH          # 看它执行了什么
+```
+
+**实践建议**：
+1. **脚本开头设置安全的 `PATH`**（或全部用绝对路径）。
+2. **追加而非覆盖**：`export PATH="$PATH:/new"`。
+3. **cron/systemd 里显式设置环境变量**（不要依赖 shell 配置）⭐。
+4. **服务用 `EnvironmentFile=`**（文件权限 `600`，不放 git）。
+5. **不要全局设 `LD_LIBRARY_PATH`/`LD_PRELOAD`**。
+6. **`sudo` 的 `env_keep` 要最小化**（尤其别留 `LD_*`、`PYTHONPATH`、`PERL5LIB`）。
+7. **家目录与脚本文件权限要严**（防 `~/.bashrc` 劫持）⭐。
+8. **敏感信息不要放环境变量**（`/proc/<pid>/environ` 同用户可读；`ps eww` 也可能泄露）→ 用文件（权限 600）+ 读取。
+9. **用 `env -i` 复现"干净环境"的问题**。
+10. **`type` 而不是 `which`**（`type` 能看到别名和内建，更准确）。', 1),
+
+('Linux', 'patch,diff,补丁', 2,
+ '`diff` 和 `patch` 怎么用？打补丁失败怎么办？',
+ '**`diff` 生成补丁**：
+```bash
+diff -u old.c new.c > change.patch        # 统一格式（unified，最常用）⭐
+diff -u old.c new.c | tee change.patch
+# 递归目录
+diff -ruN old_dir/ new_dir/ > dir.patch   # -r 递归, -N 把新文件当空文件 ⭐
+# -N 很关键：否则新增文件不会出现在补丁里
+```
+**`-u` 上下文格式**：
+```diff
+--- old.c	2026-01-01
++++ new.c	2026-01-02
+@@ -1,5 +1,6 @@                    ← 位置 (-原文件起始行,行数 +新文件起始行,行数)
+ int main() {
+-    printf("old\\n");             ← - 删除的行
++    printf("new\\n");             ← + 新增的行
++    return 0;
+     return 0;                    ← 空格开头 = 上下文（未变）
+ }
+```
+
+**`patch` 应用补丁**：
+```bash
+patch -p1 < change.patch          # -p1 去掉路径的第一层 ⭐
+patch -p0 < change.patch          # 路径完全对应
+patch -p2 < change.patch
+patch -R < change.patch           # 反向（撤销补丁）⭐
+patch --dry-run -p1 < change.patch  # 试运行（不实际改）⭐
+patch -b -p1 < change.patch       # 备份原文件（.orig）
+patch -d /path/to/src -p1 < change.patch   # 在指定目录应用
+```
+
+**`-pN` 的含义**：去掉路径的前 N 层。
+```
+--- a/src/main.c
++++ b/src/main.c
+patch -p1  → src/main.c      （去掉 "a/"）
+patch -p0  → a/src/main.c
+```
+
+**打补丁失败的常见原因与解决**：
+
+| 报错 | 原因 | 解决 |
+|---|---|---|
+| `Hunk #1 FAILED at 10` | 上下文不匹配（源码已改动/版本不同） | 用 `.rej` 文件手工合并；或用 `fuzz` |
+| `Reversed (or previously applied) patch detected` | 已经打过 / 打反了 | 加 `-R` 或跳过 |
+| `can''t find file to patch` | 路径不对 | 调 `-pN` 或 `-d` 指定目录 |
+| `malformed patch` | 补丁文件损坏（邮件客户端改行尾） | 检查 CRLF（`dos2unix`） |
+| 部分成功 | 有些 hunk 成功有些失败 | 看 `*.rej`（未应用部分）与 `*.orig`（原始文件） |
+
+**处理失败**：
+```bash
+# patch 会留下：
+#   file.rej   —— 无法应用的 hunk
+#   file.orig  —— 原始文件（若有 -b）
+cat file.rej                # 看哪些没应用
+# 手工合并后删除 .rej
+find . -name ''*.rej'' -delete
+```
+
+**`git` 与补丁**：
+```bash
+git diff > change.patch                  # 生成
+git diff --staged > change.patch         # 已暂存的
+git format-patch -1 HEAD                 # 带提交信息的补丁（邮件格式）⭐
+git apply change.patch                   # 应用（不创建提交）
+git apply --check change.patch           # 只检查能否应用 ⭐
+git apply -3 change.patch                # 三方合并（更容错）⭐
+git am 0001-*.patch                      # 应用邮件格式补丁（保留提交信息与作者）⭐
+git am --abort                           # 失败后放弃
+```
+
+**`git apply` vs `patch`**：
+- `git apply` 更严格（默认不容许 fuzz），但支持 `-3`（三方合并）与索引集成。
+- `patch` 更宽松（默认允许一些 fuzz 与偏移）。
+- **在 git 仓库里优先 `git apply`**（能追踪、能撤销）。
+
+**其它 diff 用法**：
+```bash
+diff -y a b                 # 并排显示 ⭐
+diff -w a b                 # 忽略空白差异
+diff -i a b                 # 忽略大小写
+diff -q a b                 # 只报告"是否不同"
+diff -r dir1 dir2           # 比较目录
+diff <(sort a) <(sort b)    # 比较命令输出（进程替换）⭐
+vimdiff a b                 # 可视化对比 ⭐
+meld a b / kdiff3           # GUI 对比
+```
+**`colordiff`**：给 `diff` 上色（或在 git 里配 `color.diff`）。
+
+**`git diff` 的常用形态**：
+```bash
+git diff                    # 工作区 vs 暂存区
+git diff --staged           # 暂存区 vs HEAD
+git diff HEAD               # 工作区 vs HEAD
+git diff branch1..branch2
+git diff --stat             # 摘要
+git diff -w                 # 忽略空白
+git diff --word-diff         # 词级对比
+```
+
+**`comm`（比较两个已排序文件）**：
+```bash
+comm -12 a.txt b.txt        # 共同行（交集）⭐
+comm -23 a.txt b.txt        # 只在 a（差集）
+comm -13 a.txt b.txt        # 只在 b
+# 需要先排序（LC_ALL=C sort 更快）
+```
+
+**`cmp`（二进制比较）**：
+```bash
+cmp file1 file2             # 第一个不同的字节位置
+cmp -l file1 file2 | head    # 列出所有差异
+# 对比文件是否一样（含二进制）
+md5sum file1 file2 / sha256sum
+```
+
+**实用场景**：
+```bash
+# 1. 生成配置文件差异补丁（部署时用）
+diff -u /etc/nginx/nginx.conf.bak /etc/nginx/nginx.conf > nginx.patch
+
+# 2. 备份"当前状态"，之后恢复
+diff -ruN /etc /etc.bak > etc.patch
+patch -p1 -d / < etc.patch    # 恢复
+
+# 3. 打上游补丁（开源项目）
+wget https://example.com/fix.patch
+cd project && patch -p1 --dry-run < ../fix.patch    # 先试 ⭐
+patch -p1 < ../fix.patch
+
+# 4. 撤销
+patch -R -p1 < fix.patch
+
+# 5. 查看补丁内容（不打）
+less change.patch
+git apply --stat change.patch       # 只看影响的文件与行数 ⭐
+```
+
+**实践建议**：
+1. **`--dry-run` / `--check` 先验证**（打补丁前必做）⭐。
+2. **`patch -b` 保留 `.orig` 备份**（失败可回滚）。
+3. **`-pN` 要与补丁的路径层级匹配**（看 `---`/`+++` 行的开头）。
+4. **在 git 仓库里优先 `git apply -3` 或 `git am`**。
+5. **补丁文件要确保行尾是 LF**（`dos2unix`）。
+6. **失败的 `.rej` 要手工合并**（不要直接删了当成功）。
+7. **生成补丁用 `-ruN`**（递归 + 处理新文件）。
+8. **`diff -u` 比默认格式更易读、更容错**（默认要 `-c`/`-u`）。', 1),
+
+('Linux', '硬件信息,监控', 1,
+ '怎么查看服务器的硬件信息（CPU/内存/磁盘/网卡/主板）？',
+ '**CPU**：
+```bash
+lscpu                       # 最全面（架构、核数、缓存、NUMA、频率）⭐
+lscpu | grep -E "Model name|Socket|Core|Thread|MHz|NUMA"
+cat /proc/cpuinfo | grep -E "model name|physical id|core id|flags" | head
+nproc                       # 逻辑核数
+nproc --all
+cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq   # 当前频率
+cat /sys/devices/system/cpu/online
+cpuid                       # 详细信息（需安装）
+```
+**关键解读**：
+- `Socket(s)`：物理 CPU 数。
+- `Core(s) per socket`：每颗 CPU 的物理核。
+- `Thread(s) per core`：**每核线程数（2 = 开了超线程）**。
+- **物理核数 = Socket × Core per socket**（这是判断"该开多少并行"的依据，不是 `nproc`）。
+
+**内存**：
+```bash
+free -h
+cat /proc/meminfo
+dmidecode -t memory         # **物理内存条信息（型号/频率/插槽）** ⭐
+dmidecode -t memory | grep -E "Size|Speed|Locator|Manufacturer" | head -20
+lshw -class memory
+# NUMA 分布
+numactl --hardware
+```
+**`dmidecode` 需要 root**（读 SMBIOS）。
+
+**磁盘**：
+```bash
+lsblk                       # 块设备树（最直观）⭐
+lsblk -d -o NAME,SIZE,ROTA,MODEL,SERIAL
+# ROTA=1 机械盘，ROTA=0 SSD
+fdisk -l / parted -l
+blkid
+df -hT                      # 文件系统与类型
+smartctl -a /dev/sda        # **SMART 健康、通电时长、错误计数** ⭐
+cat /sys/block/sda/queue/rotational      # 1=HDD 0=SSD
+nvme list                   # NVMe 设备（需 nvme-cli）
+```
+
+**网卡**：
+```bash
+ip -br link                 # 接口概览 ⭐
+ip -br addr
+lspci | grep -i ethernet
+ethtool eth0                # 速率/双工/驱动
+ethtool -i eth0             # 驱动与固件版本
+ethtool -S eth0 | head -20  # 统计
+lshw -class network
+```
+
+**主板/BIOS**：
+```bash
+dmidecode -t system         # 厂商/型号/序列号 ⭐
+dmidecode -t bios           # BIOS 版本与日期
+dmidecode -t baseboard      # 主板
+dmidecode -t chassis
+lshw -short                 # 硬件总览 ⭐
+hwinfo --short              # 另一套（需安装）
+```
+
+**PCI/USB 设备**：
+```bash
+lspci                       # 所有 PCI 设备
+lspci -v / lspci -vv        # 详细
+lspci -nn                   # 显示设备 ID
+lspci | grep -i -E "vga|3d" # 显卡
+lsusb
+lsusb -t                    # 树形结构
+```
+
+**综合工具**：
+| 工具 | 特点 |
+|---|---|
+| **`lshw`** | 硬件总览（可输出 HTML/JSON）⭐ |
+| **`hwinfo`** | 最详细（SUSE 系） |
+| **`inxi -F`** | **一行装好、输出友好**（推荐）⭐ |
+| `neofetch`/`fastfetch` | 炫酷的概览（含系统信息） |
+| `hardinfo` | GUI |
+| `nmon` | 交互式性能监控 |
+| `sosreport` | 收集诊断信息（红帽支持用） |
+
+```bash
+inxi -F          # 完整硬件摘要
+inxi -C          # CPU
+inxi -M          # 主板/BIOS
+inxi -D          # 磁盘
+inxi -N          # 网卡
+inxi -G          # 显卡
+```
+
+**运行状态监控**：
+```bash
+uptime                      # 负载与开机时长
+who -b                      # 上次启动时间
+last reboot                 # 重启历史
+w / who                     # 在线用户
+dmesg -T                    # 内核启动日志（硬件识别过程）⭐
+journalctl -b               # 本次启动日志
+systemd-analyze             # 启动耗时
+```
+
+**传感器与温度**：
+```bash
+sensors                     # 温度/电压/风扇（需 lm-sensors）⭐
+sudo sensors-detect         # 首次配置（探测芯片）
+watch -n2 sensors
+cat /sys/class/thermal/thermal_zone*/temp      # 温度（毫摄氏度）⭐
+cat /sys/class/hwmon/hwmon*/temp*_input
+ipmitool sensor             # 服务器 BMC（远程管理卡）⭐
+ipmitool sdr / ipmitool sel list               # 传感器与系统事件日志
+smartctl -A /dev/sda | grep -i temp            # 磁盘温度
+nvidia-smi                  # NVIDIA GPU 温度/功耗/显存 ⭐
+```
+
+**电源与功耗**：
+```bash
+ipmitool power status       # 服务器电源状态
+ipmitool chassis status
+cat /sys/class/power_supply/*/capacity         # 笔记本电池
+turbostat                   # Intel 功耗与频率（需 root）⭐
+powertop                    # 功耗分析
+cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor   # 调频策略
+```
+
+**关键系统信息**：
+```bash
+uname -a                    # 内核版本
+cat /etc/os-release         # 发行版 ⭐
+hostnamectl                 # 主机名/内核/架构/虚拟化类型 ⭐
+systemd-detect-virt         # 判断是否在虚拟机/容器里 ⭐
+cat /etc/*release*
+lsb_release -a
+```
+
+**判断"是虚拟机还是物理机"**：
+```bash
+systemd-detect-virt         # kvm / vmware / docker / none
+dmidecode -t system | grep -i -E "manufacturer|product"    # 云厂商标识
+cat /sys/class/dmi/id/product_name
+lscpu | grep -i hypervisor
+```
+**云主机的特征**：`dmidecode` 显示厂商名（如 `Alibaba Cloud`、`Amazon EC2`）、`product_name` 是实例类型、`lscpu` 有 `Hypervisor vendor`。
+
+**实践建议**：
+1. **`inxi -F` 或 `lshw -short`** 是"快速了解一台机器"的最快方式。
+2. **`lscpu` 看物理核数**（不是 `nproc`，后者含超线程）。
+3. **`dmidecode` 看内存插槽**（判断能否加内存、是否插满、频率）。⭐
+4. **`smartctl` 是硬盘健康的必查项**（上线新机器、排查 IO 问题时）。
+5. **`sensors`/`ipmitool` 看温度**（高温会降频，是"性能突然下降"的隐藏原因）。⭐
+6. **`dmesg -T`** 看硬件识别过程（驱动加载失败都在这）。
+7. **虚拟化环境要 `systemd-detect-virt`**（决定是否能改内核、是否有限制）。
+8. **`hostnamectl`** 是最简洁的系统信息总览。', 1),
+
+('Linux', 'KVM,虚拟化', 3,
+ 'KVM 虚拟化是怎么工作的？和容器有什么区别？',
+ '**KVM（Kernel-based Virtual Machine）**：Linux 内核内置的**硬件虚拟化**支持（利用 Intel VT-x / AMD-V）。
+
+**架构**：
+```
+用户态：   QEMU（设备模拟 + 虚拟机管理）
+              ↕ ioctl
+内核态：   KVM 模块（/dev/kvm），负责 CPU/内存虚拟化
+              ↕
+硬件：     VT-x / AMD-V（CPU 虚拟化）、EPT/NPT（内存虚拟化）、VT-d（IO 虚拟化）
+```
+
+- **KVM = 内核模块**（提供虚拟化的 CPU/内存）。
+- **QEMU = 用户态设备模拟器**（网卡、磁盘、显卡、USB...）。
+- 两者组合叫 **QEMU/KVM**（生产中绝大多数"KVM 虚拟机"实际是 QEMU/KVM）。
+- **`/dev/kvm`** 是入口；没有它就是没开虚拟化或权限不足。
+
+**关键虚拟化技术**：
+| 技术 | 作用 |
+|---|---|
+| **VT-x / AMD-V** | CPU 指令级虚拟化（Guest 指令直接在 CPU 上跑） |
+| **EPT / NPT** | 内存虚拟化（二级页表，避免影子页表开销） |
+| **VT-d / IOMMU** | **设备直通**（把物理网卡/GPU 直接给虚拟机） |
+| **SR-IOV** | 一张网卡虚拟出多个"虚拟功能"（VF）给不同 VM |
+| **virtio** | **半虚拟化驱动**（Guest 知道自己在虚拟化里，用优化的接口）⭐ |
+| **vhost/vhost-net** | 把 virtio 的后端搬到内核/用户态（减少上下文切换） |
+| **DPDK/vhost-user** | 用户态网络转发（最高性能） |
+
+**完全虚拟化 vs 半虚拟化**：
+- **完全虚拟化（HVM）**：Guest 不知道自己被虚拟化，用模拟设备（慢）。
+- **半虚拟化（Paravirt/virtio）**：Guest 用专用驱动直接和宿主通信（**快得多**）。
+- **现代实践**：CPU/内存用硬件虚拟化，**IO 用 virtio**（组合最优）。
+
+**virtio 设备**（现代 VM 的标配）：
+| 设备 | 用途 |
+|---|---|
+| `virtio-blk` / `virtio-scsi` | 磁盘（scsi 支持更多设备与热插拔） |
+| `virtio-net` | 网卡（配 vhost-net 更快） |
+| `virtio-balloon` | 内存气球（动态调整 VM 内存）① |
+| `virtio-fs` | 文件系统共享（替代 9p） |
+| `virtio-gpu` / `virtio-vsock` | 显卡 / 主机-客机通信 |
+
+**KVM 管理工具**：
+| 工具 | 层次 |
+|---|---|
+| **`virsh`** | libvirt 命令行（**管理 VM 的标准方式**）⭐ |
+| **`libvirt`** | 统一的虚拟化管理 API/守护进程（支持 KVM/Xen/容器） |
+| `virt-install` | 创建 VM |
+| `virt-manager` | GUI |
+| `qemu-system-x86_64` | 直接用 QEMU（调试用） |
+| `virt-v2v` | 物理机/其它平台迁移 |
+| `cloud-init` | VM 首次启动的自动化配置 ⭐ |
+
+**检查虚拟化能力**：
+```bash
+egrep -c ''(vmx|svm)'' /proc/cpuinfo      # >0 表示支持
+lsmod | grep kvm
+ls -l /dev/kvm
+kvm-ok                                  # cpu-checker 包
+systemd-detect-virt                     # 自己是否在 VM 里
+```
+
+**常用 `virsh`**：
+```bash
+virsh list --all
+virsh start vm1 / shutdown vm1 / destroy vm1
+virsh console vm1                       # 串口登录
+virsh dominfo vm1
+virsh domblklist vm1                    # 磁盘
+virsh domiflist vm1                     # 网卡
+virsh edit vm1                          # 编辑 XML 定义 ⭐
+virsh dumpxml vm1 > vm1.xml
+virsh snapshot-create-as vm1 snap1
+virsh blockresize / vcpu / setmem       # 热插拔/热调整 ⭐
+virsh net-list --all
+virsh pool-list --all                   # 存储池
+```
+
+**KVM vs 容器**：
+
+| 维度 | KVM 虚拟机 | 容器（Docker/LXC） |
+|---|---|---|
+| 隔离 | **硬件级（独立内核）** | 内核级（namespace + cgroup） |
+| 启动 | 秒~几十秒 | **毫秒~秒** |
+| 开销 | 有（内核 + 模拟） | **几乎零** |
+| 密度 | 每台几~几十个 | **每台几百~几千个** |
+| 安全 | **强**（内核漏洞不逃逸） | 中（共享内核，逃逸风险） |
+| 内核 | 各自独立（可不同版本） | **共享宿主内核** |
+| 运行异构 OS | ✅（Windows/Linux/BSD） | ❌（只能是 Linux 用户态） |
+| 迁移 | 成熟（热迁移 live migration） | 较复杂（CRIU） |
+| 适用 | 强隔离、异构 OS、多租户 | 微服务、快速扩缩、CI |
+
+**"虚拟机 vs 容器"的行业趋势**：
+1. **容器为主**（部署密度、速度）。
+2. **VM 用于**：强隔离（多租户/不可信代码）、异构 OS、需要独立内核。
+3. **安全容器**（融合两者）：
+   - **Kata Containers**：每个容器跑在轻量 VM 里（强隔离 + 容器体验）。
+   - **gVisor**（Google）：**用户态内核**拦截系统调用（不用硬件虚拟化）。
+   - **Firecracker**（AWS Lambda）：**极轻量 VM**（毫秒启动，为 Serverless 设计）。
+4. **云服务器（ECS/EC2）本质就是 KVM 虚拟机**（这也是为什么云主机看不到宿主机真机信息）。
+
+**KVM 的性能优化**：
+| 优化 | 效果 |
+|---|---|
+| **virtio 驱动** | IO 性能大幅提升 |
+| **vhost-net** | 网络数据面移到内核（减少上下文切换） |
+| **SR-IOV / 直通** | 接近物理网卡性能 ⭐ |
+| **vCPU 与物理核绑定（pin）** | 减少调度干扰 |
+| **大页（HugePages）** | 减少 TLB miss ⭐ |
+| **关闭不用的设备** | 减少模拟开销 |
+| **`-cpu host`** | 暴露所有 CPU 特性（性能最好） |
+| **CPU 模型与拓扑对齐** | NUMA 感知（跨节点访存慢） |
+| **多队列 virtio** | 多核并行收发 |
+| **`iothread`/`io_uring`** | 磁盘 IO 后端优化 |
+
+**常见问题**：
+| 现象 | 原因 |
+|---|---|
+| VM 里"看不到"物理硬件 | 虚拟化屏蔽（`dmidecode` 显示 QEMU） |
+| VM 时钟漂移 | 缺 `kvm-clock`/`qemu-guest-agent` |
+| VM 性能差 | 用了模拟设备（未用 virtio）、未开大页、NUMA 不对齐 |
+| 无法热迁移 | 用了直通设备（PCI passthrough 一般不能迁移） |
+| `KVM: no hardware support` | VT-x 未在 BIOS 开启 / 嵌套虚拟化未开 |
+
+**嵌套虚拟化**：在 VM 里再跑 VM（需要宿主开 `kvm_intel nested=1`）。云主机上默认通常关闭。
+
+**实践建议**：
+1. **判断"我在 VM 里吗"** → `systemd-detect-virt`。
+2. **管理 VM 用 `virsh` + libvirt**（不要手写 qemu 命令行）。
+3. **IO 一律用 virtio**（性能差异巨大）。
+4. **关键 VM 开大页 + vCPU pinning + NUMA 对齐**。
+5. **需要强隔离（多租户）用 VM 或 Kata/gVisor**，不要只用容器。
+6. **热迁移前确认没有直通设备**。
+7. **云主机上"改内核/装驱动"受限**（因为你的"硬件"是 QEMU 模拟的）。
+8. **`cloud-init` 是做 VM 自动化的标准工具**（配 SSH 密钥、初始化脚本）。', 1),
+
+('Linux', 'Swap,swappiness', 2,
+ 'Swap 有什么用？`vm.swappiness` 该怎么设？',
+ '**Swap** 把不常访问的内存页换出到磁盘（分区或文件），**用于**：
+1. **应对内存峰值**（给突发流量兜底，避免直接 OOM）。
+2. **让不活跃页腾出物理内存给活跃页**（提高缓存命中）。
+3. **支持休眠（hibernate）**（需要 swap 空间 ≥ 内存）。
+
+**类型**：
+| 类型 | 说明 |
+|---|---|
+| **swap 分区** | 独立分区，性能略好，**不能动态调整** |
+| **swap 文件** | 文件，灵活（可随时扩缩），**性能差异很小**（现代内核） |
+| **zram** | **压缩内存作为 swap**（内存换 CPU，速度快，**容器/嵌入式/桌面常用**）⭐ |
+| **zswap** | 内核的**压缩缓存层**（在真正换出前先压缩，减少 IO）⭐ |
+
+```bash
+# swap 文件
+fallocate -l 4G /swapfile     # 或 dd if=/dev/zero of=/swapfile bs=1M count=4096
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+# 持久化
+echo ''/swapfile none swap sw 0 0'' >> /etc/fstab
+
+swapon --show                 # 当前启用的 swap ⭐
+free -h
+swapoff /swapfile
+
+# zram（推荐给内存小的机器）
+modprobe zram
+echo 4G > /sys/block/zram0/disksize
+mkswap /dev/zram0 && swapon /dev/zram0
+# 或用 systemd-zram-generator / zramctl
+```
+
+**`vm.swappiness`（0~100，默认 60）**：
+
+语义：**"倾向于把匿名页换出，还是倾向于丢弃文件缓存"**。
+- 值**高**（100）：**积极 swap**（腾出内存给文件缓存）。
+- 值**低**（0~10）：**尽量不 swap**，宁可丢弃 page cache。
+
+**重要澄清（常见误解）**：
+- ❌ "swappiness=0 就完全不 swap" —— **不对**。`0` 只是"尽量避免"，**在内存严重不足时仍会 swap**（避免 OOM 的必要手段）。
+- 真正的"禁止 swap"是 `swapoff -a`（或把 `MemorySwapMax=0` 的 cgroup 设置）。
+
+**推荐配置**：
+| 场景 | 建议 |
+|---|---|
+| **数据库（MySQL/Redis/PG）** | `1~10`（避免关键数据被换出，延迟稳定） |
+| **通用服务器** | `10~30` |
+| **桌面/交互式** | `60`（默认，平衡） |
+| **内存大且工作集稳定** | `1` |
+| **实时性要求高** | `1` + 关闭 `MemorySwapMax`（并确保内存足够） |
+| **容器** | 用 cgroup 控制（`memory.swap.max`） |
+
+```bash
+sysctl vm.swappiness=10
+echo "vm.swappiness = 10" > /etc/sysctl.d/99-swap.conf
+```
+
+**Swap 的性能问题**：
+1. **swap 在 HDD 上极慢**（随机 IO）→ "swap 抖动"（thrashing）会让系统卡死。
+2. **SSD 上 swap** 快得多，但**有写放大与寿命消耗**。
+3. **zram/zswap** 用 CPU 换 IO，**对内存小的场景收益巨大**（延迟从毫秒级降到微秒级）。
+
+**监控 swap 活动**：
+```bash
+free -h
+vmstat 1
+# si/so 是 swap 换入/换出（KB/s）⭐
+# 持续非 0 → 内存压力大
+sar -S 1                       # swap 统计
+cat /proc/vmstat | grep -E "pswpin|pswpout"
+cat /proc/meminfo | grep -i swap
+# PSI（更精确的内存压力）
+cat /proc/pressure/memory      # some/full 的时间占比 ⭐
+```
+**`/proc/pressure/memory` 的 `full`** 表示"所有任务都被内存拖慢" —— 这是最严重的内存压力信号。
+
+**什么时候"没有 swap"是危险的**：
+- **没有 swap + 内存耗尽** → 直接触发 **OOM killer**（进程被杀）。
+- **有少量 swap** → 给系统一个缓冲，让不活跃页先换出，避免立刻 OOM。
+- **但 swap 也不能替代内存**（性能会崩）。
+
+**"该给多少 swap"**：
+| 内存大小 | 传统建议 | 现代建议 |
+|---|---|---|
+| ≤ 2G | 2 × 内存 | 2G |
+| 2~8G | = 内存 | 2~4G |
+| 8~64G | 0.5 × 内存 | 4~8G |
+| > 64G | 无 | **4~16G**（兜底即可） |
+| 需要休眠 | ≥ 内存 | ≥ 内存 |
+
+**关键洞察**：**swap 的目的是"兜底"而不是"扩容"**。现代服务器内存大，给 4~8G 只为"避免瞬间 OOM"，而不是指望它支撑工作集。
+
+**容器与 swap**：
+- **默认容器不能用 swap**（cgroup v1 的 `memory.memsw` 需显式配置）。
+- **cgroup v2**：`memory.swap.max` 控制 swap 用量。
+- k8s：默认 `--fail-swap-on` 禁止节点开 swap（**性能可预测性优先**）；1.28+ 有 alpha 的 swap 支持。
+- **`MemorySwapMax=0`（systemd）** 对延迟敏感服务很有用。
+
+**`zram` 的推荐用法（内存小/容器）**：
+```bash
+# systemd-zram-generator
+# /etc/systemd/zram-generator.conf
+[zram0]
+zram-size = ram / 4          # 内存的 25% 作为 zram
+compression-algorithm = zstd
+swap-priority = 100
+```
+**优势**：无磁盘 IO、速度快（~微秒级）、可换出更多页。
+
+**`zswap`（内核压缩缓存）**：
+```bash
+echo 1 > /sys/module/zswap/parameters/enabled
+# 在内核参数里：zswap.enabled=1 zswap.compressor=lz4 zswap.max_pool_percent=20
+```
+**作用**：在页被真正写到 swap 设备之前，先在内存里压缩（通常是压缩到原来的一半以内）。**减少 50%+ 的 swap IO**。
+
+**实践建议**：
+1. **数据库/延迟敏感服务：`vm.swappiness=1`**，并确保内存足够。
+2. **不要设 `swappiness=0` 就以为"不会 swap"**（真正要禁止是 `swapoff` 或 cgroup）。
+3. **HDD 上避免大量 swap**（会卡死）；**用 SSD 或 zram**。
+4. **内存小的机器用 zram**（比磁盘 swap 快几个数量级）⭐。
+5. **监控 `si/so` 与 `/proc/pressure/memory`**（`full` 非 0 就是严重问题）。
+6. **k8s 节点默认禁用 swap**；如需启用要显式配置并接受不确定性。
+7. **容器内存限制要留意 swap**（cgroup v2 的 `memory.swap.max`）。
+8. **需要休眠**就必须有 ≥ 内存大小的 swap。', 1),
+
+('Linux', '文件系统选择,ext4,xfs', 2,
+ 'ext4 和 XFS 该怎么选？怎么调优文件系统？',
+ '**主流 Linux 文件系统对比**：
+
+| 文件系统 | 优势 | 劣势 | 适用 |
+|---|---|---|---|
+| **ext4** | **稳定成熟**、工具齐全、支持收缩、碎片少 | 不支持快照、单目录大文件多时性能下降、最大文件系统 1EiB | **通用首选**（尤其中小规模） |
+| **XFS** | **大文件/大目录/高并发**、在线扩容、project quota、reflink | **不能收缩**、修复工具较少、元数据仍依赖日志 | 大容量、大文件、**RHEL 默认** |
+| **Btrfs** | 快照、校验和（数据自愈）、压缩、RAID、子卷、可收缩 | 历史上稳定性问题、写放大、RAID5/6 有坑 | 需要快照/校验的场景 |
+| **ZFS** | 最强大（校验、快照、压缩、缓存、RAID-Z） | 许可与内核不兼容（需 DKMS）、内存需求高 | 存储服务器、NAS |
+| **tmpfs** | 极快（内存） | 不持久、占内存 | 临时文件、`/run`、`/dev/shm` |
+| **overlayfs** | 分层只读+可写 | 不适合大写入 | **容器镜像层** |
+| **f2fs** | 为闪存优化 | 生态小 | SD 卡、eMMC |
+
+**选择建议**：
+1. **通用服务器 → ext4**（稳定、省心、能收缩）。
+2. **大容量/大文件/大目录（>100T、媒体存储、数据库文件）→ XFS**。
+3. **需要快照/校验 → Btrfs**（或 ZFS，但评估维护成本）。
+4. **RHEL/CentOS 系 → XFS**（默认，且系统工具针对它调优）。
+5. **容器 → overlayfs**（运行时自动选）。
+
+**ext4 调优**：
+
+```bash
+mkfs.ext4 -O ^has_journal /dev/sdb1        # 关日志（性能↑，崩溃后要 fsck）— 一般别关
+mkfs.ext4 -m 1 /dev/sdb1                   # 只保留 1% 给 root（默认 5%，大盘可省很多空间）⭐
+mkfs.ext4 -E stride=16,stripe_width=128    # RAID 对齐
+mkfs.ext4 -N 10000000 /dev/sdb1             # 预先分配更多 inode（海量小文件场景）
+
+# 挂载选项
+# /etc/fstab:
+UUID=xxx /data ext4 defaults,noatime,nodiratime,data=writeback,commit=60,noauto_da_alloc 0 2
+```
+| 选项 | 效果 |
+|---|---|
+| **`noatime`** | **不更新访问时间** → 减少写 IO（**最推荐的优化**）⭐ |
+| `nodiratime` | 目录也不更新 atime |
+| `relatime`（默认） | 只在 atime 早于 mtime 时更新（折中） |
+| `data=writeback` | 只保证元数据有序（性能↑，崩溃后可能读到旧数据） |
+| `data=ordered`（默认） | 数据先写再提交元数据 |
+| `data=journal` | 数据和元数据都进日志（**最安全但最慢**） |
+| `commit=60` | 提交间隔（秒），默认 5；**调大减少 IO 但增加崩溃时数据丢失窗口** |
+| `barrier=0` | 关写屏障（**有电池保护的 RAID 卡上可开**，否则危险） |
+| `discard` | 在线 TRIM（**推荐用 `fstrim` 定时而非挂载选项**） |
+
+**XFS 调优**：
+```bash
+mkfs.xfs -f -d agcount=32 -l size=256m /dev/sdb1     # AG 数与日志大小
+# 挂载选项
+UUID=xxx /data xfs defaults,noatime,logbsize=256k,inode64 0 0
+```
+| 选项 | 效果 |
+|---|---|
+| `noatime` | 同上 ⭐ |
+| `logbsize=256k` | 加大日志缓冲 |
+| `inode64`（默认） | inode 分布在整个文件系统（**大文件系统必开**） |
+| `allocsize=1m` | 预分配（顺序写优化） |
+| `nobarrier` | 关屏障（有 BBU 时可开） |
+| **`pquota`/`prjquota`** | 项目配额（容器配额的基础）⭐ |
+
+**`/etc/fstab` 的正确写法**：
+```
+# <设备>                    <挂载点>  <类型>  <选项>                    <dump> <fsck>
+UUID=1234-ABCD              /        ext4    defaults,noatime           0      1
+UUID=abcd-efgh              /data    xfs     defaults,noatime           0      2
+tmpfs                       /tmp     tmpfs   defaults,size=2G,noexec,nosuid,nodev  0 0
+/dev/vg0/lv_swap            none     swap    sw                         0      0
+```
+**要点**：
+1. **用 `UUID=` 而不是 `/dev/sdX`**（设备名会变）⭐。
+2. **`fsck` 顺序**：根分区 `1`，其它 `2`，不检查 `0`。
+3. **`noauto`** 临时不挂载；**`nofail`** 挂载失败也继续启动（**外部盘必须加，否则开机卡住**）⭐。
+4. **`tmpfs` 的 `size=`** 要设上限（否则吃光内存）。
+5. **网络文件系统（NFS）** 用 `_netdev`（等网络就绪）。
+
+**挂载选项安全加固**：
+```
+noexec     # 禁止执行（数据分区/上传目录用）⭐ 很重要
+nosuid     # 忽略 SUID 位 ⭐
+nodev      # 不解释设备文件 ⭐
+ro         # 只读
+```
+**上传目录/`/tmp` 一定要 `noexec,nosuid,nodev`**（防 Web Shell 与提权）。
+
+**常用维护命令**：
+```bash
+# ext4
+e2fsck -f /dev/sdb1            # 强制检查（**必须先卸载**，根分区要在救援模式）
+tune2fs -l /dev/sdb1           # 查看参数（含保留块、inode 数）
+tune2fs -m 1 /dev/sdb1          # 改保留块比例
+tune2fs -O ^has_journal         # 关日志
+resize2fs /dev/sdb1             # 扩容/收缩
+
+# XFS
+xfs_repair /dev/sdb1            # 修复（**必须先卸载**）
+xfs_db -r /dev/sdb1             # 检查
+xfs_growfs /data                # 扩容（**只能扩，不能缩**）
+xfs_admin -U generate /dev/sdb1 # 重新生成 UUID
+xfs_info /data                  # 查看参数
+xfs_quota -x -c ''report'' /data
+
+# 通用
+df -hT / df -i
+mount | column -t
+findmnt                        # 树形显示挂载 ⭐
+blkid                          # 设备 UUID/LABEL
+lsblk -f                       # 设备与文件系统总览 ⭐
+dumpe2fs /dev/sdb1 | head
+fstrim -av                     # 给 SSD 发 TRIM（定期执行）⭐
+```
+
+**TRIM（SSD）**：
+```bash
+# 方法 A：定时（推荐，避免在线 discard 的性能抖动）⭐
+systemctl enable --now fstrim.timer
+fstrim -v /data
+
+# 方法 B：挂载选项 discard（实时但可能有性能开销）
+# /etc/fstab 加 discard
+```
+**为什么重要**：SSD 需要知道哪些块已释放才能做垃圾回收（GC）与磨损均衡。**不做 TRIM 会让写性能随使用下降。**
+
+**性能检查**：
+```bash
+# 文件系统层面的耗时
+perf trace -e ''ext4:*'' ./prog
+# IO 统计
+iostat -xz 1
+# 模拟测试
+fio --name=test --rw=randwrite --bs=4k --iodepth=32 --size=1G --runtime=30 --filename=/data/test
+```
+
+**实践建议**：
+1. **通用选 ext4，大容量/大文件选 XFS**。
+2. **`noatime` 是最值得加的挂载选项**（减少写 IO）。
+3. **`fstab` 用 UUID + 外部盘加 `nofail`**。
+4. **`/tmp`、上传目录、数据分区加 `noexec,nosuid,nodev`**。
+5. **SSD 开 `fstrim.timer`**（或挂载 `discard`）。
+6. **`/boot` 单独分区**（防根分区问题导致无法启动）。
+7. **大内存机器给 `/tmp` 用 tmpfs**（但要设 `size=`）。
+8. **XFS 不能收缩** → 分区/LV 划分时留余地。
+9. **扩容顺序**：扩云盘 → `growpart` → `resize2fs`/`xfs_growfs`（**不能反**）。
+10. **`noatime` + `commit=60` 是常见的性能优化组合**（但要接受崩溃时最多丢 60 秒数据）。', 1),
+
+('Linux', '高并发服务器,综合调优', 3,
+ '一台服务器要支撑 10 万并发连接，你会从哪些方面调优？',
+ '**分层调优**：内核 → 网络 → 应用 → 架构。
+
+**一、fd 与进程限制（最基础）**
+```bash
+# systemd 服务
+LimitNOFILE=1048576
+LimitNPROC=1048576
+
+# 系统级
+sysctl -w fs.file-max=2097152
+sysctl -w fs.nr_open=2097152
+# /etc/security/limits.conf（非 systemd 场景）
+* soft nofile 1048576
+* hard nofile 1048576
+```
+```bash
+cat /proc/<pid>/limits | grep files    # 验证
+ulimit -n
+```
+
+**二、网络内核参数**
+```bash
+# /etc/sysctl.d/99-highload.conf
+# --- 连接队列 ---
+net.core.somaxconn = 65535
+net.ipv4.tcp_max_syn_backlog = 65535
+net.core.netdev_max_backlog = 65535
+net.ipv4.tcp_abort_on_overflow = 0
+
+# --- 端口与 TIME_WAIT ---
+net.ipv4.ip_local_port_range = 1024 65535
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_fin_timeout = 15
+net.ipv4.tcp_max_tw_buckets = 262144
+
+# --- 缓冲区（长肥管道）---
+net.core.rmem_max = 16777216
+net.core.wmem_max = 16777216
+net.ipv4.tcp_rmem = 4096 87380 16777216
+net.ipv4.tcp_wmem = 4096 65536 16777216
+net.ipv4.tcp_mem = 786432 1048576 1572864
+
+# --- 连接跟踪（有 NAT/防火墙时）---
+net.netfilter.nf_conntrack_max = 2000000
+net.netfilter.nf_conntrack_tcp_timeout_established = 1200
+
+# --- keepalive（长连接）---
+net.ipv4.tcp_keepalive_time = 600
+net.ipv4.tcp_keepalive_intvl = 30
+net.ipv4.tcp_keepalive_probes = 3
+
+# --- 拥塞控制 ---
+net.ipv4.tcp_congestion_control = bbr
+net.core.default_qdisc = fq
+
+# --- 其他 ---
+net.ipv4.tcp_slow_start_after_idle = 0
+net.ipv4.tcp_fastopen = 3
+net.ipv4.tcp_notsent_lowat = 131072
+net.ipv4.tcp_mtu_probing = 1
+net.ipv4.tcp_syncookies = 1
+```
+**关键项解释**：
+| 参数 | 为什么 |
+|---|---|
+| `somaxconn` | **accept 队列上限**（默认 4096/128 太小）⭐ |
+| `tcp_max_syn_backlog` | SYN 队列 |
+| `ip_local_port_range` | 出站连接可用端口（短连接多时会耗尽）⭐ |
+| `tcp_tw_reuse` | 复用 TIME_WAIT（**只用出站，安全**） |
+| `rmem_max`/`wmem_max` | 大 RTT 高带宽下窗口要够（BDP） |
+| **`tcp_congestion_control=bbr`** | 丢包环境下比 cubic 大幅提升（**高延迟/跨境场景**）⭐ |
+| `default_qdisc=fq` | BBR 需要（公平队列） |
+| `nf_conntrack_max` | 有 NAT 时不调大就会丢包 |
+| `somaxconn`/`netdev_max_backlog` | 高包速率下防丢包 |
+
+**三、内存与 page cache**
+```bash
+sysctl -w vm.swappiness=1                  # 避免关键页被换出
+sysctl -w vm.dirty_ratio=10                # 减小 IO 抖动
+sysctl -w vm.dirty_background_ratio=5
+sysctl -w vm.min_free_kbytes=1048576       # 保留足够空闲内存（防直接回收）
+sysctl -w vm.max_map_count=262144          # 内存映射数（ES/大内存应用）
+sysctl -w vm.overcommit_memory=0
+```
+**注意**：`vm.min_free_kbytes` 太大浪费内存，太小会导致分配时同步回收（延迟抖动）。
+
+**四、CPU 与中断**
+```bash
+# 中断亲和性（网卡中断分散到多核）
+cat /proc/interrupts
+systemctl enable --now irqbalance
+
+# 网卡多队列（RSS）
+ethtool -l eth0
+ethtool -L eth0 combined 8
+
+# RPS/RFS（单队列网卡软件分发）
+echo f > /sys/class/net/eth0/queues/rx-0/rps_cpus
+echo 32768 > /proc/sys/net/core/rps_sock_flow_entries
+echo 4096 > /sys/class/net/eth0/queues/rx-0/rfs_flow_cnt
+
+# 环形缓冲（防高流量丢包）
+ethtool -G eth0 rx 4096 tx 4096
+
+# CPU 调频（高性能模式）
+cpupower frequency-set -g performance
+```
+**常见瓶颈**：**单核软中断 100%**（`mpstat -P ALL 1` 看 `%soft`）→ 用 RSS/RPS 分散。
+
+**五、应用层（性能的决定因素）**
+
+| 要点 | 说明 |
+|---|---|
+| **IO 多路复用** | `epoll`（ET + 非阻塞）、`io_uring` |
+| **连接复用** | keep-alive、HTTP/2 多路复用、连接池 |
+| **无阻塞的业务** | 避免在事件循环里做**慢操作**（磁盘 IO、DNS、同步 RPC）⭐ |
+| **线程模型** | 多 Reactor（`SO_REUSEPORT` 多进程、`EPOLLEXCLUSIVE`） |
+| **零拷贝** | `sendfile`、`splice` |
+| **内存池/对象池** | 减少 malloc 与碎片 |
+| **日志异步化** | 别让日志写阻塞请求路径 |
+| **拒绝策略/背压** | 队列满时快速失败，避免雪崩 |
+| **协议开销** | 减少序列化、启用压缩（权衡） |
+| **CPU 亲和** | 网络线程与中断同核 |
+
+**六、架构层（单机调优的上限）**
+
+1. **水平扩展**：多机 + 负载均衡（LVS/nginx/云 LB）。
+2. **`SO_REUSEPORT` + 多进程**：利用多核（nginx 的 `worker_processes auto`）。
+3. **分层**：接入层（连接）与业务层（计算）分离。
+4. **异步化**：消息队列解耦。
+5. **CDN/边缘**：把静态与部分动态请求挡在外面。
+6. **连接数与 QPS 的区别**：**10 万连接 ≠ 10 万 QPS**（长连接场景下连接数容易，QPS 取决于业务耗时）。
+7. **C10K/C10M 问题**：现代 Linux 用 epoll + 合适的调优可以做到**百万连接**（关键是**每连接的内存开销**）。
+
+**七、每连接的内存成本（决定能否上 10 万+）**
+```
+每连接开销 = 内核 socket 缓冲（rmem/wmem，可用 tcp_rmem 的最小值限制）
+           + 应用层状态（连接对象、读缓冲）
+```
+- **内核缓冲**：`net.ipv4.tcp_rmem`/`wmem` 的最小值决定下限（每连接几 KB~几十 KB）。
+- **应用层**：**每个连接一个线程**的模型在 10 万连接下必然崩（10 万 × 8MB 栈）→ **必须用事件驱动（单线程/少量线程处理大量连接）**。
+- **估算**：10 万连接 × (16KB 内核 + 8KB 应用) ≈ **2.4GB** —— 说明**内存规划是核心**。
+
+**八、验证与监控**
+
+```bash
+# 压测
+wrk -t8 -c10000 -d60s http://host/         # HTTP 压测 ⭐
+ab / hey / vegeta / locust / k6
+# 连接数压测
+# 检查是否达到限制
+ss -s                                       # 连接状态汇总
+ss -lnt                                     # 看 Send-Q（accept 队列上限）与 Recv-Q（当前排队）⭐
+ss -tan state time-wait | wc -l
+nstat -az | grep -iE "listen|drop|retrans"
+cat /proc/<pid>/limits | grep files
+# 资源
+top / htop / vmstat 1 / mpstat -P ALL 1 / iostat -xz 1 / sar -n DEV,ETCP 1
+# 应用层
+perf top / 火焰图
+```
+
+**常见"上不去"的原因（按出现频率）**：
+| 现象 | 原因 |
+|---|---|
+| `accept` 报 `EMFILE` | `LimitNOFILE` 太小 |
+| 连接建立失败/超时 | `somaxconn`/`tcp_max_syn_backlog` 太小 |
+| 少量连接就 CPU 打满 | 每连接一线程（上下文切换爆炸）⭐ |
+| 单核 `si` 100% | 中断/软中断集中（RSS/RPS/多队列） |
+| `Cannot assign requested address` | 出站端口耗尽（TIME_WAIT） |
+| 偶发丢包/超时 | `nf_conntrack` 表满、环形缓冲不足 |
+| 延迟抖动 | CPU 限流（cgroup throttle）、swap、GC |
+| 内存暴涨 | 每连接缓冲太大 / 连接泄漏 |
+| 大量 CLOSE_WAIT | 应用没 close |
+
+**实践建议（顺序很重要）**：
+1. **先压测找瓶颈**，不要盲目调参（`wrk`/`ss`/`mpstat`）。
+2. **`LimitNOFILE` + `somaxconn` + `ip_local_port_range`** 是三大必备项。
+3. **应用架构（事件驱动而非每连接一线程）比内核调优重要得多**。
+4. **`tcp_congestion_control=bbr`** 在跨境/高丢包场景收益明显。
+5. **关注 `ss -lnt` 的 `Recv-Q`**（accept 队列积压 = 应用 accept 太慢）。
+6. **单机有上限** —— 到瓶颈就水平扩展，不要死磕单机。
+7. **每连接内存估算**是"能否撑住连接数"的核心（决定选型）。
+8. **压测要在预生产环境做**，并**用真实业务流量模型**（不只是空连接）。
+9. **留意云环境的额外限制**（云盘 IOPS、带宽上限、安全组连接跟踪）。', 1),
+
+('Linux', '容器安全,capabilities', 2,
+ '容器的安全风险有哪些？怎么加固？',
+ '**容器的安全本质**：容器**共享宿主内核**，隔离靠 namespace + cgroup + capabilities + seccomp + LSM。**任何一环配错都可能被逃逸。**
+
+**主要风险**：
+
+| 风险 | 说明 |
+|---|---|
+| **内核漏洞逃逸** | 共享内核 → 内核 CVE 可越狱（如 Dirty COW、runC 的 CVE-2019-5736）⭐ |
+| **`--privileged`** | 等于给容器**全部能力 + 所有设备** → 几乎等于宿主机 root ⭐ |
+| **Docker socket 挂载** | 挂 `/var/run/docker.sock` 等于给了宿主机 root（能起特权容器）⭐ |
+| **镜像不可信** | 基础镜像有漏洞/后门/挖矿程序 |
+| **敏感信息泄漏** | 镜像层里硬编码密钥、环境变量泄露 |
+| **资源耗尽** | 未设 limits → 吃光宿主 CPU/内存/磁盘 |
+| **提权** | SUID 文件、`CAP_SYS_ADMIN`、可写的宿主挂载 |
+| **供应链** | 依赖包被投毒（`log4j` 类事件） |
+
+**加固清单（从镜像到运行时）**：
+
+**1. 镜像**
+```dockerfile
+# 用最小基础镜像
+FROM alpine:3.19          # 或 distroless / scratch ⭐
+# 非 root 用户运行
+RUN adduser -D -u 1000 app
+USER 1000
+# 多阶段构建（不把编译工具链带进最终镜像）
+FROM golang:1.22 AS build
+...
+FROM scratch
+COPY --from=build /app /app
+ENTRYPOINT ["/app"]
+```
+- **不要 `:latest`**（不可复现），用 digest 或明确版本。
+- **扫描漏洞**：`trivy image x`、`grype`、`docker scout`。⭐
+- **不把密钥写进镜像**（用 secret/环境注入）。
+
+**2. 运行时限制**
+```bash
+docker run \\
+  --user 1000:1000 \\                 # 非 root ⭐
+  --read-only \\                      # 只读根文件系统 ⭐
+  --tmpfs /tmp:rw,noexec,nosuid,size=64m \\
+  --cap-drop=ALL \\                   # 丢弃所有能力 ⭐
+  --cap-add=NET_BIND_SERVICE \\       # 只加需要的
+  --security-opt=no-new-privileges \\ # 禁止提权 ⭐
+  --security-opt=seccomp=/etc/seccomp.json \\
+  --security-opt=apparmor=docker-default \\
+  --pids-limit=200 \\                 # 防 fork 炸弹
+  --memory=512m --memory-swap=512m \\ # 内存限制
+  --cpus=1.5 \\                       # CPU 限制
+  --ulimit nofile=1024:1024 \\
+  --network=mynet \\                  # 不用 host 网络
+  myimage
+```
+**绝不要 `--privileged`**（除非明确知道风险）；需要设备就 `--device=` 精确指定。
+
+**3. `capabilities`（能力）**
+- Linux 把 root 权限拆成 ~40 个能力（`CAP_NET_ADMIN`、`CAP_SYS_ADMIN`、`CAP_SYS_PTRACE`...）。
+- **`CAP_SYS_ADMIN` 是最危险的**（几乎等于 root 的很多能力）。
+- 容器默认有 14 个能力（Docker 的默认集）→ **应 `--cap-drop=ALL` 再按需 `--cap-add`** ⭐。
+```bash
+capsh --print                  # 查看当前进程的能力
+getpcaps <pid>
+# 二进制级别（代替 SUID）
+setcap cap_net_bind_service=+ep /usr/bin/myserver
+```
+
+**4. `seccomp`（系统调用过滤）**
+- 限制容器能调用哪些 syscall。
+- Docker 默认有一份 seccomp profile（禁掉 ~44 个危险 syscall）。
+- **自定义更严格的 profile**，或对高安全需求用 **gVisor**（用户态内核）。
+```json
+{ "defaultAction": "SCMP_ACT_ERRNO",
+  "syscalls": [ { "names": ["read","write","open",...], "action": "SCMP_ACT_ALLOW" } ] }
+```
+
+**5. LSM（SELinux/AppArmor）**
+- SELinux：容器进程打上 `container_t` 标签，限制跨容器与宿主访问。
+- AppArmor：`docker-default` profile。
+- **不要禁用**（很多人为了省事 `--security-opt apparmor=unconfined`，等于放弃一道防线）。
+
+**6. 文件系统与挂载**
+- **挂载宿主目录要谨慎**（尤其 `/`、`/etc`、`/var/run/docker.sock`）⭐。
+- **挂载选项**：`ro`、`nosuid`、`noexec`、`nodev`。
+- **不要挂 Docker socket**（要用就用受限的 socket proxy，如 `docker-socket-proxy`）。
+
+**7. 网络**
+- **不用 `--network=host`**（失去网络隔离）。
+- **用自定义网络 + 最小暴露端口**。
+- **网络策略**（k8s 的 NetworkPolicy）限制东西向流量。
+
+**8. k8s 特有的加固**
+```yaml
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false      # ⭐
+  capabilities:
+    drop: ["ALL"]
+    add: ["NET_BIND_SERVICE"]
+  seccompProfile:
+    type: RuntimeDefault               # ⭐
+# Pod 级别
+automountServiceAccountToken: false     # 不需要就不用
+# 用 PodSecurityAdmission（restricted 级别）⭐
+# 用 OPA/Gatekeeper 或 Kyverno 做策略校验
+```
+- **`PodSecurityPolicy` 已废弃 → 用 `PodSecurityAdmission`**（`restricted` 级别会强制非 root、只读根、drop ALL）。
+- **镜像准入控制**：只允许来自可信 registry 的签名镜像（`cosign` 验签）。
+
+**9. 宿主机侧**
+- **及时更新内核与容器运行时**（逃逸漏洞多在运行时）⭐。
+- **启用 `user namespace`**（rootless 容器：容器内 root 映射为宿主普通用户）。
+- **限制谁能运行特权容器**（Docker 的 `authorization plugin`；k8s 的 RBAC）。
+- **审计**：`auditd`、`falco`（运行时威胁检测）⭐。
+- **不要在生产宿主机上装无关服务**（缩小攻击面）。
+
+**10. 供应链安全**
+- **扫描镜像漏洞**（`trivy`、`grype`、`clair`）并接入 CI。
+- **镜像签名与验签**（`cosign`、Notary）。
+- **SBOM**（软件物料清单，`syft` 生成）。
+- **依赖锁定与定期更新**（`dependabot`）。
+
+**检查工具**：
+| 工具 | 用途 |
+|---|---|
+| `trivy image x` | 镜像漏洞扫描 ⭐ |
+| `grype` / `clair` | 漏洞扫描 |
+| `docker scout` | Docker 官方扫描 |
+| `kube-bench` | k8s CIS 基线检查 ⭐ |
+| `kube-hunter` | k8s 渗透测试 |
+| `falco` | **运行时威胁检测**（用 eBPF 监控异常行为）⭐ |
+| `sysdig` | 系统调用追踪 |
+| `capsh --print` | 查看能力 |
+| `docker inspect` | 看运行配置 |
+| `kubescape` | k8s 安全态势 |
+| `checkov` / `tfsec` | IaC 安全扫描 |
+
+**常见错误配置（要避免）**：
+```yaml
+privileged: true                 # ❌ 灾难
+hostNetwork: true                # ❌ 失去网络隔离
+hostPID: true                    # ❌ 能看到并能杀宿主进程
+hostPath: /                      # ❌ 挂载宿主根
+- /var/run/docker.sock:/var/run/docker.sock   # ❌ 等于宿主机 root
+runAsUser: 0                     # ❌ 以 root 运行
+capabilities: { add: ["SYS_ADMIN"] }          # ❌ 几乎等于 root
+```
+
+**实践建议**：
+1. **非 root + `cap-drop=ALL` + `no-new-privileges` + 只读根** 是最有效的四条 ⭐。
+2. **绝不用 `--privileged`**；确实需要就精确 `--cap-add`/`--device`。
+3. **绝不给应用挂 `/var/run/docker.sock`**。
+4. **扫描镜像漏洞**并接入 CI；**用最小基础镜像**（distroless/scratch）。
+5. **k8s 用 `PodSecurityAdmission=restricted`** + NetworkPolicy + 不使用默认 ServiceAccount token。
+6. **开启 `falco` 做运行时检测**（发现异常 exec、文件访问、网络连接）。
+7. **及时更新内核与容器运行时**（逃逸修复）。
+8. **用 rootless 容器**（Docker rootless / k8s 的 `userns`）进一步隔离。
+9. **定期跑 `kube-bench`** 对照 CIS 基线。
+10. **记住：容器隔离强度 < 虚拟机** → 不可信工作负载用 **Kata/gVisor/Firecracker** 或 VM 沙箱。', 1),
+
+('Linux', '救援模式,单用户,系统恢复', 2,
+ '系统启动不了（或配置改坏了）怎么救援？',
+ '**先判断故障层级**：
+
+| 症状 | 可能原因 |
+|---|---|
+| 卡在 GRUB / 没有启动项 | GRUB 配置损坏、`/boot` 损坏 |
+| `Kernel panic - not syncing` | 根文件系统挂不上（驱动/initramfs 问题）、内核参数错 |
+| 卡在 `emergency mode` / `rescue mode` | 某个服务起不来、`/etc/fstab` 挂载失败 ⭐ |
+| 能启动但登录不了 | PAM 配置错、`/etc/passwd`/`shadow` 损坏、shell 路径错 |
+| 图形界面起不来 | 显卡驱动、X/Wayland 配置 |
+
+**救援路径（按严重程度）**：
+
+**1. 单用户 / 救援模式（能进 GRUB）**
+```
+GRUB 菜单 → 按 e 编辑启动项 → 在 linux 行末尾加：
+  systemd.unit=rescue.target      # 单用户（需要 root 密码）
+  systemd.unit=emergency.target   # 更早、最小环境
+  init=/bin/bash                  # 直接给 root shell（**最强**）⭐
+  rw                              # 以读写挂载根（默认 ro）
+→ Ctrl+X 启动
+```
+**`init=/bin/bash` 时的操作**：
+```bash
+mount -o remount,rw /             # 必须重新挂载为读写才能改文件 ⭐
+# 修复...
+mount -o remount,ro /
+# 重启
+echo b > /proc/sysrq-trigger      # 或 exec /sbin/reboot
+```
+**注意**：`init=/bin/bash` 时**没有 /proc /sys，没有服务，没有网络**，且某些命令（如 `systemctl`）不可用。
+
+**2. 从 Live CD/USB 救援（GRUB 也坏了）**
+```bash
+# 1) 用 Live 环境启动，识别根分区
+lsblk / blkid
+# 2) 挂载根分区
+mount /dev/sda2 /mnt
+# 3) bind mount 必要的虚拟文件系统 ⭐
+for d in dev dev/pts proc sys run; do mount --rbind /$d /mnt/$d; done
+# 4) chroot
+chroot /mnt /bin/bash
+# 5) 在里面修复
+# 6) 退出并卸载
+exit
+umount -R /mnt
+reboot
+```
+**`--rbind`** 比 `--bind` 更适合 `/dev`（因为 `/dev` 下有子挂载）。
+
+**3. 云主机 / 远程服务器**
+- **云控制台的 VNC/串口控制台**（必须先用它才能进 GRUB 或单用户）。
+- **附加救援系统**：把系统盘挂到另一台机器上修复（云厂商的"救援模式"）。
+- **快照回滚**（最省事，但会丢数据）。
+
+**常见故障与修复**：
+
+**① `/etc/fstab` 写错 → 卡在 emergency mode** ⭐（最高频）
+```bash
+# 修复：进 emergency mode（会要求 root 密码）后
+mount -o remount,rw /
+vi /etc/fstab        # 修正错误（或用 # 注释掉问题行）
+# 检查语法
+systemctl daemon-reload
+# 验证所有挂载
+mount -a             # **改 fstab 后必须测这个** ⭐
+reboot
+```
+**预防**：外部盘加 `nofail` 选项；改 fstab 前 `cp /etc/fstab /etc/fstab.bak`。
+
+**② `/etc/passwd` 或 `/etc/shadow` 损坏 → 登录不了**
+```bash
+# 单用户或 Live 环境
+mount -o remount,rw /
+vi /etc/shadow          # 检查格式
+# 若无密码可登录的用户，可以用：
+pwconv                   # 从 /etc/passwd 重建 shadow
+# 或给 root 设密码：
+# 用 openssl 生成哈希
+openssl passwd -6
+# 把哈希填进 shadow 第 2 字段
+```
+**注意：直接编辑 `shadow` 要极其小心**（格式破坏 = 谁都登不了）。备份很重要。
+
+**③ PAM 配置错 → 无法登录**
+```bash
+# 用 init=/bin/bash 进系统
+# 恢复 /etc/pam.d/ 下的文件（从备份或同版本机器拷）
+# 或至少让某个入口能进（如 ssh 的 PAM 配置）
+```
+
+**④ shell 被改坏（如 `/bin/bash` 权限/内容坏了）**
+```bash
+# GRUB 里加 init=/bin/sh（用 sh 而不是 bash）
+# 或用 Live 环境 chroot 后从包管理器重装 bash
+rpm -ivh --force bash-*.rpm
+# 或 apt install --reinstall bash
+```
+**预防**：**不要 chmod 掉 `/bin/bash` 的执行权限**（这是经典事故）。
+
+**⑤ `/boot` 或 GRUB 损坏**
+```bash
+# Live 环境 chroot 后
+# Debian/Ubuntu
+apt install --reinstall linux-image-$(uname -r) grub-pc
+grub-install /dev/sda
+update-grub
+# RHEL 系
+grub2-install /dev/sda
+grub2-mkconfig -o /boot/grub2/grub.cfg
+dracut -f
+```
+
+**⑥ 内核起不来（新内核驱动缺失）**
+→ 在 GRUB 菜单选**旧内核**启动，然后修好新内核。
+
+**⑦ systemd 服务导致启动卡住**
+```bash
+# 临时跳过某个服务
+# GRUB 里加：
+systemd.mask=坏服务.service
+# 或进 rescue 后
+systemctl mask bad.service
+systemctl disable bad.service
+```
+**注意**：`mask` 创建到 `/dev/null` 的软链（比 `disable` 更彻底）。
+
+**⑧ 磁盘满了导致服务起不来**
+→ 从单用户模式清理（见"磁盘满"一题）。
+
+**⑨ 根文件系统只读（磁盘错误触发 remount-ro）**
+```bash
+dmesg | grep -i "EXT4-fs error\\|remount"
+# 需要修复文件系统
+fsck -y /dev/sda2        # 必须在未挂载状态下
+```
+
+**GRUB 的几个应急操作**：
+- **在 GRUB 里按 `e` 编辑**（临时，不持久）。
+- **`c` 进入 GRUB 命令行**（可手工 load 内核）。
+- **`init=/bin/bash` + `rw`** 是最常用的救援组合。
+- **`single`**（老式写法，等价于 runlevel 1）。
+- **`rd.break`**（RHEL 系，用于重置 root 密码）：
+```
+在 GRUB 的 linux 行末尾加 rd.break
+switch_root:/# mount -o remount,rw /sysroot
+switch_root:/# chroot /sysroot
+sh-4.4# passwd root
+sh-4.4# touch /.autorelabel     # SELinux 要重建标签 ⭐
+sh-4.4# exit; exit; reboot
+```
+
+**重置 root 密码的标准流程**（物理/控制台访问）：
+1. 进入 GRUB，`e` 编辑。
+2. `linux` 行末尾加 `rd.break`（RHEL）或 `init=/bin/bash`。
+3. 挂载读写 → `passwd root` → 设置新密码。
+4. **RHEL 系要 `touch /.autorelabel`**（否则 SELinux 会拒绝登录）。
+5. 重启。
+
+**预防措施（比救援更重要）**：
+1. **改 `/etc/fstab`、`/etc/ssh/sshd_config`、PAM 前先备份**，并且**用新会话验证后再关旧会话**（SSH 场景）⭐。
+2. **外部盘挂载加 `nofail`**。
+3. **保留多个 GRUB 内核条目**（不要只留一个）。
+4. **配置 `kdump`** 保存内核崩溃现场。
+5. **云主机用快照**（改配置前打一个）。
+6. **有带外管理**（IPMI/iDRAC/云控制台）才能进单用户 → **确认它可用**。
+7. **不要 `chmod`/`chown` 系统关键文件**（`/bin/bash`、`/etc/shadow`、`/usr`）。
+8. **禁用 SELinux 前想清楚**（`setenforce 0` 重启后可能又变 enforcing）。
+9. **维护一个"救援手册"**（包含具体命令），别在故障时现查。
+10. **定期演练**（真的从控制台走一遍流程）。
+
+**排查启动问题的命令**：
+```bash
+journalctl -b                    # 本次启动日志 ⭐
+journalctl -b -1                 # 上次启动（**排查崩溃重启的关键**）⭐
+journalctl -b -p err             # 只看错误
+systemd-analyze blame            # 哪个服务慢
+systemctl --failed               # 失败的服务 ⭐
+systemctl status <svc> -l        # 详细
+dmesg -T | tail -50
+cat /var/log/boot.log
+```
+**`journalctl -b -1`** 是排查"为什么重启了"的第一入口（前提是 journal 持久化）。', 1),
+
+('Linux', 'update-alternatives,多版本', 2,
+ '一台机器上有多个版本的 Python/Java/GCC 时怎么管理？',
+ '**三种主要方式**：
+
+**1. `update-alternatives`（Debian/RHEL 通用，系统级）**
+
+管理"同一功能的多个实现"，通过 `/etc/alternatives/` 下的软链接切换。
+
+```bash
+# 注册
+sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 2
+#                   ↑链接位置         ↑组名    ↑实际路径           ↑优先级
+
+# 交互式选择 ⭐
+sudo update-alternatives --config python3
+#  There are 2 choices for the alternative python3:
+#   Selection    Path                Priority   Status
+#  * 0            /usr/bin/python3.12   2         auto mode
+#    1            /usr/bin/python3.11   1         manual mode
+#    2            /usr/bin/python3.12   2         manual mode
+
+# 自动模式（选优先级最高的）
+sudo update-alternatives --auto python3
+# 直接指定
+sudo update-alternatives --set python3 /usr/bin/python3.11
+
+# 查看
+update-alternatives --list python3
+update-alternatives --display python3
+# 删除
+sudo update-alternatives --remove python3 /usr/bin/python3.11
+```
+**RHEL 系的等价命令**：`alternatives --config python3`（同源）。
+
+**2. 环境模块（`environment-modules`，HPC 场景）**
+```bash
+module avail
+module load python/3.12
+module list
+module unload python/3.12
+module swap python/3.11 python/3.12
+```
+**适合**：一台机器上大量不同版本的编译器等（超算中心标配）。
+
+**3. 版本管理工具（开发场景，**推荐**）**
+| 语言 | 工具 |
+|---|---|
+| Python | **`pyenv`**、`uv`、`conda`、`virtualenv`（环境隔离）⭐ |
+| Node | **`nvm`**、`fnm`、`volta` ⭐ |
+| Java | **`sdkman`**、`jenv` ⭐ |
+| Go | `g`、`asdf` |
+| Ruby | `rbenv`、`rvm` |
+| 通用 | **`asdf`**（一个工具管所有语言）⭐ |
+| Rust | `rustup` |
+
+```bash
+# pyenv 例子
+pyenv install 3.12.3
+pyenv global 3.12.3           # 全局
+pyenv local 3.11.9            # 当前目录（写入 .python-version）⭐
+pyenv versions
+# nvm 例子
+nvm install 20
+nvm use 20
+nvm alias default 20
+```
+
+**⚠️ 关键区别：切换"解释器版本" vs "隔离依赖"**
+
+- **`update-alternatives`/`pyenv`/`nvm`**：只切**版本**（共享同一套 site-packages/全局包）→ **项目依赖会互相污染**。
+- **虚拟环境（venv/virtualenv/conda）**：每个项目**独立的依赖** → **这才是工程实践的标准** ⭐。
+
+```bash
+# Python 的推荐组合：版本管理 + 虚拟环境
+pyenv install 3.12.3 && pyenv local 3.12.3
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+# 用 uv（更快）
+uv venv && uv pip install -r requirements.txt
+```
+
+**实践建议（重要）**：
+
+1. **不要替换系统自带的 Python/Java/GCC** ⭐
+   - 系统工具（`yum`/`apt`、`systemd`、各种脚本）依赖特定版本。
+   - **改了 `/usr/bin/python3` 的默认版本可能让整个包管理器崩掉**。
+   - **应该用 `venv`/`pyenv`/`conda` 做项目级隔离**，而不是改系统默认。
+
+2. **需要"系统级"切换时用 `update-alternatives`**，且**只对确实需要全局统一的东西**（如 `java`）。
+
+3. **`PATH` 顺序优于软链接**（但要注意脚本里用不用绝对路径）：
+```bash
+export PATH="$HOME/.pyenv/bin:$PATH"
+export PATH="/opt/jdk-21/bin:$PATH"
+```
+
+4. **服务用绝对路径**（避免依赖 PATH 的版本）：
+```ini
+# systemd
+ExecStart=/usr/bin/python3.11 /opt/app/main.py     # 明确版本 ⭐
+```
+
+5. **容器是最彻底的隔离**（每个应用一个镜像，各自版本互不干扰）⭐。
+
+6. **多版本共存时的依赖安装**：
+```bash
+# 明确用哪个解释器安装
+/usr/bin/python3.11 -m pip install xxx
+python3.11 -m pip install xxx
+# 不要裸用 pip（可能是别的版本）
+```
+
+**排查"用了哪个版本"**：
+```bash
+which -a python3              # 所有匹配
+type -a python3               # 含别名/函数/内建 ⭐
+python3 -V                    # 实际版本
+head -1 $(which python3)      # 若是脚本，看 shebang
+readlink -f $(which python3)  # 解析软链接链 ⭐
+ls -l /usr/bin/python3
+echo $PATH | tr '':'' ''\\n''      # PATH 顺序
+pip -V                        # pip 属于哪个 python（重要的交叉验证）⭐
+python3 -c "import sys; print(sys.executable, sys.path)"
+```
+
+**多版本共存的常见坑**：
+```bash
+# pip 装了包但 import 不到 → pip 和 python 不是同一个版本 ⭐
+python3 -m pip install xxx    # ✅ 用 -m 保证一致
+pip3 --version                # 看它绑定的 python
+
+# nvcc/gcc 版本不匹配
+ls /usr/bin/gcc*; ls /usr/bin/g++*
+update-alternatives --config gcc
+
+# Java 版本
+java -version
+update-alternatives --config java
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk    # 显式设置 ⭐
+```
+
+**`ldconfig` 与多版本库**：
+```bash
+ldconfig -p | grep libssl
+ls -l /usr/lib/x86_64-linux-gnu/libssl*
+# 多版本库共存：用 rpath 或 LD_LIBRARY_PATH 指定（见动态库一题）
+```
+
+**实践清单**：
+| 需求 | 推荐 |
+|---|---|
+| 项目 Python 依赖隔离 | `venv` / `uv` / `conda` ⭐ |
+| 切 Python 版本 | `pyenv`（用户级） |
+| 切 Java 版本 | `sdkman` / `jenv`（用户级） |
+| 切 Node 版本 | `nvm` / `fnm` |
+| 全语言统一管理 | `asdf` |
+| 系统级统一切换 | `update-alternatives`（**慎用**） |
+| 彻底隔离 | **容器** ⭐ |
+
+**最重要的建议**：**永远不要动系统自带的解释器**（`/usr/bin/python3`、`/usr/bin/python2`）。用虚拟环境或用户级版本管理器，服务里写绝对路径或用容器。这是"改了 python 版本导致 yum/apt 崩了"这类事故的根本预防。', 1),
+
+('Linux', 'SELinux 排障实战', 3,
+ '服务在 CentOS/RHEL 上"权限都对了但还是报 Permission denied"，怎么定位？',
+ '**先做二分：是普通权限问题还是 SELinux？**
+
+```bash
+# 最快的一刀：临时切 Permissive
+getenforce               # 记下当前值（Enforcing）
+setenforce 0
+# 复现问题
+#   问题消失 → **确认是 SELinux**
+#   问题依旧 → 不是 SELinux，回到普通权限排查
+setenforce 1             # 恢复
+```
+**注意**：`setenforce 0` 只是**验证手段**，**不要作为最终解决方案**。
+
+**如果是 SELinux，走完整排障流程**：
+
+**第 1 步：看 AVC 拒绝日志** ⭐
+```bash
+# 方法 A：ausearch（最准）
+sudo ausearch -m AVC -ts recent
+sudo ausearch -m AVC -ts today | tail -50
+
+# 方法 B：直接 grep
+sudo grep "avc:.*denied" /var/log/audit/audit.log | tail -20
+# 若 auditd 没装
+sudo journalctl -t audit | grep AVC | tail
+dmesg | grep -i "avc.*denied" | tail
+
+# 方法 C：sealert（要装 setroubleshoot-server）⭐ 最友好
+sudo sealert -a /var/log/audit/audit.log
+# 会给出人类可读的解释 + 建议的修复命令
+```
+
+**第 2 步：读懂 AVC 日志**
+```
+type=AVC msg=audit(1699999999.123:456): avc:  denied  { read } for  pid=1234 comm="nginx"
+  path="/home/deploy/www/index.html" dev="sda1" ino=789
+  scontext=system_u:system_r:httpd_t:s0        ← 发起者（进程）的类型
+  tcontext=unconfined_u:object_r:user_home_t:s0 ← 目标（文件/资源）的类型
+  tclass=file permissive=0
+```
+**读法**：
+- `denied { read }`：被拒绝的操作。
+- `scontext` 的 `httpd_t`：**进程的类型**（由策略决定这个类型能做什么）。
+- `tcontext` 的 **`user_home_t`**：**目标的类型**（这里是问题所在！网站文件在家目录里，标签是"用户家目录"）。
+- `tclass=file`：目标类别。
+
+**第 3 步：按"scontext/tcontext 组合"选修复方式**
+
+| 情况 | 修复方式 |
+|---|---|
+| **文件标签不对**（放错位置） | `semanage fcontext` + `restorecon` ⭐ |
+| **端口未授权** | `semanage port -a` |
+| **服务需要额外能力**（网络/家目录/数据库） | `setsebool -P` |
+| **临时验证** | `chcon`（会被 restorecon 还原） |
+| **以上都不行** | `audit2allow` 自定义策略（**最后手段**） |
+
+**修复 A：文件标签**
+```bash
+# 网站放在家目录 → 标签是 user_home_t，httpd_t 读不了
+sudo semanage fcontext -a -t httpd_sys_content_t "/home/deploy/www(/.*)?"
+sudo restorecon -Rv /home/deploy/www           # 必须执行才能生效 ⭐
+
+# 查看"这个路径应该是什么标签"
+matchpathcon /var/www/html/index.html
+
+# 列出已有的规则
+semanage fcontext -l | grep httpd_sys_content
+
+# 删除错误规则
+semanage fcontext -d "/home/deploy/www(/.*)?"
+```
+**`chcon` 是临时的**（`restorecon` 或 `relabel` 会还原）→ **正式修复用 `semanage fcontext`** ⭐。
+
+**修复 B：端口**
+```bash
+# nginx 监听 8080 → http_port_t 只允许 80/443 等
+sudo semanage port -l | grep http_port_t
+sudo semanage port -a -t http_port_t -p tcp 8080
+# 若端口已被别的类型占用，用 -m 修改
+sudo semanage port -m -t http_port_t -p tcp 8080
+sudo semanage port -l | grep 8080
+```
+**常见需要加端口的场景**：nginx/ssh/mysql 换端口、Tomcat 8080、自定义服务端口。
+
+**修复 C：布尔值（服务需要额外权限）**
+```bash
+# 看有哪些相关布尔值
+getsebool -a | grep httpd
+semanage boolean -l | grep httpd      # 更详细（含说明）
+
+# 常用开关
+sudo setsebool -P httpd_can_network_connect 1        # 允许 nginx 反向代理
+sudo setsebool -P httpd_can_network_connect_db 1     # 允许连数据库
+sudo setsebool -P httpd_enable_homedirs 1            # 允许访问家目录
+sudo setsebool -P httpd_read_user_content 1
+sudo setsebool -P httpd_can_sendmail 1
+sudo setsebool -P nis_enabled 1                       # 允许非标准端口（历史上的）
+```
+**`-P` 必须加**（持久化），否则重启失效 ⭐。
+
+**修复 D：`audit2allow`（最后手段）**
+```bash
+# 从当前拒绝日志生成策略
+sudo ausearch -m AVC -ts recent | audit2allow -M myapp_local
+
+# 先看它要放行什么（**必做**）⭐
+cat myapp_local.te
+
+# 安装
+sudo semodule -i myapp_local.pp
+sudo semodule -l | grep myapp
+
+# 更精确：只看某个类型的拒绝
+sudo ausearch -m AVC -c nginx | audit2allow -M nginx_local
+```
+**⚠️ 用 `audit2allow` 生成"放行一切"的策略会削弱安全** —— **务先尝试 A/B/C 三种正规方式**（用对标签、加对端口、开对布尔值）。
+
+**第 4 步：验证**
+```bash
+# 清空旧日志以便观察
+sudo /usr/sbin/logrotate -f /etc/logrotate.d/auditd    # 或 truncate
+
+# 重启服务并复现
+sudo systemctl restart nginx
+# 检查是否还有新的 AVC
+sudo ausearch -m AVC -ts recent
+# 确认 SELinux 下服务正常
+getenforce        # 必须是 Enforcing ⭐
+curl -I localhost:8080
+```
+
+**关键命令速查**：
+```bash
+# 状态
+getenforce / sestatus
+# 上下文
+ls -Z / ps -Z / id -Z / ss -Z
+matchpathcon /path
+# 文件标签
+semanage fcontext -a/-d/-l
+restorecon -Rv /path
+chcon -t TYPE /path        # 临时
+# 端口
+semanage port -a/-m/-d/-l
+# 布尔
+getsebool / setsebool -P / semanage boolean -l
+# 策略模块
+semodule -i/-r/-l
+# 排障
+ausearch -m AVC -ts recent
+audit2why < avc.log
+audit2allow -M name
+sealert -a audit.log
+```
+
+**容器场景**：
+```bash
+# Docker 挂载宿主目录到容器时，SELinux 会拒绝
+docker run -v /host/data:/data:z ...    # :z 重新打标签（共享）⭐
+docker run -v /host/data:/data:Z ...    # :Z 私有标签（独占）
+# 或临时 setenforce 0（不推荐）
+```
+
+**常见错误做法（要避免）**：
+| 做法 | 问题 |
+|---|---|
+| `setenforce 0` 就完事 | 降低系统安全性，重启后可能又变回 enforcing |
+| 在 `/etc/selinux/config` 里 `SELINUX=disabled` | **需要重启**；且文件标签不会再维护，切回来会出问题 |
+| 直接 `chcon` 不改 fcontext | 会被 `restorecon`/系统更新还原 ⭐ |
+| 用 `audit2allow` 一把梭 | 放行了太多权限（可能包含提权路径） |
+| `setsebool` 不加 `-P` | 重启失效 |
+| 改完后不验证 | 可能只是部分修好 |
+
+**实践建议（顺序）**：
+1. **`setenforce 0` 做二分确认**，然后**立即恢复**。
+2. **`ausearch` / `sealert` 读拒绝详情**（`tcontext` 的类型是关键线索）。
+3. **优先用"正确的标签 + `restorecon`"**（最规范）⭐。
+4. **端口问题用 `semanage port`**；**能力问题用 `setsebool -P`**。
+5. **`audit2allow` 只作兜底**，且要看清楚它放行了什么。
+6. **把站点放在标准目录（`/var/www`）能避免 90% 的问题**。
+7. **改完必须 `getenforce` 确认是 Enforcing 再验证服务**。
+8. **记录修复步骤**（新机器部署时会再遇到）。', 1),
+
+('Linux', '/proc,/sys,虚拟文件系统,调优', 2,
+ '`/proc` 和 `/sys` 是什么？各自有哪些常用文件？为什么它们不占磁盘空间？',
+ '**本质**：二者都是**伪文件系统（pseudo filesystem）**，内容由内核在内存中动态生成，读文件 = 调用内核的一段代码，写文件 = 修改内核数据结构。所以 `du` 显示为 0。
+
+| | `/proc`（procfs） | `/sys`（sysfs） |
+|---|---|---|
+| 定位 | 进程信息 + 部分内核参数 | 设备 / 驱动 / 内核对象的统一模型 |
+| 结构 | 平铺的文件名 | 严格的树形（bus/class/devices/...） |
+| 典型读 | `/proc/cpuinfo`、`/proc/meminfo`、`/proc/loadavg` | `/sys/class/net/eth0/statistics/rx_bytes` |
+| 典型写 | `/proc/sys/...`（= `sysctl`） | 设备属性、`/sys/block/.../queue/scheduler` |
+
+**`/proc` 高频文件**：
+
+| 文件 | 用途 |
+|---|---|
+| `/proc/<pid>/status` | 进程状态、内存、线程数 |
+| `/proc/<pid>/fd/` | 该进程打开的 fd → 软链到真实文件（`ls -l` 就能看出句柄泄漏）|
+| `/proc/<pid>/maps` | 虚拟内存映射，排查内存布局 |
+| `/proc/<pid>/cwd` `/exe` | 进程的工作目录 / 可执行文件路径 ⭐ 排查"这个服务是哪个二进制" |
+| `/proc/meminfo` | 内存全局视图（`MemAvailable` 才是可用内存，`MemFree` 会误导）|
+| `/proc/net/tcp` | 连接表，`ss` 就是解析它 |
+| `/proc/pressure/*` | PSI 压力指标 |
+| `/proc/sys/...` | 内核参数，`sysctl -a` 列全部 |
+
+**内核参数持久化**：`/etc/sysctl.d/99-xxx.conf`（不是直接改 `/etc/sysctl.conf`，`sysctl --system` 生效）。运行时写 `/proc/sys/net/core/somaxconn` 与 `sysctl -w` 等价，**重启即失效**。
+
+**为什么不能 `cat` 大文件**：某些 `/proc` 文件（如 `/proc/kcore`、`/proc/<pid>/mem`）是海量/特殊流，直接 cat 会吃满终端。用 `dd` 或 `head -c`。
+
+**实践**：排查"配置改了没生效"时，先看 `/proc` 里的**运行时值**而不是配置文件（配置文件可能没被加载，或有多个文件覆盖）。', 1),
+
+('Linux', '负载,load average,性能', 2,
+ '`uptime` 里的 load average 三个数字分别是什么意思？负载高就一定是 CPU 不够吗？',
+ '**含义**：三个数字是过去 **1 分钟 / 5 分钟 / 15 分钟**的**平均负载**。
+
+**"负载"是什么**：内核统计的**可运行 + 不可中断睡眠**的进程数：
+- **R（Running/Runnable）**：正在跑或排队等 CPU。
+- **D（Uninterruptible Sleep）**：卡在**不可中断**的 IO 上（磁盘 IO、NFS、驱动）。
+- **不包含**：普通睡眠（S，等 socket/信号）、僵尸（Z）。
+
+所以确切地说：**load = 每单位时间 `nr_running + nr_uninterruptible` 的指数衰减平均值**（`/proc/loadavg` 第 4 项会直接给出 R 的个数）。
+
+**判断标准 —— 必须除以核数**：
+
+| 条件 | 结论 |
+|---|---|
+| load ≈ 核数 | 刚好跑满，健康上限 |
+| load < 核数 | 有余量 |
+| load > 核数 | 有任务排队，偏忙 |
+| load > 核数 × 2 | 明显过载 |
+
+例：4 核机器 load 是 8 → **每个核平均排 2 个任务**，属于过载。
+
+**关键：负载高 ≠ CPU 瓶颈** ⭐
+- 三个值都高且 R 多 → **CPU 密集**（`top` 看 `%us`/`%sy`）。
+- 只有 1 分钟高、15 分钟低 → **瞬时突发**，不用管。
+- 三个值都高但 CPU 空闲、有大量 **D 状态**进程 → **IO 瓶颈**（`iostat -xz 1`、`vmstat` 的 `b` 列、`/proc/pressure/io`）。
+- 值持续爬升**降不下来** → 常见于磁盘坏道、NFS 挂死、内核 bug（此时看 `dmesg`、hung task）。
+
+**排查顺序**：
+1. `uptime` / `cat /proc/loadavg` —— 多高、趋势。
+2. `nproc` —— 除以核数。
+3. `top` 按 `1` 展开看每核，`vmstat 1` 看 `r`（运行队列）和 `b`（阻塞）。
+4. `r` 高 → 查 CPU；`b` 高 → 查磁盘。
+5. `cat /proc/pressure/cpu` `io` `memory` —— PSI 直接告诉你**谁在拖后腿**以及**被拖了多久**。
+
+```bash
+vmstat 1 5          # r 列 = 运行队列，b 列 = 阻塞进程
+iostat -xz 1        # %util 接近 100 且 await 很大 = 磁盘打满
+pidstat -d 1        # 按进程看 IO
+```
+
+**一句话**：load 是"有多少活儿在等"，不区分等的是 CPU 还是磁盘；**必须结合核数和状态分布**才能定性。', 1),
+
+('Linux', 'lsof,句柄泄漏,磁盘空间', 3,
+ '`df` 显示磁盘 100% 满，但 `du` 怎么也找不到占用空间的文件，是怎么回事？怎么定位和解决？',
+ '**典型场景**：`df -h` 说 `/` 满了，`du -sh /*` 加起来却差得远。这是**内核视角与文件系统视角不一致**。
+
+## 一、根因：文件已被删除，但仍有进程持有 fd
+
+Unix 中**文件名只是目录里的一条记录**，删除文件（`unlink`）只是摘掉这条记录并**减一引用计数**；只有**引用计数归零**，磁盘块才真正释放。
+
+```
+进程 A: open("big.log") ──► inode 1234 (nlink=1)
+rm big.log            ──► inode 1234 (nlink=0) ← 目录里看不到了
+                         但进程 A 还拿着 fd ⇒ 引用计数 ≠ 0 ⇒ 磁盘块不释放
+```
+
+**`du` 遍历目录，看不见它；`df` 读文件系统统计（`statvfs`），知道块还被占着。** 两者差距就是这么来的。**日志切割（logrotate）后没让进程重开日志是最常见的触发方式。**
+
+## 二、定位 ⭐
+
+```bash
+# 1. 确认差异确实存在
+df -h /                     # Use% 100%
+du -sh / 2>/dev/null | tail
+
+# 2. 直接列出 "已删除但仍被打开" 的文件（deleted 标记）
+lsof -nP | grep ''(deleted)''
+lsof +L1                    # 列出 link count < 1 的文件（更精准）⭐
+lsof -nP +L1 | awk ''{print $1,$2,$7,$9}'' | sort -k3 -n -r | head
+#                   ^进程 ^PID ^大小 ^路径
+
+# 3. 没有 lsof 时：遍历 /proc（lsof 本质就是干这个）
+find /proc/*/fd -ls 2>/dev/null | grep ''(deleted)''
+for fd in /proc/[0-9]*/fd/*; do
+    t=$(readlink "$fd" 2>/dev/null)
+    case "$t" in *"(deleted)"*) echo "$fd -> $t";; esac
+done
+
+# 4. 看某个可疑进程
+ls -l /proc/<pid>/fd | grep deleted
+```
+
+## 三、解决（三选一）
+
+| 方法 | 命令 | 说明 |
+|---|---|---|
+| **重启 / reload 该服务** | `systemctl restart nginx` | 最干净，fd 关闭后立即释放 ⭐ |
+| **让进程重开日志** | `kill -USR1 <pid>` | nginx / 多数守护进程支持，**不中断服务** |
+| **清空 fd 内容**（应急）| `: > /proc/<pid>/fd/<n>` | 保留 inode 但把内容截断为 0，**立刻释放空间**，进程不受影响 ⭐ |
+
+> ⚠️ `: > /proc/<pid>/fd/<n>` 会**直接丢弃**这些数据，不可恢复；生产上属应急手段，事后再规范日志切割。
+
+## 四、其他导致 df/du 不一致的原因
+
+| 原因 | 现象 | 排查 |
+|---|---|---|
+| 挂载点被**覆盖** | `du` 看不到被盖住的目录 | `mount \\| grep <dir>`，`umount` 后重看 |
+| **inode 耗尽** | `df -i` 100% 而 `df -h` 不满 | `df -i`、`find / -xdev -printf ''%h\\n'' \\| sort \\| uniq -c \\| sort -rn \\| head` 找小文件多的目录 |
+| **保留块**（ext4 默认 5%）| `df` 比实际可写少 5% | `tune2fs -m 1 /dev/sdX` |
+| **稀疏文件 / 快照** | LVM 快照、overlay 层占空间 | `lvs`、`docker system df` |
+
+## 五、预防（规范 logrotate）⭐
+
+```conf
+/var/log/myapp/*.log {
+    daily
+    rotate 7
+    compress
+    missingok
+    notifempty
+    copytruncate        # ← 切断不通知进程时的兜底：先拷贝再截断原文件
+    # postrotate
+    #     systemctl reload myapp   # ← 更推荐：让进程自己重新 open
+    # endscript
+}
+```
+
+**根因一句话**：**删除 ≠ 释放**；`du` 看目录树，`df` 看 inode 引用计数，只有最后一个持有者关闭 fd，空间才回来。定位靠 `lsof +L1`。', 1),
+
+('MySQL', '存储引擎,架构', 2,
+ 'InnoDB 的整体架构是怎样的？内存结构和磁盘结构分别有哪些部分？',
+ '**InnoDB = 内存结构 + 磁盘结构 + 后台线程**。
+
+## 一、内存结构
+
+| 组件 | 作用 |
+|---|---|
+| **Buffer Pool**（缓冲池）| 缓存**数据页 / 索引页 / undo 页 / 自适应哈希 / 锁信息 / change buffer**，是 InnoDB 最核心的内存区，通常占 70%~80% 物理内存（`innodb_buffer_pool_size`）|
+| **Log Buffer** | 缓存 redo log，按 `innodb_flush_log_at_trx_commit` 刷盘（8.0 默认 16M）|
+| **Adaptive Hash Index** | 对热数据页的索引前缀建哈希，加速等值查询（`innodb_adaptive_hash_index`）|
+| **Change Buffer** | 缓存**非唯一二级索引**的写操作，等页被读入时再合并 |
+| **Dictionary Cache** | 表/列等数据字典信息（8.0 起独立表空间 `mysql.ibd`）|
+
+**Buffer Pool 内部三链表**（改进型 LRU，解决预读污染）：
+
+```
+LRU List = [ Young 区 (5/8) | Old 区 (3/8) ]
+             ↑ 热数据            ↑ 新读入的页先放这里
+```
+
+- **新页插到 Old 区头部**（midpoint insertion），而不是 LRU 头部。
+- 只有在 Old 区**停留超过 `innodb_old_blocks_time`（默认 1000ms）后又被访问**，才晋升到 Young 区。
+- 效果：全表扫描/预读进来的一次性页，**来不及晋升就被挤出去**，不会污染热数据。
+- 链表太长时按比例从尾部和 midpoint 附近批量淘汰（`innodb_lru_scan_depth`）。
+
+## 二、磁盘结构
+
+| 表空间 | 内容 |
+|---|---|
+| **系统表空间** `ibdata1` | 回滚段、双写缓冲、早期数据字典 |
+| **独立表空间** `tablename.ibd` | 该表的 B+ 树数据 + 索引（`innodb_file_per_table=ON`，**推荐**）|
+| **通用表空间** | 多个表共享 |
+| **undo 表空间** | undo log 段（8.0 起可独立）|
+| **临时表空间** | 排序/临时表 |
+| **redo log** `#innodb_redo/` | 循环写的物理日志（8.0.30 前是 `ib_logfile0/1`）|
+| **Doublewrite Buffer** | 刷脏页前先顺序写一份，防**页撕裂（partial page write）** |
+
+## 三、后台线程
+
+- **Master Thread**：1 次/秒、10 次/秒的调度主循环，负责刷脏、合并插入缓冲。
+- **IO Thread**：`read` / `write` / `insert buffer` / `log` 四类，可配并发数。
+- **Purge Thread**：回收已提交事务的 undo 页。
+- **Page Cleaner Thread**：从 Buffer Pool 刷脏页到磁盘。
+
+## 四、一条 UPDATE 的完整流转 ⭐
+
+```
+1. 从 Buffer Pool 找页；没有 → 从 .ibd 读入（读不到还要去 redo 里找？不用，异常恢复才用）
+2. 写 undo log（记录旧值，供回滚 + MVCC）
+3. 修改 Buffer Pool 中的页  ← 注意：此时磁盘上的页还是旧的（脏页）
+4. 写 redo log 到 Log Buffer
+5. 提交时按策略将 redo 刷盘（WAL：先日志后数据）
+6. 脏页由 Page Cleaner 异步刷盘
+```
+
+**WAL（Write-Ahead Logging）的意义**：把"随机写数据页"变成"顺序写日志"，提交即可返回，数据页延后刷 —— 这是 MySQL 高吞吐的根本原因，也是崩溃恢复的依据。
+
+**双写缓冲的意义**：InnoDB 页 16KB，而磁盘/文件系统原子写通常是 4KB，断电时可能只写了半个页。双写先写一份连续副本，恢复时用副本修复撕裂页。', 1),
+
+('MySQL', 'redo log,WAL,两阶段提交', 3,
+ 'redo log 和 binlog 有什么区别？为什么需要两阶段提交（2PC）？',
+ '## 一、两者本质不同
+
+| 维度 | **redo log** | **binlog** |
+|---|---|---|
+| 归属层 | **InnoDB 引擎层**（MyISAM 没有）| **MySQL Server 层**（所有引擎都有）|
+| 类型 | **物理逻辑日志**：记"在哪个页做了什么修改" | **逻辑日志**：记"执行了什么 SQL / 行变更" |
+| 大小 | **固定循环写**（`innodb_log_file_size`），会覆盖 | **追加写**，不覆盖，可归档 |
+| 用途 | **崩溃恢复**（crash-safe），保证已提交事务不丢 | **主从复制**、**数据恢复**（PITR）|
+| 刷盘 | `innodb_flush_log_at_trx_commit` | `sync_binlog` |
+| 幂等性 | 幂等（页 + LSN）| 不幂等，重放要保证位置一致 |
+
+## 二、为什么必须两阶段提交
+
+考虑一次 `UPDATE`，两个日志分别刷盘的两种错误顺序：
+
+**① 先写 redo，再写 binlog，binlog 没写完就崩**
+- redo 已落盘 → 重启后**恢复出这次修改**（数据变了）。
+- binlog 缺失 → **从库收不到这条变更**（主从不一致）。
+- ❌ 数据变了但日志没记。
+
+**② 先写 binlog，再写 redo，redo 没写完就崩**
+- redo 未落盘 → 重启后**回滚这次修改**（数据没变）。
+- binlog 已落盘 → **从库重放这条变更**（多了数据）。
+- ❌ 日志记了但数据没变。
+
+**结论**：只用其中一种顺序，都可能出现"主库数据"与"binlog"不一致。所以引入 **2PC**。
+
+## 三、2PC 三个步骤 ⭐
+
+```
+     ① prepare 阶段
+        redo log 写入并刷盘，事务状态标记为 prepare
+        （此时事务还没提交，但 redo 可恢复）
+                    │
+                    ▼
+     ② 写 binlog 并刷盘
+                    │
+                    ▼
+     ③ commit 阶段
+        在 redo log 里写入 commit 标记
+        （这一步之后事务才真正可见/生效）
+```
+
+**崩溃恢复规则**（重启后扫 redo）：
+
+| redo 状态 | binlog 状态 | 处理 |
+|---|---|---|
+| 有 prepare，**无** commit | **完整** | **提交**（binlog 全，按 binlog 主从一致原则）|
+| 有 prepare，**无** commit | **不完整**（被截断）| **回滚**（binlog 不完整，不能提交）|
+| 有 prepare，**有** commit | — | 提交 |
+
+**判断 binlog 是否完整**：binlog 有 `XID` event 或结尾校验（`binlog_checksum`），而且每个事务的 binlog 记录了 `BEGIN`...`COMMIT` 边界，靠这个识别截断。
+
+## 四、"双一"配置 ⭐
+
+崩溃安全的最强组合：
+
+```ini
+innodb_flush_log_at_trx_commit = 1   # redo 每次提交都 fsync
+sync_binlog = 1                      # binlog 每次提交都 fsync
+```
+
+- 性能与安全的权衡：`=2`（redo 只写 OS cache，每秒刷）能提升吞吐，但**宕机会丢 1s 数据**。
+- `=0` 更快但不安全。
+- 生产**默认建议双 1**；金融场景必须双 1。
+
+## 五、组提交（Group Commit）
+
+每次提交都 fsync 太慢，MySQL 把同一时刻的多个事务合并成**一次 fsync**：
+
+```
+T1 ─┐
+T2 ─┼─► 一次 fsync 刷 redo ─► 一次 fsync 刷 binlog ─► 一起 commit
+T3 ─┘
+```
+
+- `binlog_group_commit_sync_delay` + `binlog_group_commit_sync_no_delay_count` 可**主动等一小会儿**攒批量，提高组提交效率。
+- 效果：并发越高，单事务的平均刷盘成本越低。', 1),
+
+('MySQL', 'MVCC,undo log,隔离级别', 3,
+ 'MVCC 是怎么实现的？RR 隔离级别下具体是怎样避免不可重复读的？',
+ '## 一、三个隐藏字段
+
+InnoDB 每行记录都有隐藏列：
+
+| 字段 | 含义 |
+|---|---|
+| `DB_TRX_ID` | 最后修改该行的**事务 ID**（6 字节）|
+| `DB_ROLL_PTR` | **回滚指针**，指向 undo log 中的旧版本（7 字节）|
+| `DB_ROW_ID` | 无主键时生成的行 ID（6 字节）|
+
+**版本链**：多次修改同一行，靠 `DB_ROLL_PTR` 串成一条**单向链表**（undo log 里），从新到旧：
+
+```
+当前行(trx 100) --roll_ptr--> 旧版本(trx 90) --> 旧版本(trx 80) --> NULL
+```
+
+## 二、Read View（读视图）
+
+每个事务在**快照读**时生成一个 Read View，核心四个字段：
+
+| 字段 | 含义 |
+|---|---|
+| `m_ids` | 生成快照时**活跃（未提交）**的事务 ID 列表 |
+| `min_trx_id` | 活跃事务中的最小值 |
+| `max_trx_id` | 下一个将分配的事务 ID（即活跃 ID 的上界）|
+| `creator_trx_id` | 创建该 Read View 的事务 ID |
+
+**可见性判断**（沿版本链从新到旧找第一条可见的）：
+
+| 行的 `DB_TRX_ID` | 判断 |
+|---|---|
+| `== creator_trx_id` | **可见**（自己改的）|
+| `< min_trx_id` | **可见**（在我开始前就提交了）|
+| `>= max_trx_id` | **不可见**（在我开始后才开启的事务）|
+| `in m_ids` | **不可见**（当时还活跃，未提交）|
+| 不在 `m_ids` 且 `< max_trx_id` | **可见**（当时已提交）|
+
+若当前版本不可见 → 顺 `DB_ROLL_PTR` 找上一版本，重复判断，直到找到可见版本。
+
+## 三、RC 与 RR 的唯一区别：Read View 的生成时机 ⭐
+
+| 隔离级别 | Read View 何时生成 | 效果 |
+|---|---|---|
+| **RC**（读已提交）| **每次 SELECT 都重新生成** | 别人提交后，我下次查就能看到 → **不可重复读** |
+| **RR**（可重复读）| **只在事务第一次快照读时生成一次**，之后复用 | 整个事务看到的是**同一个快照** → **可重复读** |
+
+**这就是"避免不可重复读"的机制**：RR 下事务复用同一个 Read View，`m_ids` 不变，别人的新提交事务 ID 落在 `m_ids` 或不满足条件 → 一直看不到 → 每次读结果一致。
+
+## 四、快照读 vs 当前读 ⭐
+
+| 类型 | 语句 | 读什么 |
+|---|---|---|
+| **快照读** | 普通 `SELECT` | Read View + undo 版本链（**不加锁**）|
+| **当前读** | `SELECT ... FOR UPDATE` / `LOCK IN SHARE MODE`、`UPDATE` / `DELETE` / `INSERT` | **最新版本**，并加锁 |
+
+## 五、RR 下为什么还需要间隙锁？
+
+MVCC 只解决**快照读**的幻读。但如果事务里用的是**当前读**：
+
+```sql
+BEGIN;
+SELECT * FROM t WHERE id > 5 FOR UPDATE;  -- 当前读，锁住 (5, +∞) 间隙
+-- 另一事务 INSERT id=7 会被阻塞 ← 靠 Next-Key Lock 阻止幻读
+COMMIT;
+```
+
+所以 **RR 通过 "Read View（快照读）+ Next-Key Lock（当前读）" 双保险**解决幻读。严格来说，如果事务里全部是快照读，RR 才不会出现幻读；一旦夹杂当前读和写，就需要间隙锁。
+
+## 六、undo log 什么时候清理
+
+- 版本链不能无限长：靠 **purge 线程**回收。
+- **判断标准**：没有任何活跃 Read View 需要看到更老的版本时，对应的 undo 才能删。
+- **长事务的危害** ⭐：一个开了很久没提交的事务会让 `m_ids` 一直占着 → **undo 无法 purge → 版本链越来越长 → 系统表空间暴涨 + 查询越来越慢**。所以必须监控并 kill 长事务。
+
+```sql
+-- 找长事务
+SELECT trx_id, trx_started, TIMESTAMPDIFF(SECOND, trx_started, NOW()) AS sec,
+       trx_state, trx_mysql_thread_id, trx_query
+FROM information_schema.innodb_trx ORDER BY trx_started;
+```
+
+## 七、一句话总结
+
+**MVCC = 隐藏字段 + undo 版本链 + Read View**；RC/RR 的差别只在 Read View 是"每次读重建"还是"首次读建一次"。', 1),
+
+('MySQL', '锁,间隙锁,死锁', 3,
+ 'InnoDB 有哪些锁？什么是 Next-Key Lock？死锁是怎么产生的，如何排查和避免？',
+ '## 一、锁的分类
+
+**按粒度**：
+
+| 锁 | 说明 |
+|---|---|
+| **表级锁** | 开销小、并发低。含**表锁**、**元数据锁 MDL**、**意向锁 IS/IX** |
+| **行级锁** | InnoDB 特有，锁在**索引项**上（**不是锁在行记录上**，没有索引会退化成锁全表）|
+| **页级锁** | 极少用 |
+
+**按模式**：
+
+| 锁 | 说明 |
+|---|---|
+| **共享锁 S** | `LOCK IN SHARE MODE`，读锁，S 与 S 兼容 |
+| **排他锁 X** | `FOR UPDATE`、`UPDATE`、`DELETE`，X 与任何锁互斥 |
+| **意向共享 IS / 意向排他 IX** | **表级**标记"表里某些行将被加 S/X"，让表锁与行锁能快速判断冲突 ⭐ |
+
+**意向锁的意义**：事务 B 想加表锁，不必逐行检查，只看表上有没有 IX/IS 即可——**把 O(n) 行扫描变成 O(1)**。
+
+## 二、行锁的三种形态 ⭐
+
+设索引值依次为 `5, 10, 15`：
+
+| 类型 | 锁定范围 | 例子 |
+|---|---|---|
+| **Record Lock**（记录锁）| 锁**单个索引记录** | `WHERE id = 10` 命中唯一索引 → 锁 id=10 |
+| **Gap Lock**（间隙锁）| 锁**两个记录之间的开区间**，不锁记录本身 | 锁 `(5, 10)` |
+| **Next-Key Lock**（临键锁）| **记录锁 + 前面的间隙** = `(前一个, 当前]` | 锁 `(5, 10]` |
+
+**Next-Key Lock 是 RR 的默认行锁算法**，锁住 `(5, 10]` 这样的**左开右闭**区间。它的作用就是**阻止其他事务往这个区间插入新记录 → 防幻读**。
+
+**退化规则**：
+- 查询**命中唯一索引的等值条件**且记录存在 → Next-Key 退化为 **Record Lock**（只锁这一行，不锁间隙）。
+- 记录**不存在** → 退化为 **Gap Lock**（锁住那个区间）。
+- 查询**没有索引** → 全表扫描，**每一条记录都加 Next-Key Lock** → 相当于锁全表 ⭐（这就是"没索引的 UPDATE 会锁住整表"的原因）。
+
+## 三、加锁原则（背下来）⭐
+
+1. 加锁的基本单位是 **Next-Key Lock**。
+2. 查找过程中**访问到的对象**才会加锁。
+3. 唯一索引等值命中 → Next-Key **降级为 Record Lock**。
+4. 唯一索引等值未命中 → Next-Key **降级为 Gap Lock**。
+5. 不等值/范围扫描 → 继续用 Next-Key（或继续向右找，直到不满足条件为止）。
+
+## 四、死锁的产生
+
+**必要条件**：多个事务**以不同顺序**获取**互斥资源**，形成**循环等待**。
+
+```sql
+-- 事务 A                        -- 事务 B
+BEGIN;                           BEGIN;
+UPDATE t SET v=1 WHERE id=1;     UPDATE t SET v=1 WHERE id=2;
+--                              （A 持 id=1 的 X 锁，B 持 id=2 的 X 锁）
+UPDATE t SET v=1 WHERE id=2;     UPDATE t SET v=1 WHERE id=1;
+-- ← 等 B 释放 id=2               -- ← 等 A 释放 id=1   ⇒ 死锁环形等待
+```
+
+**其他常见场景**：
+- **间隙锁互相等待**：两个事务都在 `(5,10)` 里 `INSERT`，各自持间隙锁。
+- **索引顺序不一致**：两条 SQL 的 `WHERE` 条件导致加锁顺序相反。
+- **SELECT ... FOR UPDATE 后 UPDATE**：混合使用造成不一致顺序。
+- **唯一索引冲突下的 S 锁**：`INSERT` 撞唯一键时会先加 S 锁，两个事务都插同一个键也能死锁。
+
+**InnoDB 的处理**：自动检测死锁（**wait-for graph**），发现环就**回滚代价小的一方**（undo 量少的），并抛 `ERROR 1213: Deadlock found when trying to get lock`。所以死锁**不会让数据库卡死**，只是有一个事务失败。
+
+## 五、排查 ⭐
+
+```sql
+SHOW ENGINE INNODB STATUS\\G
+-- 看 LATEST DETECTED DEADLOCK 段落，包含：
+--   两个事务各自持有什么锁、在等什么锁、执行的 SQL、被回滚的是谁
+
+-- 当前锁等待
+SELECT * FROM performance_schema.data_locks;         -- 8.0（5.7 是 innodb_locks）
+SELECT * FROM performance_schema.data_lock_waits;    -- 8.0（5.7 是 innodb_lock_waits）
+
+-- 简化版：谁在等谁
+SELECT r.trx_id AS waiting, r.trx_mysql_thread_id AS w_thread,
+       b.trx_id AS blocking, b.trx_mysql_thread_id AS b_thread
+FROM information_schema.innodb_lock_waits w
+JOIN information_schema.innodb_trx b ON b.trx_id = w.blocking_trx_id
+JOIN information_schema.innodb_trx r ON r.trx_id = w.requesting_trx_id;
+
+-- 锁等待超时
+-- innodb_lock_wait_timeout（默认 50s），超时抛 1205
+```
+
+```bash
+# 打开全量死锁日志
+# innodb_print_all_deadlocks = ON  → 死锁信息写入 error log
+```
+
+## 六、如何避免 ⭐
+
+| 措施 | 说明 |
+|---|---|
+| **统一访问顺序** | 所有事务按同一顺序访问资源（如都按主键升序更新）|
+| **缩短事务** | 事务里不要有网络调用/慢查询，尽快提交，减少持锁时间 |
+| **索引命中** | 保证 `WHERE` 走索引，避免锁全表 + 大量 Next-Key |
+| **拆分大事务** | 批量更新分批提交（每 500~1000 条）|
+| **降低隔离级别** | RC 下没有间隙锁，能大幅减少间隙锁死锁（现在很多大厂用 RC + binlog ROW）|
+| **重试机制** | 应用层捕获 1213/1205 后**有限次重试** ⭐ |
+| **避免 `SELECT FOR UPDATE` 后长耗时操作** | 拿锁就尽快改完提交 |
+| **`INSERT ... ON DUPLICATE KEY UPDATE` / `INSERT IGNORE`** | 用原子写入替代"先查后插"，从根上避免竞态 |
+
+**一句话**：死锁是**并发系统的固有现象**，无法彻底消除，只能通过"统一顺序 + 短事务 + 好索引 + 重试"把概率降到可接受，并保证**发生时可自愈**。', 1),
+
+('MySQL', '索引,B+树,回表,覆盖索引', 2,
+ '为什么 MySQL 索引用 B+ 树而不是 B 树、红黑树或哈希表？聚簇索引和二级索引有什么区别？',
+ '## 一、为什么是 B+ 树 ⭐
+
+| 候选结构 | 为什么不用 |
+|---|---|
+| **哈希表** | **不支持范围查询/排序**（`>`、`BETWEEN`、`ORDER BY` 无能无力），只能等值；且有哈希冲突、需要扩容 rehash |
+| **二叉搜索树** | 可能退化成链表，O(n)；树高太大 |
+| **红黑树 / AVL** | 平衡性好，但**是二叉树**：1000 万数据高度约 24 层 → 24 次磁盘 IO，**每个节点只放一个元素，太浪费一次 IO** |
+| **B 树** | 每个节点都存**数据**，导致：① 单个节点能放的**键太少** → 树更高；② **范围查询要中序遍历、多次回溯**；③ 数据分散在所有节点，不利于局部性 |
+| **B+ 树** ✅ | ① **非叶子节点只存键、不存数据** → 一个 16KB 页能放几百上千个键 → 树高仅 **2~4 层**，3 层就能存约 2000 万行；② **所有数据都在叶子节点且用链表相连** → 范围查询和排序**顺序扫描即可**；③ 查询性能稳定（都要走到叶子）|
+
+**关键数字**：InnoDB 页 16KB，假设主键 bigint(8B) + 页指针(6B) = 14B，一个非叶页可放约 `16384/14 ≈ 1170` 个键；叶子页按每行 1KB 可放 16 行。三层 B+ 树可容纳 `1170 × 1170 × 16 ≈ 2190 万`行 —— **三次 IO 查到 2000 万行中的一行**，这就是 B+ 树的威力。
+
+## 二、聚簇索引 vs 二级索引 ⭐
+
+| | **聚簇索引（Clustered，主键索引）** | **二级索引（Secondary，辅助索引）** |
+|---|---|---|
+| 叶子节点存什么 | **整行数据** | **索引列 + 主键值** |
+| 数量 | 一张表**只能有一个** | 可以有多个 |
+| 选取 | 优先主键；无主键取第一个非空唯一索引；都没有则用隐藏 `DB_ROW_ID` | 建索引时创建 |
+| 通过它查询 | **一次即可拿到整行** | **需要回表** |
+
+**示意图**：
+
+```
+聚簇索引：                二级索引 idx_name：
+[10|30|50]                [Amy|10] [Bob|30] [Cat|50]
+   ↓ 叶子                                  ↓ 拿到主键 30
+[10: 整行数据] ← 顺序存放（主键有序，所以叫"聚簇/聚集"）    ↓
+[30: 整行数据]                         回表：拿 30 再去聚簇索引查整行
+[50: 整行数据]
+```
+
+## 三、回表与覆盖索引
+
+**回表（Back to Table）**：二级索引拿到主键后，**再走一次聚簇索引**查完整行。每条记录一次回表 = 一次随机 IO，代价高。
+
+```sql
+-- 需要回表：name 是二级索引，但要拿 age
+SELECT age FROM users WHERE name = ''Bob'';
+-- 1) idx_name 找到主键 30  2) 用 30 回表查 age
+```
+
+**覆盖索引（Covering Index）**：查询涉及的所有列**都在这棵二级索引上**，无需回表 ⭐
+
+```sql
+-- 建索引 idx_name_age(name, age)
+SELECT name, age FROM users WHERE name = ''Bob'';   -- Extra: Using index ✅ 不回表
+
+-- explain 的 Extra 显示 "Using index" → 覆盖索引生效
+```
+
+## 四、索引设计实践
+
+| 原则 | 说明 |
+|---|---|
+| **主键尽量短且自增** | 短 → 非叶页放更多键 → 树矮；自增 → 顺序插入，**避免页分裂** |
+| **优先建联合索引** | 一次建 `(a,b,c)` 往往能覆盖多个查询，比建三个单列索引更省 |
+| **利用覆盖索引消灭回表** | 高频查询需要的列一起放进联合索引尾部 |
+| **不为低区分度列单独建索引** | 如"性别""状态"，选择性太低，优化器可能直接放弃 |
+| **控制索引数量** | 每个索引都要维护（写放大），一般单表不超过 5~6 个 |
+| **避免用 UUID 作主键** | 随机 → 频繁页分裂 + 页碎片 + 体积大（36 字节字符串），写性能差数倍 |
+| **区分度公式** | `选择性 = 不重复值数 / 总行数`，越接近 1 越好（`COUNT(DISTINCT col)/COUNT(*)`）|
+
+## 五、另一种索引：自适应哈希索引（AHI）
+
+InnoDB 会**自动**为频繁访问的索引页建哈希索引，把某些等值查询变成 O(1)。由 `innodb_adaptive_hash_index` 控制（8.0 默认 ON，但高并发下 AHI 的 latch 竞争可能拖慢性能，部分场景建议关闭）。
+
+**一句话总结**：**B+ 树把"一次磁盘 IO 能拿到多少有效信息"这个约束优化到极致**；聚簇索引让主键查询一次到位，二级索引以"回表"换存储空间。', 1),
+
+('MySQL', '索引失效,explain,优化', 2,
+ '哪些情况会导致索引失效？EXPLAIN 的关键字段怎么读？',
+ '## 一、索引失效的常见场景 ⭐
+
+| # | 场景 | 例子 | 原因 |
+|---|---|---|---|
+| 1 | **在索引列上做运算/函数** | `WHERE YEAR(create_time)=2024`、`WHERE id+1=5` | 索引按**原始值**排序，运算后无法定位 |
+| 2 | **隐式类型转换** ⭐ | `WHERE phone=13800000000`（phone 是 varchar）| 字符串列与数字比较 → MySQL 把列**转成数字**再比 → 等于对列做函数 |
+| 3 | **隐式字符集不一致** ⭐ | utf8mb4 表 JOIN utf8 表 | 会做 COLLATE 转换 → 退化为全表扫描（**本项目实战踩过**）|
+| 4 | **前导模糊查询** | `LIKE ''%abc''` / `LIKE ''%abc%''` | 无法用 B+ 树定位起点（`LIKE ''abc%''` 可以用）|
+| 5 | **违反最左前缀** | 索引 `(a,b,c)`，但 `WHERE b=1` | B+ 树按 (a,b,c) 逐级排序，跳过 a 无法定位 |
+| 6 | **范围查询后面的列失效** | 索引 `(a,b)`，`WHERE a>1 AND b=2` | a 已用范围，b 在范围内无序（**但 8.0 有 ICP 可部分优化**）|
+| 7 | **`!=` / `NOT IN` / `NOT LIKE`** | `WHERE a != 1` | 难以利用有序性，常退化为扫描（视数据分布而定）|
+| 8 | **`OR` 连接的列有未建索引的** | `WHERE a=1 OR b=2`（b 无索引）| 无法合并，只能全表 |
+| 9 | **`IS NULL` / `IS NOT NULL`** | 视情况 | 通常可用，但优化器可能判断全表更划算 |
+| 10 | **优化器认为全表更快** | 小表、或要取大部分行 | **不是失效，是成本选择**（`ORDER BY` 全排序也可能）|
+| 11 | **`SELECT *` 导致回表太多** | 覆盖索引被破坏 | 优化器可能改走全表扫描 |
+| 12 | **使用 `ORDER BY` 与索引顺序不一致** | `ORDER BY a ASC, b DESC` | 混合方向在 8.0 前无法用索引有序性 |
+
+**验证方法**：`EXPLAIN` 看 `type` 和 `key`，`SHOW WARNINGS` 看优化器改写后的 SQL。
+
+## 二、EXPLAIN 关键字段 ⭐
+
+```sql
+EXPLAIN SELECT * FROM users WHERE name=''Bob'' AND age>20;
+EXPLAIN ANALYZE ...   -- 8.0.18+ 真实执行并给出实际耗时/行数
+```
+
+| 字段 | 含义 | 关注点 |
+|---|---|---|
+| **`id`** | 查询序号 | 相同 = 同一组；不同 = 子查询/UNION；值越大越先执行 |
+| **`select_type`** | 查询类型 | `SIMPLE` / `PRIMARY` / `SUBQUERY` / `DERIVED` / `UNION` |
+| **`table`** | 表名 | |
+| **`partitions`** | 命中的分区 | |
+| **`type`** ⭐ | **访问类型**（最重要）| 见下表排序 |
+| **`possible_keys`** | 可能用的索引 | 只是候选 |
+| **`key`** ⭐ | **实际用的索引** | `NULL` = 没用索引 |
+| **`key_len`** | 使用索引的字节数 | 可反推**用了联合索引的前几列** |
+| **`ref`** | 与索引比较的列/常量 | |
+| **`rows`** ⭐ | **预估扫描行数** | 越小越好，与 `filtered` 结合判断 |
+| **`filtered`** | 按条件过滤后剩余的百分比 | 10% 表示还要过滤掉 90% |
+| **`Extra`** ⭐ | 附加信息 | `Using index` / `Using where` / `Using temporary` / `Using filesort` / `Using index condition` |
+
+**`type` 性能排序（从好到坏）** ⭐：
+
+```
+system > const > eq_ref > ref > range > index > ALL
+                                    ↑          ↑
+                              范围扫描    全索引扫描   全表扫描
+```
+
+| type | 说明 |
+|---|---|
+| `system` | 表只有一行 |
+| `const` | 主键/唯一索引等值，**优化器阶段就能确定** |
+| `eq_ref` | JOIN 时被驱动表用主键/唯一索引等值匹配 |
+| `ref` | 普通二级索引等值匹配 |
+| `range` | 范围扫描（`>`, `<`, `BETWEEN`, `IN`, `LIKE ''x%''`）|
+| `index` | 扫整棵索引树（比 ALL 好，因为索引通常比行小）|
+| `ALL` | **全表扫描，需要优化** ❌ |
+
+**`Extra` 重点** ⭐：
+
+| 值 | 含义 | 好坏 |
+|---|---|---|
+| `Using index` | **覆盖索引**，不用回表 | ✅ 好 |
+| `Using index condition` | **索引下推 ICP**（5.6+），在存储引擎层用索引过滤 | ✅ 好 |
+| `Using where` | 拿到行后在 Server 层再过滤 | ⚠️ 中性 |
+| `Using temporary` | 用了**临时表**（常见于 `GROUP BY`/`DISTINCT`）| ❌ 差 |
+| `Using filesort` | 需要**额外排序**（没走索引顺序）| ❌ 差 |
+| `Using join buffer` | 没走索引，用 join buffer（BNL）| ❌ 差 |
+
+## 三、优化的实操步骤
+
+```sql
+-- 1. 开慢查询日志
+SET GLOBAL slow_query_log = ON;
+SET GLOBAL long_query_time = 1;
+SET GLOBAL log_queries_not_using_indexes = ON;
+
+-- 2. 用自带工具汇总
+-- mysqldumpslow -s t -t 10 /var/log/mysql/slow.log
+-- pt-query-digest /var/log/mysql/slow.log   ← Percona 工具，更强
+
+-- 3. 精确定位某个 SQL
+EXPLAIN ANALYZE <你的SQL>;
+SHOW PROFILE FOR QUERY <n>;   -- 或 performance_schema
+```
+
+**优化优先级**：**加/改索引 > 改写 SQL > 优化表结构 > 加缓存 > 分库分表**。不要一上来就分库分表。
+
+## 四、记忆口诀
+
+> **左前缀、不运算、类型对、字符集一致、范围在后、少 OR、覆盖索引不回表。**', 1),
+
+('MySQL', '联合索引,最左前缀,ICP,前缀索引', 3,
+ '联合索引的最左前缀原则是什么？什么是索引下推（ICP）？前缀索引如何选择长度？',
+ '## 一、最左前缀原则
+
+索引 `idx (a, b, c)` 的 B+ 树按 **(a, b, c)** 字典序排列：
+
+```
+a=1  →  b=1 → c=1
+        b=1 → c=2
+        b=2 → c=1
+a=2  →  b=1 → c=1
+```
+
+**能用的查询**（✅）：
+
+| 查询条件 | 用到的索引列 |
+|---|---|
+| `WHERE a=1` | (a) |
+| `WHERE a=1 AND b=2` | (a,b) |
+| `WHERE a=1 AND b=2 AND c=3` | (a,b,c) |
+| `WHERE a=1 AND c=3` | 只用 (a)，c 不能用于定位（但可 ICP 过滤）|
+| `WHERE a=1 AND b>2` | (a) 定位 + (b) 范围 |
+| `WHERE a=1 ORDER BY b` | 索引天然有序，**免排序** ✅ |
+
+**不能用的**（❌）：
+
+| 查询条件 | 结果 |
+|---|---|
+| `WHERE b=2` | 无 a，无法定位 → 全表 |
+| `WHERE b=2 AND c=3` | 同上 |
+| `WHERE a=1 AND b>2 AND c=3` | c 用不上（范围后的列无序）|
+| `WHERE a=1 ORDER BY c` | 需 filesort |
+
+**关键理解**：`WHERE a=1 AND c=3` 中，**c 并不是完全没用**——它仍然参与 **ICP 过滤**，只是不能用于**缩小扫描范围**。
+
+## 二、索引下推 ICP（Index Condition Pushdown，5.6+）⭐
+
+**没有 ICP 时**：
+
+```
+存储引擎：用 (a=1) 从索引取主键 → 回表拿整行 → 交给 Server 层
+Server 层：用 c=3 过滤
+```
+
+问题：**即使 c=3 不满足，也已经白回表了**。
+
+**有 ICP 时**：
+
+```
+存储引擎：用 (a=1) 取索引项 → 直接在索引上判断 c=3
+           c 不满足 → 不回表，直接跳过 ✅
+           c 满足 → 才回表
+```
+
+**收益**：**大幅减少回表次数**。`Extra` 里显示 `Using index condition`。
+
+**适用条件**：`type` 为 `range` / `ref` / `eq_ref` / `ref_or_null`，且条件能用索引中的列判断。
+
+**注意**：ICP 是 **5.6** 引入；**索引条件下推不等于覆盖索引**（覆盖索引是根本不用回表，ICP 是少回表）。
+
+## 三、联合索引的列顺序怎么排 ⭐
+
+**核心原则：把"能用于等值定位"的列放前面，"范围/排序"的列放后面。**
+
+```
+① 等值查询的列 → 放最前
+② 区分度高（选择性好）的列 → 优先放前
+③ 需要 ORDER BY 的列 → 紧随等值列之后（利用索引有序性免排序）
+④ 范围查询的列 → 尽量放最后
+⑤ 高频查询要覆盖的列 → 作为"覆盖列"挂在最后
+```
+
+**例子**：
+
+```sql
+-- 常见查询：
+-- A: WHERE user_id=? AND status=? ORDER BY create_time DESC
+-- B: WHERE user_id=? AND create_time > ?
+-- 索引设计：
+CREATE INDEX idx ON orders (user_id, status, create_time);
+--                         等值      等值     排序     ← 完美匹配 A，也能用 B 的前两列
+```
+
+**反例**：`(create_time, user_id, status)` —— A 和 B 都无法有效利用。
+
+## 四、前缀索引（Prefix Index）⭐
+
+**场景**：长字符串列（varchar(255)、URL、邮箱）建整列索引太占空间，可只索引前缀：
+
+```sql
+ALTER TABLE users ADD INDEX idx_email (email(10));
+-- 注意：前缀索引 无法用于 ORDER BY，也无法做覆盖索引
+```
+
+**如何选长度**：目标是**前缀的选择性接近整列的选择性**。
+
+```sql
+SELECT
+  COUNT(DISTINCT LEFT(email, 4)) / COUNT(*) AS sel4,
+  COUNT(DISTINCT LEFT(email, 6)) / COUNT(*) AS sel6,
+  COUNT(DISTINCT LEFT(email, 8)) / COUNT(*) AS sel8,
+  COUNT(DISTINCT email)          / COUNT(*) AS sel_full
+FROM users;
+```
+
+选**第一个使 `selN` 接近 `sel_full`（比如达到 90% 以上）的 N**。比如 sel6=0.98、sel_full=0.99 → 用 `(email(6))` 性价比最高。
+
+**其他技巧**：
+- **倒序存储 + 前缀索引**：解决"后缀区分度高"的场景（如身份证后面的随机码、文件名扩展名）。
+- **CRC32/hash 列 + 索引**：把长字符串哈希成 4 字节整数再建索引（`WHERE email_hash = CRC32(''...'') AND email = ''...''` 防哈希冲突）⭐
+- 8.0 的 **函数索引**：`CREATE INDEX idx ON t ((SUBSTRING(email,1,6)))` 更直观。
+
+## 五、覆盖索引与联合索引的组合应用 ⭐
+
+```sql
+-- 高频查询
+SELECT order_no, amount FROM orders WHERE user_id=? AND status=? ORDER BY create_time DESC LIMIT 20;
+
+-- 一个索引同时解决：定位 + 排序 + 覆盖
+CREATE INDEX idx_cover ON orders (user_id, status, create_time, order_no, amount);
+--                            ↑定位   ↑定位    ↑排序        ↑覆盖列（仅取值，不参与定位）
+
+-- EXPLAIN → Extra: Using index（不回表），且无 Using filesort ✅
+```
+
+**代价**：覆盖列越多，索引越大，写放大越重。**只为最高频的查询专门建覆盖索引**。
+
+## 六、一句话总结
+
+**最左前缀决定了"能用索引缩小多少范围"，ICP 决定了"能少回表多少次"，覆盖索引决定了"能不能完全不回表"。** 三者叠加是索引优化的完整链路。', 1),
+
+('MySQL', 'binlog,主从复制,主从延迟', 2,
+ 'MySQL 主从复制的原理是什么？主从延迟怎么产生、怎么解决？',
+ '## 一、复制的基本原理（三个线程）⭐
+
+```
+        Master                              Slave
+  ┌────────────────┐                 ┌─────────────────────────┐
+  │  ① dump 线程    │ ──binlog──────► │  ② IO 线程               │
+  │  读 binlog 推给从库 │               │  拉取并写入 relay log     │
+  └────────────────┘                 │            ↓             │
+                                     │  ③ SQL 线程              │
+                                     │  重放 relay log          │
+                                     └─────────────────────────┘
+```
+
+| 线程 | 位置 | 职责 |
+|---|---|---|
+| **dump 线程** | Master | 每个从库连接启一个，读 binlog 并推送 |
+| **IO 线程** | Slave | 连 Master 拉 binlog，写入本地 **relay log**，更新 `master.info` |
+| **SQL 线程** | Slave | 读 relay log，在从库**重放**，更新 `relay-log.info` |
+
+**关键点**：**拉取（IO）与重放（SQL）是异步分离的** → 这就是延迟的来源。
+
+## 二、binlog 三种格式 ⭐
+
+| 格式 | 记录内容 | 优点 | 缺点 |
+|---|---|---|---|
+| **STATEMENT** | 原始 SQL 语句 | 日志小 | **非确定性函数**（`NOW()`、`UUID()`、`RAND()`）会导致主从不一致；锁和自增可能不同 |
+| **ROW** ⭐ | 每行**前后镜像** | **精确一致**，最安全 | 日志大（一条 `UPDATE` 影响 10 万行 → 10 万条记录）；DDL 仍记语句 |
+| **MIXED** | 自动切换 | 折中 | 仍有隐患 |
+
+**生产推荐 ROW**（`binlog_format=ROW`），配合 `binlog_row_image=MINIMAL` 可减小日志量。
+
+## 三、复制方式
+
+| 方式 | 说明 | 一致性 | 性能 |
+|---|---|---|---|
+| **异步复制**（默认）| Master 提交后**立即返回**，不等 Slave | ⚠️ 故障可能丢数据 | 最高 |
+| **半同步复制** | Master 等**至少 N 个 Slave 确认收到**（不要求重放完）再返回 | 好 | 中等 |
+| **组复制 MGR** | 基于 Paxos，多数派确认 | 强 | 较低 |
+
+```sql
+-- 半同步
+INSTALL PLUGIN rpl_semi_sync_master SONAME ''semisync_master.so'';
+SET GLOBAL rpl_semi_sync_master_enabled = 1;
+-- 超时后退化为异步：rpl_semi_sync_master_timeout（默认 10000ms）
+```
+
+## 四、主从延迟的原因 ⭐
+
+| 原因 | 说明 |
+|---|---|
+| **① 从库压力大** | 从库上还有一堆查询/统计任务，SQL 线程抢不到资源 |
+| **② 大事务** | 一个 `UPDATE` 影响百万行 → 主库执行 10s，binlog 传过去从库要重放更久 |
+| **③ 大表 DDL** | 从库串行执行 DDL，阻塞后续所有重放 ⭐ |
+| **④ 并行复制不足** | 5.7 前 SQL 线程单线程重放（**最大瓶颈**）|
+| **⑤ 网络延迟** | 跨机房/跨国 |
+| **⑥ 主库写入高峰** | 瞬时写入远超从库重放能力 |
+| **⑦ 无主键/唯一键** | ROW 格式下 `UPDATE` 需要扫全表定位行，重放极慢 ⭐ |
+
+**查看延迟**：
+
+```sql
+SHOW SLAVE STATUS\\G
+--   Seconds_Behind_Master: 5        ← 官方指标，但为 0 不代表真同步（IO 线程断了它也是 NULL/0）
+--   Slave_IO_Running / Slave_SQL_Running: Yes/Yes
+--   Retrieved_Gtid_Set vs Executed_Gtid_Set   ← 更准确（GTID 模式）⭐
+--   Master_Log_File / Read_Master_Log_Pos vs Relay_Log_File / Exec_Master_Log_Pos
+```
+
+**更可靠的判断**：`SELECT @@gtid_executed` 与主库比较；或用 **pt-heartbeat**（Percona 工具，注入心跳表，精度到毫秒）⭐
+
+## 五、解决方案 ⭐
+
+| 方向 | 措施 |
+|---|---|
+| **减少 binlog 量** | 大事务拆小（批量插入每批 500~1000）；避免无主键表更新 |
+| **并行复制** | 5.7+ `slave_parallel_workers=8` + `slave_parallel_type=LOGICAL_CLOCK`（按组提交并行）⭐ |
+| **8.0 更强并行** | `binlog_transaction_dependency_tracking=WRITESET`，按**行级冲突**判断可并行，效果显著 |
+| **提升从库性能** | 从库配置不低于主库；关闭从库 `binlog`（若从库不需要再级联）、`sync_binlog=0`、`innodb_flush_log_at_trx_commit=2` 可提速（**代价：从库崩溃后重放慢**）|
+| **读写分离的兜底** | **写后立即读走主库**（同一用户的会话粘性）⭐ 最简单有效 |
+| **半同步/组复制** | 对一致性要求高的场景 |
+| **MTS + 组提交** | 确保主库开启组提交（`binlog_group_commit_sync_delay`）才能让从库并行的粒度更大 |
+
+**架构层面**：
+- **MHA / Orchestrator**：主库故障自动切换。
+- **ProxySQL / MySQL Router**：读写分离路由 + 延迟感知（延迟超阈值自动把读切回主库）⭐
+
+## 六、主从一致性校验
+
+```bash
+# Percona Toolkit
+pt-table-checksum --host=master --databases=blogdb     # 主库计算校验和（会在从库重放）
+pt-table-sync --replicate=percona.checksums ...        # 修复差异
+```
+
+**注意**：`pt-table-checksum` 会在主库产生 binlog，所以要**在主库上跑**（不能直接在从库跑）。
+
+## 七、一句话总结
+
+**复制 = dump 推日志 + IO 拉日志 + SQL 重放，异步的本质决定了必然有延迟**；大事务、单线程重放、从库资源争抢是三大主因；**拆小事务 + 并行复制 + 写后读主**是最实用的三招。', 1),
+
+('MySQL', '分页优化,count,大表DDL', 3,
+ '`LIMIT 1000000, 20` 为什么慢？怎样优化？大表加索引/改字段（DDL）为什么危险，有哪些方案？',
+ '## 一、深分页为什么慢 ⭐
+
+```sql
+SELECT * FROM orders ORDER BY id LIMIT 1000000, 20;
+```
+
+**执行过程**：MySQL 必须**先读出前 1000020 行**（而且每行都要回表拿 `*`），然后**丢弃前 1000000 行**，只留 20 行。
+
+- 代价 ≈ **全表扫描 100 万行 + 100 万次回表**。
+- 越往后越慢（O(offset)）。
+
+### 优化方案
+
+**① 游标 / 键集分页（Keyset Pagination）—— 首选** ⭐
+
+```sql
+-- 用上一页最后一条的 id 作为锚点，只扫 20 行
+SELECT * FROM orders WHERE id > 1000000 ORDER BY id LIMIT 20;
+```
+
+要求：**排序字段唯一且有索引**（多列时用 `(a,b)` 复合游标）。深分页性能从 O(n) 变成 O(1)，是**最优解**。
+
+**② 延迟关联（Deferred Join）—— 保留 OFFSET 语义时的解法** ⭐
+
+```sql
+-- 先用覆盖索引只拿主键（不回表），再回表
+SELECT o.* FROM orders o
+JOIN (SELECT id FROM orders ORDER BY id LIMIT 1000000, 20) AS t
+  ON o.id = t.id;
+```
+
+原理：子查询里 `id` 是主键，**命中覆盖索引，不回表**（只有 20 次回表）。如果 `ORDER BY` 的列上有索引，优化器会直接顺序扫描索引，无需读主键页。
+
+**③ 业务上限制翻页深度**
+
+搜索引擎式的**无限滚动**天然适配键集分页；如果用户确实要"跳到第 5 万页"，那通常是产品需求本身有问题。
+
+**④ 记录总数与页码映射**
+
+```sql
+-- 预计算，避免每页都 COUNT(*) 全表
+-- 或用近似值：EXPLAIN SELECT * FROM t  里的 rows
+```
+
+## 二、`COUNT(*)` 为什么慢，怎么优化 ⭐
+
+**InnoDB 没有像 MyISAM 那样保存行数**（因为 MVCC 下每行是否可见依赖 Read View，"总数"不是固定值）。
+
+| 写法 | 说明 |
+|---|---|
+| `COUNT(*)` | **最优**：优化器专门优化过，选最小的索引树遍历 |
+| `COUNT(1)` | 与 `COUNT(*)` 基本等价（8.0 完全等价）|
+| `COUNT(col)` | **更慢**：要判断 `col IS NOT NULL`，不统计 NULL 行 |
+| `COUNT(主键)` | 与 `COUNT(*)` 差不多 |
+
+**优化方案**：
+
+| 方案 | 说明 |
+|---|---|
+| **加二级索引** | `COUNT(*)` 会选**最小的二级索引**遍历（比聚簇索引小得多）→ 快数倍 ⭐ |
+| **缓存近似值** | Redis 计数器（增删时同步维护），接受少量误差 |
+| **`SHOW TABLE STATUS` 的 `Rows`** | 近似值，`InnoDB` 采样估算（误差可达 40%）|
+| **汇总表** | 定时任务统计写入中间表 |
+| **业务分页改无限滚动** | 从根上不需要总数 |
+| **`EXPLAIN` 估算法** | `EXPLAIN SELECT COUNT(*) ...` 的 `rows` 做粗略参考 |
+
+## 三、大表 DDL 为什么危险 ⭐
+
+**MySQL 5.5 及之前**：几乎**所有 DDL 都需重建表**（copy 算法）：
+1. 建临时表（新结构）
+2. **逐行**从原表拷到临时表 → **持锁 + 占满 IO + 表空间翻倍**
+3. 改名替换
+
+1000 万行的表加个字段可能**锁表几十分钟**，期间业务停摆。
+
+**MySQL 5.6+ 的 Online DDL**：
+
+```sql
+ALTER TABLE t ADD COLUMN c INT, ALGORITHM=INPLACE, LOCK=NONE;
+--                                          ↑ 不拷贝表    ↑ 不阻塞读写
+```
+
+| 操作 | ALGORITHM | LOCK | 说明 |
+|---|---|---|---|
+| 加/删**二级索引** | INPLACE | NONE | **不阻塞读写** ✅ |
+| 加列（末尾）| INPLACE | NONE | 8.0 支持 instant |
+| **改列类型 / 加主键** | COPY | SHARED | ⚠️ 需拷贝表 |
+| 改字符集 | COPY | SHARED | ⚠️ 很慢（本项目迁移时踩过）|
+| 加全文索引 / 空间索引 | INPLACE | SHARED | 阻塞写 |
+| `OPTIMIZE TABLE` | INPLACE | NONE | 重建表（回收碎片）|
+
+**8.0 的 INSTANT ADD COLUMN** ⭐：
+
+```sql
+ALTER TABLE t ADD COLUMN c INT, ALGORITHM=INSTANT;
+-- 只改元数据，秒级完成，即使 1 亿行也瞬间完成
+```
+
+限制：新列必须在末尾（8.0.29 起支持任意位置）；不支持 `AUTO_INCREMENT`、不支持加索引。
+
+**8.0.12+ 也支持 INSTANT 改列顺序、改默认值、重命名列。**
+
+## 四、无 Online DDL 或需更稳时的方案 ⭐
+
+| 工具 | 原理 | 特点 |
+|---|---|---|
+| **pt-online-schema-change**（Percona）| 建**影子表**（新结构）+ **触发器**同步增量 → 拷数据 → 原子 `RENAME` | 成熟稳定；要求表有主键；触发器有性能开销 |
+| **gh-ost**（GitHub）⭐ | 建影子表，**从库 binlog 模拟写入**（解耦主库）| **无触发器**，可随时暂停/限速；要求 ROW binlog |
+| **MySQL 8.0 Clone Plugin** | 物理克隆 | 适合整实例迁移 |
+
+**pt-osc 原理详解**：
+
+```
+1. CREATE TABLE _t_new LIKE t;  ALTER _t_new ...（新结构）
+2. 在 t 上建三个触发器：INSERT / UPDATE / DELETE → 同步到 _t_new
+3. 分批（chunk）把 t 的老数据拷入 _t_new
+4. RENAME TABLE t TO _t_old, _t_new TO t;   ← 原子替换（毫秒级）
+5. 删触发器和 _t_old
+```
+
+**使用建议**：
+
+```bash
+pt-online-schema-change \\
+  --alter "ADD COLUMN c INT" \\
+  --critical-load Threads_running=100 \\
+  --max-load Threads_running=50 \\
+  --chunk-time 0.5 \\
+  D=blogdb,t=orders --execute
+```
+
+- `--max-load`：超过阈值**自动暂停**，保护线上 ⭐
+- `--chunk-time`：控制每批耗时，避免长事务
+- **务必先在从库演练**，并留足磁盘（影子表 + 原表并存）
+
+## 五、其他大表操作注意事项
+
+| 操作 | 风险 | 建议 |
+|---|---|---|
+| `DELETE` 大量数据 | 长事务、undo 膨胀、主从延迟 | **分批删除** `LIMIT 1000` 循环 ⭐ |
+| `TRUNCATE` | 速度快但不能回滚 | 用 `DROP + CREATE` 或 `TRUNCATE`（DDL，隐式提交）|
+| `OPTIMIZE TABLE` | 重建表，占双倍空间 | 低峰期做，或用 pt-osc |
+| 改 `sql_mode` | 可能让老数据插入失败 | 先在从库验证 |
+
+**分批删除模板**：
+
+```sql
+-- 循环执行直到 affected rows = 0
+DELETE FROM big_table WHERE create_time < ''2023-01-01'' ORDER BY id LIMIT 1000;
+-- 每批之间 sleep 100ms，让从库追上
+```
+
+**一句话总结**：**深分页的关键是"别扫前面的行"（键集分页 > 延迟关联）；`COUNT(*)` 的关键是"扫最小的索引树"；大表 DDL 的关键是"绝不原地拷贝，用 INSTANT 或影子表"。**', 1),
+
+('MySQL', '字符集,utf8mb4,collation', 3,
+ '`utf8` 和 `utf8mb4` 有什么区别？字符集不一致会带来什么问题？（结合线上实战）',
+ '## 一、utf8 vs utf8mb4 ⭐
+
+| | `utf8`（别名 `utf8mb3`）| `utf8mb4` |
+|---|---|---|
+| 最大字节数 | **3 字节** | **4 字节** |
+| 能表示 | BMP（基本多文种平面）：拉丁、希腊、**中日韩基本区** | 全部 Unicode（U+0000~U+10FFFF）|
+| **Emoji** | ❌ **存不进去**（报 `Incorrect string value`）| ✅ 可以 |
+| 生僻汉字（扩展 B 区+）| ❌ | ✅ |
+| 最大 char 长度 | 索引列前缀上限 **767 字节**（旧规则）| 上限 **3072 字节**（`innodb_large_prefix`）|
+
+**结论：现在一律用 `utf8mb4`。** MySQL 8.0 中 `utf8` 已被标记为 deprecated（`utf8mb3`），未来可能移除。
+
+**为什么 MySQL 当年搞出个 "utf8 不是真 UTF-8"**：历史原因——早期为省空间只支持 3 字节。所以**"MySQL 的 utf8 ≠ 标准 UTF-8"** 是踩坑最多的地方。
+
+## 二、排序规则 collation ⭐
+
+```sql
+-- 查看
+SHOW VARIABLES LIKE ''character_set%'';
+SHOW VARIABLES LIKE ''collation%'';
+SHOW CREATE TABLE t;
+
+-- 字符集与排序规则一一对应
+utf8mb4_general_ci       -- 通用，比较快，但排序不严格（不区分语言规范）
+utf8mb4_unicode_ci       -- 按 Unicode 规范排序，更准确
+utf8mb4_unicode_520_ci   -- 按 Unicode 5.2 规范
+utf8mb4_0900_ai_ci       -- 8.0 默认，基于 Unicode 9.0，最快且准确 ⭐
+utf8mb4_bin              -- 二进制比较，区分大小写与重音
+utf8mb4_zh_0900_as_cs    -- 中文拼音排序，区分大小写
+```
+
+**后缀含义**：
+
+| 后缀 | 含义 |
+|---|---|
+| `_ci` | case insensitive，**不区分大小写** |
+| `_cs` | case sensitive，区分大小写 |
+| `_ai` | accent insensitive，不区分重音（`é` = `e`）|
+| `_as` | accent sensitive |
+| `_bin` | 按字节比较 |
+
+**影响**：`WHERE name = ''Tom''` 在 `_ci` 下**能匹配到 `tom`**；在 `_bin` 下不能。**`utf8mb4_0900_ai_ci` 下 `''a'' = ''á''`，做用户名唯一性校验时会踩坑**（要用 `_bin` 或 `_as_cs`）。
+
+## 三、字符集不一致带来的问题 ⭐
+
+### 问题 1：隐式转换导致索引失效
+
+如果**表字符集是 utf8mb4，但连接字符集是 utf8**：
+
+```sql
+WHERE utf8_col = ''中文''   -- 会做 COLLATE 转换，索引可能失效
+```
+
+**JOIN 两表字符集不同** → 无法用索引，退化为全表/嵌套循环：
+
+```sql
+-- utf8mb4 表 JOIN utf8 表 → ON 条件上要做 COLLATE 转换
+SELECT * FROM a JOIN b ON a.name = b.name;   -- 索引失效 ❌
+```
+
+### 问题 2：写入报错或截断
+
+```
+ERROR 1366 (HY000): Incorrect string value: ''\\xF0\\x9F\\x98\\x80'' for column ''content''
+```
+
+存 Emoji 到 `utf8` 列必然失败。
+
+### 问题 3：多字节字符按 utf8 连接写入后"变成 ? 或乱码"⭐（**本项目实战踩过**）
+
+**这是最关键的一类**，在真实项目里排查了一整轮：
+
+**现象**：整站中文正常，**只有某个表（questions）的中文全变 `?`**。
+
+**根因链**（三环叠加）：
+
+```
+① 老表的历史数据是「应用用 latin1 连接写入的」：
+   MySQL 把应用发来的 UTF-8 字节序列 **当成 latin1 字符** 再转存入 utf8mb4 列
+   ⇒ 表里实际存的是「UTF-8 字节的 cp1252 转义」（字节一个没丢，只是被"重新解释"了）
+
+② 应用连接恰好是 latin1（MYSQL_SET_CHARSET_NAME 在该环境未生效）
+   ⇒ 读老表：cp1252 转义 → 转回 latin1 → 原始字节 → **显示完全正常**
+      （整站靠这个"巧合"在工作！）
+
+③ questions 表的数据是 mysql 客户端以 utf8mb4 导入的 ⇒ 存的是**真中文**
+   ⇒ 用 latin1 连接读真中文 → latin1 表示不了 → **逐字符变 `?`**
+```
+
+**决定性证据（都是非视觉证据）**：
+
+```bash
+# 同一列，在两种 client 字符集下读出来完全不同
+$ mysql --default-character-set=utf8mb4 -e "SELECT question FROM questions WHERE id=1;"
+  std::shared_ptr åŠŸèƒ½æµ‹è¯•            ← 真中文被当成 latin1 转义显示
+
+$ mysql --default-character-set=latin1  -e "SELECT question FROM questions WHERE id=1;"
+  std::shared_ptr 功能测试                  ← ✅ 真中文
+
+$ mysql --default-character-set=latin1  -e "SELECT question FROM questions WHERE id=1;"
+  std::shared_ptr ?????????????????       ← 与应用 API 输出**逐字节一致**
+```
+
+⇒ 三方对照直接锁死：**app 的连接字符集是 latin1**。
+
+**判据（区分"MySQL 转换"还是"程序按字节处理"）** ⭐：**看字符数比例**
+- **1 个汉字 → 1 个 `?`** ⇒ **MySQL 字符集转换**（按字符处理，一个字符替换成一个 `?`）
+- **1 个汉字 → 3 个 `?`** ⇒ **程序按字节处理**（UTF-8 汉字 3 字节，逐字节替换）
+
+### 问题 4：`ALTER TABLE ... CONVERT TO CHARACTER SET` 会二次编码 ⭐
+
+**这是最容易踩的陷阱**。很多人以为 `CONVERT TO` 是"换个解释方式"，其实它是**重新编码**：
+
+```sql
+-- ❌ 危险！会把已经是 utf8mb4 列里的 cp1252 转义数据再编码一次
+ALTER TABLE t CONVERT TO CHARACTER SET utf8mb4;
+-- 结果：åŠŸèƒ½ 这类"长得几乎一样、极难分辨"的新乱码
+```
+
+**正确的迁移姿势**（把 cp1252 转义还原成真中文）：
+
+```sql
+-- ✅ 三步法：换解释方式，而不是重新编码
+UPDATE t SET col = CONVERT(CAST(CONVERT(col USING latin1) AS BINARY) USING utf8mb4)
+WHERE col <> CONVERT(CAST(CONVERT(col USING latin1) AS BINARY) USING utf8mb4);
+--                ↑ 用 latin1 解释 → 拿到原始字节 → 按 utf8mb4 重新解释
+```
+
+用幂等的 `WHERE` 守卫判断"只处理 latin1 可表示的值"，避免重复执行时二次损坏。
+
+## 四、正确的统一姿势 ⭐
+
+```sql
+-- 1. 服务端配置（my.cnf）
+[mysqld]
+character-set-server = utf8mb4
+collation-server     = utf8mb4_0900_ai_ci      -- 8.0
+
+[client]
+default-character-set = utf8mb4
+
+-- 2. 建库/建表显式指定
+CREATE DATABASE blogdb CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE TABLE t (...) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- 3. 连接层（三处必须一致）⭐
+--    a. 应用连接字符串：?charset=utf8mb4（或用 mysql_set_character_set / MYSQL_SET_CHARSET_NAME）
+--    b. 客户端：--default-character-set=utf8mb4
+--    c. 服务端：character_set_server=utf8mb4
+```
+
+**验证连接字符集**（唯一可靠方式）：
+
+```sql
+SHOW VARIABLES LIKE ''character_set_client'';
+SHOW VARIABLES LIKE ''character_set_connection'';
+SHOW VARIABLES LIKE ''character_set_results'';
+-- 这三个才是"连接层"字符集（对应 app 连接的三个变量）
+```
+
+```bash
+# C API 侧确认（本项目相关）
+mysql_options(conn, MYSQL_SET_CHARSET_NAME, "utf8mb4");
+# 注意：某些环境下该选项未生效，需用 mysql_query(conn, "SET NAMES utf8mb4") 兜底
+```
+
+## 五、迁移的正确顺序（血泪教训）⭐
+
+```
+❌ 错误顺序：先部署新二进制 → 整站中文立刻变乱码（因为老数据是 cp1252 转义）
+✅ 正确顺序：
+   ① 备份（mysqldump 或物理备份）
+   ② 用 HEX() 记录迁移前关键列的字节值
+   ③ 迁移数据（CONVERT 三步法，幂等）
+   ④ 用 HEX() 验证：迁移前后**字节值必须完全一致** ⭐
+   ⑤ 再部署新二进制（连接切到 utf8mb4）
+   ⑥ 回归验证
+```
+
+**关键洞察**：`HEX()` 是唯一不会骗你的验证手段。乱码在视觉上可能"看起来差不多"，但**字节值不会说谎**。
+
+## 六、一句话总结
+
+**utf8mb4 是唯一正确选择；字符集问题分三层（客户端/连接/服务端），必须三者一致；迁移时"换解释方式"≠"重新编码"，用 `CONVERT(... USING latin1)` + `CAST AS BINARY` 而不是 `ALTER ... CONVERT TO`；验证只信 `HEX()`。**', 1),
+
+('MySQL', '事务,隔离级别,锁', 2,
+ '事务的 ACID 是怎么实现的？四种隔离级别分别解决什么问题？',
+ '## 一、ACID 与实现机制 ⭐
+
+| 特性 | 含义 | **靠什么实现** |
+|---|---|---|
+| **A**tomicity 原子性 | 事务内操作要么全成功要么全失败 | **undo log**（回滚日志）⭐ |
+| **C**onsistency 一致性 | 数据从一个合法状态到另一个合法状态 | 由 **A + I + D** 共同保证（+ 业务约束）|
+| **I**solation 隔离性 | 并发事务互不干扰 | **锁 + MVCC** ⭐ |
+| **D**urability 持久性 | 提交后永久生效 | **redo log**（+ 双写缓冲）⭐ |
+
+**记忆**：**A 靠 undo，I 靠锁+MVCC，D 靠 redo，C 是目标不是手段。**
+
+## 二、四种隔离级别 ⭐
+
+| 级别 | 脏读 | 不可重复读 | 幻读 | 说明 |
+|---|---|---|---|---|
+| **READ UNCOMMITTED** | ✅ 会 | ✅ 会 | ✅ 会 | 能读到别人**未提交**的数据 |
+| **READ COMMITTED** | ❌ 不会 | ✅ 会 | ✅ 会 | 只读已提交（Oracle/PG 默认）|
+| **REPEATABLE READ** ⭐ | ❌ | ❌ | ❌（InnoDB 基本解决）| **MySQL 默认** |
+| **SERIALIZABLE** | ❌ | ❌ | ❌ | 全部加锁，串行执行 |
+
+### 三个读问题的定义
+
+| 问题 | 现象 | 例子 |
+|---|---|---|
+| **脏读** | 读到**未提交**的数据，对方回滚后数据"凭空消失" | A 改钱未提交，B 读到新值，A 回滚 → B 读的是"幽灵值" |
+| **不可重复读** | 同一事务内**两次读同一行结果不同**（别人 UPDATE 并提交）| A 第一次读余额 100，B 改成 200 提交，A 再读是 200 |
+| **幻读** | 同一事务内**两次范围查询行数不同**（别人 INSERT 并提交）| A 查"年龄>20 共 5 人"，B 插入 1 人提交，A 再查变 6 人 |
+
+**关键区别**：不可重复读针对**同一行被修改**；幻读针对**结果集行数变化（新增/删除）**。
+
+### InnoDB 的 RR 如何做到"基本解决幻读" ⭐
+
+**双保险**：
+
+| 读类型 | 机制 | 作用 |
+|---|---|---|
+| **快照读**（普通 SELECT）| **MVCC**：事务首次读时建 Read View，全程复用 | 看不到别人新插入的行 → 无幻读 |
+| **当前读**（`FOR UPDATE` / `UPDATE` / `DELETE`）| **Next-Key Lock**（临键锁）| 锁住间隙，**阻止别人插入** → 无幻读 |
+
+**注意"基本"**：如果事务里**先快照读、再当前读**，可能出现"快照读没看到某行，当前读却看到了"的错觉。这是标准的**幻读边界**，但不会破坏数据一致性。
+
+## 三、查看与设置隔离级别 ⭐
+
+```sql
+-- 查看
+SELECT @@transaction_isolation;          -- 8.0
+SELECT @@tx_isolation;                   -- 5.7
+
+-- 设置
+SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED;   -- 当前会话
+SET GLOBAL  TRANSACTION ISOLATION LEVEL READ COMMITTED;   -- 全局（新连接生效）
+
+-- my.cnf
+[mysqld]
+transaction-isolation = READ-COMMITTED
+```
+
+**生产实务**：不少互联网公司在 **RC + binlog ROW**，理由：
+1. RC **没有间隙锁** → 死锁概率大幅降低 ⭐
+2. RC 下 Read View 每次重建 → undo 版本链更短 → **长事务危害更小**
+3. ROW 格式保证主从一致
+
+前提：**应用层自己处理"不可重复读"**（不要把"同一事务内两次读一致"作为假设）。
+
+## 四、隔离级别与锁的关系
+
+| 级别 | 快照读 | 当前读 |
+|---|---|---|
+| RU | 直接读最新（无 MVCC 保护）| 加锁 |
+| RC | 每次重建 Read View | Record Lock（**无间隙锁**）⭐ |
+| RR | 首次读建一次 Read View | **Next-Key Lock**（防幻读）|
+| SERIALIZABLE | 快照读也加 S 锁 | 加锁，读也阻塞写 |
+
+**重要**：`innodb_locks_unsafe_for_binlog`（已废弃）曾是 RC 下"不加间隙锁"的开关；现在是隔离级别本身决定。
+
+## 五、事务的写法建议 ⭐
+
+```sql
+-- ✅ 好的事务
+BEGIN;
+-- 1. 尽快拿到需要的锁，改完立即提交
+UPDATE account SET balance = balance - 100 WHERE id = 1;
+UPDATE account SET balance = balance + 100 WHERE id = 2;
+COMMIT;    -- 事务里没有：网络调用、文件 IO、慢查询、等待用户输入
+
+-- ❌ 坏的事务
+BEGIN;
+SELECT * FROM t WHERE id=1 FOR UPDATE;  -- 拿锁
+-- ... 调用第三方支付接口（可能超时 30s）...  ← 锁被持有 30s
+UPDATE t SET ...;
+COMMIT;
+```
+
+**核心原则**：
+1. **事务要短** —— 不要在事务里做 IO/网络。
+2. **访问顺序一致** —— 防死锁。
+3. **能不用事务就不用** —— 单条 SQL 本身就是事务。
+4. **`autocommit` 建议开**（默认 1），显式 `BEGIN` 才开事务。
+5. **异常必回滚** —— 用 `try/catch/finally` 或 RAII（C++ 里做个 `TransactionGuard`）⭐
+
+**C++ 侧的 RAII 事务守卫**（本项目 Crow 场景适用）：
+
+```cpp
+class TransactionGuard {
+    MYSQL* c_;
+    bool committed_ = false;
+public:
+    explicit TransactionGuard(MYSQL* c) : c_(c) { mysql_query(c_, "START TRANSACTION"); }
+    ~TransactionGuard() {
+        if (!committed_) mysql_query(c_, "ROLLBACK");   // 异常/提前 return 也回滚
+    }
+    void commit() { mysql_query(c_, "COMMIT"); committed_ = true; }
+};
+```
+
+## 六、一句话总结
+
+**ACID 的实现 = undo（A）+ 锁&MVCC（I）+ redo（D）；隔离级别的本质是"允许你用多大代价换取多强的隔离"；InnoDB 的 RR 靠 MVCC + Next-Key Lock 双保险解决幻读。**', 1),
+
+('MySQL', '自增主键,分库分表,读写分离', 3,
+ '为什么不推荐用 UUID 做主键？分库分表有哪些方案？分片键怎么选？',
+ '## 一、为什么不用 UUID 做主键 ⭐
+
+| 问题 | 说明 |
+|---|---|
+| **① 写性能差（页分裂）** ⭐ | UUID 随机 → 新行**插入到 B+ 树中间** → 目标页已满就要**页分裂**（复制一半数据到新页、更新父节点）→ 大量随机 IO + 写放大 |
+| **② 空间大** | `CHAR(36)` = 36 字节；即便存成 `BINARY(16)` 也 16 字节，而 `BIGINT` 只 **8 字节** → **非叶子节点能放的键少一半** → 树更高 |
+| **③ 二级索引更胖** ⭐ | 二级索引叶子存"索引列 + **主键**"，主键越大，**每个二级索引都跟着膨胀** |
+| **④ Buffer Pool 命中率低** | 随机访问导致热数据不集中 |
+| **⑤ 无顺序性** | 无法用主键做范围分页、时间排序 |
+
+**自增主键的优势**：顺序插入 → **只在最后一页追加**（几乎无页分裂）；8 字节小；二级索引紧凑；有天然顺序。
+
+**如果非要全局唯一 ID，用雪花算法（Snowflake）** ⭐：
+
+```
+| 1 bit 符号 | 41 bit 时间戳 | 10 bit 机器 ID | 12 bit 序列号 |
+= 64 bit 的 Long，趋势递增（时间在最高位）→ 兼顾唯一性与顺序性
+```
+
+- 趋势递增 → 页分裂大幅减少 ✅
+- 本地生成，无中心依赖 ✅
+- 需处理**时钟回拨**（回拨时等待或拒绝）
+- 其他方案：**号段模式**（美团 Leaf）、**Redis INCR**、**MySQL 自增表**
+
+## 二、什么时候真的需要分库分表 ⭐
+
+**判断顺序（不要跳步）**：
+
+```
+① SQL 和索引优化好了吗？       ← 90% 的性能问题在这
+② 加缓存（Redis）了吗？         ← 挡住绝大多数读
+③ 读写分离了吗？               ← 读扩展
+④ 硬件升级（SSD/内存）了吗？    ← 性价比常高于分片
+⑤ 单表 > 500万~2000万行 / 单库 > 2TB / QPS 到瓶颈
+        ↓
+     才考虑分库分表
+```
+
+**分片带来的复杂度**：跨库 JOIN、分布式事务、全局唯一 ID、跨库分页排序、扩容迁移、运维成本。**能不分就不分。**
+
+## 三、分片维度 ⭐
+
+| 维度 | 说明 | 优点 | 缺点 |
+|---|---|---|---|
+| **垂直分库** | 按**业务**拆（用户库/订单库/商品库）| 业务解耦，职责清晰；不同库可独立扩展 | 跨库 JOIN 没了，需服务层组装 |
+| **垂直分表** | 按**列**拆（常用列/大字段分开）| 单行变小 → 一页放更多行，IO 效率高 | 需要额外查询 |
+| **水平分表** | 同一张表按行拆到多个表 | 单表变小 | 跨表查询/聚合 |
+| **水平分库** | 拆到不同数据库实例 | 突破单机瓶颈 | 分布式事务 |
+
+**实务组合**：**先垂直分库（业务解耦），必要时再水平分片（同类业务的数据量）**。
+
+## 四、分片算法 ⭐
+
+| 算法 | 说明 | 优点 | 缺点 |
+|---|---|---|---|
+| **范围分片** | `id % 0~1000 → 库0`，`1001~2000 → 库1` | 扩容简单、范围查询友好 | **热点集中**（新数据都写最后一库）|
+| **哈希取模** | `hash(key) % N` | 数据分布均匀 | **扩容要重分布全部数据** ❌ |
+| **一致性哈希** | 环 + 虚拟节点 | 扩容只影响相邻节点 | 需维护环、实现复杂 |
+| **预分片（倍数扩容）** ⭐ | 一开始就分 2^k 片（如 1024），按 `hash % 1024`；扩容时**只挪整片** | **扩容平滑**，不用重分布 | 需提前规划 |
+| **范围 + 哈希** | 先按时间范围，范围内再哈希 | 兼顾时序与均衡 | 需两段路由 |
+
+**推荐：预分片 + 一致性哈希思想**。一次性分成 1024 个逻辑片，物理上先放几个库，扩容时**整片搬迁**（如 4 库 → 8 库，每库挪一半片），只涉及数据复制，不涉及重新哈希。
+
+## 五、分片键（Sharding Key）怎么选 ⭐
+
+**原则**：
+
+| 原则 | 说明 |
+|---|---|
+| **① 高基数** | 取值足够多，避免数据倾斜（不能用"性别""状态"）|
+| **② 分布均匀** | 哈希后各片数据量接近 |
+| **③ 查询高频命中** ⭐ | **最重要的原则**：分片键必须是**最高频查询的过滤条件**，否则每次查询都要扫全部分片 |
+| **④ 避免跨片** | 分片键相同的关联数据尽量放同一片（如订单和订单明细都按 `user_id` 分）|
+| **⑤ 稳定不变** | 分片键一旦确定不能改（改了要迁数据）|
+
+**典型选择**：
+
+| 业务 | 分片键 | 理由 |
+|---|---|---|
+| 用户中心 | `user_id` | 高频按用户查 |
+| 订单 | `user_id`（不用 `order_id`）| 用户查自己的订单，避免跨片 ⭐ |
+| 订单（后台运营）| 需**异构索引表**（order_id → user_id 的映射表）解决"按订单号查" ⭐ |
+| IM 消息 | `conversation_id` | 会话维度查询 |
+| 日志 | `create_time`（范围）| 时序天然范围 |
+
+**跨片问题的解法**：
+
+| 问题 | 方案 |
+|---|---|
+| 按非分片键查询 | **异构索引表**（额外维护 非分片键 → 分片键 的映射）⭐ |
+| 跨片 JOIN | ① 宽表冗余（空间换时间）② 服务层内存 JOIN ③ 数据仓库做离线 |
+| 跨片分页/排序 | 各片取 Top N → 归并 → 取全局 Top N（**深度分页仍难**）|
+| 全局唯一 ID | 雪花算法 |
+| 分布式事务 | 尽量**避免**；必须时用 TCC / Saga / 本地消息表 |
+
+## 六、中间件选型
+
+| 类型 | 代表 | 特点 |
+|---|---|---|
+| **客户端代理（JDBC Sharding）** | **ShardingSphere-JDBC** | 无网络开销，性能好；语言绑定（Java）|
+| **服务端代理（Proxy）** | **ShardingSphere-Proxy**、MyCat、ProxySQL | 语言无关；多一跳网络 |
+| **云原生** | TiDB、OceanBase、PolarDB-X | **原生分布式，应用无感** ⭐ 未来趋势 |
+
+**趋势**：越来越多的场景直接用 **NewSQL（TiDB/OceanBase）** 替代"MySQL + 分库分表中间件"，因为**应用代码零改造**、支持分布式事务和跨节点 JOIN。
+
+## 七、扩容（最重要也最难的一步）
+
+| 方案 | 说明 |
+|---|---|
+| **停机迁移** | 最简单，但业务停摆；小站点可用 |
+| **双写 + 迁移** ⭐ | 老库新库双写 → 后台迁移历史数据 → 校验一致 → 切读新库 → 停双写 |
+| **binlog 同步（DTS/Canal）** | 老库作为主，新库订阅 binlog 追平 → 校验 → 切换 |
+| **预分片整片搬迁** | 只挪整片，最平滑 ⭐ |
+
+**关键**：迁移后必须**校验数据一致性**（`pt-table-checksum` 或自研比对），并保留**回滚方案**。
+
+## 八、一句话总结
+
+**UUID 的问题不是"不唯一"，而是"随机导致页分裂 + 太胖导致索引膨胀"；分片的核心是"选一个高频查询用的分片键"，架构上优先垂直分库，扩张上优先预分片；能用 NewSQL 就别自己写分片中间件。**', 1),
+
+('MySQL', '日志,刷盘,双一,性能调优', 3,
+ '`innodb_flush_log_at_trx_commit` 和 `sync_binlog` 各自怎么选？还有哪些关键 InnoDB 参数需要调优？',
+ '## 一、`innodb_flush_log_at_trx_commit` ⭐
+
+控制**redo log 何时刷盘**（三个值）：
+
+| 值 | 行为 | 丢数据风险 | 性能 |
+|---|---|---|---|
+| **0** | 每秒把 Log Buffer 刷到 OS cache 并 fsync 一次（**提交时什么都不做**）| 崩溃丢 1s | 最高 |
+| **1** ✅ | **每次提交都 fsync 到磁盘** | **不丢**（满足 D）| 最低 |
+| **2** | 每次提交写到 **OS cache**（write），每秒 fsync 一次 | **MySQL 进程崩溃不丢**，**OS/机器宕机丢 1s** | 中等 |
+
+**选型**：
+
+```
+金融/支付/订单  → 1（必须）
+普通业务主库    → 1（默认，安全第一）
+从库            → 2 或 0（从库可重放，允许丢，换性能）
+日志/埋点/统计  → 2 或 0
+```
+
+**注意 `=2` 的语义**：`write()` 只是把数据交给内核页缓存，**机器断电就没了**；只有 `fsync()` 才真正落盘。所以 `=2` 的"安全"只在"MySQL 进程挂掉但 OS 没挂"时成立。
+
+## 二、`sync_binlog` ⭐
+
+| 值 | 行为 | 风险 |
+|---|---|---|
+| **0** | 由 OS 决定何时刷（不受 MySQL 控制）| 最不安全 |
+| **1** ✅ | **每次提交都 fsync binlog** | 最安全，主从不丢 |
+| **N（>1）** | 每 N 个事务 fsync 一次 | 崩溃丢最多 N 个事务 |
+
+**"双一" = `innodb_flush_log_at_trx_commit=1` + `sync_binlog=1`** ⭐ —— 这是满足"不丢已提交事务 + 主从一致"的最小配置。
+
+**注意**：`sync_binlog=1` 在 5.6 之前只需 fsync 一次；5.6+ **每次事务要 fsync 两次**（一次写 `binlog cache`，一次写 `binlog file` 的 `XID`），所以性能影响更明显，**组提交**因此更重要。
+
+## 三、其他关键 InnoDB 参数 ⭐
+
+### 内存
+
+| 参数 | 建议 | 说明 |
+|---|---|---|
+| `innodb_buffer_pool_size` ⭐ | **物理内存的 50%~80%**（专用库）| 最重要的参数，直接决定磁盘 IO 量 |
+| `innodb_buffer_pool_instances` | 每实例 1G 左右，建议 8~16 | **减少 latch 竞争** ⭐ 高并发必备 |
+| `innodb_log_buffer_size` | 16M~64M | 大事务多则调大 |
+| `innodb_sort_buffer_size` | 1M~4M | 排序用 |
+| `key_buffer_size` | MyISAM 用，InnoDB 基本不用 | |
+
+### 日志与 IO
+
+| 参数 | 建议 | 说明 |
+|---|---|---|
+| `innodb_log_file_size` | **1G~2G**（8.0.30+ 用 `innodb_redo_log_capacity`）| 太小 → 频繁 checkpoint（性能抖动）；太大 → 恢复慢 |
+| `innodb_log_files_in_group` | 4（默认）| |
+| `innodb_io_capacity` | SSD 2000~5000 | 告诉 InnoDB 磁盘能力，影响刷脏速度 ⭐ |
+| `innodb_io_capacity_max` | 2× 上一项 | |
+| `innodb_flush_method` | Linux 用 **`O_DIRECT`** | **绕开 OS page cache**，避免双重缓存 ⭐ |
+| `innodb_flush_neighbors` | SSD 设 **0** | SSD 顺序访问无优势，关掉可减少写放大 ⭐ |
+| `innodb_doublewrite` | 保持 ON（除非有掉电保护）| 防页撕裂 |
+| `innodb_max_dirty_pages_pct` | 75% 左右 | 脏页上限，超了就加速刷 |
+| `innodb_lru_scan_depth` | 1024（SSD 可调大）| 每次刷 LRU 扫描深度 |
+
+### 并发
+
+| 参数 | 建议 | 说明 |
+|---|---|---|
+| `innodb_thread_concurrency` | 0（不限）或核数×2 | 高并发争抢严重时可限制 |
+| `innodb_read_io_threads` / `write_io_threads` | 4~8 | IO 线程数 |
+| `innodb_purge_threads` | 4~8 | 清理 undo |
+| `innodb_page_cleaners` | = `buffer_pool_instances` | 刷脏线程 |
+| `innodb_adaptive_hash_index` | 高并发偶发性能抖动时**尝试关闭** | AHI 的 btr latch 竞争 ⭐ |
+
+### 连接与表
+
+| 参数 | 建议 | 说明 |
+|---|---|---|
+| `max_connections` | 按内存算（每连接约 200KB~1MB）| 太大反而拖垮，**应该用连接池** |
+| `innodb_file_per_table` | **ON** ⭐ | 每表独立 ibd，便于回收空间和单表管理 |
+| `innodb_autoinc_lock_mode` | **2**（ROW 格式下）| 交错模式，并发插入不互相阻塞 ⭐ |
+| `innodb_lock_wait_timeout` | 10~50 | 锁等待超时 |
+| `innodb_print_all_deadlocks` | ON（排查期）| 死锁写 error log |
+
+### 服务器层
+
+| 参数 | 建议 | 说明 |
+|---|---|---|
+| `table_open_cache` | 2000~4000 | 打开表缓存 |
+| `tmp_table_size` / `max_heap_table_size` | 64M~256M | 内存临时表大小，超出落磁盘 ⭐ |
+| `sort_buffer_size` / `join_buffer_size` | 2M~8M（**每连接**）| 太大 × 高并发 = 内存爆炸 ⚠️ |
+| `thread_cache_size` | 100 左右 | 线程复用 |
+| `back_log` | 512~1024 | TCP 连接队列 |
+| `慢查询` | `slow_query_log=ON`, `long_query_time=1` | 必开 |
+
+## 四、调优的通用方法论 ⭐
+
+```
+① 定位瓶颈：是 CPU、内存、磁盘 IO 还是锁？
+   - top / pidstat  → CPU
+   - vmstat / iostat -xz → 磁盘 %util、await
+   - SHOW ENGINE INNODB STATUS → 语义级问题（锁、等待）
+   - performance_schema / sys schema → 精确定位到 SQL
+
+② 优化顺序（性价比从高到低）：
+   索引 → SQL → 表结构 → 参数 → 缓存 → 架构（读写分离/分片）
+
+③ 永远先测再说：
+   改参数前用 sysbench/mysqlslap 压测，改后再测，对比 QPS/TP99
+```
+
+**几句口诀**：
+> Buffer Pool 要大，日志文件要够，
+> IO 能力要说清（`io_capacity`），`O_DIRECT` 要找对，
+> 双一安全优先，从库可以放松，
+> 排序 JOIN buffer 是**每连接**的，别贪心。
+
+## 五、性能问题诊断速查
+
+| 现象 | 首查参数/命令 |
+|---|---|
+| 提交很慢 | `sync_binlog`、`innodb_flush_log_at_trx_commit`、磁盘 IOPS |
+| 间歇性卡顿 | `innodb_log_file_size` 太小导致 checkpoint 抖动；AHI 竞争 |
+| 磁盘 IO 打满 | `innodb_buffer_pool_size` 太小 → 回表多；`innodb_io_capacity` 设小了 |
+| 大量锁等待 | 长事务、缺索引、隔离级别（RR 的间隙锁）|
+| 内存涨不停 | `sort_buffer_size`/`join_buffer_size` 太大 × 连接数 |
+| 连接数爆了 | `max_connections` + 连接池配置 + 慢查询拖住连接 |
+
+**一句话总结**：**先把 Buffer Pool 开够（收益最大），再保证 `io_capacity` 与 `flush_method` 匹配硬件，安全参数按业务容忍度选（主库双一），最后用 group commit 和并行复制把性能拉回来。**', 1),
+
+('MySQL', '存储引擎,MyISAM,InnoDB', 1,
+ 'MyISAM 和 InnoDB 有什么区别？现在应该怎么选？',
+ '## 核心对比 ⭐
+
+| 维度 | **InnoDB** | **MyISAM** | **Memory** |
+|---|---|---|---|
+| **事务** | ✅ 支持 ACID | ❌ 不支持 | ❌ 不支持 |
+| **锁粒度** | **行锁**（+ 间隙锁）| **表锁** | **表锁** |
+| **外键** | ✅ 支持 | ❌ | ❌ |
+| **崩溃恢复** | ✅ redo log，crash-safe ⭐ | ❌ 需 `myisamchk` 修复 | ❌ 数据全丢 |
+| **索引结构** | **聚簇索引（B+ 树）** | **非聚簇索引（B+ 树 + 数据文件）** | 哈希索引 |
+| **MVCC** | ✅ | ❌ | ❌ |
+| **存储位置** | `.ibd`（数据+索引一起）| `.MYD`（数据）+ `.MYI`（索引）分开 | 内存 |
+| **`COUNT(*)`** | ❌ 需扫索引（MVCC）| ✅ **直接读计数变量**，O(1) | ✅ |
+| **全文索引** | 5.6+ 支持 | 老版本支持 | ❌ |
+| **压缩表** | 支持（COMPRESSED）| 支持 myisampack | ❌ |
+| **适用** | **通用，默认选择** | 只读/日志表、老系统 | 临时表/缓存 |
+
+## 关键差异详解
+
+### ① 索引用法不同（最重要）⭐
+
+```
+MyISAM（非聚簇）：
+  .MYI 索引树：  [索引值 → 行地址(offset)]
+  .MYD 数据文件：[行1][行2][行3]...
+
+InnoDB（聚簇）：
+  .ibd 索引树：  [主键 → 整行数据]
+```
+
+**后果**：
+- MyISAM 的**主键索引和二级索引地位相同**，都要通过"行地址"再取一次数据。
+- InnoDB **按主键组织数据**，主键查询一次到位；二级索引要"回表"。
+- **InnoDB 必须有主键**（没有会用隐藏 `DB_ROW_ID`）。
+
+### ② 崩溃安全 ⭐
+
+- **InnoDB**：有 redo log + 双写缓冲，断电重启自动前滚/回滚，**数据不丢**。
+- **MyISAM**：写索引文件时断电可能**索引损坏**，需要 `REPAIR TABLE` / `myisamchk`，且**可能丢数据**。
+
+### ③ `COUNT(*)` 的速度差异（面试常问）
+
+MyISAM 在表头维护了 `state->records` 计数，`SELECT COUNT(*)` **直接返回 O(1)**。
+InnoDB 因为 MVCC（每行是否可见取决于 Read View），**无法维护一个准确的计数**，只能扫最小的二级索引树。
+
+### ④ 全表扫描：MyISAM 更快？⭐
+
+**某些场景确实更快**（顺序读 `.MYD`，无 MVCC 成本、无回表概念）。但**代价是没有事务和行锁**，现代 SSD 上这个优势已被 InnoDB 的 buffer pool 抵消。
+
+## 现在怎么选 ⭐
+
+```
+默认：InnoDB（8.0 中它是唯一的默认引擎，且 MyISAM 已基本停止演进）
+只有这些场景才考虑 MyISAM：
+  ① 只读/几乎不写的小字典表（省内存）
+  ② 需要 O(1) COUNT(*) 且不在乎事务的统计表
+  ③ 历史遗留系统迁移成本太高
+```
+
+**8.0 的变化**：InnoDB 是**默认且唯一推荐的**引擎；`MyISAM` 仍然存在但不推荐新用；还有 **Archive**（高压缩只读日志）、**CSV**（数据交换）、**FEDERATED**（跨实例表）、**BLACKHOLE**（复制中继）。
+
+**查看与修改**：
+
+```sql
+SHOW ENGINES;
+SHOW TABLE STATUS LIKE ''t''\\G     -- 看 Engine 字段
+ALTER TABLE t ENGINE = InnoDB;   -- 改引擎（会重建表，大表危险）⭐
+SET default_storage_engine = InnoDB;
+```
+
+**一句话总结**：**有 InnoDB 就用 InnoDB**——事务、行锁、MVCC、崩溃恢复这四项是现代应用的硬需求，MyISAM 的全表扫描/`COUNT(*)` 优势不值得用数据安全换。', 1),
+
+('MySQL', '行格式,溢出页,表空间', 3,
+ 'InnoDB 的行格式（ROW_FORMAT）有哪几种？大字段（TEXT/BLOB）是怎么存储的？',
+ '## 一、四种行格式 ⭐
+
+| 格式 | 说明 | 状态 |
+|---|---|---|
+| **COMPACT** | 紧凑格式，5.0 引入 | 5.6 及之前默认 |
+| **REDUNDANT** | 冗余格式，兼容老版本 | 遗留 |
+| **DYNAMIC** ⭐ | 5.7 默认；**长字段完全放到溢出页** | **推荐** |
+| **COMPRESSED** | 基于 DYNAMIC + 页压缩（zlib）| 特殊场景（读多写少、IO 敏感）|
+
+```sql
+CREATE TABLE t (...) ROW_FORMAT=DYNAMIC;
+ALTER TABLE t ROW_FORMAT=DYNAMIC;
+SHOW TABLE STATUS LIKE ''t''\\G           -- Row_format 字段
+SHOW VARIABLES LIKE ''innodb_default_row_format'';
+```
+
+## 二、COMPACT vs DYNAMIC 的关键差异 ⭐
+
+**COMPACT 的"溢出"策略**：当一行中某个变长字段（VARCHAR/TEXT/BLOB）太长，超出半页（约 8000 字节）时：
+- 把该列的**前 768 字节**留在行内（"前缀"），其余放到**溢出页（off-page）**，行内存一个 20 字节指针。
+- `COMPACT` 在行内**至少保留 768 字节前缀**。
+
+**DYNAMIC 的"溢出"策略**：
+- 长字段**完全放到溢出页**，行内**只存 20 字节指针**，不保留前缀 ✅
+- 好处：**主行更小** → 一个 16KB 页能放更多行 → **更少的页读取、更好的 buffer pool 命中率** ⭐
+- 代价：读取大字段要多一次 IO
+
+```
+COMPACT:  [行头][行内 768B 前缀 ...][20B 指针] ──► 溢出页 [剩余数据]
+DYNAMIC:  [行头][20B 指针]                    ──► 溢出页 [全部数据]
+```
+
+## 三、行内结构（COMPACT）
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ 变长字段长度列表  │  NULL 值列表  │  记录头信息（5字节）  │
+├─────────────────────────────────────────────────────────┤
+│ 列1值 │ 列2值 │ 列3值 │ ...                             │
+└─────────────────────────────────────────────────────────┘
+```
+
+**① 变长字段长度列表**：从右到左记录每个变长列的实际长度（1~2 字节每列）。
+**② NULL 值列表**：用**位图**标记哪些列是 NULL（所以 NULL **不占数据空间**，但占位图 1 bit）。
+**③ 记录头 5 字节**：含 `deleted_flag`、`min_rec_flag`、`n_owned`（页目录）、`heap_no`、`record_type`、`next_record`（**单向链表指针**，指向下一条记录）。
+
+**关键洞察**：InnoDB 页内的行是**按主键顺序排列的单向链表**，页内用 **Page Directory（槽位稀疏索引）** 做二分查找。
+
+## 四、页结构（16KB）
+
+```
+┌──────────────┐
+│ File Header  │ 38B：页号、前后页指针、页类型、LSN
+├──────────────┤
+│ Page Header  │ 56B：记录数、空闲空间位置、槽数、页层级
+├──────────────┤
+│ Infimum/Supremum │ 虚拟最小/最大记录（页内链表的头尾）
+├──────────────┤
+│ User Records │ ← 真正的数据行
+├──────────────┤
+│ Free Space   │ 空闲区（新记录从这里分配，向中间生长）
+├──────────────┤
+│ Page Directory │ 槽位（每 4~8 条记录一个槽），支撑二分查找
+├──────────────┤
+│ File Trailer │ 8B：校验和 + LSN（配合双写检测页撕裂）
+└──────────────┘
+```
+
+## 五、大字段存储的最佳实践 ⭐
+
+| 建议 | 理由 |
+|---|---|
+| **大字段拆到独立表** | 主表保持精简 → 主表页可放更多行 → 查询更快。用 `1:1` 关联表存 TEXT/BLOB |
+| **用 VARCHAR 代替 TEXT（如果长度可控）** | VARCHAR 可参与索引前缀、排序；TEXT 有额外开销 |
+| **避免 `SELECT *`** | 会把大字段一起读出来（可能触发溢出页 IO）⭐ |
+| **TEXT 的索引只能用前缀** | `KEY (content(100))` |
+| **不要对大字段频繁 UPDATE** | 会触发溢出页重写 + undo 记录旧值（undo 暴涨）|
+| **压缩存储**（如 gzip 存 BLOB）| 减小 IO，代价是应用侧解压 |
+| **`innodb_page_size` 不要随便改** | 默认 16K；4K 适合某些 OLTP，但要建库时定死 |
+
+## 六、页大小与 IO 单位
+
+| `innodb_page_size` | 适用 |
+|---|---|
+| 4K | 写密集、小行、SSD |
+| **16K** ⭐ | 默认，通用 |
+| 32K/64K | 大行、分析型 |
+
+**注意**：页大小**只能在 `mysqld --initialize` 时设定**，之后不能改；且会与文件系统块大小相互影响（`innodb_flush_method=O_DIRECT` 时更明显）。
+
+## 七、级联溢出（Off-page）
+
+- 若溢出页也放不下，会**再分配溢出页**，形成链表。
+- 每个溢出页有 20 字节的行内指针描述符（space_id + page_no + 长度）。
+- `innodb_page_size` 越小，越容易溢出。
+
+## 八、一句话总结
+
+**行格式决定"长字段怎么放"：COMPACT 留 768 字节前缀，DYNAMIC 全放溢出页（行更小、命中率更高，推荐）；大字段要么拆表、要么少读（别 `SELECT *`），否则溢出页会拖慢一切。**', 1),
+
+('MySQL', 'change buffer,唯一索引,写优化', 3,
+ '什么是 Change Buffer？为什么唯索引和普通索引在写性能上有差异？',
+ '## 一、Change Buffer 是什么 ⭐
+
+**用途**：缓存**对非唯一二级索引的写操作（INSERT / UPDATE / DELETE）**，在**数据页不在 Buffer Pool 时**不立即读入页面，而是把"这次修改"记在 Change Buffer 里，等该页**因为其他原因被读入**时再**合并（merge）**进去。
+
+**核心收益**：**把"随机读 + 随机写"变成"顺序写"** ⭐
+
+```
+没有 Change Buffer：
+  INSERT → 需要更新的二级索引页不在内存 → 从磁盘随机读该页（随机 IO）→ 改 → 变脏页
+
+有 Change Buffer：
+  INSERT → 页不在内存 → 把修改记入 Change Buffer（顺序写，内存操作）✅
+        → 等某次查询真的需要这页时 → 读入页 + merge Change Buffer
+```
+
+**为什么只对非唯一二级索引有效** ⭐（面试高频）：
+
+| 索引类型 | 写入时 | 能否用 Change Buffer |
+|---|---|---|
+| **唯一索引 / 主键索引** | **必须先读页确认唯一性**（有没有冲突）| ❌ **无法避免随机读** |
+| **普通二级索引** | 不需要检查唯一性 | ✅ 可以推迟合并 |
+
+**结论**：**唯一索引的写性能比普通索引差**，因为它省不掉那一次随机读。这就是"**能确定业务上唯一性由应用保证时，优先用普通索引**"的技术根据（代价：牺牲数据库层的唯一约束）。
+
+## 二、Change Buffer 的形态与持久化 ⭐
+
+| 版本 | 存储位置 |
+|---|---|
+| **5.5 之前** | 叫 Insert Buffer，**只能在系统表空间**（`ibdata1`）|
+| **5.5+** | 改名 **Change Buffer**，支持 INSERT/UPDATE/DELETE，可选择存**独立表空间** |
+| **8.0** | `innodb_change_buffering` 默认 `all` |
+
+**持久化**：Change Buffer 本身也走 redo log（WAL），崩溃后可恢复。但**如果实例异常重启，Change Buffer 的合并会变慢**（需要重放）。
+
+**关键参数**：
+
+| 参数 | 默认 | 说明 |
+|---|---|---|
+| `innodb_change_buffering` | `all` | 缓冲哪些操作（`all`/`none`/`inserts`/`deletes`/`changes`/`purges`）|
+| `innodb_change_buffer_max_size` | **25** | 占 Buffer Pool 的最大百分比（**最多 50**）|
+| `innodb_ibuf_size` | — | 8.0.30+ 可独立配置 |
+
+**监控**：
+
+```sql
+SHOW ENGINE INNODB STATUS\\G
+-- INSERT BUFFER AND ADAPTIVE HASH INDEX 段落
+-- Ibuf: size 1, free list len 0, seg size 2, 0 merges
+```
+
+## 三、什么时候 Change Buffer 反而有害 ⭐
+
+| 场景 | 影响 |
+|---|---|
+| **数据页马上就被读**（读多写少）| 刚写进 Change Buffer 立刻要 merge → 白折腾，还多一次开销 |
+| **实例重启后** | 大量 merge 积压 → **启动慢、启动后 IO 飙高** |
+| **`innodb_change_buffer_max_size` 太大** | 挤占 Buffer Pool 的页缓存空间 |
+| **频繁读取 Change Buffer 覆盖的索引** | merge 压力大 |
+
+**实践**：**读多写少的库**可以调小或 `innodb_change_buffering=none`；**写入密集型（日志、埋点）** 保持默认甚至调大。
+
+## 四、与"唯一索引 vs 普通索引"的选型结论 ⭐
+
+| 场景 | 选择 |
+|---|---|
+| 业务要求数据库层保证唯一（如 `username`、`email`）| **必须唯一索引**，性能代价可接受 |
+| 业务逻辑保证不会重复，只是想加速查询 | **普通索引**更好（写更快、空间更小）|
+| 需要 `INSERT IGNORE` / `ON DUPLICATE KEY` 的幂等写入 | 需要唯一索引（靠冲突检测）|
+| 关联表 `(a_id, b_id)` 天然唯一 | 可以只用普通索引 + 应用保证 |
+
+**注意**：这个优势在**页已在内存时就不存在了**——所以对**热数据表**，唯一索引与普通索引的差异很小。**Change Buffer 主要惠及"写入分散、页冷"的场景**（如大批量导入）。
+
+## 五、写入路径上的"三大缓冲"总结 ⭐
+
+| 缓冲 | 层 | 加速什么 |
+|---|---|---|
+| **Buffer Pool** | 内存 | 读（页缓存）+ 写（延迟刷脏）|
+| **Change Buffer** | 内存 | **非唯一二级索引的写**（省随机读）|
+| **Log Buffer** | 内存 | redo 的批量刷盘 |
+
+再加上**组提交**，构成了 InnoDB 写性能的全部秘密。
+
+**一句话总结**：**Change Buffer 的本质是"把随机写攒成顺序写"；唯一索引因为必须先读页校验唯一性，天然用不了这个优化 —— 这是"非唯一二级索引写更快"的底层原因。**', 1),
+
+('MySQL', '8.0,新特性', 2,
+ 'MySQL 8.0 相比 5.7 有哪些重要变化？升级要注意什么？',
+ '## 一、8.0 的重要新特性 ⭐
+
+### 1. 默认字符集与排序规则
+
+| | 5.7 | **8.0** |
+|---|---|---|
+| 默认字符集 | `latin1` | **`utf8mb4`** ⭐ |
+| 默认排序规则 | `latin1_swedish_ci` | **`utf8mb4_0900_ai_ci`** |
+
+**影响**：升级后**默认排序规则变化**会导致 `ORDER BY` 结果不同（`0900_ai_ci` 对某些字符的排序与旧规则不一致）⭐
+
+### 2. 数据字典
+
+- 5.7：`.frm` 文件 + 部分系统表，**DDL 不是原子的**。
+- **8.0：统一到 InnoDB 的事务型数据字典**（`mysql.ibd`）→ **DDL 原子性** ✅、无 `.frm` 文件、崩溃后可恢复。
+
+### 3. 窗口函数（Window Functions）⭐
+
+```sql
+SELECT name, dept, salary,
+       ROW_NUMBER() OVER (PARTITION BY dept ORDER BY salary DESC) AS rn,
+       RANK()       OVER (PARTITION BY dept ORDER BY salary DESC) AS rk,
+       DENSE_RANK() OVER (PARTITION BY dept ORDER BY salary DESC) AS drk,
+       SUM(salary)  OVER (PARTITION BY dept)                      AS dept_total,
+       AVG(salary)  OVER (ORDER BY id ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS ma3
+FROM emp;
+```
+
+**价值**：以前要写关联子查询或用户变量的需求（分组 TopN、环比同比、移动平均），现在一行搞定，且性能更好。
+
+### 4. CTE 与递归查询 ⭐
+
+```sql
+-- 普通 CTE（可读性）
+WITH t AS (SELECT ... GROUP BY ...) SELECT * FROM t WHERE ...;
+
+-- 递归 CTE（查组织树/多级分类）
+WITH RECURSIVE org AS (
+    SELECT id, name, parent_id, 1 AS lvl FROM dept WHERE parent_id IS NULL
+    UNION ALL
+    SELECT d.id, d.name, d.parent_id, o.lvl + 1
+    FROM dept d JOIN org o ON d.parent_id = o.id
+)
+SELECT * FROM org ORDER BY lvl;
+```
+
+### 5. 其他重要特性
+
+| 特性 | 说明 |
+|---|---|
+| **降序索引** | `CREATE INDEX idx (a ASC, b DESC)` 真正生效（以前语法接受但被忽略）|
+| **函数索引** | `CREATE INDEX idx ON t ((SUBSTRING(name,1,10)))` ⭐ |
+| **不可见索引** | `ALTER TABLE t ALTER INDEX idx INVISIBLE` → 可以"先藏起来"验证是否真的没用 |
+| **`EXPLAIN ANALYZE`** | 实际执行并给出真实耗时/行数 ⭐ |
+| **JSON 增强** | `->>` 运算符、`JSON_TABLE()`、`JSON_PRETTY()`、部分更新 |
+| **`NOWAIT` / `SKIP LOCKED`** | `SELECT ... FOR UPDATE NOWAIT` 立刻返回而不等待 ⭐ 实现队列的利器 |
+| **Hash Join** | 8.0.18+ 支持无索引等值 JOIN 的哈希连接 ⭐ |
+| **资源组** | `CREATE RESOURCE GROUP` 控制线程的 CPU 亲和与优先级 |
+| **角色（Roles）** | `CREATE ROLE`、`GRANT role TO user` |
+| **密码策略** | 插件化、`validate_password` 组件 |
+| **`ALTER TABLE ... ALGORITHM=INSTANT`** | 加列**秒级完成**（见下文）⭐ |
+| **原子 DDL** | DDL 要么全成功要么全失败 |
+| **redo log 重构** | 8.0.30+ 用 `innodb_redo_log_capacity` 统一管理 |
+
+### 6. 已移除/废弃 ⭐
+
+| 移除项 | 替代 |
+|---|---|
+| **查询缓存（Query Cache）** | 8.0 **彻底移除**（用 Redis/ProxySQL 缓存）|
+| **`\\N`（NULL 的别名）** | 用 `NULL` |
+| **`utf8` 作为默认** | 用 `utf8mb4` |
+| **`PASSWORD()` 函数** | `CREATE USER` 语法 |
+| **`GRANT ... IDENTIFIED BY`** | 分离 `CREATE USER` 与 `GRANT` |
+| **`innodb_locks` 等表** | 迁到 `performance_schema.data_locks` |
+
+## 二、升级注意事项 ⭐
+
+| 检查项 | 说明 |
+|---|---|
+| **`sql_mode` 变化** ⭐ | 8.0 默认含 `ONLY_FULL_GROUP_BY`、`STRICT_TRANS_TABLES`、`NO_ZERO_DATE` 等 → **老 SQL 可能直接报错**。升级前先在 5.7 上把 `sql_mode` 调成 8.0 的默认值跑一遍回归 |
+| **默认字符集/排序规则** | 建表不再显式写字符集的话，新表会用 `utf8mb4_0900_ai_ci`，与老表 `utf8mb4_general_ci` **JOIN 时可能触发 collation 转换 → 索引失效** ⭐ 建议显式指定 collation |
+| **`GROUP BY` 隐式排序消失** | 5.7 的 `GROUP BY` 会隐式排序，8.0 不会（有 `ORDER BY` 的 SQL 才可靠）|
+| **保留字变化** | `RANK`、`GROUPS`、`LEAD`、`LAG`、`ROW_NUMBER` 等成为保留字 → 作为列名需加反引号 |
+| **`utf8mb3` 弃用警告** | 会有 deprecation warning |
+| **认证插件默认变化** | 8.0 默认 `caching_sha2_password`，**老客户端驱动可能不支持** ⭐ 要么升级驱动，要么 `ALTER USER ... IDENTIFIED WITH mysql_native_password` |
+| **`information_schema` 性能** | 8.0 改查数据字典，某些查询行为/权限不同 |
+| **复制** | 8.0 从库可复制 5.7 主库；**5.7 从库不能复制 8.0 主库**（单向兼容）⭐ |
+
+## 三、升级路径与工具
+
+```
+5.7 → 8.0 支持「原地升级（in-place）」和「逻辑/物理迁移」
+
+推荐流程：
+  ① 全量备份（xtrabackup 物理备份）⭐
+  ② 在从库/测试环境先升级并跑全量回归（含 sql_mode 检查）
+  ③ 用 mysqlsh（MySQL Shell）的 upgrade checker 工具扫描不兼容项 ⭐
+     mysqlsh -- util check-for-server-upgrade root@host:3306
+  ④ 主从逐步升级（先升从库，切换后再升主库）
+  ⑤ 升级后 ANALYZE TABLE 更新统计信息
+```
+
+**`mysqlsh` 检查器能直接告警**：保留字冲突、`utf8mb3` 使用、`sql_mode` 差异、认证插件、移除的函数等。
+
+## 四、8.0 的实用技巧 ⭐
+
+```sql
+-- 1. 不可见索引：安全删索引（先隐藏观察，无问题再真删）
+ALTER TABLE t ALTER INDEX idx INVISIBLE;
+SELECT * FROM information_schema.statistics WHERE is_visible=''NO'';
+
+-- 2. NOWAIT / SKIP LOCKED：实现"任务队列"
+START TRANSACTION;
+SELECT * FROM jobs WHERE status=''pending'' ORDER BY id LIMIT 1
+  FOR UPDATE SKIP LOCKED;      -- 不阻塞，直接跳到下一个可用行 ⭐
+UPDATE jobs SET status=''running'' WHERE id = ?;
+COMMIT;
+
+-- 3. EXPLAIN ANALYZE 看真实执行
+EXPLAIN ANALYZE SELECT ...;
+-- 输出含 (actual time=... rows=... loops=...) 与估算对比
+
+-- 4. 递归 CTE 查树上所有子孙
+WITH RECURSIVE sub AS (
+  SELECT id FROM dept WHERE id = 1
+  UNION ALL SELECT d.id FROM dept d JOIN sub s ON d.parent_id = s.id
+) SELECT COUNT(*) FROM sub;
+
+-- 5. 窗口函数做分组 TopN
+SELECT * FROM (
+  SELECT *, ROW_NUMBER() OVER (PARTITION BY dept ORDER BY salary DESC) rn FROM emp
+) x WHERE rn <= 3;
+```
+
+## 五、一句话总结
+
+**8.0 的三大质变：默认 utf8mb4 + 事务型数据字典 + 窗口函数/CTE**；升级最大的坑是 **`sql_mode` 变严**、**默认排序规则变化（导致 JOIN 时 collation 不匹配）** 和 **`caching_sha2_password` 认证插件**。用 `mysqlsh` 的 upgrade checker 先扫一遍能避开绝大多数问题。', 1),
+
+('MySQL', 'JOIN,驱动表,优化', 2,
+ 'MySQL 的 JOIN 算法有哪些？为什么说"小表驱动大表"？`IN` 和 `EXISTS` 怎么选？',
+ '## 一、三种 JOIN 算法 ⭐
+
+| 算法 | 全称 | 原理 | 前提 |
+|---|---|---|---|
+| **NLJ** | Nested-Loop Join | 双重循环：外层每行，内层用索引查找 | **被驱动表有索引** ⭐ |
+| **BNL** | Block Nested-Loop Join | 把驱动表数据读入 **join buffer**，批量与被驱动表比对 | 被驱动表**无索引**，`Extra: Using join buffer` |
+| **BKA** | Batched Key Access（5.6+）| NLJ 的批量版：用 join buffer 里的键**批量**去查被驱动表索引，配合 MRR | 被驱动表有索引 + 开启 BKA |
+| **Hash Join** | 8.0.18+ | 建哈希表探测 | **无索引的等值 JOIN** |
+
+### NLJ 示意（有索引时）
+
+```sql
+SELECT * FROM a JOIN b ON a.id = b.a_id;
+-- 驱动表 a（假设 1000 行），被驱动表 b 有 idx(a_id)
+
+for each row in a:            -- 外层 1000 次
+    lookup b WHERE a_id = a.id  -- 内层走索引，O(log n)
+-- 总代价 ≈ 1000 × log(rows_b)
+```
+
+### BNL 示意（无索引时，性能灾难）
+
+```sql
+-- 被驱动表 b 没有 a_id 索引
+join_buffer  ← 装满 a 的一批行（比如 1000 行）
+for each row in b:                       -- 扫全表 b（比如 100 万行）
+    for each row in join_buffer:         -- 内存中比对
+        匹配则输出
+-- 总代价 ≈ (rows_a / buffer_batch) × rows_b  ← 极其昂贵 ❌
+```
+
+**优化**：**给被驱动表的连接列建索引**，让 BNL 退化为 NLJ ⭐
+
+```sql
+ALTER TABLE b ADD INDEX idx_a_id (a_id);
+-- EXPLAIN 的 Extra 从 "Using join buffer (Block Nested Loop)" 变成 "Using index"
+```
+
+## 二、为什么"小表驱动大表"？⭐
+
+**驱动表（外层表）** 决定了内层查找的**次数**；每做一次内层查找就是一次索引搜索。
+
+```
+驱动表 a 有 m 行，被驱动表 b 有 n 行
+NLJ 代价 ≈ m × log(n)
+
+若 a 是 1000 行、b 是 1,000,000 行：
+  以 a 驱动 ≈ 1000 × 20 = 20,000 次操作
+  以 b 驱动 ≈ 1,000,000 × 10 = 10,000,000 次操作   ← 慢 500 倍 ⭐
+```
+
+**所以：用小表（结果集小的表）做驱动表**。
+
+**`EXPLAIN` 中谁在上面（`id` 相同、`table` 靠前）谁就是驱动表**；`STRAIGHT_JOIN` 可以强制指定顺序。
+
+**"小表"的定义** ⭐：经过 `WHERE` 过滤后的**实际参与 JOIN 的行数少**，而不一定是"总行数小"。优化器会**基于统计信息估算行数**来选驱动表，估算不准时会选错 → 用 `ANALYZE TABLE` 更新统计，或 `STRAIGHT_JOIN` 手动干预。
+
+## 三、`IN` vs `EXISTS` ⭐
+
+**经验法则**：
+
+| 场景 | 推荐 | 理由 |
+|---|---|---|
+| **子查询结果集大，主表小** | `IN` | `IN` 先执行子查询 → 小表驱动大表 ✅ |
+| **子查询结果集小，主表大** | `EXISTS` | `EXISTS` 外层逐行，子查询能命中索引就快速返回 ✅ |
+
+**记忆**：**"小表在外"** —— `IN` 的子查询表在外层，`EXISTS` 的主表在外层。
+
+```sql
+-- IN：适用于 dept 小、emp 大
+SELECT * FROM emp WHERE dept_id IN (SELECT id FROM dept WHERE ...);
+-- 执行：先查出 dept 的 id 列表（小），然后扫描 emp 判断是否在列表中
+
+-- EXISTS：适用于 emp 小（过滤后）、dept 大
+SELECT * FROM dept d WHERE EXISTS (
+  SELECT 1 FROM emp e WHERE e.dept_id = d.id
+);
+-- 执行：逐行读 dept，对每行用 e.dept_id 索引查一次（命中即返回）
+```
+
+**现代 MySQL 的优化（5.6+）** ⭐：`IN` 子查询会被优化器改写为 **semijoin（半连接）**：
+
+```sql
+-- 优化器可能改写为
+SELECT DISTINCT emp.* FROM emp JOIN dept ON emp.dept_id = dept.id WHERE ...;
+-- 或者物化为临时表 + 去重
+```
+
+所以**在 MySQL 5.6+ 里 `IN` 和 `EXISTS` 的性能差异常常不大**，**真正决定性能的是索引**。可以先用 `EXPLAIN` 看优化器的选择，不要凭直觉改写。
+
+**`NOT IN` 的陷阱** ⭐：
+
+```sql
+-- ⚠️ 如果子查询返回 NULL，整个 NOT IN 结果恒为空！
+SELECT * FROM emp WHERE dept_id NOT IN (SELECT id FROM dept);
+-- dept.id 有 NULL → expr NOT IN (NULL) 结果是 UNKNOWN → 不返回任何行
+
+-- 解法：加 IS NOT NULL，或用 NOT EXISTS
+SELECT * FROM emp e WHERE NOT EXISTS (SELECT 1 FROM dept d WHERE d.id = e.dept_id);
+```
+
+## 四、JOIN 优化实践清单 ⭐
+
+| 措施 | 说明 |
+|---|---|
+| **连接列建索引** | 被驱动表的连接列必须有索引（否则 BNL）⭐ |
+| **类型和字符集一致** | 类型/字符集不一致会导致优化器放弃索引 ⭐ |
+| **只 SELECT 需要的列** | 减少 join buffer 和回表开销 |
+| **小表驱动大表** | 必要时用 `STRAIGHT_JOIN` |
+| **提高 `join_buffer_size`** | 只在无法避免 BNL 时有效（**每连接一份，慎调大**）|
+| **开启 BKA + MRR** | 有索引的批量访问可提速（`optimizer_switch=''mrr=on,mrr_cost_based=off,batched_key_access=on''`）|
+| **大表 JOIN 拆开** | 应用层分两次查 + 内存拼装，往往比 SQL JOIN 更可控 |
+| **避免多表 JOIN** | 3 表以上 JOIN 优化器容易选错计划（搜索空间爆炸）|
+| **`ANALYZE TABLE`** | 统计信息不准会选错驱动表 |
+
+## 五、`EXPLAIN` 里识别 JOIN 问题
+
+| 字段值 | 含义 |
+|---|---|
+| `Using join buffer (Block Nested Loop)` | ❌ 被驱动表没索引，走 BNL |
+| `Using join buffer (hash join)` | 8.0 的 Hash Join（比 BNL 好，但仍不如索引）|
+| `Using index condition` | ✅ ICP 生效 |
+| `Using MRR` | ✅ 多范围读，减少了随机 IO |
+| `type=ALL` 出现在被驱动表 | ❌ 被驱动表全表扫描，最差 |
+
+**一句话总结**：**JOIN 的性能只有一个关键 —— 被驱动表的连接列有没有索引；其余都是围绕"驱动表越小越好、被驱动表别全表扫"做文章。** `IN`/`EXISTS` 在 5.6+ 差异不大，先看 `EXPLAIN`。', 1),
+
+('MySQL', '窗口函数,CTE,分析函数', 2,
+ '窗口函数是什么？和 `GROUP BY` 有什么区别？常用来解决什么问题？',
+ '## 一、核心区别 ⭐
+
+| | **`GROUP BY`** | **窗口函数** |
+|---|---|---|
+| 输出行数 | **聚合后行数变少**（每组一行）| **行数不变**（每行都保留）⭐ |
+| 能否看到明细 | ❌ 只看聚合结果 | ✅ **既能看明细，又能看聚合** |
+| 排序 | 需 `ORDER BY` | `OVER (ORDER BY ...)` 决定窗口顺序 |
+| 典型 | `SELECT dept, COUNT(*) FROM emp GROUP BY dept` | `SELECT name, dept, COUNT(*) OVER (PARTITION BY dept) FROM emp` |
+
+```
+GROUP BY：
+  dept   cnt
+  研发    3
+  销售    2
+
+窗口函数：
+  name  dept   cnt_over
+  张三   研发    3
+  李四   研发    3
+  王五   研发    3      ← 明细行全保留，每行都带上了所属组的统计
+  赵六   销售    2
+  钱七   销售    2
+```
+
+## 二、语法结构
+
+```sql
+函数名() OVER (
+    PARTITION BY 分组列1, 分组列2     -- 可选：划分窗口（类似 GROUP BY）
+    ORDER BY 排序列                    -- 可选：窗口内排序（决定"累积"行为）
+    ROWS BETWEEN 边界 AND 边界          -- 可选：滑动窗口范围
+)
+```
+
+**三种函数**：
+
+| 类别 | 函数 | 说明 |
+|---|---|---|
+| **序号函数** | `ROW_NUMBER()`、`RANK()`、`DENSE_RANK()`、`NTILE(n)`、`PERCENT_RANK()` | 排名 |
+| **聚合函数** | `SUM/AVG/COUNT/MAX/MIN/STDDEV/VAR_POP` | 加 `OVER` 后即窗口聚合 |
+| **偏移/取值函数** | `LAG()`、`LEAD()`、`FIRST_VALUE()`、`LAST_VALUE()`、`NTH_VALUE()` | 取前后行 |
+
+## 三、实战场景 ⭐
+
+### 1. 分组 TopN（最经典）
+
+```sql
+-- 每个部门薪资前 3 名
+SELECT * FROM (
+    SELECT e.*, ROW_NUMBER() OVER (PARTITION BY dept_id ORDER BY salary DESC) AS rn
+    FROM emp e
+) t WHERE rn <= 3;
+```
+
+**以前要写**：关联子查询 `WHERE (SELECT COUNT(*) FROM emp e2 WHERE e2.dept_id=e.dept_id AND e2.salary>e.salary) < 3`（O(n²)）；现在 O(n log n) 且清晰。
+
+### 2. 组内占比
+
+```sql
+SELECT dept_id, emp_name, salary,
+       ROUND(salary / SUM(salary) OVER (PARTITION BY dept_id) * 100, 2) AS pct
+FROM emp;
+```
+
+### 3. 环比 / 同比（`LAG` / `LEAD`）
+
+```sql
+SELECT month, amount,
+       LAG(amount, 1) OVER (ORDER BY month) AS prev_month,
+       ROUND(amount / LAG(amount, 1) OVER (ORDER BY month) - 1, 4) AS mom_rate,
+       LAG(amount, 12) OVER (ORDER BY month) AS last_year,   -- 同比
+       LEAD(amount, 1) OVER (ORDER BY month) AS next_month
+FROM sales;
+```
+
+### 4. 累积求和（`ROWS BETWEEN`）
+
+```sql
+SELECT dt, amount,
+       SUM(amount) OVER (ORDER BY dt ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cum_sum,
+       AVG(amount) OVER (ORDER BY dt ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)          AS ma7,
+       SUM(amount) OVER (ORDER BY dt ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING)          AS centered
+FROM daily_sales;
+```
+
+**边界写法对照**：
+
+| 写法 | 含义 |
+|---|---|
+| `ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW` | 从第一行到当前行（**累积**）|
+| `ROWS BETWEEN 2 PRECEDING AND CURRENT ROW` | 前 2 行 + 当前行 |
+| `ROWS BETWEEN N PRECEDING AND N FOLLOWING` | 居中 n 行窗口（去噪）|
+| `ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING` | 当前行到最后 |
+| **默认**（有 `ORDER BY` 无 `ROWS`）| `RANGE UNBOUNDED PRECEDING AND CURRENT ROW` ⭐ 也是累积 |
+| **默认**（无 `ORDER BY`）| 整个分区 |
+
+**`ROWS` vs `RANGE` 的区别** ⭐：`ROWS` 按**物理行数**，`RANGE` 按**值**（相同值会一起被包含）。`RANGE` 在排序值有重复时容易出意外。
+
+### 5. 去重取最新一条 ⭐
+
+```sql
+-- 取每个用户的最后一条登录记录
+SELECT * FROM (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY login_time DESC) AS rn
+    FROM login_log
+) t WHERE rn = 1;
+```
+
+**比 `GROUP BY user_id` + `SUBSTRING_INDEX(GROUP_CONCAT(...))` 之类的黑魔法清晰得多。**
+
+### 6. 连续登录天数 / 会话划分（`RANK` 差值技巧）⭐
+
+```sql
+-- 求每个用户连续登录的最大天数
+WITH t1 AS (
+    SELECT DISTINCT user_id, DATE(login_time) AS d,
+           ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY DATE(login_time)) AS rn,
+           DATE_SUB(DATE(login_time),
+                    INTERVAL ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY DATE(login_time)) DAY) AS grp
+    FROM login_log
+), t2 AS (
+    SELECT user_id, grp, COUNT(*) AS streak FROM t1 GROUP BY user_id, grp
+)
+SELECT user_id, MAX(streak) AS max_streak FROM t2 GROUP BY user_id;
+```
+
+**原理**：日期 `d` 减去行号 `rn`，若连续则差值恒定 → 相同差值归为一组（**"打洞法"**）。这和本项目"每日一题"里的"跳过天数不会错位"用同一类思路。
+
+### 7. 移动平均 / 去噪
+
+```sql
+SELECT dt, price,
+       AVG(price) OVER (ORDER BY dt ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS ma7
+FROM stock_price;
+```
+
+## 四、性能注意 ⭐
+
+| 注意点 | 说明 |
+|---|---|
+| **窗口函数扫描后排序** | 每个 `PARTITION BY` 都需要排序，磁盘临时表可能被用上（看 `EXPLAIN` 的 `Using temporary; Using filesort`）|
+| **给 `PARTITION BY` + `ORDER BY` 建联合索引** | 可避免额外排序 ⭐ |
+| **不要在窗口上套复杂表达式** | 先在子查询里算好再套窗口 |
+| **8.0 之前不可用** | 5.7 只能用用户变量模拟（不可靠，官方明确不保证顺序）⭐ |
+| **窗口函数不能出现在 `WHERE` 里** | 因为执行顺序在 `WHERE` 之后 → 必须外层子查询过滤（如上面的 `rn <= 3`）|
+
+**SQL 执行顺序**（含窗口函数的位置）⭐：
+
+```
+FROM → ON → JOIN → WHERE → GROUP BY → HAVING
+     → 窗口函数（WINDOW）→ SELECT → DISTINCT → ORDER BY → LIMIT
+```
+
+所以窗口函数的结果**不能在同一个 `SELECT` 的 `WHERE`/`GROUP BY`/`HAVING` 中引用**。
+
+## 五、一句话总结
+
+**窗口函数 = "带分组和排序语义的聚合 + 明细行全保留"**；最实用的四招是 **分组 TopN、占比、环比、去重取最新**。它把以前需要自连接或用户变量才能实现的活儿变成一行可读 SQL，代价是一次排序。', 1),
+
+('MySQL', 'JSON,半结构化', 2,
+ 'MySQL 的 JSON 类型有什么用？是怎么存储的？什么时候不该用 JSON？',
+ '## 一、JSON 类型的基本特性 ⭐
+
+| 特性 | 说明 |
+|---|---|
+| **存储** | **二进制格式**（不是纯文本），解析后按内部结构存 → 读取时**不用重新解析** ⭐ |
+| **校验** | 插入时**自动校验**是否合法 JSON，非法直接报错 |
+| **大小** | 二进制格式通常比等价的文本**更小**（去掉了冗余空格、键只存一次）|
+| **NULL** | JSON 列的 `NULL` 与 `JSON 值 ''null''` 是**两回事** ⭐ |
+| **索引** | **不能直接给 JSON 列建索引** → 必须用**生成列 + 索引** 或 **多值索引**（8.0.17+）|
+
+## 二、核心函数 ⭐
+
+```sql
+-- 读取
+JSON_EXTRACT(doc, ''$.name'')          -- 提取
+doc -> ''$.name''                      -- 等价简写，返回 JSON（带引号的字符串）
+doc ->> ''$.name''                     -- ⭐ -> 后再 UNQUOTE，返回普通字符串（最常用）
+JSON_UNQUOTE(JSON_EXTRACT(doc,''$.name''))
+
+-- 路径支持
+''$.a.b.c''        -- 嵌套
+''$.arr[0]''       -- 数组下标
+''$.arr[*]''       -- 所有元素（多值）
+''$.arr[1 to 3]''  -- 切片（8.0）
+
+-- 修改（返回新值，需 UPDATE 写回）
+JSON_SET(doc, ''$.age'', 30)                    -- 有则改，无则加
+JSON_INSERT(doc, ''$.x'', 1)                    -- 只加不改
+JSON_REPLACE(doc, ''$.x'', 1)                   -- 只改不加
+JSON_REMOVE(doc, ''$.x'')                        -- 删除
+JSON_ARRAY_APPEND(doc, ''$.tags'', ''new'')
+-- 8.0 的 -> / 复合写法
+doc = JSON_SET(doc, ''$.a'', 1)
+
+-- 其他
+JSON_VALID(x)         -- 是否合法
+JSON_TYPE(x)          -- 类型
+JSON_KEYS(x)          -- 所有键
+JSON_LENGTH(x)        -- 长度
+JSON_CONTAINS(doc, ''"x"'', ''$.tags'')   -- 包含
+JSON_TABLE(...)       -- ⭐ 把 JSON 展开成行（8.0）
+JSON_PRETTY(x)        -- 美化输出（8.0）
+```
+
+## 三、如何给 JSON 建索引 ⭐
+
+### 方法 1：生成列（虚拟列）+ 索引（5.7+，最通用）
+
+```sql
+ALTER TABLE orders
+  ADD COLUMN cust_id BIGINT
+      GENERATED ALWAYS AS (JSON_EXTRACT(payload, ''$.customer_id'')) VIRTUAL,
+  ADD INDEX idx_cust (cust_id);
+
+-- 之后就能用索引了
+SELECT * FROM orders WHERE cust_id = 1001;
+-- 或者直接对表达式查询（优化器会自动匹配生成列）
+SELECT * FROM orders WHERE payload ->> ''$.customer_id'' = ''1001'';
+```
+
+**VIRTUAL vs STORED**：
+
+| | VIRTUAL（默认）| STORED |
+|---|---|---|
+| 存储 | **不占空间**，查询时计算 | 占空间，写入时计算 |
+| 索引 | ✅ 可索引 | ✅ 可索引 |
+| 二级索引 | 索引里存计算结果 | 同 |
+| 适合 | 大部分场景 ⭐ | 计算昂贵、频繁读 |
+
+### 方法 2：多值索引（Multi-Valued Index，8.0.17+）⭐
+
+用于 **JSON 数组**的索引：
+
+```sql
+ALTER TABLE t ADD INDEX idx_tags ((CAST(payload->''$.tags'' AS CHAR(20) ARRAY)));
+--                                                ↑ ARRAY 关键字，基于 CAST ... AS ... ARRAY
+
+SELECT * FROM t WHERE JSON_CONTAINS(payload->''$.tags'', ''"mysql"'');
+SELECT * FROM t WHERE ''mysql'' MEMBER OF (payload->''$.tags'');   -- ⭐ 更直观
+```
+
+适合"一个文档有多个标签"的检索。
+
+### 方法 3：关系化建模（根本解法）
+
+```sql
+-- 不要：orders(payload JSON)  里塞 tags: ["a","b","c"]
+-- 而是：
+CREATE TABLE order_tags (order_id BIGINT, tag VARCHAR(32), KEY(tag));
+```
+
+能关系化就不要 JSON —— JSON 只适合**结构多变、不常查询的"附属性"字段**。
+
+## 四、`JSON_TABLE`：把 JSON 变成行 ⭐
+
+```sql
+SELECT o.id, jt.*
+FROM orders o,
+JSON_TABLE(o.payload, ''$.items[*]'' COLUMNS (
+    sku    VARCHAR(32) PATH ''$.sku'',
+    qty    INT         PATH ''$.qty'',
+    price  DECIMAL(10,2) PATH ''$.price''
+)) AS jt
+WHERE o.id = 1;
+```
+
+**这是 JSON 与关系模型之间的桥梁**：把"嵌套的订单明细"展开成多行，再正常 JOIN / 聚合。适合**报表、导出、迁移**。
+
+## 五、什么时候不该用 JSON ⭐
+
+| 不该用的场景 | 原因 |
+|---|---|
+| **需要频繁按某个字段查询/排序/分组** | 索引要额外做生成列，不如直接建列 |
+| **字段结构稳定、字段数固定** | 直接建列更清晰、类型更强、更省空间 |
+| **需要外键约束 / 唯一约束** | JSON 无法建外键和真正的唯一约束 |
+| **需要事务级别的部分更新** | 5.7 里每次 `JSON_SET` 都要重写整个文档 ❌（8.0 有部分更新优化）|
+| **单文档很大（几 MB）** | 每次读取都要加载整个文档 |
+| **需要 JOIN 到其他表** | 必须先 `JSON_TABLE` 展开 |
+| **数据分析/统计** | 列存（ClickHouse）或关系化更适合 |
+| **数据完整性要求高** | 没有 schema 校验（8.0 才有 `CHECK` 配合 `JSON_SCHEMA_VALID`）|
+
+**8.0 的改进：部分更新（Partial Update）** ⭐ —— 当 `JSON_SET/REPLACE/REMOVE` 修改的字段足够小（新值不超过原长度且路径不改变结构）时，只更新文档的**局部二进制片段**，而不是重写整个文档。可用 `JSON_STORAGE_SIZE()` vs `JSON_STORAGE_FREE()` 观察。
+
+## 六、适用场景 ✅
+
+```
+✔ 动态属性/扩展字段（不同商品有不同的规格参数）
+✔ 第三方 API 的原始响应存证（结构不固定，仅归档）
+✔ 配置项（读多写少，整体读写）
+✔ 事件/日志的负载
+✔ 需要保留"原始结构"的场景（再解析/审计）
+```
+
+## 七、一句话总结
+
+**JSON 类型的价值是"灵活的半结构化存储 + 二进制高效访问"，代价是"不能直接索引、没有强约束"。** 用它的判断标准很简单：**这个字段会不会被用于查询条件/排序？会 → 关系化建模；不会 → JSON 可以接受。** 需要索引时用**生成列**（通用）或**多值索引**（数组）。', 1),
+
+('MySQL', '分区表,管理,维护', 2,
+ 'MySQL 分区表是什么？有哪些分区类型？有什么坑？',
+ '## 一、分区表的本质 ⭐
+
+**分区（Partitioning）**：把**一张逻辑表**在存储层拆成**多个物理文件**（`t#p#p0.ibd` 等），MySQL 根据分区规则 **`pruning`（分区裁剪）** 自动只访问相关分区。
+
+**目的**：
+1. **管理性**：快速删除历史数据（`DROP PARTITION` 秒级，而 `DELETE` 要很久）⭐
+2. **查询裁剪**：`WHERE dt = ''2024-01-01''` 只扫一个分区
+3. **并行扫描**（8.0 部分支持）
+
+**注意**：**分区 ≠ 分表，也 ≠ 分库**。所有分区仍在**同一个 MySQL 实例、同一张逻辑表**下；**不能分散到多台机器**，也没有解决单机写入瓶颈。
+
+## 二、四种分区类型 ⭐
+
+| 类型 | 规则 | 例子 |
+|---|---|---|
+| **RANGE** ⭐ | 按范围 | `PARTITION BY RANGE (YEAR(dt))` |
+| **LIST** | 按枚举值列表 | `PARTITION BY LIST (region_id)` |
+| **HASH** | 按哈希取模 | `PARTITION BY HASH(id) PARTITIONS 4` |
+| **KEY** | 按 MySQL 内置哈希（支持非整型/多列）| `PARTITION BY KEY(a, b) PARTITIONS 8` |
+
+**RANGE 变种**：`RANGE COLUMNS`（多列范围）、`RANGE` on 表达式（仅支持 `TO_DAYS()`、`YEAR()`、`MONTH()` 等少数函数）。
+
+```sql
+-- 按月分区的日志表（最常用）⭐
+CREATE TABLE access_log (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    dt DATE NOT NULL,
+    url VARCHAR(255),
+    PRIMARY KEY (id, dt)          -- ⚠️ 分区键必须在所有唯一键中！
+) ENGINE=InnoDB
+PARTITION BY RANGE COLUMNS(dt) (
+    PARTITION p202401 VALUES LESS THAN (''2024-02-01''),
+    PARTITION p202402 VALUES LESS THAN (''2024-03-01''),
+    PARTITION p202403 VALUES LESS THAN (''2024-04-01''),
+    PARTITION pmax    VALUES LESS THAN (MAXVALUE)   -- 兜底分区
+);
+```
+
+## 三、分区管理操作
+
+```sql
+-- 加分区
+ALTER TABLE t ADD PARTITION (PARTITION p202404 VALUES LESS THAN (''2024-05-01''));
+
+-- ⭐ 秒级删除历史分区（比 DELETE 快几个数量级，且不产生大量 undo/binlog）
+ALTER TABLE t DROP PARTITION p202401;
+
+-- 清空分区（保留分区定义）
+ALTER TABLE t TRUNCATE PARTITION p202401;
+
+-- 拆分/合并分区（REORGANIZE）
+ALTER TABLE t REORGANIZE PARTITION pmax INTO (
+    PARTITION p202404 VALUES LESS THAN (''2024-05-01''),
+    PARTITION pmax VALUES LESS THAN (MAXVALUE)
+);
+
+-- 交换（把分区变成独立表 / 反向）
+ALTER TABLE t EXCHANGE PARTITION p202401 WITH TABLE t_archive;
+
+-- 查看
+SELECT * FROM information_schema.partitions WHERE table_name = ''access_log'';
+EXPLAIN SELECT ... ;   -- 看 partitions 字段是否只命中一个分区 ⭐
+```
+
+**`EXPLAIN` 的 `partitions` 列**是验证分区裁剪是否生效的关键：
+
+```
+partitions: p202403      ← ✅ 只扫一个分区（pruning 生效）
+partitions: p202401,p202402,p202403,pmax   ← ❌ 扫了全部分区（没裁剪）
+```
+
+## 四、分区裁剪生效的条件 ⭐
+
+```sql
+-- ✅ 生效：分区键直接参与比较
+WHERE dt = ''2024-03-15''
+WHERE dt BETWEEN ''2024-03-01'' AND ''2024-03-31''
+WHERE dt >= ''2024-03-01'' AND dt < ''2024-04-01''
+
+-- ❌ 不生效：
+WHERE YEAR(dt) = 2024                 -- 对分区键用了函数（RANGE COLUMNS 场景）
+WHERE DATE_FORMAT(dt,''%Y-%m'') = ''2024-03''
+WHERE id = 100                        -- 分区键是 dt，不是 id
+WHERE dt + INTERVAL 1 DAY = ''2024-03-16''
+```
+
+**原则**：**分区键必须以"裸列"的形式出现在 `WHERE` 的常量比较中**。
+
+## 五、分区的坑（务必知道）⭐
+
+| 坑 | 说明 |
+|---|---|
+| **① 分区键必须包含在每个唯一索引中** ⭐ | 主键/唯一键必须**包含分区键的所有列**。否则报错：`A PRIMARY KEY must include all columns in the table''s partitioning function` |
+| **② 最多 8192 个分区** | 分区太多 → 打开文件数暴涨、元数据开销巨大（每分区至少 2 个文件）|
+| **③ 不支持外键** | 分区表**不能有外键**，也不能被外键引用 ⭐ |
+| **④ 分区键不能修改** | 想换分区键只能重建表 |
+| **⑤ NULL 值走第一个分区**（RANGE）| `NULL` 会被归入 `< 最小值` 的分区（通常是最小分区），意外打爆它 |
+| **⑥ 没有 `MAXVALUE` 兜底时会插入失败** | 新数据没有对应分区 → `ERROR 1526: Table has no partition for value` ⭐ |
+| **⑦ 全局唯一索引无法保证** | 唯一性只在分区内检查（因为唯一索引必须含分区键）⭐ |
+| **⑧ 跨分区查询没有收益** | 如果查询总是不带分区键，分区只增加开销 |
+| **⑨ `EXPLAIN` 有额外开销** | 分区裁剪本身要计算，分区数极多时元数据操作变慢 |
+| **⑩ 8.0 移除了分区表的很多限制** | 但原生分区（InnoDB 的**可传输表空间 / 原生分区**）与老的分区实现行为不同 |
+| **⑪ `DROP PARTITION` 会重建统计信息** | 大分区表上可能短暂抖动 |
+| **⑫ 分区表的统计信息是"每个分区"级别** | 优化器对分区表的估算更容易失准 |
+
+## 六、分区 vs 分表 vs 分库 ⭐
+
+| | 分区表 | 分表（应用层）| 分库分表 |
+|---|---|---|---|
+| 物理位置 | **同一实例同一表** | 同实例多表 | 多实例 |
+| 应用改造 | **无** ✅ | 需改造 | 需中间件 |
+| 突破单机写入 | ❌ | ❌ | ✅ |
+| 跨片 JOIN | ✅ 原生支持 | ❌ | ❌ |
+| 分布式事务 | 不需要 | 不需要 | ❌ 需要处理 |
+| 快速删历史 | ✅ `DROP PARTITION` ⭐ | 需 `DROP TABLE` | 同 |
+| 适用 | **单机内的数据生命周期管理** | 数据量中等 | 真正的水平扩展 |
+
+**结论**：**分区表最适合"按时间滚动、只查近期、定期清理历史"的日志/流水表**。它**不是**水平扩展方案。
+
+## 七、最佳实践 ⭐
+
+```sql
+-- 1. 用 RANGE COLUMNS(dt) + 按月分区 + MAXVALUE 兜底
+-- 2. 主键设计为 (id, dt) 或干脆用 dt 做主键（日志表常见）
+-- 3. 用定时任务提前创建未来 3 个月的分区，删除 3 个月前的分区
+-- 4. 查询必须带分区键（在应用层强制）
+-- 5. 分区数量控制在几百以内（按月分区 = 保留几年）
+```
+
+**自动维护脚本思路**：
+
+```sql
+-- 每天跑一次
+ALTER TABLE access_log ADD PARTITION (PARTITION p202405 VALUES LESS THAN (''2024-06-01''));
+ALTER TABLE access_log DROP PARTITION p202311;
+```
+
+**一句话总结**：**分区表的核心价值是"用 `DROP PARTITION` 代替 `DELETE` 来管理数据生命周期"，而不是性能扩展**；最大的坑是"唯一索引必须含分区键"，最常见的设计是"按月 RANGE COLUMNS + MAXVALUE 兜底"。', 1),
+
+('MySQL', '视图,触发器,存储过程', 1,
+ '视图、触发器、存储过程分别是什么？各自适合什么场景，有什么缺点？',
+ '## 一、视图（View）
+
+**本质**：一个**保存下来的 SELECT 语句**，本身不存数据（普通视图），查询时展开执行。
+
+```sql
+CREATE VIEW v_user_order AS
+SELECT u.id, u.name, o.order_no, o.amount
+FROM users u JOIN orders o ON u.id = o.user_id WHERE o.status = ''paid'';
+
+SELECT * FROM v_user_order WHERE amount > 100;   -- 像用表一样用视图
+```
+
+| 优点 | 缺点 |
+|---|---|
+| **简化复杂查询**（多表 JOIN 封装成一个"表"）| **性能不提升**：每次查询都展开成原 SQL |
+| **权限隔离**：只暴露部分列/行 ⭐ | 嵌套视图会让优化器难以优化 |
+| **逻辑解耦**：表结构变了只改视图 | 无法建索引（普通视图）|
+| **向后兼容**：重命名表后建同名视图 | `SELECT *` 在视图定义里会被固化（表加列后视图看不到新列）⭐ |
+
+**`WITH CHECK OPTION`**：限制通过视图写入的行必须满足视图的 `WHERE` 条件。
+
+**物化视图**：**MySQL 原生不支持**（PostgreSQL/Oracle 有）。替代方案：
+- **汇总表 + 定时任务**（最常见）
+- **触发器维护**
+- **`CREATE TABLE ... AS SELECT`**（快照，不自动刷新）
+
+## 二、触发器（Trigger）
+
+**本质**：在 `INSERT` / `UPDATE` / `DELETE` 前后**自动执行**的一段逻辑。
+
+```sql
+CREATE TRIGGER trg_order_after_insert
+AFTER INSERT ON orders FOR EACH ROW
+BEGIN
+    UPDATE stats SET order_count = order_count + 1 WHERE dt = CURDATE();
+END;
+```
+
+| 优点 | 缺点 ⭐ |
+|---|---|
+| 自动化（审计日志、同步冗余字段、级联计算）| **对应用不可见**：最难排查的问题往往藏在这里 ⭐ |
+| 强一致（与主操作同一事务）| **性能隐忧**：`FOR EACH ROW` 在大批量 DML 上放大数倍 |
+| 绕不过去（任何写入都触发）| **调试困难**：没有堆栈，只能查 `SHOW TRIGGERS` / `information_schema.triggers` |
+| | **复制风险**：STATEMENT 格式下触发器可能在从库被触发两次 ⭐ |
+| | **级联触发器**：A 的触发器改 B，B 的又改 C → 难以追踪 |
+| | **DDL 风险**：`pt-online-schema-change` 会因触发器冲突而失败/需要特殊处理 |
+| | MySQL **不支持 `INSTEAD OF` 触发器**（不能拦截视图写入）|
+
+**典型反例**：用触发器同步"订单表 → 统计表"。一旦统计逻辑变了，历史数据无法回补；而且 binlog 量翻倍。
+
+**替代方案**：**应用层显式处理**（Service 层事务）、**binlog 订阅（Canal/Debezium）异步同步**、**定时任务**。
+
+**结论**：**触发器只适合"审计日志"这类简单、幂等、不会频繁变更的场景**；业务逻辑尽量放应用层。
+
+## 三、存储过程 / 函数（Stored Procedure / Function）
+
+**本质**：一组预编译的 SQL 语句，可带参数和控制流（`IF`、`LOOP`、`CURSOR`）。
+
+```sql
+DELIMITER $$
+CREATE PROCEDURE sp_batch_delete(IN p_days INT)
+BEGIN
+    DECLARE affected INT DEFAULT 1;
+    WHILE affected > 0 DO
+        DELETE FROM logs WHERE dt < DATE_SUB(CURDATE(), INTERVAL p_days DAY) LIMIT 1000;
+        SET affected = ROW_COUNT();
+        DO SLEEP(0.1);
+    END WHILE;
+END$$
+DELIMITER ;
+
+CALL sp_batch_delete(30);
+```
+
+| 优点 | 缺点 ⭐ |
+|---|---|
+| **减少网络往返**：批量逻辑一次调用 ⭐ | **业务逻辑分散**：部分在 DB、部分在应用 → 难维护、难测试、难版本控制 ⭐ |
+| **预编译**：解析一次，多次执行（但 8.0 每条连接首次仍需解析）| **调试/单测极难**（没有 IDE 级别的支持）|
+| **权限集中**：应用只需 `EXECUTE` 权限 | **数据库 CPU 压力**：所有逻辑挤在 DB，**无法水平扩展** ❌ |
+| **批量维护任务**（数据清理、统计汇总）✅ | **可移植性差**：跨数据库（PG/Oracle）要重写 |
+| | **迁移/升级风险**：DDL 变更后过程可能失效 |
+| | 高并发下容易**锁住连接** |
+
+**该用的场景** ✅：**一次性/周期性数据维护脚本**（分批删除、数据回填、统计重算）——这类"运维任务"用存储过程比写脚本方便。
+
+**不该用的场景** ❌：**业务逻辑**（订单状态机、库存扣减）——放应用层，配合自动化测试和代码评审。
+
+## 四、函数（Function）vs 过程（Procedure）
+
+| | Function | Procedure |
+|---|---|---|
+| 返回值 | **必须有且只有一个返回值** | 可多个（`OUT` 参数）|
+| 调用 | 可在 SQL 里使用（`SELECT my_func(x)`）| `CALL p(...)` |
+| 事务 | **不能**包含事务控制语句 | 可以 `COMMIT`/`ROLLBACK` |
+| 限制 | 不能有 `CALL`、不能用动态 SQL 的结果集 | 灵活 |
+| 性能 | **在 SQL 中对每一行调用 = 灾难** ⭐ | — |
+
+**⚠️ 最大的坑**：`SELECT * FROM t WHERE my_func(col) = 1` —— 函数会在**每一行**上执行，且**让索引失效**。如果函数里还查表，就是 O(n × m)。
+
+## 五、其他相关对象
+
+| 对象 | 说明 |
+|---|---|
+| **事件调度器（Event Scheduler）** | MySQL 内置定时任务：`CREATE EVENT ... ON SCHEDULE EVERY 1 DAY DO ...`（需 `event_scheduler=ON`）⭐ 替代 cron 做库内维护 |
+| **序列** | MySQL 无原生序列，用 `AUTO_INCREMENT` 或自增表模拟 |
+| **用户定义函数 UDF** | 用 C/C++ 编译成 `.so` 加载，**能突破 SQL 限制但有安全风险** ⚠️ |
+
+**事件调度器示例**：
+
+```sql
+SET GLOBAL event_scheduler = ON;
+CREATE EVENT ev_clean_log
+ON SCHEDULE EVERY 1 DAY STARTS ''2024-05-01 03:00:00''
+DO
+  DELETE FROM logs WHERE dt < DATE_SUB(CURDATE(), INTERVAL 30 DAY);
+```
+
+## 六、选型总表 ⭐
+
+| 需求 | 推荐方案 |
+|---|---|
+| 封装复杂查询、权限隔离 | **视图** |
+| 审计日志 | 触发器（简单）或**应用层日志** |
+| 冗余字段同步 | **应用层** 或 **binlog 订阅** ⭐ |
+| 定时清理/统计 | **存储过程 + Event Scheduler** 或外部 cron ⭐ |
+| 业务逻辑 | **应用层**（有测试、有版本控制）⭐ |
+| 复杂计算（多行）| **应用层**（语言生态更丰富）|
+| 一次性数据修复 | **存储过程** 或 Python/Shell 脚本 |
+
+**一句话总结**：**视图是"查询的封装"，触发器是"隐式的副作用"，存储过程是"库内程序"**。三者都是"把逻辑放进数据库"，而现代架构的共识是 —— **数据库只负责存与取，业务逻辑归应用层**；只在"运维型批处理"这个窄场景里用存储过程才划算。', 1),
+
+('MySQL', '备份,恢复,xtrabackup', 3,
+ 'MySQL 备份有哪几种方式？`mysqldump` 和 XtraBackup 有什么区别？怎么验证备份可用？',
+ '## 一、备份分类 ⭐
+
+```
+按形式：  逻辑备份（SQL 文本）  vs  物理备份（数据文件拷贝）
+按范围：  全量  vs  增量  vs  差异
+按状态：  热备（不锁）  vs  温备（只读）  vs  冷备（停机）
+```
+
+| 工具 | 类型 | 锁 | 适用规模 |
+|---|---|---|---|
+| **`mysqldump`** | 逻辑 | InnoDB 下**基本不锁**（`--single-transaction`）| **< 50GB**，小库 ⭐ |
+| **`mysqlpump`** | 逻辑（并行）| 同上 | 中等（8.0 已弃用）|
+| **`mysqlsh` util dump** | 逻辑（并行，8.0）| 同上 | 中等偏大 ✅ |
+| **XtraBackup（Percona）** | **物理** | **几乎不锁**（`--backup-lock=OFF` 8.0）| **大库，TB 级** ⭐ |
+| **Clone Plugin（8.0.17+）** | 物理（本地/远程克隆）| 极短 | 建从库**最快** ⭐ |
+| **文件系统快照（LVM/ZFS）** | 物理 | 秒级锁表 | 云环境常见 |
+| **`SELECT ... INTO OUTFILE`** | 逻辑（单表）| — | 数据交换 |
+
+## 二、`mysqldump` ⭐
+
+**一致性全量备份（InnoDB）**：
+
+```bash
+mysqldump -u root -p \\
+  --single-transaction \\          # ⭐ 用 REPEATABLE READ 快照，保证一致性且不锁表（仅 InnoDB）
+  --master-data=2 \\               # ⭐ 记录 binlog 位点（注释形式），用于搭建从库/PITR
+  --flush-logs \\                  # 备份后切新 binlog
+  --routines --triggers --events \\# 导出存储过程/触发器/事件
+  --set-gtid-purged=OFF \\         # 视情况；搭从库时需要 ON
+  --default-character-set=utf8mb4 \\   # ⭐ 避免乱码（本项目实战教训）
+  --hex-blob \\                    # BLOB 用十六进制，防二进制乱码
+  --databases blogdb > blogdb_$(date +%F).sql
+```
+
+**关键选项详解**：
+
+| 选项 | 说明 |
+|---|---|
+| `--single-transaction` ⭐ | 在一个事务里导出所有表 → **一致性快照**，不锁表。**仅对 InnoDB 有效**；有 MyISAM 表时会失效 |
+| `--master-data=2` ⭐ | 把 `CHANGE MASTER TO MASTER_LOG_FILE=..., MASTER_LOG_POS=...` 以**注释**写入文件头（`=1` 则不注释，恢复时会自动执行）|
+| `--flush-logs` | 备份前切 binlog，便于 PITR 定位 |
+| `--default-character-set=utf8mb4` ⭐ | **不写这个很容易导出乱码**（尤其在有 latin1 遗留数据的项目里）|
+| `--hex-blob` | 二进制列以 `0x...` 形式导出，避免不可见字符破坏 SQL |
+| `--where=''id<1000''` | 条件导出（分片拉取）|
+| `--skip-lock-tables` | 避免 MyISAM 锁表 |
+| `--no-data` | 只导结构（`-d`）|
+| `--routines --triggers --events` | 默认**不含**这些对象 ⚠️ |
+
+**备份单表 / 结构**：
+
+```bash
+mysqldump -u root -p blogdb posts > posts.sql
+mysqldump -u root -p -d blogdb > schema_only.sql    # 只要结构
+mysqldump -u root -p blogdb --ignore-table=blogdb.logs > nodata.sql
+```
+
+**恢复**：
+
+```bash
+mysql -u root -p blogdb < blogdb_2024-05-01.sql
+# 大文件加速（关掉 binlog、关掉唯一性检查）
+mysql -u root -p \\
+  -e "SET GLOBAL sql_log_bin=0; SET UNIQUE_CHECKS=0; SET FOREIGN_KEY_CHECKS=0;" \\
+  blogdb < dump.sql
+```
+
+## 三、XtraBackup ⭐
+
+**原理**：
+
+```
+① 短暂加锁，记录起始 LSN（Log Sequence Number）
+② 以物理方式边读边拷贝 InnoDB 数据文件（不阻塞 DML）
+③ 同时持续拷贝 redo log，保证"拷贝过程中发生的变化"也在里面
+④ 解锁，结束
+⑤ 备份完成后需 --prepare：用 redo log 把数据文件"前滚"到一致状态 ⭐
+```
+
+**核心优势**：
+
+| | mysqldump | XtraBackup |
+|---|---|---|
+| 备份速度 | 慢（要读全部数据 + 生成 SQL）| **快**（顺序拷贝文件）|
+| 恢复速度 | **慢**（要逐条重放 SQL、重建索引）⭐ | **快**（直接拷回文件）|
+| 备份体积 | 大（含 SQL 文本）| **小**（压缩后可很小）|
+| 增量备份 | ❌ | ✅ **支持增量** ⭐ |
+| 跨版本/跨平台 | ✅ 好 | ⚠️ 受限 |
+| 适用规模 | < 50GB | **100GB ~ TB 级** ⭐ |
+
+**常用命令**：
+
+```bash
+# 全量备份
+xtrabackup --backup --target-dir=/backup/full --user=root --password=xxx
+
+# 增量备份（基于上次全量）
+xtrabackup --backup --target-dir=/backup/inc1 \\
+  --incremental-basedir=/backup/full --user=root --password=xxx
+
+# prepare（关键步骤）
+xtrabackup --prepare --apply-log-only --target-dir=/backup/full        # 全量
+xtrabackup --prepare --apply-log-only --target-dir=/backup/full \\
+  --incremental-dir=/backup/inc1                                        # 应用增量
+xtrabackup --prepare --target-dir=/backup/full                          # 最后一次不加 --apply-log-only
+
+# 恢复
+systemctl stop mysqld
+rm -rf /var/lib/mysql/*
+xtrabackup --copy-back --target-dir=/backup/full
+chown -R mysql:mysql /var/lib/mysql
+systemctl start mysqld
+```
+
+**⚠️ `--apply-log-only` 的规则**：应用**中间**的增量备份时必须加；应用**最后一个**增量/做最终 prepare 时**不能**加，否则回滚未提交事务被跳过 → 数据不一致 ⭐
+
+## 四、如何验证备份可用 ⭐（最重要的一步）
+
+**"没验证过的备份等于没有备份"**。
+
+| 验证层次 | 做法 |
+|---|---|
+| **① 文件完整性** | 检查文件大小、`gzip -t` 校验、备份日志无 error |
+| **② 可恢复性（必做）** ⭐ | **定期在测试机真实恢复一次**，并跑数据校验 |
+| **③ 数据一致性** | 恢复后 `CHECK TABLE`、`pt-table-checksum` 与源库对比 |
+| **④ 时间可接受性** | 记录恢复耗时（RTO），确认在业务容忍范围内 |
+| **⑤ 自动化** | 备份脚本 + 恢复演练脚本 + 告警（备份失败必须能通知到人）⭐ |
+
+**校验恢复的具体方法**：
+
+```bash
+# 1. 恢复到独立的测试实例（不同端口/容器）
+# 2. 对比行数与校验和
+mysql -e "SELECT COUNT(*) FROM blogdb.posts"       # 源
+mysql -e "SELECT COUNT(*) FROM blogdb.posts"       # 恢复目标
+# 3. 用 pt-table-checksum 做逐行校验
+pt-table-checksum --host=source --databases=blogdb
+# 4. 抽查关键业务数据（最新一条订单、最新评论）
+# 5. 启动应用连接测试库，跑一遍冒烟测试 ⭐
+```
+
+**备份策略（3-2-1 原则）** ⭐：
+
+```
+3 份副本  ·  2 种介质  ·  1 份异地
++ 保留策略：日备保留 7 天，周备保留 4 周，月备保留 12 个月
++ 备份文件也要加密（含敏感数据）
++ 备份文件必须与数据库实例分离存放（防同一台机器一起坏）
+```
+
+## 五、PITR（时间点恢复）⭐
+
+**全量备份 + binlog 重放** 可恢复到任意时间点：
+
+```bash
+# 1. 恢复全量备份
+# 2. 从 --master-data=2 记录的位点开始重放 binlog
+mysqlbinlog --start-position=1234 \\
+  --stop-datetime=''2024-05-01 10:29:00'' \\
+  /var/lib/mysql/mysql-bin.000012 | mysql -u root -p
+
+# 或用 GTID
+mysqlbinlog --skip-gtids --include-gtids=''uuid:1-100'' mysql-bin.000012 | mysql -u root -p
+```
+
+**典型用途**：误 `DELETE` / 误 `DROP TABLE` 后恢复到误操作前一刻 ⭐
+
+**注意**：
+- **ROW 格式的 binlog 才可靠**（STATEMENT 下非确定性语句无法保证重放结果）⭐
+- 恢复前先 `mysqlbinlog ... > x.sql` 用编辑器**去掉误操作那一段**更稳妥
+- **GTID 模式下要加 `--skip-gtids`**，否则重放会被 GTID 去重而跳过
+
+## 六、一句话总结
+
+**备份三件事：选对工具（小库 dump / 大库 XtraBackup）、保证一致性（`--single-transaction` / redo log 前滚）、验证可恢复（定期真实演练）**；再配合 **binlog 做 PITR**，才算一套完整的"数据不丢"方案。', 1),
+
+('MySQL', '权限,安全,SQL注入', 2,
+ 'MySQL 的权限体系是怎样的？如何防范 SQL 注入？怎样做到最小权限？',
+ '## 一、权限体系（四层）⭐
+
+```
+全局级（*.*）  →  数据库级（db.*）  →  表级（db.t）  →  列级（db.t.col）
+```
+
+授权时按**最具体**的匹配生效；但**全局权限只能由全局 `REVOKE` 收回**（局部不能覆盖全局）。
+
+```sql
+-- 全局
+GRANT SELECT, INSERT, UPDATE, DELETE ON *.* TO ''app''@''%'';
+-- 库级
+GRANT ALL ON blogdb.* TO ''app''@''10.0.0.%'';
+-- 表级
+GRANT SELECT ON blogdb.posts TO ''readonly''@''%'';
+-- 列级
+GRANT SELECT (id, title) ON blogdb.posts TO ''reader''@''%'';
+
+-- 查看
+SHOW GRANTS FOR ''app''@''%'';
+SELECT * FROM mysql.user WHERE user=''app''\\G
+```
+
+**关键权限说明** ⭐：
+
+| 权限 | 说明 |
+|---|---|
+| `SELECT/INSERT/UPDATE/DELETE` | 基本 DML |
+| `CREATE/DROP/ALTER/INDEX` | DDL |
+| **`FILE`** | ⚠️ **能读写服务器任意文件**（`LOAD DATA INFILE`、`INTO OUTFILE`）→ **绝不能给应用账号** |
+| **`PROCESS`** | 看所有连接（含其他用户）→ 慎给 |
+| **`SUPER`** | 8.0 已拆分；能 kill 别人的连接、改全局变量 ⚠️ |
+| **`GRANT OPTION`** | 能把自己权限再授权给别人 ⚠️ 慎给 |
+| `EXECUTE` | 调用存储过程 |
+| `RELOAD` | `FLUSH` 操作 |
+| `REPLICATION CLIENT/SLAVE` | 复制相关 |
+
+**账号格式 `''user''@''host''`** ⭐：`app''@''localhost''` 与 `''app''@''%''` 是**两个不同账号**（MySQL 支持同名不同 host）。认证时按 host 最具体的匹配。
+
+**8.0 的变化**：`CREATE USER` 与 `GRANT` 分离（不再支持 `GRANT ... IDENTIFIED BY`）；引入 **角色（Role）**：
+
+```sql
+CREATE ROLE ''app_rw'';
+GRANT SELECT, INSERT, UPDATE, DELETE ON blogdb.* TO ''app_rw'';
+GRANT ''app_rw'' TO ''app''@''%'';
+SET DEFAULT ROLE ''app_rw'' TO ''app''@''%'';
+```
+
+## 二、最小权限原则 ⭐
+
+```
+① 应用账号只给需要的库 + 需要的 DML 权限（通常 SELECT/INSERT/UPDATE/DELETE，不给 DDL）
+② 限制来源：''app''@''10.0.0.%'' 而不是 ''%'' ⭐（防外网爆破，也防内网横向）
+③ 独立账号：不同服务用不同账号，便于审计与隔离（本项目：博客应用账号 ≠ 运维 root）
+④ 不用 root 跑应用 ⚠️ 这是最基础也最常被违反的一条
+⑤ 禁止 FILE / SUPER / GRANT OPTION / PROCESS 给应用账号
+⑥ 只读副本用只读账号（SELECT + REPLICATION CLIENT）
+⑦ 定期审计：SELECT user,host FROM mysql.user; 检查空密码账号、通配 host
+```
+
+**本项目踩过的坑** ⭐：README 里写了专用账号 `blog`，但服务器上**只有 root** → 导入种子 SQL 时命令失败。**正确做法**是按最小权限原则**真的创建**专用账号：
+
+```sql
+CREATE USER ''blog''@''localhost'' IDENTIFIED BY ''<强密码>'';
+GRANT SELECT, INSERT, UPDATE, DELETE ON blogdb.* TO ''blog''@''localhost'';
+FLUSH PRIVILEGES;
+```
+
+然后应用连接串改用 `blog`，而不是"图省事继续用 root"。
+
+**检查权限是否合理**：
+
+```sql
+-- 列出所有账号与 host
+SELECT user, host, plugin, account_locked FROM mysql.user ORDER BY user;
+-- 找出空密码账号（危险）
+SELECT user, host FROM mysql.user WHERE authentication_string = '''';
+-- 找出 host 为 % 的账号
+SELECT user, host FROM mysql.user WHERE host = ''%'';
+```
+
+## 三、SQL 注入 ⭐
+
+### 原理
+
+```sql
+-- 应用代码（❌ 字符串拼接）
+std::string sql = "SELECT * FROM users WHERE name = ''" + input + "''";
+-- 用户输入：'' OR ''1''=''1
+-- 实际执行：SELECT * FROM users WHERE name = '''' OR ''1''=''1''   ← 返回全表
+```
+
+**更危险的版本**：
+
+```
+输入：''; DROP TABLE posts; --
+输入：'' UNION SELECT user, authentication_string FROM mysql.user --
+```
+
+### 防御（按优先级）⭐
+
+| # | 措施 | 说明 |
+|---|---|---|
+| **① 参数化查询 / 预处理语句** ⭐⭐ | **唯一根本解法**。SQL 结构与数据**分离编译**，数据永远只是"数据"，不会变成语法 |
+| **② 白名单校验** | 表名、列名、排序方向（`ASC/DESC`）**无法参数化** → 必须用**白名单映射** ⭐ |
+| **③ 转义** | 兜底手段。`mysql_real_escape_string()`（C API）/ `mysqli_real_escape_string`。**必须配合字符集正确设置**（连接字符集不对转义会失效）⭐ |
+| **④ 最小权限** | 即使被注入，账号也没有 `FILE`/`DROP`/跨库权限 |
+| **⑤ 错误信息不返回给用户** | 防信息泄露（表名、SQL 片段）|
+| **⑥ WAF / 输入校验** | 辅助层，不能替代 ① |
+| **⑦ 关闭多语句** | C API `mysql_real_connect` 时不要开 `CLIENT_MULTI_STATEMENTS` ⭐（本项目 Crow 场景要特别注意）|
+
+### C API 的正确姿势 ⭐
+
+**❌ 错误（字符串拼接）**：
+
+```cpp
+std::string q = "SELECT * FROM posts WHERE title LIKE ''%" + kw + "%''";
+mysql_query(conn, q.c_str());
+```
+
+**✅ 方式一：`mysql_real_escape_string` + 转义**
+
+```cpp
+char esc[1024];
+unsigned long n = mysql_real_escape_string(conn, esc, kw.c_str(), kw.size());
+// esc 里所有危险字符（'' " \\ NUL 等）都被加了反斜杠，长度至多 2n+1
+std::string q = std::string("SELECT * FROM posts WHERE title LIKE ''%") + esc + "%''";
+```
+
+**✅ 方式二：预处理语句（推荐）** ⭐
+
+```cpp
+MYSQL_STMT* stmt = mysql_stmt_init(conn);
+mysql_stmt_prepare(stmt, "SELECT id, title FROM posts WHERE title LIKE ? AND status = ?", -1);
+
+MYSQL_BIND bind[2] = {};
+std::string like = "%" + kw + "%";
+unsigned long len = like.size();
+bind[0].buffer_type = MYSQL_TYPE_STRING;
+bind[0].buffer = like.data();
+bind[0].buffer_length = like.size();   // ⭐ 不写 buffer_length 会截断/出错
+bind[0].length = &len;
+int st = 1;
+bind[1].buffer_type = MYSQL_TYPE_LONG;
+bind[1].buffer = &st;
+
+mysql_stmt_bind_param(stmt, bind);
+mysql_stmt_execute(stmt);
+// ... mysql_stmt_bind_result + mysql_stmt_fetch 读结果
+mysql_stmt_close(stmt);
+```
+
+**预处理语句为什么安全**：占位符 `?` 在 `prepare` 阶段就确定了 SQL 的**语法结构**，`execute` 阶段传进来的值**只被当作数据**，永远不会被解析为语法。**这是原理层面的安全，而不是"过滤了多少危险字符"**。
+
+### 无法参数化的部分怎么处理 ⭐
+
+```cpp
+// ❌ 错误：把表名拼进 SQL
+std::string q = "SELECT * FROM " + table + " WHERE id = " + std::to_string(id);
+
+// ✅ 正确：白名单映射
+static const std::map<std::string, std::string> TABLES = {
+    {"posts", "posts"}, {"comments", "comments"}, {"users", "users"}
+};
+auto it = TABLES.find(table);
+if (it == TABLES.end()) return error("invalid table");
+std::string q = "SELECT * FROM " + it->second + " WHERE id = ?";   // 值走参数化
+```
+
+**排序方向同理**：
+
+```cpp
+std::string dir = (order == "asc") ? "ASC" : "DESC";   // 只映射到两个常量
+```
+
+### `LIKE` 的通配符要额外转义 ⭐
+
+```cpp
+// 用户输入里的 % 和 _ 是 LIKE 的通配符，要转义成 \\% 和 \\_
+// 否则用户输入 "%" 会匹配所有数据
+std::string escapeLike(std::string s) {
+    std::string r;
+    for (char c : s) {
+        if (c == ''%'' || c == ''_'' || c == ''\\\\'') r += ''\\\\'';
+        r += c;
+    }
+    return r;
+}
+```
+
+## 四、传输与存储安全 ⭐
+
+| 项 | 措施 |
+|---|---|
+| **传输加密** | 开启 TLS：`require_secure_transport=ON`，`CREATE USER ... REQUIRE SSL` |
+| **存储加密** | 表空间加密（`innodb_encrypt_tables=ON`）、文件系统加密、云盘加密 |
+| **敏感字段** | 密码**加盐哈希**（bcrypt/argon2），不要明文/单轮 MD5 ⭐；手机号/身份证做脱敏或加密 |
+| **审计** | `audit_log` 插件（企业版/Percona 开源版）、`general_log` 临时排查用（性能开销大）|
+| **网络隔离** | MySQL 只监听内网/`bind-address=127.0.0.1`，**绝不暴露公网** ⭐ |
+| **备份加密** | 备份文件本身含明文数据 |
+| **CVE 与补丁** | 定期升级小版本（8.0.x 安全补丁）|
+
+**脱敏查询时注意 `->>` 之类的函数不影响脱敏**：如果用视图做脱敏（`SELECT id, LEFT(phone,3)...`），别让应用有直接查基表的权限。
+
+## 五、一句话总结
+
+**权限 = 四层结构 + 最具体匹配 + 最小权限；SQL 注入的唯一根本解法是"参数化查询/预处理语句"（数据与语法分离），转义只是兜底，白名单负责解决"表名/列名/排序方向无法参数化"的部分。** 应用**绝不要用 root**，也**绝不要给 `FILE` 权限**。', 1),
+
+('MySQL', '连接池,连接数,架构', 2,
+ '为什么要用数据库连接池？`max_connections` 该怎么设？连接数过高会有什么问题？',
+ '## 一、为什么需要连接池 ⭐
+
+**一次 MySQL 连接的开销**：
+
+| 阶段 | 开销 |
+|---|---|
+| **TCP 三次握手** | 1 个 RTT |
+| **（如启用 TLS）握手** | 额外多个 RTT + 非对称加密运算 ⭐ 很贵 |
+| **认证** | 密码哈希计算（`caching_sha2_password` 首次更贵）|
+| **分配线程 + 会话内存** ⭐ | 每连接约 **200KB ~ 1MB**（`thread_stack`、`net_buffer`、`sort_buffer` 等按需分配）|
+| **权限表查询** | 每次连接都要查权限 |
+
+**结论**：如果每个请求都新建连接，**连接建立的开销可能远超 SQL 本身**。
+
+**连接池的价值**：
+
+```
+① 复用连接 → 消除握手/认证/建线程的开销 ⭐
+② 限流保护 → 上限固定，避免雪崩式打满数据库 ⭐
+③ 统一管理 → 事务、超时、重试、监控集中在池层
+④ 削峰 → 请求排队而不是压垮数据库
+```
+
+## 二、连接池的关键参数 ⭐
+
+| 参数 | 作用 | 建议 |
+|---|---|---|
+| **`min_idle` / `minimumIdle`** | 最小空闲连接（预热）| 5~10，避免冷启动抖动 |
+| **`max_pool_size` / `maximumPoolSize`** ⭐ | **池上限** | 见下方计算 |
+| **`connectionTimeout`** | 从池取连接的超时（**不是 SQL 超时**）| 1~3s，快速失败 ⭐ |
+| **`idleTimeout`** | 空闲连接回收时间 | 10~30min，**必须小于 MySQL 的 `wait_timeout`** ⭐ |
+| **`maxLifetime`** | 连接最大存活时间 | **比 `wait_timeout` 短 30s~1min** ⭐ 防止用被服务端杀掉的连接 |
+| **`validationQuery`** | 借出前校验（`SELECT 1`）| 或依赖 `keepalive` |
+| **`leakDetectionThreshold`** | 连接泄漏检测（超时未归还告警）| 生产必开 ⭐ |
+
+**`maxLifetime` vs `wait_timeout` 的关系（高频事故）** ⭐：
+
+```
+MySQL wait_timeout = 28800（8h，默认）
+池 maxLifetime     = 30min     ← ✅ 短于服务端，池主动回收，不会用到死连接
+若 maxLifetime > wait_timeout  → 池里的连接被服务端悄悄断开 → 应用拿到"死连接"报错
+   通信异常 / Communications link failure / MySQL server has gone away
+```
+
+## 三、`max_connections` 怎么设 ⭐
+
+**核心：不是越大越好。**
+
+**内存角度**：
+
+```
+每连接内存 ≈ thread_stack + net_buffer_length + 按需的 sort/join/read/write buffer
+典型估算：200KB ~ 1MB（取决于查询复杂度）
+
+max_connections × 每连接内存 必须 < 可用内存，且要给 Buffer Pool 留足
+例：16GB 内存
+   innodb_buffer_pool_size = 10GB
+   剩余 ~5GB 给连接和系统
+   若每连接 1MB → max_connections 可设 2000~4000
+   若查询常用大 sort_buffer（4MB）→ 每连接可能 10MB+ → 只能设几百 ⚠️
+```
+
+**并发角度**：
+
+```
+经验值：
+  小型应用（单机）      → 100 ~ 300
+  中型应用（连接池）    → 500 ~ 1000
+  大型/多应用共享       → 1000 ~ 2000，但必须配合连接池
+
+更重要的公式：max_connections ≈ Σ(各应用连接池 max_pool_size) × 1.5（留余量）
+```
+
+**反直觉的事实** ⭐：**连接数过多会降低总吞吐**。
+
+```
+① 每个活跃连接 = 一个线程 → 线程被 OS 调度 → 上下文切换开销 ⭐
+   （MySQL 处理查询的活跃连接，超过核数×2 就开始互相抢 CPU）
+② 线程争抢互斥量/锁 → latch 竞争（buf_pool mutex、trx sys mutex）
+③ 内存膨胀 → 可能触发 swap → 性能断崖式下跌
+④ 大量连接各自持有事务 → undo 版本链长、锁等待多 → 死锁概率上升
+```
+
+**所以现代实践是**：**少量长连接 + 连接池排队**。多进程/多线程应用共享一个池，而不是"每个线程一个连接"。
+
+**监控**：
+
+```sql
+SHOW STATUS LIKE ''Threads_connected'';    -- 当前连接数
+SHOW STATUS LIKE ''Threads_running'';      -- 正在执行的（这个更关键）⭐
+SHOW STATUS LIKE ''Threads_created'';      -- 累计创建的线程数
+SHOW STATUS LIKE ''Max_used_connections''; -- 历史峰值 ⭐
+SHOW VARIABLES LIKE ''max_connections'';
+SHOW VARIABLES LIKE ''%timeout%'';         -- wait_timeout / interactive_timeout
+SHOW PROCESSLIST;                        -- 当前所有连接
+```
+
+**判断连接数是否合理**：
+
+```
+Max_used_connections / max_connections   < 85%  → 合理
+Max_used_connections / max_connections   > 85%  → 需要扩容或加池 ⭐
+Threads_running 长期 > 核数 × 2           → CPU 争抢，需要优化 SQL 而不是加连接
+Threads_created 持续快速增长              → 连接没有复用（池失效或 maxLifetime 太短）
+```
+
+## 四、常见连接问题与排查 ⭐
+
+| 现象 | 原因 | 解决 |
+|---|---|---|
+| `Too many connections` | 连接打满 | 加池 / 缩短事务 / 检查泄漏；临时用 `SUPER` 账号登录（8.0 保留 1 个给 `CONNECTION_ADMIN`）|
+| `MySQL server has gone away` | 用了被 `wait_timeout` 断开的连接；或包太大（`max_allowed_packet`）| 池 `maxLifetime` < `wait_timeout`；调大 `max_allowed_packet` ⭐ |
+| **连接泄漏** | 代码里 `conn.close()` 没执行（异常路径）| 用 **RAII/`try-with-resources`** 保证归还 ⭐ |
+| 连接建立慢 | DNS 反查、TLS 握手 | `skip-name-resolve`、会话复用 |
+| `Lock wait timeout` | 长事务持锁 | 缩短事务 |
+| 空闲连接被回收后报错 | 池没做校验 | 开 `testOnBorrow`（有开销）或 `keepalive` |
+
+**C++ 侧的 RAII 连接守卫**（本项目 Crow 场景）⭐：
+
+```cpp
+class ConnGuard {
+    MYSQL* c_;
+    std::function<void(MYSQL*)> release_;
+public:
+    ConnGuard(MYSQL* c, std::function<void(MYSQL*)> rel) : c_(c), release_(std::move(rel)) {}
+    ~ConnGuard() { if (c_) release_(c_); }              // 异常也归还
+    MYSQL* get() const { return c_; }
+    ConnGuard(const ConnGuard&) = delete;
+    ConnGuard& operator=(const ConnGuard&) = delete;     // 防重复归还
+};
+```
+
+## 五、连接池之外的相关配置
+
+| 参数 | 说明 |
+|---|---|
+| `wait_timeout` / `interactive_timeout` | 空闲连接超时（默认 28800s）；调小可回收僵尸连接 |
+| `max_allowed_packet` | 单包上限（默认 64MB / 4MB）；大 BLOB 场景要调大 ⭐ |
+| `back_log` | TCP 连接队列长度（listen backlog），短时高并发需调大 |
+| `thread_cache_size` | 线程缓存（复用，省创建开销）|
+| `skip-name-resolve` | 跳过 DNS 反查，加速连接 ⭐ |
+| `max_connect_errors` | 连接失败次数上限（超过会封 host）|
+
+**`Aborted_connects` / `Aborted_clients`** 的监控：
+
+```sql
+SHOW STATUS LIKE ''Aborted_connects'';   -- 握手阶段失败（认证失败、超时）
+SHOW STATUS LIKE ''Aborted_clients'';    -- 已建立但非正常断开（客户端没 quit、超时）
+```
+
+这两个值持续增长 → 网络问题或连接管理有问题。
+
+## 六、一句话总结
+
+**连接池的核心是"复用 + 限流"**；`max_connections` 必须按**内存 + 核数**估算而不是拍脑袋，**连接不是越多越好**（超过核数×2 就开始负收益）；最常见的两个坑是 **`maxLifetime` 没短于 `wait_timeout`** 和 **连接泄漏（要用 RAII 保证归还）**。', 1),
+
+('MySQL', '表设计,范式,字段类型', 1,
+ '数据库表设计有哪些规范？金额、时间、状态、布尔值这些字段该用什么类型？',
+ '## 一、范式与反范式 ⭐
+
+| 范式 | 要求 | 目的 |
+|---|---|---|
+| **1NF** | 每列**原子**（不可再分），无重复组 | 消除"一个格子里放列表" |
+| **2NF** | 消除**部分依赖**（非主键列不依赖主键的一部分）| 联合主键场景 |
+| **3NF** | 消除**传递依赖**（非主键列不依赖其他非主键列）| 消除冗余 |
+
+**实践**：**OLTP 一般做到 3NF，再适度反范式**。
+
+**为什么需要反范式** ⭐：
+- 冗余字段（如订单表里存 `user_name`）**避免 JOIN**，提升读性能。
+- **代价**：更新时要保证一致（事务内一起改，或异步同步），存在**数据不一致窗口**。
+
+**判断标准**：这个冗余字段会被**高频读**、**极少改**吗？是 → 可以冗余；否 → 老老实实 JOIN。
+
+## 二、字段类型选择 ⭐
+
+### 整数
+
+| 类型 | 字节 | 范围 |
+|---|---|---|
+| `TINYINT` | 1 | -128~127（unsigned 0~255）|
+| `SMALLINT` | 2 | ±3.2万 |
+| `MEDIUMINT` | 3 | ±838万 |
+| **`INT`** | 4 | ±21亿 |
+| **`BIGINT`** | 8 | ±922亿亿 |
+
+**原则**：**选能覆盖业务最大值的"最小"类型**（省空间 → 页能放更多行 → IO 更少）。
+
+**常见陷阱**：
+- `INT` 只到 21 亿 → **自增主键用到 21 亿就爆**（大表要考虑 `BIGINT`）⭐
+- `INT(11)` 的 `11` **不是长度限制**，只是**显示宽度**（`ZEROFILL` 才有意义）⭐ 8.0 已弃用该语法。
+
+### 金额 ⭐（面试高频）
+
+| 类型 | 评价 |
+|---|---|
+| **`DECIMAL(M,D)`** ⭐ | **推荐**。定点数，精确存储，无浮点误差。金额用 `DECIMAL(18,2)` |
+| `FLOAT` / `DOUBLE` | ❌ **禁用**。二进制浮点有精度误差（`0.1+0.2 != 0.3`），累加会漂移 |
+| `BIGINT`（存"分"）⭐ | 也推荐。用整数存最小货币单位（分/厘），避免精度问题且运算快 |
+| `VARCHAR` 存数字 | ❌ 无法比较大小、无法算术 |
+
+```sql
+amount DECIMAL(18, 2) NOT NULL DEFAULT 0.00   -- 以元为单位
+-- 或
+amount_fen BIGINT NOT NULL DEFAULT 0          -- 以分为单位，应用侧换算
+```
+
+**取舍**：`DECIMAL` 直观但运算略慢；`BIGINT` 快但要在应用层处理单位。**两者都对，绝不能选浮点**。
+
+### 时间 ⭐
+
+| 类型 | 范围 | 时区 | 建议 |
+|---|---|---|---|
+| **`DATETIME`** ⭐ | 1000~9999 年 | **不受时区影响**（存字面值）| **推荐** |
+| **`TIMESTAMP`** | 1970~2038 年（**2038 问题**）| 存 UTC，按 `time_zone` 转换显示 | 需要自动时区转换时用 |
+| `DATE` | 日期 | — | 只关心日期 |
+| `TIME` | 时间 | — | |
+| `BIGINT`（时间戳）| 2038 之后也行 | 无时区语义 | 跨时区系统或需要精确排序 |
+
+**关键选择** ⭐：
+
+```sql
+-- 推荐：DATETIME(3) 存毫秒精度，不受时区影响，语义明确
+created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+
+-- ✅ 好的实践：
+--   ① 库里统一存 UTC 或统一存业务时区的本地时间（二选一，全库一致）
+--   ② 应用层负责时区转换
+--   ③ 用 DATETIME(3) 而不是 DATETIME（毫秒精度在并发排序时很重要）
+
+-- ❌ 避免：
+--   ① 混用 DATETIME 和 TIMESTAMP
+--   ② 用 VARCHAR 存时间（无法比较、无法索引有序）
+--   ③ 用 TIMESTAMP 存"未来久远的时间"（2038 溢出）
+```
+
+**`TIMESTAMP` 的自动行为**（容易踩坑）：`TIMESTAMP` 列默认有 `DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`，即**每次 UPDATE 都会自动改**（除非显式设为 NULL）⭐
+
+### 状态 / 枚举
+
+| 方案 | 优点 | 缺点 |
+|---|---|---|
+| **`TINYINT`** ⭐ | 省空间、快、**易扩展**（加状态不用 DDL）| 语义不直观（要靠文档/常量）|
+| `ENUM` | 语义清晰、省空间 | **加值要 DDL**（`ALTER TABLE`）⭐、排序按定义顺序、跨库迁移难 |
+| `VARCHAR` | 可读性最好 | 占空间大、比较慢 |
+
+```sql
+-- 推荐：TINYINT + 应用层常量/字典表
+status TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT ''0待支付 1已支付 2已发货 3已完成 4已取消''
+
+-- 用字典表更规范（可做外键、可在后台维护）
+CREATE TABLE dict_order_status (code TINYINT PRIMARY KEY, name VARCHAR(20) NOT NULL);
+```
+
+**`comment` 一定要写** ⭐ 这是最便宜的文档。
+
+### 布尔值
+
+```sql
+is_deleted TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT ''0否 1是''
+-- MySQL 里 BOOL/BOOLEAN 就是 TINYINT(1) 的别名，没有真正的布尔类型
+```
+
+**软删除设计** ⭐：
+
+```sql
+-- 简单方案
+is_deleted TINYINT NOT NULL DEFAULT 0,
+KEY idx_deleted (is_deleted)
+
+-- 更好：用"删除时间"，既能表示删除，又保留信息
+deleted_at DATETIME(3) NULL DEFAULT NULL,
+KEY idx_deleted (deleted_at)
+-- 查询：WHERE deleted_at IS NULL
+```
+
+**注意**：软删除 + 唯一索引冲突 ⭐ —— `username` 唯一索引下，删掉用户后无法再注册同名。解法：唯一索引改为 `(username, deleted_at)`，删除时把 `deleted_at` 设为时间（而不是 NULL）。
+
+### 字符串
+
+| 类型 | 说明 |
+|---|---|
+| **`VARCHAR(n)`** ⭐ | 变长。`n` 是**字符数**（utf8mb4 下最多 16383，实际受行大小 65535 限制）|
+| `CHAR(n)` | 定长，适合**长度固定**的短串（MD5 32 位、UUID、国家代码）；**没有变长头开销** |
+| **`TEXT`** | 长文本，**不能有默认值**、只能用前缀索引 |
+| **`BLOB`** | 二进制 |
+
+**原则**：
+- **长度按实际需求**，不要全用 `VARCHAR(255)`（`ORDER BY`/临时表会按最大长度分配内存 ⭐）
+- 需要索引的列要受限（utf8mb4 索引前缀上限 3072 字节）
+- 大文本/二进制**拆到独立表**（见"行格式"那题）
+
+### 主键
+
+```sql
+id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY
+```
+
+**推荐规范**：
+- **`BIGINT UNSIGNED`** 自增（`UNSIGNED` 用完另一半空间；`BIGINT` 防 21 亿溢出）
+- **不用 `UUID`**（页分裂 + 索引膨胀）
+- **业务主键**（如手机号、身份证）**单独建唯一索引**，不要当主键
+
+## 三、表设计规范清单 ⭐
+
+| 规范 | 说明 |
+|---|---|
+| **必须有主键** | InnoDB 按主键组织数据；无主键会用隐藏 row_id |
+| **必须有 `created_at` / `updated_at`** | 排查问题时是救命信息 |
+| **`NOT NULL` + `DEFAULT`** | NULL 会让索引统计复杂、`COUNT(col)` 慢、`NOT IN` 失效 ⭐ |
+| **每列写 `COMMENT`** | 最便宜的文档 |
+| **字段数控制在 20~30 以内** | 太多考虑垂直拆表 |
+| **单表行数控制** | 500万~2000万，再大考虑归档/分片 |
+| **统一命名** | 全小写 + 下划线；表名用单数还是复数要**全库统一** |
+| **枚举值用 `TINYINT` + 字典表/注释** | 不用 `ENUM` |
+| **金额用 `DECIMAL` 或分单位 `BIGINT`** | 绝不用浮点 |
+| **不用外键**（互联网业务）| 用应用层保证，外键在高并发下有锁和性能问题 ⭐ |
+| **索引命名统一** | `idx_表名_列名`、`uk_表名_列名`、`fk_...` |
+| **预留扩展** | 少量 `ext` JSON 字段，或提前想好垂直拆表边界 |
+
+## 四、几张常见表的参考设计
+
+```sql
+-- 用户表
+CREATE TABLE users (
+    id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    username     VARCHAR(32)  NOT NULL COMMENT ''用户名，唯一'',
+    pass_hash    CHAR(60)     NOT NULL COMMENT ''bcrypt 哈希'',
+    phone        VARCHAR(20)  NULL     COMMENT ''手机号，加密存储'',
+    status       TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT ''1正常 2禁用'',
+    deleted_at   DATETIME(3)  NULL     DEFAULT NULL COMMENT ''软删除时间'',
+    created_at   DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at   DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_users_username (username, deleted_at),
+    KEY idx_users_phone (phone)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- 文章表（本项目场景）
+CREATE TABLE posts (
+    id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    title      VARCHAR(200) NOT NULL,
+    summary    VARCHAR(500) NOT NULL DEFAULT '''' COMMENT ''列表页摘要，避免列表页读 content'',
+    content    MEDIUMTEXT   NULL COMMENT ''正文 markdown'',
+    category   VARCHAR(50)  NOT NULL DEFAULT '''' COMMENT ''分类'',
+    views      INT UNSIGNED NOT NULL DEFAULT 0,
+    status     TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT ''0草稿 1已发布'',
+    created_at DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    KEY idx_posts_status_created (status, created_at),
+    KEY idx_posts_category (category),
+    FULLTEXT KEY ft_posts (title, summary)    -- 若要全文检索
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+```
+
+**注意 `summary` 的设计** ⭐：列表页只读 `summary` 不读 `content` → 避免把 `MEDIUMTEXT` 一起读出来（溢出页 IO），这是很实用的优化。
+
+## 五、一句话总结
+
+**表设计的核心是"选最小的类型 + 明确的约束（NOT NULL/COMMENT）+ 合适的主键"**；金额用 `DECIMAL` 或分单位整数，时间用 `DATETIME(3)`，状态用 `TINYINT` + 注释/字典表，布尔用 `TINYINT(1)`；**适度反范式换读性能**，但冗余字段必须有明确的一致性维护策略。', 1),
+
+('MySQL', '读写分离,一致性,架构', 2,
+ '读写分离是怎么实现的？主从延迟导致"写完立刻读读不到"怎么办？',
+ '## 一、实现层次 ⭐
+
+| 层次 | 方案 | 特点 |
+|---|---|---|
+| **代码层** | 手动指定数据源（写走主库、读走从库）| 灵活但侵入业务 |
+| **中间件层** ⭐ | **ProxySQL**、MyCat、ShardingSphere-Proxy、MySQL Router | 应用无感，可动态调整 |
+| **驱动层** | ShardingSphere-JDBC、动态数据源 | 有语言绑定 |
+| **云服务层** | RDS 的读写分离地址（自带延迟感知）| 最省事 |
+
+**路由规则**：
+
+```
+写操作（INSERT/UPDATE/DELETE/DDL）  → 主库
+读操作（SELECT）                    → 从库（轮询/权重）
+事务内                              → 全部走主库 ⭐（否则事务里的读可能读不到自己刚写的数据）
+```
+
+## 二、核心问题：主从延迟 ⭐
+
+**现象**：
+
+```
+T0: 用户在主库注册，INSERT users  ← 主库立即返回成功
+T1: 应用跳转到"个人中心"，SELECT ... → 走从库 → 从库还没重放 → 查不到 ⭐
+   用户看到"用户不存在"
+```
+
+**根因**：异步复制的 IO/SQL 线程是滞后的（见"主从复制"题）。
+
+## 三、解决方案（按推荐度）⭐
+
+### ① 写后立即读走主库（最简单有效）⭐⭐
+
+```
+标记"这个请求刚写过" → 之后 N 秒内该会话的所有读都走主库
+实现方式：
+  · 会话粘性（同一次 HTTP 请求/同一个用户会话内刚写过 → 全走主库）
+  · Redis 记录 user_id → 最后一次写时间，读之前先问一下
+  · Cookie/Session 里带"刚写过"标记
+```
+
+**这是绝大多数互联网公司的实际做法**，比"强一致读"简单得多。
+
+### ② 强制走主库（`/* master */` 注释）
+
+```sql
+SELECT /* master */ * FROM users WHERE id = 1;
+```
+中间件（如 ProxySQL、ShardingSphere）识别注释后强制路由到主库。
+
+### ③ 判断 GTID 是否已重放（精确）⭐
+
+```sql
+-- 主库返回 GTID，从库检查自己是否已执行
+SELECT WAIT_FOR_EXECUTED_GTID_SET(''3E11FA47-71CA-11E1-9E33-C80AA9429562:1-5'', 5);
+--                                                  ↑ GTID 集合        ↑ 超时秒数
+```
+
+或比较位点：
+
+```sql
+-- 主库：SHOW MASTER STATUS → file + pos
+-- 从库：SHOW SLAVE STATUS → Master_Log_File, Read_Master_Log_Pos 是否 >= 目标位点
+```
+
+### ④ 半同步复制 / MGR
+
+要求主库等从库**确认收到**再返回 → 延迟窗口变小但**不能消除**（因为"收到"不等于"重放完"）⭐
+
+**半同步的语义**：`AFTER_SYNC`（默认，等从库 ack 后才向客户端确认提交）比 `AFTER_COMMIT` 更安全。
+
+### ⑤ 用缓存挡一下
+
+写完后立刻写缓存（Cache-Aside）；读先读缓存 → 绕过从库延迟。
+
+## 四、中间件延迟感知（ProxySQL）⭐
+
+```sql
+-- ProxySQL 配置：延迟超过 5s 的从库不再接收读流量
+UPDATE mysql_replication_hostgroups
+  SET max_replication_lag = 5
+  WHERE writer_hostgroup = 10 AND reader_hostgroup = 20;
+LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK;
+```
+
+效果：**某个从库延迟大时自动把它踢出读池**，延迟恢复后再自动加回。这是生产环境的标配。
+
+## 五、读写分离带来的其他问题
+
+| 问题 | 说明 | 解决 |
+|---|---|---|
+| **延迟** | 见上 | 写后读主 / 延迟感知 |
+| **事务一致性** ⭐ | 事务内混用主从会读到不一致 | **事务内全走主库** ⭐ |
+| **从库资源争抢** | 从库还要跑备份/统计 | 分离出专用从库 |
+| **故障切换** | 主库挂了要选新主 | MHA/Orchestrator/MGR |
+| **连接数翻倍** | 主库+从库各自都要连接池 | 分别配置池 |
+| **代理成为单点** | ProxySQL 挂了全站不可用 | ProxySQL 集群 + VIP |
+
+## 六、架构演进路径 ⭐
+
+```
+阶段 1：单机（应用 + MySQL 同机）        ← 本项目当前
+阶段 2：单机 MySQL + 定时备份            ← 低成本的第一道保险 ⭐
+阶段 3：主从复制 + 读写分离（读扩展）
+阶段 4：主从 + 从库只读 + 延迟感知中间件
+阶段 5：MGR / 云 RDS 高可用版
+阶段 6：分库分表 / NewSQL（TiDB）
+```
+
+**关键提醒**：**读写分离是"读扩展"方案，不是"写扩展"方案，也不是高可用方案**。它不能解决写瓶颈，也不能在毫秒级完成选主。**高可用请单独做**（MHA/Orchestrator/MGR）。
+
+**一句话总结**：**读写分离实现不难，难的是"写完立刻读"**；最实用的解法是"**写后一段时间内走主库**"，其次是"**中间件延迟感知**"，精确校验（GTID 等待）只在关键路径上用。', 1),
+
+('MySQL', '高可用,MHA,MGR,故障切换', 3,
+ 'MySQL 高可用方案有哪些？主库故障时如何自动切换？',
+ '## 一、高可用的两个核心问题 ⭐
+
+```
+① 故障检测：怎么知道主库真的挂了（而不是网络抖动）？
+② 选主与切换：谁来接管？怎么让应用无感？
+```
+
+**难点不在"切换"，而在"防脑裂（split-brain）"** ⭐ —— 网络分区时，两边都以为自己是主，会产生双主写入 → 数据冲突。
+
+## 二、主要方案对比 ⭐
+
+| 方案 | 原理 | RPO | RTO | 复杂度 | 适用 |
+|---|---|---|---|---|---|
+| **主从 + 手动切换** | 人工 | 有丢数据 | 分钟~小时 | 极低 | 小站/内部系统 ⭐ |
+| **MHA** | 管理节点 + SSH 探测，选最完整的从库提升 | 近 0（配合半同步）| 10~30s | 中 | 传统主流（已停止维护）|
+| **Orchestrator** | 探测 + 拓扑管理 + 自动/手动切换 | 近 0 | 秒级 | 中 | MHA 的现代替代 ⭐ |
+| **MGR（组复制）** | Paxos 多数派，原生多主/单主 | **0**（强一致）| 秒级 | 中高 | 8.0 推荐 ⭐ |
+| **PXC（Percona XtraDB Cluster）** | Galera 同步复制，多主 | 0 | 秒级 | 高 | 对写延迟敏感场景差 |
+| **云 RDS 高可用版** | 厂商提供主备/多可用区 | 近 0 | 秒~分钟 | **极低** | 推荐 ⭐ |
+| **ProxySQL + 编排脚本** | 代理层路由 + 健康检查 | 视复制方式 | 秒级 | 中 | 需自研 |
+| **Keepalived + VIP** | 虚拟 IP 漂移 | — | 秒级 | 低 | 只解决"入口"，不解决"选主" ⚠️ |
+
+## 三、MHA 的工作方式
+
+```
+       [MHA Manager]  ← 部署在独立机器，SSH 到所有节点
+            │ 每 3 秒 ping 主库
+            ↓
+    [Master] ──复制──> [Slave1] 
+                        [Slave2]
+                        [Slave3]
+```
+
+**切换流程**：
+
+```
+① Manager 探测到 Master 无响应
+② 尝试用 SSH 确认（避免误判）；若 SSH 可达 → 认为只是 MySQL 挂了，做"在线切换"
+③ 从所有 Slave 中挑选：
+   - 优先级（candidate_master=1）
+   - binlog 位点最新（数据最完整）⭐
+④ 把选中的 Slave 的 relay log 里未应用的部分补齐（save/apply relay log）
+⑤ 提升为 Master，其他 Slave 用 CHANGE MASTER 指向新主
+⑥ 通过 VIP 漂移或 ProxySQL 更新路由，让应用指向新主
+⑦ 原 Master 恢复后自动作为 Slave 加入
+```
+
+**MHA 的问题**：依赖 SSH、无脑裂保护（需配合 VIP 或仲裁）、**已停止维护**（作者转做 Orchestrator 思路）。**新项目不推荐**。
+
+## 四、Orchestrator（推荐）⭐
+
+**优势**：
+
+| 特性 | 说明 |
+|---|---|
+| **拓扑感知** | 用 SQL 探测（不需要 SSH）⭐ 更适合云环境/容器 |
+| **RAFT 模式** | 多节点部署 Orchestrator，避免管理节点单点 |
+| **灵活切换** | Web UI 一键切换、自动切换可选 |
+| **支持多种拓扑** | 一主多从、多级复制、双主 |
+| **钩子** | 切换后回调（更新 VIP、ProxySQL、发通知）⭐ |
+| **检测更准** | 结合 `SHOW SLAVE STATUS` 判断真实延迟 |
+
+这是 MHA 的实际替代品，社区活跃。
+
+## 五、MGR（MySQL Group Replication）⭐
+
+**原理**：基于 **Paxos 变体**（XCom），组内每个成员都参与投票，**多数派确认后事务才提交**。
+
+**两种模式**：
+
+| 模式 | 说明 |
+|---|---|
+| **单主模式（默认）** | 一个 Primary 写，其他 Secondary 只读；Primary 故障自动选举 |
+| **多主模式** | 所有节点可写（**必须处理冲突**，业务难写）|
+
+**关键特性**：
+
+```
+① 强一致性：多数派确认（RPO = 0，不丢已确认事务）⭐
+② 自动选主：内置，不需要外部工具 ⭐
+③ 成员自动加入/退出
+④ 冲突检测：多主模式下乐观检测，冲突则回滚
+⑤ 与 MySQL Shell / InnoDB Cluster 配合：一键部署、一键加节点
+```
+
+**配置要点**：
+
+```sql
+-- 必须用 GTID + ROW binlog + 唯一 server_id
+gtid_mode = ON
+enforce_gtid_consistency = ON
+binlog_checksum = NONE
+log_slave_updates = ON
+binlog_format = ROW
+-- 组内通信
+group_replication_group_name = "aaaaaaaa-...-aaaa"
+group_replication_start_on_boot = OFF
+group_replication_local_address = "10.0.0.1:33061"
+group_replication_group_seeds = "10.0.0.1:33061,10.0.0.2:33061,10.0.0.3:33061"
+group_replication_single_primary_mode = ON
+```
+
+**启动：`START GROUP_REPLICATION;`** —— **注意：要求 `binlog_checksum=NONE`，这是最常见的启动失败原因** ⭐
+
+**MGR 的限制** ⚠️：
+
+| 限制 | 说明 |
+|---|---|
+| **表必须有主键** | 否则无法做冲突检测（认证）→ 报错 |
+| **不支持外键** | 组复制环境下外键行为不可靠 |
+| **不支持 `SERIALIZABLE` 的部分场景** | |
+| **大事务是灾难** ⭐ | 事务太大超过 `group_replication_transaction_size_limit` 会被拒绝（默认 150MB）；且大事务会阻塞整组 |
+| **DDL 要 `group_replication_consistency` 配合** | 8.0.27+ 才有更好的 DDL 一致性 |
+| **写延迟** | 多数派确认要等网络往返 → **跨机房部署延迟显著** ⭐ |
+
+## 六、Keepalived + VIP 的角色定位 ⚠️
+
+**Keepalived 只解决"入口漂移"**（虚拟 IP 从旧主漂到新主），**不解决"谁来当新主"**。
+
+```conf
+vrrp_instance VI_1 {
+    state BACKUP
+    interface eth0
+    virtual_router_id 51
+    priority 100
+    advert_int 1
+    virtual_ipaddress { 10.0.0.100/24 }
+    notify_master "/usr/local/bin/failover.sh"    # ⭐ 在脚本里做选主
+}
+```
+
+**正确组合**：`Orchestrator（选主）+ Keepalived/VIP（入口）+ ProxySQL（路由）`
+
+## 七、脑裂（Split-Brain）防范 ⭐
+
+```
+场景：主库与从库之间网络断了，但主库本身正常
+      · 从库侧以为主库挂了 → 提升自己为新主
+      · 主库侧仍在自己写
+      → 两个"主"同时接受写入 → 数据冲突 ❌
+```
+
+**防范手段**：
+
+| 手段 | 说明 |
+|---|---|
+| **仲裁节点（Witness）** | 奇数个节点，多数派才能决策 ⭐（MGR 天然具备）|
+| **STONITH（Shoot The Other Node In The Head）** | 切换前先强制关闭旧主（fencing）⭐ |
+| **只有多数派可见时才能当主** | MGR、PXC 的机制 |
+| **代理层只允许一个写节点** | ProxySQL 的 `writer_hostgroup` 只有一个成员 ⭐ |
+| **`read_only=ON` + `super_read_only=ON`** | 从库默认只读，即使误操作也不接受写 ⭐ |
+| **应用层双主检测** | 写入时校验 `@@server_id` / `@@hostname` |
+| **半同步 + 超时降级** | 减少"已提交但未同步"的窗口 |
+
+**`super_read_only` 的重要作用**：`read_only=ON` 只阻止普通用户写，**`SUPER` 用户仍可写**；`super_read_only=ON` 连 SUPER 也阻止（除了复制线程）⭐ 从库一定要开这个。
+
+## 八、灾难恢复的完整体系 ⭐
+
+```
+层次            措施                                     RPO/RTO
+────────────────────────────────────────────────────────────────
+① 单机          备份 + binlog PITR                       分钟~小时
+② 主从          从库可提升                              秒~分钟
+③ 高可用        自动选主（MGR/Orchestrator）             秒级 ⭐
+④ 跨机房        同城双活 / 异地多活                      秒级
+⑤ 云服务        多可用区 RDS + 只读实例                 秒~分钟（托管）
+⑥ 终极          "数据可重建"（消息队列 + 幂等重放）⭐     0
+```
+
+**"终极方案"的思路** ⭐：核心业务写操作先进 MQ/MQ-like 的持久化日志（如 Kafka），DB 只是"物化视图"，DB 挂了可以从日志重建。这是真正的 RPO=0 做法，但对架构改造成本高。
+
+## 九、选型建议 ⭐
+
+| 场景 | 推荐 |
+|---|---|
+| 小站/内部系统（本项目）| **主从 + 手动切换 + 定时备份** ✅ 成本最低、最可控 |
+| 一般互联网业务 | **云 RDS 高可用版**（最省事）或 **Orchestrator + ProxySQL** |
+| 要求强一致 | **MGR / 云 RDS 三节点** |
+| 已有云资源 | 直接用云托管，不要自建高可用 ⭐ |
+
+**一句话总结**：**高可用的难点是"防脑裂"而不是"切换"**；技术上 **MGR（原生、强一致）> Orchestrator（灵活、成熟）> MHA（已过时）**，但**对绝大多数业务，云 RDS 高可用版 + 主从 + 备份 是性价比最高的组合**。', 1),
+
+('MySQL', '诊断,InnoDB STATUS,监控', 3,
+ '`SHOW ENGINE INNODB STATUS` 的输出怎么读？遇到性能问题应该重点看哪些段落？',
+ '## 一、输出结构（按顺序）⭐
+
+```
+=====================================
+2024-05-01 10:00:00 0x7f... INNODB MONITOR OUTPUT
+=====================================
+Per second averages calculated from the last 56 seconds
+-----------------
+BACKGROUND THREAD          ← 后台线程信息
+-----------------
+SEMAPHORES                 ← 信号量/等待（锁竞争）⭐
+-----------------
+LATEST FOREIGN KEY ERROR   ← 最近的外键错误
+-----------------
+LATEST DETECTED DEADLOCK   ← 最近一次死锁 ⭐
+-----------------
+TRANSACTIONS               ← 活跃事务 + 历史事务列表 ⭐
+-----------------
+FILE I/O                   ← IO 线程与待处理 IO ⭐
+-----------------
+INSERT BUFFER AND ADAPTIVE HASH INDEX
+-----------------
+LOG                        ← redo log 状态 ⭐
+-----------------
+BUFFER POOL AND MEMORY     ← Buffer Pool 命中率 ⭐
+-----------------
+ROW OPERATIONS             ← 行操作统计
+-----------------
+END OF INNODB MONITOR OUTPUT
+```
+
+## 二、重点段落逐一解读 ⭐
+
+### ① SEMAPHORES —— 锁竞争 ⭐
+
+```
+SEMAPHORES
+----------
+OS WAIT ARRAY INFO: reservation count 15123
+OS WAIT ARRAY INFO: signal count 13000
+-- 若 reservation count 远大于 signal count → 等待多，可能有 latch 竞争 ⭐
+
+Mutex spin waits 0, rounds 0, OS waits 0
+RW-shared spins 0, rounds 0, OS waits 0
+RW-excl spins 0, rounds 0, OS waits 0
+
+-- 有竞争时会显示：
+-- 例如 btr_search_latch 或 buf_pool->mutex
+```
+
+**判断**：`OS waits` 数值很大 → 内核态等待多（说明自旋没等到）→ **latch 竞争严重**。常见于：
+- `buf_pool->mutex`：Buffer Pool 实例太少（调大 `innodb_buffer_pool_instances`）⭐
+- `btr_search_latch`：自适应哈希索引竞争（可尝试 `innodb_adaptive_hash_index=OFF`）
+- `lock_sys`：行锁竞争（`innodb_thread_concurrency` 或优化 SQL）
+
+### ② LATEST DETECTED DEADLOCK —— 死锁现场 ⭐
+
+```
+------------------------
+LATEST DETECTED DEADLOCK
+------------------------
+2024-05-01 09:59:00 0x7f...
+*** (1) TRANSACTION:                 ← 事务 1
+TRANSACTION 12345, ACTIVE 3 sec starting index read
+mysql tables in use 1, locked 1
+LOCK WAIT 2 lock struct(s), heap size 1136, 1 row lock(s)
+MySQL thread id 100, OS thread handle 123, query id 456 localhost app updating
+UPDATE t SET v=1 WHERE id=2         ← 它在等什么锁
+*** (1) WAITING FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 5 page no 3 n bits 72 index PRIMARY of table `db`.`t`
+trx id 12345 lock_mode X locks rec but not gap waiting
+Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; ...
+
+*** (2) TRANSACTION:                 ← 事务 2
+...
+UPDATE t SET v=1 WHERE id=1
+*** (2) HOLDS THE LOCK(S):           ← 它持有什么锁
+RECORD LOCKS ... lock_mode X locks rec but not gap
+*** (2) WAITING FOR THIS LOCK TO BE GRANTED:
+...
+
+*** WE ROLL BACK TRANSACTION (1)     ← 回滚了谁
+```
+
+**读法**：
+1. 看两个事务**各自的 SQL** → 找出"访问顺序相反"的模式 ⭐
+2. 看 `HOLDS THE LOCK(S)` 和 `WAITING FOR THIS LOCK` → 确认锁的**索引、页、模式**（`lock_mode X` = 排他，`locks gap before rec` = 间隙锁）
+3. `WE ROLL BACK TRANSACTION (n)` → 知道谁是牺牲者
+
+**默认只保留最后一次**；`innodb_print_all_deadlocks=ON` 可把所有死锁写入 error log ⭐
+
+### ③ TRANSACTIONS —— 长事务 ⭐
+
+```
+TRANSACTIONS
+------------
+Trx id counter 123456
+Purge done for trx''s n:o < 123400 undo n:o < 0 state: running
+History list length 0            ← ⭐ 关键指标！未 purge 的 undo 数量
+
+---TRANSACTION 123450, ACTIVE 3600 sec     ← ⭐ ACTIVE 3600 秒 = 长事务！
+2 lock struct(s), heap size 1136, 1 row lock(s), undo log entries 1
+MySQL thread id 100, OS thread handle ..., query id ... 
+Trx read view will not see trx with id >= 123451, sees < 123451   ← ⭐ 快照信息
+```
+
+**关键指标解读**：
+
+| 指标 | 含义 | 危险阈值 |
+|---|---|---|
+| **`History list length`** ⭐ | 未 purge 的 undo 记录数 | **> 10000 要关注，> 100000 危险**（说明有长事务卡住了 purge）|
+| **`ACTIVE N sec`** | 事务存活时长 | **> 60s 值得查，> 600s 必须处理** ⭐ |
+| `undo log entries` | 该事务产生的 undo 数量 | 很大 → 大事务 |
+
+**发现长事务的处理**：
+
+```sql
+SELECT trx_id, trx_started, TIMESTAMPDIFF(SECOND, trx_started, NOW()) AS sec,
+       trx_state, trx_mysql_thread_id, trx_query
+FROM information_schema.innodb_trx ORDER BY trx_started LIMIT 10;
+-- 必要时 KILL <thread_id>
+```
+
+**`History list length` 高的连锁反应** ⭐：undo 不能 purge → 版本链变长 → 每次查询要遍历更多版本 → **查询越来越慢 + 系统表空间暴涨**。
+
+### ④ FILE I/O —— IO 压力
+
+```
+FILE I/O
+--------
+I/O thread 0 state: waiting for completed aio requests (insert buffer thread)
+I/O thread 1 state: waiting for completed aio requests (log thread)
+...
+Pending normal aio reads: [0, 0, 0, 0] , aio writes: [0, 0, 0, 0]
+-- 非 0 说明有 IO 积压 ⭐
+Pending flushes (fsync) log: 0; buffer pool: 0
+2590 OS file reads, 15234 OS file writes, 1234 OS fsyncs
+-- 
+16.95 reads/s, 21 avg bytes/read, 99.2 writes/s, 45 avg bytes/read
+```
+
+**关注**：
+- `Pending` 非零 → IO 跟不上
+- `avg bytes/read` 远小于 16KB → **随机读多**（Buffer Pool 命中率低）⭐
+
+### ⑤ LOG —— redo 与 checkpoint
+
+```
+LOG
+---
+Log sequence number 1234567890       ← 当前 LSN
+Log buffer assigned up to 1234567890
+Log buffer completed up to 1234567890
+Log written up to 1234567890
+Log flushed up to   1234567890       ← 已 fsync
+Added dirty page to the flush list, 1234
+Last checkpoint at  1234560000       ← ⭐ 上次 checkpoint 的 LSN
+
+计算 checkpoint 落后量 = Log sequence number - Last checkpoint at
+                       = 7890 bytes
+-- 若这个差值接近 redo log 总容量 → checkpoint 压力大 → 提示 innodb_log_file_size 太小 ⭐
+```
+
+**`Log sequence number - Last checkpoint at`** 是判断"redo 是否够用"的核心指标 ⭐：
+- 差值长期接近 `innodb_redo_log_capacity` → **频繁 checkpoint，性能抖动** → 调大日志容量
+- 差值很大且稳定 → 正常（说明有足够的 redo 空间缓冲）
+
+### ⑥ BUFFER POOL AND MEMORY —— 命中率 ⭐
+
+```
+BUFFER POOL AND MEMORY
+----------------------
+Total large memory allocated 4294967296     ← 分配的总内存
+Dictionary memory allocated 1234567
+Buffer pool size   262144                   ← 总页数（× 16KB = 4GB）
+Free buffers       1000                     ← 空闲页
+Database pages     260000
+Old database pages 96000                    ← Old 区（3/8）
+Modified db pages  5000                     ← ⭐ 脏页数
+
+Pending reads 0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 123456, not young 1234     ← ⭐ young/not young 比例
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 1000000, created 50000, written 800000
+-- 
+100.00 reads/s, 50.00 creates/s, 90.00 writes/s
+-- ⭐⭐⭐ 这一行是最关键的命中率指标：
+Buffer pool hit rate 995 / 1000, young-making rate 1 / 1000 not 0 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 260000, unzip_LRU len: 0
+I/O sum[0]:cur[0], unzip sum[0]:cur[0]
+```
+
+**关键指标** ⭐：
+
+| 指标 | 含义 | 目标 |
+|---|---|---|
+| **`Buffer pool hit rate`** ⭐ | 页命中率 | **99.5%+ 为健康**；低于 99% 说明 Buffer Pool 不够大 |
+| **`Modified db pages`** | 脏页数 | 不宜长期很高（`innodb_max_dirty_pages_pct` = 75%）|
+| **`young-making rate`** | Old→Young 晋升率 | 远低于 hit rate 是正常的（说明预读污染控制起作用）|
+| **`Pages made young / not young`** | 晋升/未晋升 | `not young` 大说明有页被淘汰但未被再次访问 → 预读浪费 |
+| **`Pages evicted without access`** | 读了没用就被淘汰 | 大 → **预读过度**（`innodb_read_ahead_threshold` 调整）|
+
+**经验阈值**：
+```
+hit rate >= 995/1000   → 健康 ✅
+hit rate 在 990~995    → 需要关注，考虑加大 Buffer Pool
+hit rate < 990         → Buffer Pool 明显不足 ⭐
+```
+
+### ⑦ ROW OPERATIONS
+
+```
+ROW OPERATIONS
+-------------
+0 queries inside InnoDB, 0 queries in queue   ← ⭐ 非 0 说明 InnoDB 内部排队
+0 read views open inside InnoDB
+Process ID=1234, Main thread id=..., state: sleeping
+Number of rows inserted 1000000, updated 5000, deleted 100, read 5000000
+-- 
+0.00 inserts/s, 0.00 updates/s, 0.00 deletes/s, 0.00 reads/s
+Number of system rows inserted 0, updated 0, deleted 0, read 0
+```
+
+**关注**：
+- **`queries inside InnoDB` / `queries in queue` 非 0** → InnoDB 内部成为瓶颈（latch 竞争）
+- **读/写比例**：如果 reads 远大于 writes → 读密集，优化索引
+
+## 三、快速诊断流程 ⭐
+
+```
+性能问题 → SHOW ENGINE INNODB STATUS
+
+按这个顺序看：
+
+① Buffer pool hit rate        低？ → 加大 innodb_buffer_pool_size / 优化索引
+② History list length         大？ → 有长事务，查 innodb_trx 并 KILL
+③ TRANSACTIONS 里的 ACTIVE 秒数 长？ → 同上
+④ LATEST DETECTED DEADLOCK    有？ → 分析访问顺序，统一加锁顺序
+⑤ SEMAPHORES 的 OS waits      大？ → latch 竞争，加 buffer pool instances / 关 AHI
+⑥ LOG 的 checkpoint 差值      接近容量？ → 加大 redo 容量
+⑦ FILE I/O 的 Pending         非 0？ → IO 瓶颈，看 iostat
+⑧ avg bytes/read << 16K       是？ → 随机读多，命中率低
+```
+
+## 四、配合的其他诊断工具 ⭐
+
+```sql
+SHOW GLOBAL STATUS LIKE ''Innodb_buffer_pool_read%'';
+-- Innodb_buffer_pool_read_requests  逻辑读次数
+-- Innodb_buffer_pool_reads          物理读次数
+-- 命中率 = 1 - reads / read_requests   ⭐ 比 STATUS 里的瞬时值更准（累计值）
+
+SHOW GLOBAL STATUS LIKE ''Innodb_rows%'';     -- 行操作累计
+SHOW GLOBAL STATUS LIKE ''Innodb_log%'';      
+SHOW GLOBAL STATUS LIKE ''Threads%'';
+SHOW GLOBAL STATUS LIKE ''Handler%'';         -- Handler_read_rnd_next 大 = 全表扫描多 ⭐
+
+SHOW GLOBAL VARIABLES LIKE ''innodb%'';       -- 所有 InnoDB 参数
+SHOW PROCESSLIST;                            -- 当前连接与状态（State 字段很有用）
+SHOW FULL PROCESSLIST;                       -- 含完整 SQL
+```
+
+**`Handler_read_rnd_next` 是最容易被忽略的关键指标** ⭐：它表示"按顺序扫描下一行"的次数，**数值巨大 = 全表扫描多**。
+
+## 五、一句话总结
+
+**`SHOW ENGINE INNODB STATUS` 里最该盯的四项：`Buffer pool hit rate`（要不要加内存）、`History list length`（有没有长事务）、`LATEST DETECTED DEADLOCK`（加锁顺序问题）、`Log sequence number - Last checkpoint`（redo 够不够用）**。其余段落是深挖的线索。', 1),
+
+('MySQL', 'performance_schema,sys,监控', 3,
+ '`performance_schema` 是什么？`sys` 库能怎么帮我们定位慢 SQL？',
+ '## 一、`performance_schema` 的本质 ⭐
+
+**定位**：MySQL 5.5 引入的**低开销运行时性能监控**引擎，通过**内存中的表**暴露服务器内部的各类"事件"（等待、语句、阶段、锁等）。
+
+**关键特性**：
+
+| 特性 | 说明 |
+|---|---|
+| **按需开启** ⭐ | `setup_instruments`（监控什么）+ `setup_consumers`（记录到哪张表），可以精确控制开销 |
+| **内存表，不落盘** | 重启即清零；不会写磁盘 |
+| **开销可控** | 默认只开部分 instrument；全开会有 5%~15% 开销 |
+| **thread 维度** | 每个线程一组统计，可按 `THREAD_ID` 关联 |
+
+```sql
+SHOW VARIABLES LIKE ''performance_schema'';    -- ON/OFF
+SHOW VARIABLES LIKE ''performance_schema%'';   -- 相关参数
+
+-- 开启/关闭某个 instrument
+UPDATE performance_schema.setup_instruments
+  SET ENABLED=''YES'' WHERE NAME LIKE ''statement/%'';
+UPDATE performance_schema.setup_consumers
+  SET ENABLED=''YES'' WHERE NAME LIKE ''%history%'';
+```
+
+## 二、核心表分类 ⭐
+
+| 分类 | 表 | 内容 |
+|---|---|---|
+| **语句** ⭐ | `events_statements_current` / `_history` / `_history_long` / `_summary_by_digest` | SQL 语句的执行统计（**`by_digest` 最关键**）|
+| **等待** | `events_waits_current` / `_summary_by_*` | 等待事件（IO、锁、网络、latch）|
+| **阶段** | `events_stages_current` | SQL 执行阶段（解析、优化、排序、发送）|
+| **锁** ⭐ | `data_locks`、`data_lock_waits`（8.0）| 当前锁与锁等待 |
+| **事务** | `events_transactions_current` | 事务级统计 |
+| **文件/IO** | `file_summary_by_instance`、`file_io_waits_summary_by_*` | 哪个文件 IO 最多 ⭐ |
+| **内存** | `memory_summary_by_thread_by_event_name` | 各线程内存使用 ⭐ 排查内存泄漏 |
+| **连接** | `session_variables`、`accounts`、`hosts`、`users` | 连接维度统计 |
+| **复制** | `replication_*` | 复制状态与延迟 |
+| **元数据锁** | `metadata_locks` | MDL 等待 ⭐ 排查"表被锁住" |
+
+## 三、`sys` 库 —— 人话版的 performance_schema ⭐
+
+**`sys` schema**（5.7+ 自带）把 `performance_schema` 的复杂数据**加工成易读的视图**，并做了单位换算（ps → ms/s）。
+
+### 排查慢 SQL 的四张王牌 ⭐
+
+```sql
+-- ① 谁在消耗最多时间（按 SQL 模板聚合）⭐ 最常用
+SELECT * FROM sys.statement_analysis LIMIT 10;
+-- 字段：query, exec_count, total_latency, avg_latency,
+--       rows_sent_avg, rows_examined_avg, tmp_tables, full_scans
+-- 关注：
+--   total_latency 大 → 高频 SQL（次数多）
+--   avg_latency 大   → 单次慢 SQL ⭐
+--   rows_examined_avg >> rows_sent_avg → 扫描了很多行只返回很少 → 缺索引 ⭐
+--   full_scans > 0   → 有全表扫描
+--   tmp_tables > 0   → 用了临时表
+
+-- ② 按表聚合的 IO 压力
+SELECT * FROM sys.io_global_by_file_by_bytes LIMIT 10;
+-- 哪个文件读写最多（定位是数据文件 / binlog / redo）
+
+-- ③ 哪些表被访问最多
+SELECT * FROM sys.schema_table_statistics LIMIT 10;
+SELECT * FROM sys.schema_table_statistics_with_buffer LIMIT 10;   -- 含 buffer 命中率 ⭐
+
+-- ④ 全表扫描最多的表 ⭐
+SELECT * FROM sys.schema_tables_with_full_table_scans;
+
+-- ⑤ 没用到索引的 SQL ⭐
+SELECT * FROM sys.statements_with_full_table_scans
+  ORDER BY total_latency DESC LIMIT 10;
+-- 输出含 query, exec_count, total_latency, no_index_used_count, no_good_index_used_count
+
+-- ⑥ 产生临时表的 SQL
+SELECT * FROM sys.statements_with_temp_tables ORDER BY total_latency DESC LIMIT 10;
+
+-- ⑦ 排序很重的 SQL
+SELECT * FROM sys.statements_with_sorting ORDER BY total_latency DESC LIMIT 10;
+
+-- ⑧ 冗余/未使用索引 ⭐ 非常实用
+SELECT * FROM sys.schema_redundant_indexes;         -- 冗余（前缀重复）索引
+SELECT * FROM sys.schema_unused_indexes;            -- 从未被使用的索引 ⭐
+-- ⚠️ 注意：unused_indexes 是"自 performance_schema 收集以来"的统计，重启会清零
+--    删除前务必：ALTER TABLE t ALTER INDEX idx INVISIBLE; 观察一段时间再删 ⭐
+
+-- ⑨ 当前锁等待
+SELECT * FROM sys.innodb_lock_waits\\G
+-- 输出含 waiting_pid, waiting_query, blocking_pid, blocking_query, locked_table
+
+-- ⑩ 内存使用 TOP
+SELECT * FROM sys.memory_by_thread_by_current_bytes ORDER BY current_alloc DESC LIMIT 10;
+SELECT * FROM sys.memory_global_by_current_bytes LIMIT 10;
+```
+
+## 四、`statement_analysis` 的实战解读 ⭐
+
+```
+mysql> SELECT query, exec_count, total_latency, avg_latency, rows_examined_avg,
+              rows_sent_avg, full_scans
+       FROM sys.statement_analysis ORDER BY total_latency DESC LIMIT 3\\G
+
+*************************** 1. row ***************************
+           query: SELECT * FROM `posts` WHERE `status` = ? ORDER BY `created_at` DESC LIMIT ?
+      exec_count: 125000                              ← 调用 12.5 万次
+   total_latency: 2.50 min                            ← 累计耗时 150s ⭐
+     avg_latency: 1.20 ms                             ← 单次不算慢
+rows_examined_avg: 45000                             ← ⭐ 但每次扫 4.5 万行！
+    rows_sent_avg: 20                                ← 只返回 20 行
+       full_scans: 125000                            ← ⭐ 每次都全表扫描
+
+→ 结论：缺索引 (status, created_at) ⭐
+   加索引后 rows_examined 会降到 20，total_latency 降几个数量级
+```
+
+**核心判据**：**`rows_examined_avg / rows_sent_avg` 的比值** ⭐
+- 接近 1 → 索引命中好
+- 远大于 1（如 1000:1）→ **扫描效率极低，缺索引或索引不对** ⭐
+
+**另一类**：`exec_count` 小但 `avg_latency` 很大 → 单条慢 SQL（可能是统计、报表 SQL），看 `tmp_tables`、`full_scans`、`sort_*`。
+
+## 五、`sys` 库的分组视图（视图即文档）⭐
+
+`sys` 库的视图**同名带前后缀**表示不同聚合维度，记住命名规律就不用背：
+
+```
+前缀/后缀            含义
+────────────────────────────────────────────
+x_ / _by_...        中间视图（被其他视图引用，一般不用直接查）
+host_summary        按客户端主机聚合
+user_summary        按用户聚合
+schema_*            按库聚合
+statement_analysis  按 SQL 模板聚合 ⭐
+io_*                按 IO 聚合
+memory_*            按内存聚合
+wait_*              按等待事件聚合
+```
+
+## 六、开销与生产使用注意 ⭐
+
+| 注意点 | 说明 |
+|---|---|
+| **默认开销小** | 语句摘要（digest）默认开启，开销约 1%~3%，**生产可以常开** ✅ |
+| **全开代价大** | 打开 `events_waits_history_long` 等历史表会明显增加开销与内存 |
+| **表有大小上限** | `_history` 表默认 10 行/线程，`_history_long` 10000 行（全局），旧数据被覆盖 |
+| **重启清零** | 所以**不要把它当监控系统**，要长期数据须落盘（Prometheus + mysqld_exporter）⭐ |
+| **`sys.schema_unused_indexes` 的陷阱** ⭐ | 统计窗口可能不完整（重启后清零、业务有周期性）；**删索引前先设为 INVISIBLE 观察** |
+| **`statement_analysis` 里的 `?`** | 是 digest 归一化后的占位符，同一个 SQL 模板合并统计（这就是它比慢日志强的地方）⭐ |
+| **长时间未重启的实例更准** | unused_indexes / statement_analysis 需要足够的采样窗口 |
+
+## 七、完整的性能排查工具链 ⭐
+
+```
+层次              工具                                  回答什么问题
+────────────────────────────────────────────────────────────────────────
+① 系统层         top / vmstat / iostat / sar            CPU/内存/磁盘是否瓶颈
+② 实例层         SHOW GLOBAL STATUS                     QPS/TPS/连接/命中率
+                 SHOW ENGINE INNODB STATUS              锁/长事务/checkpoint ⭐
+                 SHOW PROCESSLIST                       此刻有什么在跑
+③ SQL 层         slow_query_log + pt-query-digest       历史慢 SQL 汇总 ⭐
+                 performance_schema / sys               按模板聚合的 SQL 画像 ⭐
+                 EXPLAIN / EXPLAIN ANALYZE              单条 SQL 的执行计划
+④ 长期监控       Prometheus + mysqld_exporter           趋势与告警 ⭐
+                 Grafana 看板                           可视化
+                 PMM（Percona Monitoring）               开箱即用
+⑤ 压测           sysbench / mysqlslap                   验证优化效果
+```
+
+**分层排查的关键**：**先确认瓶颈层次，再选工具**。系统层先看，不要一上来就扎进 SQL 里。
+
+## 八、一句话总结
+
+**`performance_schema` 是"原始数据"，`sys` 是"给人看的视图"**；排查 SQL 只需三张表：**`sys.statement_analysis`（谁最耗时间）、`sys.statements_with_full_table_scans`（谁在扫全表）、`sys.schema_unused_indexes`（哪些索引白建了）**。核心判据是 **`rows_examined_avg / rows_sent_avg` 的比值**。', 1),
+
+('MySQL', '大事务,优化,运维', 2,
+ '什么是大事务？大事务有什么危害？怎么发现和处理？',
+ '## 一、什么是大事务 ⭐
+
+**大事务**没有严格定义，一般指满足下列任一条：
+
+| 判据 | 阈值 |
+|---|---|
+| 影响行数 | **几万行以上**（如全表 `UPDATE`）|
+| 执行时长 | **> 10 秒**（`SELECT` 不算，主要指写事务）|
+| 产生的 undo | `undo log entries` **数万** |
+| binlog 大小 | 单个事务的 binlog **> 100MB** |
+
+```sql
+-- ❌ 典型大事务
+BEGIN;
+UPDATE orders SET status = 0 WHERE create_time < ''2023-01-01'';   -- 影响 500 万行
+COMMIT;
+```
+
+## 二、七大危害 ⭐
+
+### ① 长时间持锁 → 阻塞其他事务
+
+`UPDATE` 500 万行，每行的锁要持有到 `COMMIT` 为止（虽然是"边走边放"的优化，但仍然是毫秒级以上的长窗口）。其他事务的写被阻塞，可能连锁成雪崩。⭐
+
+### ② undo 无法 purge → 版本链暴涨 ⭐
+
+大事务会生成海量 undo，**purge 线程在事务提交前无法回收**。
+`History list length` 飙升 → 所有查询要遍历更长的版本链 → **全库变慢**。同时**系统表空间/undo 表空间暴涨**。
+
+### ③ redo log 被顶满 → checkpoint 风暴
+
+大事务会持续产生 redo，脏页疯狂刷盘，checkpoint 频繁触发，**IO 打满**。
+
+### ④ 主从延迟 ⭐
+
+主库执行 30s，binlog 传到从库，**从库 SQL 线程只能串行重放**（大事务无法拆成多个并行组）→ 从库延迟几分钟甚至几小时。
+
+**这是大事务最典型的后果**：主库看起来正常，**从库延迟爆炸**，读写分离的读全挂了。
+
+### ⑤ 回滚代价巨大
+
+事务失败要回滚：**回滚时间 ≈ 或 > 执行时间**（要逆序应用 undo）。一个大事务回滚 10 分钟，期间锁还在、undo 还在涨。
+
+### ⑥ binlog 膨胀 & 复制中断风险
+
+单个事务 binlog 太大 → 从库 `max_allowed_packet` 不够会**复制中断**；`binlog_row_event_max_size` 限制。
+
+### ⑦ MGR 直接拒绝 ⭐
+
+组复制的 `group_replication_transaction_size_limit`（默认 **150MB**）会**拒绝**超过限制的事务。
+
+## 三、怎么发现 ⭐
+
+```sql
+-- ① 活跃长事务（最直接）⭐
+SELECT trx_id,
+       trx_started,
+       TIMESTAMPDIFF(SECOND, trx_started, NOW()) AS sec,
+       trx_state,
+       trx_mysql_thread_id,
+       trx_rows_modified,        -- ⭐ 已修改行数
+       trx_query
+FROM information_schema.innodb_trx
+ORDER BY trx_started
+LIMIT 20;
+
+-- ② 未 purge 的 undo 长度 ⭐
+SHOW ENGINE INNODB STATUS\\G
+-- HISTORY LIST 段落：History list length 12345
+-- > 10000 需关注；> 100000 危险
+
+-- ③ 当前连接与状态
+SELECT id, user, host, db, command, time, state, LEFT(info,100) AS sql
+FROM information_schema.processlist
+WHERE command <> ''Sleep'' ORDER BY time DESC;
+
+-- ④ binlog 里的大事务（事后分析）⭐
+mysqlbinlog --base64-output=DECODE-ROWS -v mysql-bin.000012 \\
+  | awk ''/GTID/{g=$0} /end_log_pos/{print}'' | tail
+-- 或用 pt-query-digest 分析 binlog：
+pt-query-digest --type=binlog /var/lib/mysql/mysql-bin.000012
+
+-- ⑤ 主动设置阈值告警（mysqld_exporter / 自研脚本）
+-- 监控：information_schema.innodb_trx 里 trx_started 超过 N 秒的行数 ⭐
+```
+
+**推荐监控指标** ⭐：
+
+| 指标 | 告警阈值 |
+|---|---|
+| 活跃事务最长时长 | > 60s |
+| `History list length` | > 10000 |
+| 单事务 binlog 大小 | > 100MB |
+| `trx_rows_modified` | > 100000 |
+
+## 四、怎么处理 ⭐
+
+### 立即止血
+
+```sql
+-- 找到长事务的 thread id
+SELECT trx_mysql_thread_id FROM information_schema.innodb_trx
+WHERE TIMESTAMPDIFF(SECOND, trx_started, NOW()) > 300;
+-- KILL（注意：KILL 会触发回滚，回滚期间锁依然持有！）⚠️
+KILL <thread_id>;
+```
+
+**⚠️ KILL 大事务的注意点**：`KILL` 不会立即释放锁，**回滚过程仍要持有锁和 undo**。所以 KILL 一个跑了 10 分钟的大事务，可能还要再等 10 分钟才真正释放。**紧急情况下 KILL 是必要的，但要预期到这一点。**
+
+### 根本治理：拆小 ⭐
+
+**① 分批 UPDATE / DELETE** ⭐ 最常用
+
+```sql
+-- 循环执行，每批 1000 行，批间 sleep
+DELETE FROM logs WHERE create_time < ''2023-01-01'' ORDER BY id LIMIT 1000;
+-- 检查 affected rows，直到为 0
+```
+
+**用存储过程封装**：
+
+```sql
+DELIMITER $$
+CREATE PROCEDURE clean_logs(IN p_batch INT)
+BEGIN
+    DECLARE affected INT DEFAULT 1;
+    WHILE affected > 0 DO
+        DELETE FROM logs WHERE create_time < ''2023-01-01'' ORDER BY id LIMIT p_batch;
+        SET affected = ROW_COUNT();
+        DO SLEEP(0.05);      -- ⭐ 让从库有机会追上
+        COMMIT;              -- 若在事务里则不能 COMMIT
+    END WHILE;
+END$$
+DELIMITER ;
+CALL clean_logs(1000);
+```
+
+**按主键范围切分** ⭐（更高效，避免 `LIMIT` + 无索引扫描）：
+
+```sql
+-- 先查出 id 的范围，再按区间分批
+SELECT MIN(id), MAX(id) FROM logs WHERE create_time < ''2023-01-01'';
+-- 然后按 id 区间循环
+DELETE FROM logs WHERE id BETWEEN 1 AND 100000 AND create_time < ''2023-01-01'';
+DELETE FROM logs WHERE id BETWEEN 100001 AND 200000 AND create_time < ''2023-01-01'';
+```
+
+**② 用 `DROP PARTITION` 替代 `DELETE`** ⭐（如果是分区表，秒级完成）
+
+```sql
+ALTER TABLE logs DROP PARTITION p202301;
+```
+
+**③ 业务层拆分**
+
+- 批量插入：每批 500~1000 条 `INSERT`，而不是一个事务插 10 万条。
+- 批量更新：按 ID 分片，多个小事务。
+- 把"一次性大操作"改成"异步任务 + 进度表"。
+
+**④ 调整参数（辅助，不解决根本）**
+
+| 参数 | 作用 |
+|---|---|
+| `innodb_undo_log_truncate=ON` | 允许自动截断 undo 表空间 |
+| `innodb_max_undo_log_size` | undo 表空间上限 |
+| `innodb_purge_threads` | 加大 purge 并发 |
+| `binlog_group_commit_sync_delay` | 提高组提交效率（但不解决大事务本身）|
+| `slave_parallel_workers` + `LOGICAL_CLOCK` | 提升从库并行（但单个大事务无法并行 ⭐）|
+
+**注意**：**`slave_parallel_workers` 对大事务无效** —— 因为并行单位是"事务"，一个事务只能由一个 worker 重放。所以**只能靠"拆小"**。
+
+## 五、预防（编码规范）⭐
+
+| 规范 | 说明 |
+|---|---|
+| **事务只包必要的语句** | 不要在事务里做 RPC / 文件 IO / 长循环 |
+| **批量操作分批** | 单事务影响行数控制在一万以内（可配置）|
+| **DDL 用 `INSTANT` / `pt-osc` / `gh-ost`** | 避免元数据锁长期持有 |
+| **`autocommit=1`** | 避免"忘了 COMMIT"造成的隐式长事务 ⭐ |
+| **框架层加超时** | 事务超时后自动回滚（应用层计时器）⭐ |
+| **代码评审关注事务边界** | 尤其是 `@Transactional` 标注的方法里有没有外部调用 |
+| **不要用 `SELECT` 无索引的 `UPDATE`** | 会锁全表（Next-Key Lock 退化成锁所有行）|
+
+**隐式长事务的陷阱** ⭐：
+
+```cpp
+// ❌ Crow 场景：每个请求一个连接，如果某处忘了 commit/rollback
+mysql_query(conn, "START TRANSACTION");
+// ... 中间抛异常/提前 return ...
+// ← 没有 COMMIT 也没有 ROLLBACK ⇒ 事务一直挂着，直到连接被回收
+```
+
+**解法**：**RAII 事务守卫**（见"隔离级别"那题）——析构函数里保证 `ROLLBACK`。
+
+## 六、一句话总结
+
+**大事务的所有危害都源自"一次改动太多"** —— 锁持太久、undo 撑爆、从库串行重放、回滚成本高。**唯一的根本解法是"分批"**（`LIMIT` 循环 / 按主键区间 / `DROP PARTITION`）；**监控上盯住"活跃事务时长"和 `History list length` 两个指标**；应用层用 **RAII 保证事务一定被关闭**。', 1),
+
+('MySQL', '碎片,OPTIMIZE,空间回收', 1,
+ '表碎片是怎么产生的？`DELETE` 后空间为什么不释放？怎么回收空间？',
+ '## 一、碎片的来源 ⭐
+
+| 来源 | 说明 |
+|---|---|
+| **`DELETE` 标记删除** | InnoDB 删除行只是**打删除标记**（`deleted_flag`），**页和空间不立即归还** ⭐ |
+| **页分裂**（随机写/乱序插入）| 插入到中间的页导致页分裂，产生**半满页** → 空间利用率下降 |
+| **`UPDATE` 变长列变长** | 行变大，原页放不下 → 迁移到新页，老页留下空洞 |
+| **碎片化（fragmentation）** | 数据页在物理上不连续 → 顺序扫描退化为随机 IO |
+
+**核心区分** ⭐：
+
+```
+① 页内碎片（page internal fragmentation）
+   DELETE 后页里的空洞 → 页没有满但也没被回收
+   → 表现为"数据文件不变小"
+
+② 页间碎片（page external fragmentation）
+   叶子节点逻辑有序但物理不连续
+   → 表现为"范围扫描/全表扫描变慢"
+
+③ 页分裂残留
+   分裂后两页都半满
+   → 表现为"文件比数据实际需要的大很多"
+```
+
+## 二、为什么 `DELETE` 后空间不释放 ⭐
+
+```
+DELETE FROM posts WHERE id < 1000;   -- 删了 1000 行
+SHOW TABLE STATUS LIKE ''posts'';      -- Data_length / Data_free 几乎没变
+```
+
+**原因**：
+
+| 层次 | 行为 |
+|---|---|
+| **InnoDB 层** | 行被标记删除，**页仍在表空间里**（`Data_free` 增加 = 页内空闲空间增加）|
+| **`innodb_file_per_table=ON` 时** | 空间借用给了同表的其他页，**但没有归还给操作系统** ⭐ |
+| **`innodb_file_per_table=OFF` 时** | 空间进入**共享表空间 `ibdata1`**，**永不会缩小**（`ibdata1` 只增不减）⚠️ |
+
+**所以 `DELETE` 的结果是**：表内可用空间变多（`Data_free` 变大），**但 `.ibd` 文件大小不变**。
+
+## 三、查看碎片 ⭐
+
+```sql
+-- ① 表状态（最常用）
+SHOW TABLE STATUS LIKE ''posts''\\G
+-- Data_length       数据占用字节数（近似）
+-- Index_length      索引占用
+-- Data_free         ⭐ 碎片（回收不了的空闲空间）
+-- 碎片率 ≈ Data_free / (Data_length + Index_length + Data_free)
+
+-- ② 找出碎片最多的表 ⭐
+SELECT table_schema, table_name,
+       ROUND(data_length/1024/1024, 2)  AS data_mb,
+       ROUND(index_length/1024/1024, 2) AS idx_mb,
+       ROUND(data_free/1024/1024, 2)    AS free_mb,
+       ROUND(data_free/(data_length+index_length+data_free)*100, 2) AS frag_pct,
+       table_rows
+FROM information_schema.tables
+WHERE table_schema NOT IN (''mysql'',''information_schema'',''performance_schema'',''sys'')
+  AND data_free > 0
+ORDER BY data_free DESC LIMIT 20;
+
+-- ③ 页级别的碎片（information_schema 于 8.0 已移除 innodb_sys_tablespaces 等；
+--    8.0 用 innodb_tablespaces / innodb_tables）
+SELECT name, file_size, allocated_size FROM information_schema.innodb_tablespaces
+WHERE name LIKE ''blogdb/%'';
+```
+
+**碎片率经验值**：
+
+```
+frag_pct < 20%    → 不用管
+frag_pct 20~40%   → 可以考虑整理（低峰期）
+frag_pct > 40%    → 明显浪费空间，建议整理 ⭐
+```
+
+## 四、回收空间的方案 ⭐
+
+### ① `OPTIMIZE TABLE`（最直接）
+
+```sql
+OPTIMIZE TABLE posts;
+-- 内部等价于：ALTER TABLE posts ENGINE=InnoDB  （重建表 + 重建索引）
+```
+
+| 特性 | 说明 |
+|---|---|
+| **原理** | 建新表 → 逐行拷贝 → 重建索引 → 原子替换 → **重放期间的新写入**（Online DDL 的 row log）|
+| **锁** | 5.6+ 使用 `ALGORITHM=INPLACE, LOCK=NONE`（**不阻塞 DML**）⭐ 但需要**额外磁盘空间**（约等于原表大小）|
+| **代价** | 大量 IO + CPU；大表可能跑几小时 |
+| **效果** | 回收空间 + 消除页内碎片 + 重建索引（顺序化，提升范围扫描）⭐ |
+
+### ② `ALTER TABLE ... ENGINE=InnoDB`（等价）
+
+```sql
+ALTER TABLE posts ENGINE=InnoDB;                 -- 同上
+ALTER TABLE posts FORCE;                          -- 8.0.16+ 直接触发表重建 ⭐ 更简洁
+ALTER TABLE posts ENGINE=InnoDB, ALGORITHM=INPLACE, LOCK=NONE;   -- 显式不锁
+```
+
+### ③ 重建 + 在线（大表必须）⭐
+
+```bash
+# pt-online-schema-change：影子表 + 触发器
+pt-online-schema-change --alter "ENGINE=InnoDB" D=blogdb,t=posts --execute
+
+# gh-ost：无触发器，从 binlog 同步
+gh-ost --host=127.0.0.1 --database=blogdb --table=posts \\
+       --alter="ENGINE=InnoDB" --execute
+
+# MySQL 8.0 的 Clone Plugin 也可以（整实例/单表克隆，但不释放原表空间）
+```
+
+### ④ 位移法（极端情况，`ibdata1` 巨大）⚠️
+
+**共享表空间 `ibdata1` 一旦膨胀就无法收缩**（`innodb_file_per_table=OFF` 时代的历史遗留）。只能：
+
+```
+① mysqldump 全量导出
+② 删掉所有 ibd + ibdata1（危险！先确认备份可用）⭐
+③ 重新初始化 + 恢复
+```
+
+**建议**：`innodb_file_per_table=ON`（默认已经是），这样每表独立，至少能单表回收。
+
+### ⑤ 用分区替代
+
+时间序列表用 `RANGE` 分区，历史数据用 `DROP PARTITION` 而不是 `DELETE` → **空间立即回收**，且不会有碎片 ⭐
+
+### ⑥ 升级到 8.0 的 `innodb_undo_log_truncate`
+
+自动截断 undo 表空间（治的是 undo 膨胀，不是数据碎片）。
+
+## 五、索引碎片 ⭐
+
+```sql
+-- 索引也会碎片化（B+ 树页分裂）
+ANALYZE TABLE posts;              -- 更新统计信息（不重建）
+OPTIMIZE TABLE posts;             -- 重建索引
+ALTER TABLE posts DROP INDEX idx_x, ADD INDEX idx_x (x);   -- 只重建一个索引
+```
+
+**`ANALYZE TABLE` vs `OPTIMIZE TABLE`** ⭐：
+
+| | `ANALYZE TABLE` | `OPTIMIZE TABLE` |
+|---|---|---|
+| 作用 | **只更新统计信息** | **重建表 + 索引，回收空间** |
+| 开销 | 极小（采样）| 大（全表重建）|
+| 何时用 | 统计信息不准导致优化器选错计划 | 碎片多、需要回收空间 |
+
+**通用原则**：优化器选错索引时先 `ANALYZE TABLE`（便宜）；碎片多时才 `OPTIMIZE`（昂贵）。
+
+## 六、什么时候不该做 ⭐
+
+| 场景 | 原因 |
+|---|---|
+| **业务高峰** | 重建表占大量 IO |
+| **磁盘剩余空间不足** | `OPTIMIZE` 期间需要约一倍原表空间 ⚠️ 这是最常见的翻车点 |
+| **从库有延迟** | `OPTIMIZE` 会产生 binlog，进一步加剧延迟 |
+| **`ibdata1` 巨大但无法停机** | 只能等维护窗口 |
+| **表本身就是"临时/归档"表** | 直接 `DROP + CREATE` 更快 |
+
+**操作前的检查清单**：
+
+```
+□ 磁盘剩余空间 > 表大小的 1.2 倍 ⭐
+□ 已在低峰或维护窗口
+□ 从库延迟正常（或临时停止从库重放）
+□ 备份有效且已验证可恢复 ⭐
+□ 有回滚方案（其实 OPTIMIZE 是原地替换，无法回滚，只能靠备份）
+□ 用 pt-osc/gh-ost 时确认表有主键 ⭐
+```
+
+## 七、"空间不释放"的另一个原因：文件被占用 ⭐
+
+**别忘了这一条**（见 Linux 那题）：
+
+```
+已删除的文件仍被进程持有 fd → 空间不释放
+df 显示满，du 找不到
+→ lsof +L1 定位 → 重启/重开日志/清空 fd
+```
+
+**判断方法**：
+
+```
+如果是"表内 Data_free 大但表变小了" → 是 InnoDB 碎片问题
+如果是"du 和 df 差距大"           → 是文件被占用（lsof 排查）⭐
+两者完全不同，先分清
+```
+
+## 八、一句话总结
+
+**碎片的根源是"删除只标记 + 页分裂"，`DELETE` 只增加 `Data_free` 不减小文件**；回收靠 `OPTIMIZE TABLE`（8.0 可用更简洁的 `ALTER TABLE ... FORCE`），**大表必须用 pt-osc/gh-ost 且提前确认磁盘空间**；**时间序列表用分区 `DROP PARTITION` 是零碎片的更优解**。', 1),
+
+('MySQL', '自增ID,溢出,分片', 2,
+ '自增主键会用尽吗？用尽了怎么办？分布式场景下怎么生成全局唯一 ID？',
+ '## 一、自增 ID 会溢出吗？⭐
+
+**会**，而且比想象中更常见。
+
+| 类型 | 上限 | 现实影响 |
+|---|---|---|
+| `INT UNSIGNED` | 42.9 亿 | 高频写入的表几年就用完 |
+| `INT`（有符号）| **21.4 亿** | 日志/消息类表可能 1~2 年就到 ⭐ |
+| `BIGINT UNSIGNED` | 1844 亿亿 | 基本用不完 |
+
+**溢出的表现** ⭐：
+
+```sql
+-- AUTO_INCREMENT 达到上限后的行为：
+-- ① 有符号 INT 到 2147483647 后
+INSERT INTO t (col) VALUES (''x'');
+-- ERROR 1062 (23000): Duplicate entry ''2147483647'' for key ''PRIMARY''
+-- ⚠️ 报的是"主键重复"而不是"溢出"！这个误导性极强 ⭐⭐⭐
+```
+
+**为什么会报主键重复**：MySQL 的自增计数器到达 `2^31-1` 后**不再增加**，继续插入就都拿同一个值 `2147483647` → 第二条就撞主键。
+
+**其他溢出方式**：
+
+| 方式 | 说明 |
+|---|---|
+| **`ALTER TABLE t AUTO_INCREMENT = 2147483647`** | 手动把计数器改到上限附近 |
+| **`INSERT` 时显式给一个很大的 id** | 8.0 会把这个值记入计数器（**8.0 之前重启后会重置**，需要 `ALTER TABLE ... AUTO_INCREMENT` 修回）⭐ |
+| **`innodb_autoinc_lock_mode`** | 只管并发，不管上限 |
+
+## 二、用尽了怎么办 ⭐
+
+```
+情况 A：还在 INT 范围内，只是快到了
+  → ALTER TABLE t MODIFY id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT;
+  ⚠️ 注意：这是"改列类型"，是 COPY 算法 → 重建表，大表会锁很久 ⭐
+  ⚠️ 而且会导致从库延迟
+
+情况 B：已经溢出，插入失败（线上故障）
+  → 只能紧急改列类型（重建表），或者
+  → 用 pt-osc / gh-ost 在线重建表（把列类型一起改了）
+  → 或者：把历史数据归档到另一张表，腾出 ID 空间（治标）
+
+情况 C：预防胜于治疗
+  → 新表一律用 BIGINT UNSIGNED 做主键 ⭐
+```
+
+**紧急改类型（用 gh-ost）** ⭐：
+
+```bash
+gh-ost --host=127.0.0.1 --database=blogdb --table=logs \\
+       --alter="MODIFY COLUMN id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT" \\
+       --execute
+```
+
+**改成 `UNSIGNED` 能"立刻"多出一倍空间吗？** 不能 —— 已经有数据的情况下，改成 `UNSIGNED` 也是**改列类型**（重建表）。但如果**原本就是 `BIGINT`，只是从有符号改无符号**，可以用 **`ALGORITHM=INPLACE`**（8.0 支持部分类型变化的 INPLACE）—— 需要实测确认。
+
+**"改回低值"的陷阱** ⚠️：`ALTER TABLE t AUTO_INCREMENT = 1` 只在**表里没有数据（或最大 id 小于目标值）**时才生效。否则 MySQL 会取 `MAX(id)+1`。
+
+## 三、查看自增状态 ⭐
+
+```sql
+-- ① 表状态里的 AUTO_INCREMENT
+SHOW TABLE STATUS LIKE ''posts''\\G
+-- Auto_increment: 12345
+
+-- ② 从 information_schema 批量查（找出快溢出的表）⭐
+SELECT table_schema, table_name, auto_increment,
+       CASE
+         WHEN auto_increment > 1500000000 THEN ''DANGER: INT 快满''
+         WHEN auto_increment > 1000000000 THEN ''WARN''
+         ELSE ''OK''
+       END AS risk
+FROM information_schema.tables
+WHERE auto_increment IS NOT NULL
+ORDER BY auto_increment DESC LIMIT 20;
+```
+
+**⚠️ `SHOW TABLE STATUS` / `information_schema` 里的 `Auto_increment` 是估算值**（InnoDB 从内存中的计数器读，可能不准）。**精确值**：
+
+```sql
+SELECT MAX(id) FROM t;    -- 但这是主键的最大值，会自动用索引，非常快 ⭐
+```
+
+## 四、分布式全局唯一 ID ⭐
+
+自增 ID 在分库分表下会**冲突**（每个分片都从 1 开始）。方案对比：
+
+| 方案 | 原理 | 优点 | 缺点 |
+|---|---|---|---|
+| **UUID** | 随机 128 位 | 完全去中心化 | ⚠️ **随机 → 页分裂 + 索引膨胀**（见"为什么不用 UUID"）|
+| **雪花算法 Snowflake** ⭐ | `1bit符号 + 41bit时间戳 + 10bit机器ID + 12bit序列号` | **趋势递增**（时间在高位）、本地生成、高性能 | 依赖时钟；要管理机器 ID |
+| **号段模式（Leaf-segment）** ⭐ | 从 DB 批量取一段（如 1万~2万），本地分配 | 高性能（一次取一批）、趋势递增 | 取号段时应用重启会浪费一段；依赖 DB |
+| **Redis `INCR`** | 原子递增 | 简单快 | 依赖 Redis；持久化配置不当会重号 ⚠️ |
+| **DB 自增表** | 中央表发号 | 简单 | DB 成瓶颈和单点 |
+| **MySQL 8.0 `UUID_TO_BIN(uuid, 1)`** | 转成二进制 + **时间高位重排** ⭐ | 有序 UUID（减少页分裂）| 16 字节仍偏大 |
+| **ULID / 有序 UUID** | 时间戳 + 随机 | 趋势递增，字符串友好 | 20/26 字节 |
+
+### 雪花算法细节 ⭐
+
+```
+ 0 | 0000000000 0000000000 0000000000 0000000000 0 | 0000000000 | 000000000000
+ ↑ |                   41 bit 毫秒时间戳              |  10 bit    |   12 bit
+符号|        (可用 69 年)                            |  机器 ID    | 序列号（同毫秒内 4096 个）
+```
+
+- **趋势递增** → B+ 树插入集中在最后一页，**页分裂少** ✅
+- **时钟回拨处理** ⭐：回拨时①等待回拨时间过去 ②抛异常让上游重试 ③用备用位（如把序列号借一位做扩展）
+- **机器 ID 分配**：手工配置 / 从 ZooKeeper/etcd 分配 / 从 IP 后缀推导
+
+**Snowflake 的容量**：单机 **409.6 万 ID/秒**，4096 台机器，可用 69 年。
+
+### 号段模式（Leaf）细节 ⭐
+
+```sql
+-- 中央表
+CREATE TABLE leaf_alloc (
+    biz_tag     VARCHAR(128) PRIMARY KEY,
+    max_id      BIGINT NOT NULL,
+    step        INT    NOT NULL DEFAULT 2000,   -- 每次取多少
+    updated_at  TIMESTAMP
+);
+
+-- 取一个号段（原子）
+UPDATE leaf_alloc SET max_id = max_id + step WHERE biz_tag = ''order'';
+SELECT max_id, step FROM leaf_alloc WHERE biz_tag = ''order'';
+-- 应用缓存 [max_id - step + 1, max_id] 这段，本地内存分配 ⭐
+```
+
+**优化**：**双 buffer** —— 当前号段用到 10% 时异步预取下一段，避免取号段时的 DB 等待。
+
+### 选型建议 ⭐
+
+```
+单库单表        → 自增主键（BIGINT UNSIGNED）⭐
+分库分表        → 雪花算法 或 号段模式 ⭐
+需要严格有序    → 号段模式 / 中央发号
+需要无依赖      → 雪花算法（本地生成）
+兼容 MySQL 索引 → 统一用 BIGINT（8 字节），把全局 ID 存成 BIGINT 而不是 VARCHAR
+```
+
+**关键实践**：**全局 ID 用 `BIGINT` 存，不要用 `VARCHAR`** ⭐ —— 因为二级索引叶子节点会存主键，`VARCHAR(32)` 的主键会让每个二级索引膨胀 4 倍。
+
+## 五、一句话总结
+
+**自增 ID 用尽后报的是"主键重复"而不是"溢出"，这个误导性极强**；**新表一律 `BIGINT UNSIGNED`**；分布式下优先 **雪花算法（趋势递增 + 本地生成）** 或 **号段模式（批量取号 + 双 buffer）**，**绝不要用纯随机 UUID 做主键**。', 1),
+
+('MySQL', '统计信息,优化器,执行计划', 3,
+ '优化器是怎么选择执行计划的？统计信息不准会怎样？怎么干预优化器？',
+ '## 一、优化器的工作方式 ⭐
+
+```
+SQL → 解析（语法树） → 预处理（语义校验、权限） → 优化器 → 执行器
+                                                      ↑
+                          基于【代价模型 costing】从多个候选计划里选最便宜的
+```
+
+**代价模型的两大成本**：
+
+| 成本 | 说明 |
+|---|---|
+| **IO 成本** | 读页的代价（`innodb` 引擎的页读取）|
+| **CPU 成本** | 处理行的代价（比较、排序、聚合）|
+
+**关键常量**（8.0 默认，页在内存中的场景）：
+
+```
+cost = io_cost × 1.0  +  cpu_cost × 0.2
+```
+
+**优化器可选的路径**：
+
+```
+① 单表访问路径：
+   · 全表扫描（table scan）
+   · 索引扫描（index scan）
+   · 索引等值查找（ref / eq_ref / const）
+   · 索引范围扫描（range）
+   · 覆盖索引（index only）
+   · 索引下推（ICP）
+   · 松散索引扫描（loose index scan，用于 GROUP BY 优化）
+   · 跳跃扫描（index skip scan，8.0）
+   · 多范围读（MRR）
+
+② 连接顺序：n 张表有 n! 种顺序 → 用【贪心/动态规划】搜索
+   表数 ≤ 7 时用穷举（optimal）；> 7 时用启发式（greedy）⭐
+   这就是"多表 JOIN 容易选错计划"的原因
+
+③ 连接算法：NLJ / BNL / BKA / Hash Join
+```
+
+**控制搜索范围的参数**：
+
+| 参数 | 说明 |
+|---|---|
+| `optimizer_search_depth` | 搜索深度（默认 62，自动调整；**越小越快但可能选错**）|
+| `optimizer_prune_level` | 剪枝（默认 1 = 启用启发式剪枝）⭐ |
+| `eq_range_index_dive_limit` | 等值范围下，超过这个数量就不做索引统计（避免采样太慢），改用统计信息估算。默认 **200** ⭐ |
+
+## 二、统计信息 ⭐
+
+**两种统计信息**：
+
+| 类型 | 内容 | 何时更新 |
+|---|---|---|
+| **表统计** | 行数（`cardinality` 基数）、页数 | `ANALYZE TABLE`、或**自动触发**（`innodb_stats_auto_recalc=ON`，变化 > 10% 时异步更新）|
+| **索引统计** | 每个索引的**基数**（不重复值数）| 同上 |
+| **直方图**（8.0）⭐ | 列值的**分布**（等宽/等高）| 手动 `ANALYZE TABLE ... UPDATE HISTOGRAM ON col` |
+
+**基数（cardinality）**：
+
+```sql
+SHOW INDEX FROM posts\\G
+-- Cardinality 列 = 估算的不重复值数
+-- 选择性 = Cardinality / 行数，越接近 1 越好
+```
+
+**⚠️ 重要：`Cardinality` 是估算值**，通过**随机采样 8 个叶子页**计算（`innodb_stats_persistent_sample_pages`，默认 20）⭐。所以：
+
+- **严重倾斜的数据**（如 99% 的行 status=0）→ 采样可能完全估错 ❌
+- **数据量小但长期没 ANALYZE** → 估算偏差大
+
+**统计信息不准的后果** ⭐：
+
+```
+① 选了错误的驱动表（大表驱动小表）→ JOIN 慢几百倍
+② 该用索引却走了全表扫描（以为要返回很多行）
+③ 该全表扫描却用了索引（以为只返回几行，实际上回表更多 → 更慢）
+④ 选错连接算法（该 NLJ 却用 BNL）
+⑤ `rows` 估算与实际相差几个数量级 → 后续的代价计算全错
+```
+
+**判断统计信息准不准** ⭐：
+
+```sql
+-- 对比估算与实际（EXPLAIN ANALYZE 会直接给出对比）⭐
+EXPLAIN ANALYZE SELECT * FROM posts WHERE status = 1;
+-- 输出：
+--   (cost=... rows=10) (actual time=0.1..5.2 rows=45000 loops=1)
+--                      ↑ 估算 10 行  ↑ 实际 45000 行 → 差了 4500 倍！❌
+```
+
+## 三、直方图（8.0）⭐
+
+**用途**：给**没有索引的列**提供分布信息，帮助优化器更准地估算 `WHERE col = ?`（尤其数据倾斜时）。
+
+```sql
+-- 创建直方图（bucket 数 1~1024）
+ANALYZE TABLE posts UPDATE HISTOGRAM ON status WITH 64 BUCKETS;
+
+-- 查看
+SELECT * FROM information_schema.column_statistics
+WHERE table_name=''posts'' AND column_name=''status''\\G
+-- 输出含 histogram（JSON）与 number-of-buckets-specified
+
+-- 删除
+ANALYZE TABLE posts DROP HISTOGRAM ON status;
+```
+
+**自动维护**：`histogram_generation_max_mem_size` 控制采样内存；表数据变化后需要**手动重新 ANALYZE**。
+
+**适用场景** ⭐：`status`、`category` 这类**选择性差但分布极倾斜**的列（Pareto 分布）。
+
+## 四、如何干预优化器 ⭐
+
+### ① `ANALYZE TABLE`（最便宜）
+
+```sql
+ANALYZE TABLE posts;                          -- 更新统计信息
+ANALYZE TABLE posts UPDATE HISTOGRAM ON status;   -- 加直方图
+ANALYZE TABLE posts, comments;                 -- 多表
+```
+
+### ② 索引提示（Index Hint）⭐
+
+```sql
+-- 建议使用某索引（软提示，可能被忽略）
+SELECT * FROM posts USE INDEX (idx_status);
+
+-- 忽略某索引
+SELECT * FROM posts IGNORE INDEX (idx_status);
+
+-- 强制使用某索引（更硬）
+SELECT * FROM posts FORCE INDEX (idx_status);
+
+-- 8.0：优化器提示（更细粒度）⭐
+SELECT /*+ INDEX(posts idx_status) */ * FROM posts WHERE status=1;
+SELECT /*+ NO_INDEX(posts idx_status) */ * FROM posts WHERE status=1;
+SELECT /*+ JOIN_ORDER(a, b) */ * FROM a JOIN b ON ...;      -- 强制连接顺序
+SELECT /*+ JOIN_PREFIX(a) */ ...;                            -- 让 a 先连接
+SELECT /*+ SET_VAR(sort_buffer_size = 16M) */ ...;           -- 临时改会话变量 ⭐
+SELECT /*+ MERGE(t) */ ...;                                  -- 让派生表不强物化
+SELECT /*+ NO_MERGE(t) */ ...;
+SELECT /*+ BKA(t) */ ...;                                    -- 强制 BKA
+SELECT /*+ NO_BNL(t) */ ...;                                 -- 禁止 BNL
+SELECT /*+ HASH_JOIN(a, b) */ ...;                           -- 8.0.18+ 强制 hash join
+```
+
+**8.0 的 hint 比老式 hint 更好**：因为老式 hint 写在表名后面，语义模糊且不支持 JOIN 顺序等。
+
+### ③ `STRAIGHT_JOIN`（强制连接顺序）
+
+```sql
+SELECT * FROM small_table STRAIGHT_JOIN big_table ON small_table.id = big_table.sid;
+-- 强制 small_table 为驱动表 ⭐
+```
+
+### ④ 会话级开关 `optimizer_switch`
+
+```sql
+SELECT @@optimizer_switch\\G     -- 查看所有开关
+SET SESSION optimizer_switch = ''index_condition_pushdown=on,mrr=on,block_nested_loop=off'';
+-- 常用开关：
+--   index_condition_pushdown   ICP
+--   index_merge                索引合并
+--   index_merge_intersection
+--   mrr                        多范围读
+--   batched_key_access         BKA
+--   block_nested_loop          BNL
+--   semijoin                   半连接优化（IN 子查询）
+--   materialization            子查询物化
+--   derived_merge              派生表合并
+--   duplicateweedout
+--   hash_join                  8.0.18+
+```
+
+### ⑤ 改写 SQL（往往比 hint 更好）⭐
+
+```sql
+-- ❌ 优化器选错驱动表
+SELECT * FROM big JOIN small ON ...;
+-- ✅ 改用子查询固定顺序，或显式 STRAIGHT_JOIN
+SELECT * FROM small STRAIGHT_JOIN big ON ...;
+
+-- ❌ 函数导致无法用索引
+WHERE DATE(created_at) = ''2024-05-01''
+-- ✅ 改成范围
+WHERE created_at >= ''2024-05-01'' AND created_at < ''2024-05-02''
+
+-- ❌ OR 导致无法用索引
+WHERE a = 1 OR b = 2
+-- ✅ 改 UNION ALL
+SELECT * FROM t WHERE a = 1
+UNION ALL
+SELECT * FROM t WHERE b = 2 AND a <> 1;    -- 注意去重逻辑
+```
+
+**原则**：**优先改 SQL / 加索引 → 其次 ANALYZE TABLE → 最后才用 hint**。hint 是"把优化器的锅扛到 SQL 里"，维护成本高（数据分布变了要改 SQL）⭐
+
+## 五、`EXPLAIN` 与 `EXPLAIN ANALYZE` 配合 ⭐
+
+```sql
+-- 只看估算（不执行）
+EXPLAIN SELECT ...;
+EXPLAIN FORMAT=JSON SELECT ...;    -- 8.0：含每个候选路径的 cost 明细 ⭐
+EXPLAIN FORMAT=TREE SELECT ...;    -- 树形展示，8.0 默认风格
+
+-- 真实执行并对比估算（8.0.18+）⭐ 最有价值
+EXPLAIN ANALYZE SELECT ...;
+-- 输出含 (actual time=... rows=... loops=...)，能直接看出估算偏差
+```
+
+**`FORMAT=JSON` 里能看到**：
+
+```json
+"query_cost": "1234.56",           // 总代价
+"table": {
+  "access_type": "ALL",            // 全表扫描
+  "rows_examined_per_scan": 45000,
+  "filtered": 2.22,                // 过滤后剩 2.22%
+  "cost_info": { "read_cost": "...", "eval_cost": "...", "prefix_cost": "..." }
+},
+"considered_execution_plans": [ ... ]   // ⭐ 优化器考虑过的其他计划及代价
+```
+
+**`considered_execution_plans` 是金矿** ⭐：能看到优化器**比较过哪些计划**、为什么没选（代价更高），从而判断是"统计信息错"还是"模型本身不合理"。
+
+## 六、优化器"选错"的常见原因与对策 ⭐
+
+| 原因 | 判断方法 | 对策 |
+|---|---|---|
+| **统计信息过时** | `EXPLAIN ANALYZE` 估算 vs 实际差很多 | `ANALYZE TABLE` ⭐ |
+| **采样偏差**（数据倾斜）| `Cardinality` 明显不合理 | 加直方图 / 调大 `innodb_stats_persistent_sample_pages` ⭐ |
+| **代价模型不适配**（SSD vs HDD 差异）| 优化器总选全表扫描 | 8.0 的 `optimizer_cost_model` 或用 hint |
+| **多表 JOIN 搜索空间爆炸** | JOIN 顺序不合理 | 减少表数 / `STRAIGHT_JOIN` / 拆成多步查询 |
+| **`eq_range_index_dive_limit` 触发** | `IN` 里值很多时估算失真 | 调大该值（默认 200）|
+| **隐式类型转换** | `EXPLAIN` 里 `key=NULL` | 修正类型/字符集 ⭐ |
+| **`force index` 遗留** | SQL 里写着老 hint | 清理过期的 hint |
+| **子查询/派生表被物化** | `EXPLAIN` 有 `DERIVED` | 改写为 JOIN，或用 `MERGE` hint |
+
+## 七、一句话总结
+
+**优化器 = 代价模型 + 统计信息 + 搜索算法**；统计信息（尤其 `Cardinality` 的采样估算）不准是"选错计划"的头号原因，**先用 `EXPLAIN ANALYZE` 对比"估算行数 vs 实际行数"**，然后按 **`ANALYZE TABLE` → 加直方图 → 改 SQL → 索引 hint** 的顺序处理。**hint 是最后手段**，因为它把"数据分布的假设"硬编码进了 SQL。', 1),
+
+('MySQL', '日志,error log,慢查询', 1,
+ 'MySQL 有哪几种日志？各自的作用、位置和常用参数是什么？',
+ '## 一、日志总览 ⭐
+
+| 日志 | 层次 | 作用 | 默认 |
+|---|---|---|---|
+| **error log**（错误日志）| Server | 启动/关闭/错误/警告 | **ON** ⭐ |
+| **slow query log**（慢查询日志）| Server | 记录超时 SQL | OFF（**必须开**）⭐ |
+| **general log**（通用查询日志）| Server | 记录**所有**收到的 SQL | OFF（会爆炸）⚠️ |
+| **binlog**（二进制日志）| Server | 复制 + PITR | **8.0 默认 ON** ⭐ |
+| **relay log**（中继日志）| Slave | 从库暂存主库的 binlog | 从库自动 |
+| **redo log**（重做日志）| **InnoDB** | 崩溃恢复（WAL）| 一直有，不可关 |
+| **undo log**（回滚日志）| **InnoDB** | 回滚 + MVCC | 一直有 |
+| **audit log**（审计日志）| 插件 | 记录谁做了什么 | 需装插件 |
+| **DDL log** | Server | `metadata` 目录下的 DDL 记录 | 自动 |
+
+## 二、error log ⭐
+
+**作用**：记录**启动、关闭、严重错误、警告、说明信息**。**排查"服务起不来"的第一站**。
+
+```ini
+[mysqld]
+log_error = /var/log/mysql/error.log
+log_error_verbosity = 2      # 8.0：1=errors, 2=errors+warnings(默认), 3=+notes
+log_error_services = ''log_filter_internal; log_sink_internal''   # 8.0 可加 JSON sink
+```
+
+```sql
+SHOW VARIABLES LIKE ''log_error'';
+```
+
+**常见内容**：
+
+```
+[ERROR] 无法启动（端口占用、数据目录权限、配置错误）
+[Warning] Aborted connection ... (Got timeout reading communication packets)
+[Warning] InnoDB: page_cleaner: 1000ms intended loop took ... ms   ← IO 跟不上 ⭐
+[Note] /usr/sbin/mysqld: ready for connections.
+[ERROR] InnoDB: mmap(137363456 bytes) failed; errno 12        ← 内存不足
+[Note] 死锁信息（innodb_print_all_deadlocks=ON 时）
+```
+
+**技巧**：
+
+```bash
+# 看启动过程
+tail -f /var/log/mysql/error.log
+# 只看错误
+grep -i -E ''\\[ERROR\\]|\\[Warning\\]'' /var/log/mysql/error.log | tail -50
+# systemd 环境下也可能进 journald
+journalctl -u mysqld -n 100 --no-pager
+```
+
+## 三、slow query log ⭐（必开）
+
+**作用**：记录执行时间超过阈值的 SQL，是**定位慢 SQL 的起点**。
+
+```ini
+[mysqld]
+slow_query_log = ON
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 1                    # 秒，可带小数（如 0.5）
+log_queries_not_using_indexes = ON      # 记录没用索引的 SQL ⚠️ 高并发下日志会爆炸
+min_examined_row_limit = 100            # 扫描行数少的不记（配合上一项，过滤噪声）⭐
+log_slow_admin_statements = ON          # 记录慢的 ALTER/ANALYZE 等
+log_slow_extra = ON                     # 8.0：记录更多字段（如 rows_examined）
+log_slow_slave_statements = ON          # 从库也记录
+log_output = FILE                       # 或 TABLE（写入 mysql.slow_log 表）
+```
+
+**分析工具** ⭐：
+
+```bash
+# ① 自带（简陋）
+mysqldumpslow -s t -t 10 /var/log/mysql/slow.log      # 按总时间排序 Top10
+mysqldumpslow -s c -t 10 /var/log/mysql/slow.log      # 按次数
+mysqldumpslow -s at -t 10 /var/log/mysql/slow.log     # 按平均时间
+
+# ② Percona Toolkit（推荐）⭐
+pt-query-digest /var/log/mysql/slow.log > slow_report.txt
+# 输出包含：
+#   Profile（按总耗时排序，占比%）
+#   每条 SQL 的 pct / total / min / max / avg / 95% / count
+#   EXPLAIN 建议、示例、表信息
+```
+
+**`log_queries_not_using_indexes` 的坑** ⭐：**小表全表扫描会被记录**（很吵）。生产环境建议**关闭**，或配合 `min_examined_row_limit` 过滤。
+
+**日志条目的读法** ⭐：
+
+```
+# Time: 2024-05-01T10:00:00.123456+08:00
+# User@Host: app[app] @ 10.0.0.5 []  Id: 12345
+# Query_time: 12.345678  Lock_time: 0.000123  Rows_sent: 20  Rows_examined: 4500000
+   ↑ 执行时间             ↑ 锁等待时间      ↑ 返回行数    ↑ 扫描行数 ⭐
+SET timestamp=1714528800;
+SELECT * FROM posts WHERE status = 1 ORDER BY created_at DESC LIMIT 20;
+```
+
+**关键指标解读**：
+
+| 指标 | 说明 |
+|---|---|
+| **`Query_time`** | 总执行时间 |
+| **`Lock_time`** | **锁等待**时间（大 → 有锁竞争）⭐ |
+| **`Rows_sent`** | 返回行数 |
+| **`Rows_examined`** ⭐ | **扫描行数** —— `Rows_examined / Rows_sent` 比值大 = 索引不好 |
+| `Rows_affected` | 影响行数（DML）|
+| `Bytes_sent` | 返回数据量（大 → 可能返回了超大字段）|
+
+## 四、general log ⚠️
+
+**作用**：记录**所有**到达 MySQL 的语句（包括 `Sleep` 连接的 `Connect`/`Quit` 事件）。
+
+```sql
+SET GLOBAL general_log = ON;      -- ⚠️ 别在生产长时间开！
+SELECT @@general_log_file;        -- 默认 /var/lib/mysql/hostname.log
+```
+
+**代价** ⭐：**QPS 越高日志越大越快**（高并发下每秒几百 MB 很正常），会**打满磁盘**并显著拖慢性能。
+
+**正确用法**：
+
+```
+① 只在排查"应用到底发了什么 SQL"时**临时开几秒**
+② 更好的替代：抓包（tcpdump port 3306）或用 performance_schema 的 statement 表 ⭐
+③ 若要长期审计，用 audit_log 插件（可控、有格式）
+```
+
+## 五、binlog（回顾要点）⭐
+
+```ini
+[mysqld]
+log_bin = /var/lib/mysql/mysql-bin
+binlog_format = ROW                       # 推荐
+binlog_row_image = MINIMAL                # 减小日志体积
+expire_logs_days = 7                      # 8.0.11+ 建议用 binlog_expire_logs_seconds
+binlog_expire_logs_seconds = 604800
+max_binlog_size = 1G
+sync_binlog = 1
+```
+
+```sql
+SHOW BINARY LOGS;                         -- 列出所有 binlog
+SHOW MASTER STATUS\\G                       -- 当前写入位置
+PURGE BINARY LOGS BEFORE ''2024-05-01'';    -- 清理（⚠️ 确认从库已应用）
+FLUSH LOGS;                                -- 切新 binlog
+```
+
+**用途**：主从复制、PITR、**数据变更订阅（Canal/Debezium）用于缓存同步** ⭐
+
+## 六、`log_output = TABLE` 的取舍
+
+```sql
+SET GLOBAL log_output = ''TABLE'';    -- 日志写 mysql.slow_log / mysql.general_log
+SELECT * FROM mysql.slow_log ORDER BY start_time DESC LIMIT 10;
+```
+
+| | FILE | TABLE（CSV 引擎）|
+|---|---|---|
+| 分析工具支持 | ✅ pt-query-digest 等 | ❌ 大多不支持 |
+| 查询方便 | 需 grep | ✅ SQL 查 ⭐ |
+| 性能 | 好 | 略差；表会变大 |
+
+**建议**：默认 FILE（便于用 pt-query-digest）；临时排查可以 TABLE。
+
+## 七、日志相关的常见问题 ⭐
+
+| 问题 | 原因 | 处理 |
+|---|---|---|
+| **磁盘被日志打满** | general log 开了、binlog 不清理、慢日志暴涨 | `du -sh /var/lib/mysql/*` 定位；清理 binlog；关 general log；`log_queries_not_using_indexes=OFF` ⭐ |
+| **慢日志文件巨大** | 阈值太低 or 记录无索引 SQL | 提高 `long_query_time`，开 `min_examined_row_limit` |
+| **binlog 无法清理** | 从库未同步（`Purge` 会等从库） | 检查从库状态；确认后可强制 `PURGE` |
+| **日志时间不对（差 8 小时）** | 时区配置 | `log_timestamps = SYSTEM`（默认 UTC）⭐ 改成 SYSTEM 让日志用本地时间 |
+| **看不到错误细节** | `log_error_verbosity` 太低 | 调成 3 |
+| **error log 里有大量 aborted connection** | 客户端连接被中断 | 检查 `wait_timeout`、`max_allowed_packet`、网络 |
+
+**`log_timestamps` 是常踩的坑** ⭐：默认 `UTC`，所以如果服务器是 CST（+8），日志文件里的时间会比本地**早 8 小时**，容易被误判为"日志没更新"。改成 `log_timestamps = SYSTEM` 即可。
+
+## 八、一句话总结
+
+**必开：error log（默认）+ slow query log + binlog**；**别开：general log（除非临时排查）**；慢日志用 **`pt-query-digest`** 分析，核心看 **`Rows_examined / Rows_sent` 比值** 和 `Lock_time`；最容易踩的坑是 **`log_timestamps` 默认 UTC 导致时间对不上** 和 **`log_queries_not_using_indexes` 把日志写爆**。', 1),
+
+('MySQL', 'sql_mode,严格模式,兼容', 2,
+ '`sql_mode` 是什么？有哪些重要模式？为什么升级后老 SQL 会报错？',
+ '## 一、`sql_mode` 是什么 ⭐
+
+**它是一组"语法与数据校验规则"的开关集合**，决定 MySQL 对**不合规 SQL/数据**的态度：**报错拒绝** 还是 **静默转换**。
+
+```sql
+SELECT @@sql_mode;
+-- 8.0 默认：
+-- ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,
+-- ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+```
+
+**为什么重要** ⭐：**同一份 SQL 在不同 `sql_mode` 下可能"一个报错、一个静默改数据"**。所以：
+- **升级 MySQL 版本后老 SQL 报错**，十之八九是 `sql_mode` 变严了。
+- **主从库 `sql_mode` 不一致会导致主从不一致** ⚠️（从库报错、主库静默通过）。
+
+## 二、重要模式详解 ⭐
+
+### 严格模式（最重要）⭐
+
+| 模式 | 作用 |
+|---|---|
+| **`STRICT_TRANS_TABLES`** ⭐ | 对**事务表**启用严格模式：数据类型不对/超长/缺 `NOT NULL` 无默认值 → **直接报错**（而不是截断/填默认值）|
+| **`STRICT_ALL_TABLES`** | 对所有表（含 MyISAM）严格 |
+
+**对比示例**：
+
+```sql
+CREATE TABLE t (a INT, b VARCHAR(5) NOT NULL);
+
+-- 关闭 strict：
+SET sql_mode = '''';
+INSERT INTO t VALUES (''abc'', NULL);
+-- Warning (不是 Error)：''abc'' 被转成 0，NULL 被转成 ''''
+SELECT * FROM t;   →  a=0, b=''''    ⚠️ 数据被静默改了！
+
+-- 开启 STRICT_TRANS_TABLES：
+INSERT INTO t VALUES (''abc'', NULL);
+-- ERROR 1366 (HY000): Incorrect integer value: ''abc'' for column ''a'' at row 1  ✅ 拒绝
+```
+
+**严格模式的价值**：**避免"数据被悄悄改动"**。这是**必须开**的。
+
+### `ONLY_FULL_GROUP_BY` ⭐（升级报错的头号原因）
+
+```sql
+-- 关闭时：MySQL 5.7 之前允许"查询不在 GROUP BY 里的列"，取任意一行的值
+SELECT dept, name, COUNT(*) FROM emp GROUP BY dept;
+-- 结果里 name 是不确定的（MySQL 随便挑一个）⚠️ 结果不可预测
+
+-- 开启时（5.7+ 默认，8.0 仍默认）：
+-- ERROR 1055 (42000): Expression #2 of SELECT list is not in GROUP BY clause
+--                     and contains nonaggregated column ''emp.name''
+--                     which is not functionally dependent on columns in GROUP BY clause
+```
+
+**正确写法**：
+
+```sql
+-- ✅ 用聚合函数
+SELECT dept, MAX(name), COUNT(*) FROM emp GROUP BY dept;
+-- ✅ 或用窗口函数（8.0）
+SELECT dept, name, COUNT(*) OVER (PARTITION BY dept) FROM emp;
+-- ✅ 或明确取哪一行
+SELECT dept, SUBSTRING_INDEX(GROUP_CONCAT(name ORDER BY id), '','', 1) FROM emp GROUP BY dept;
+```
+
+**为什么这是好事** ⭐：老的宽松行为会让**结果依赖执行计划**（可能今天和明天不一样），是隐蔽的 bug 源。`ONLY_FULL_GROUP_BY` 强制你写**语义确定**的 SQL。
+
+### 其他重要模式
+
+| 模式 | 作用 | 建议 |
+|---|---|---|
+| **`NO_ZERO_DATE`** | 不允许 `''0000-00-00''` 日期 | 开 ⭐ |
+| **`NO_ZERO_IN_DATE`** | 不允许 `''2024-00-01''` 这种部分为 0 的日期 | 开 |
+| **`ERROR_FOR_DIVISION_BY_ZERO`** | 除零报错（否则返回 NULL + Warning）| 开 |
+| **`NO_ENGINE_SUBSTITUTION`** ⭐ | 指定引擎不可用时**报错**，而不是悄悄换成默认引擎 | **必须开**（否则 `ENGINE=MyISAM` 会被静默替换成 InnoDB）|
+| **`NO_AUTO_CREATE_USER`** | 5.7：`GRANT` 不自动建用户 | 8.0 已移除相关语法 |
+| **`NO_BACKSLASH_ESCAPES`** | 禁用反斜杠转义 | ⚠️ **不要开**（会让 `\\` 变成普通字符，影响转义逻辑）⭐ |
+| **`ANSI_QUOTES`** | 用 `"` 表示标识符（而非字符串）| ⚠️ 慎用（很多 ORM 会出问题）|
+| **`PIPES_AS_CONCAT`** | `\\|\\|` 作为字符串连接（Oracle 风格）| 兼容迁移时用 |
+| **`ANSI`** | 组合模式（`REAL_AS_FLOAT, PIPES_AS_CONCAT, ANSI_QUOTES, ONLY_FULL_GROUP_BY`）| 兼容 ANSI SQL |
+| **`TRADITIONAL`** | 组合模式（含严格模式全套）| 最严格 |
+| **`IGNORE_SPACE`** | 函数名和 `(` 之间允许空格 | |
+| **`HIGH_NOT_PRECEDENCE`** | `NOT` 优先级变化 | |
+| **`ALLOW_INVALID_DATES`** | 允许非法日期（如 `2024-02-30`）| 不开 |
+| **`NO_UNSIGNED_SUBTRACTION`** | 无符号减法报错而非回绕 | 视情况 |
+| **`REAL_AS_FLOAT`** | `REAL` 作为 `FLOAT` | 兼容 |
+
+## 三、`sql_mode` 是分层的 ⭐
+
+```sql
+-- ① 启动默认（命令行/配置文件）
+[mysqld]
+sql_mode = ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+
+-- ② 全局（运行时）
+SET GLOBAL sql_mode = ''...'';     -- 新连接生效 ⚠️ 重启后丢失（除非写进配置文件）
+
+-- ③ 会话
+SET SESSION sql_mode = ''...'';    -- 当前连接生效
+-- 或
+SET sql_mode = ''...'';            -- 等价于 SESSION
+```
+
+**配置文件优先级**：命令行 `--sql-mode` > 配置文件 > 编译默认。
+
+**关键实践** ⭐：**主从库必须配置完全一样的 `sql_mode`**。否则同一事务在主库成功、从库报错 → **复制中断**（`Last_SQL_Error`）。
+
+**检查从库的 `sql_mode`**：
+
+```sql
+SHOW VARIABLES LIKE ''sql_mode'';   -- 主库
+SHOW SLAVE STATUS\\G               -- 看 Slave_SQL_Running_State 是否正常
+-- 从库也要执行 SHOW VARIABLES LIKE ''sql_mode'' 对比
+```
+
+## 四、升级时的排查流程 ⭐
+
+```sql
+-- 1. 目标版本（8.0）的默认 sql_mode
+-- ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,
+-- ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+
+-- 2. 在 5.7 上临时改成 8.0 的默认值，跑全量回归 ⭐
+SET GLOBAL sql_mode = ''ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'';
+-- 然后跑业务回归 → 看有哪些 SQL 报错
+
+-- 3. 用 mysqlsh 的 upgrade checker
+--    mysqlsh -- util check-for-server-upgrade root@host:3306
+
+-- 4. 修复报错 SQL 后，再正式升级
+```
+
+**常见的升级报错及修法** ⭐：
+
+| 报错 | 原因 | 修法 |
+|---|---|---|
+| `ERROR 1055 ... not in GROUP BY` | `ONLY_FULL_GROUP_BY` | 补 `GROUP BY` 或改聚合函数/窗口函数 ⭐ |
+| `ERROR 1366 Incorrect ... value` | 严格模式 | 修数据 or 修代码（不要再依赖隐式转换）⭐ |
+| `ERROR 1364 Field doesn''t have a default value` | 严格模式 + `NOT NULL` 无默认值 | 给列加默认值，或插入时显式赋值 |
+| `ERROR 1292 Incorrect datetime value` | `NO_ZERO_DATE` | 不要把 `''0000-00-00''` 当哨兵值，用 `NULL` ⭐ |
+| `ERROR 1524 Plugin ... not loaded` | 8.0 认证插件变化 | 改驱动或改用户认证方式 |
+| 保留字冲突 | 8.0 新增 `RANK`/`GROUPS`/`LEAD` 等 | 加反引号 |
+
+## 五、"不要为了兼容而关掉严格模式" ⭐
+
+**常见的错误做法**：
+
+```sql
+-- ❌ 升级后一堆 SQL 报错 → 直接把 sql_mode 清空
+SET GLOBAL sql_mode = '''';
+```
+
+**为什么错**：
+
+```
+① 报错说明那些 SQL 本来就在"静默改数据"或"产生不确定结果" → 是 bug 而不是兼容问题
+② 清空后：截断/填默认值会继续发生，数据质量无从保证
+③ 主从可能不一致（一边严格一边宽松）
+④ 后续版本会更严格，早晚还得改
+```
+
+**正确做法**：**保留严格模式，修 SQL 和数据**。如果确实有历史包袱，可以**暂时只关掉最痛的一个子模式**（如 `ONLY_FULL_GROUP_BY`），并记 TODO 逐步整改 ⭐。
+
+## 六、一句话总结
+
+**`sql_mode` 决定 MySQL 对不合规数据是"报错"还是"静默修改"**；**`STRICT_TRANS_TABLES` 和 `NO_ENGINE_SUBSTITUTION` 必须开**，`ONLY_FULL_GROUP_BY` 是升级报错的头号原因但**不要为了省事关掉它**；**主从必须配一致的 `sql_mode`**，否则会复制中断；迁移前用 `mysqlsh upgrade checker` 加上"临时改成目标默认值跑回归"来提前发现问题。', 1),
+
+('MySQL', '时区,时间,datetime', 2,
+ 'MySQL 里时区怎么处理？`NOW()` 和 `SYSDATE()` 有什么区别？跨时区系统怎么设计时间字段？',
+ '## 一、`DATETIME` vs `TIMESTAMP` 的时区行为 ⭐
+
+| | `DATETIME` | `TIMESTAMP` |
+|---|---|---|
+| 存储 | **字面值**（`''2024-05-01 10:00:00''` 原样存）| **UTC 时间戳**（写入时按 `time_zone` 转成 UTC 存）|
+| 读取 | **原样返回**，与时区无关 ⭐ | 按当前 `time_zone` 转回本地时间 |
+| 范围 | 1000~9999 | 1970~**2038** ⚠️ |
+| 自动更新 | 需显式写 `DEFAULT/ON UPDATE` | 默认就有 `ON UPDATE CURRENT_TIMESTAMP` ⚠️ |
+
+**关键例子** ⭐：
+
+```sql
+SET time_zone = ''+08:00'';
+INSERT INTO t (dt, ts) VALUES (''2024-05-01 10:00:00'', ''2024-05-01 10:00:00'');
+
+SET time_zone = ''+00:00'';
+SELECT dt, ts FROM t;
+-- dt = ''2024-05-01 10:00:00''   ← ✅ 原样（DATETIME 不受时区影响）
+-- ts = ''2024-05-01 02:00:00''   ← ⚠️ 变了！(TIMESTAMP 按时区转换)
+```
+
+**结论** ⭐：**`DATETIME` 的行为可预测（存什么读什么），`TIMESTAMP` 会自动做时区转换。**
+
+## 二、`NOW()` vs `SYSDATE()` ⭐
+
+| | `NOW()`（= `CURRENT_TIMESTAMP`）| `SYSDATE()` |
+|---|---|---|
+| 取值时机 | **语句开始执行时**取值，**语句内恒定** ⭐ | **函数被调用时**取值，**每次调用可能不同** |
+| 用途 | 一般用这个 | 需要"真实当前时间"时 |
+
+```sql
+SELECT NOW(), SLEEP(2), NOW(), SYSDATE(), SLEEP(2), SYSDATE();
+-- 结果：
+-- NOW() = 10:00:00  ... NOW() = 10:00:00   ← ⭐ 两次相同（语句开始时间）
+-- SYSDATE() = 10:00:02        SYSDATE() = 10:00:04   ← 随执行时间变化
+```
+
+**⚠️ 重要陷阱** ⭐：
+
+| 陷阱 | 说明 |
+|---|---|
+| **`NOW()` 在主从复制中安全** | 因为它取的是"语句开始时间"，主从执行同一条 SQL 时……**注意：实际是主库的时间被写进 binlog（ROW 格式下写的是值，安全）**；STATEMENT 格式下 `NOW()` 也是安全的（binlog 里记录的是主库执行的时刻）⭐ |
+| **`SYSDATE()` 在 STATEMENT 复制下不安全** ⚠️ | 主从执行时间不同 → 结果不同 → **主从不一致**。所以 `binlog_format=STATEMENT` 时**不要用 `SYSDATE()`** ⭐ |
+| **`NOW()` 在函数/触发器中** | 也是语句级常量 |
+
+**建议**：**统一用 `NOW()`**，避免 `SYSDATE()`。
+
+## 三、时区相关变量与函数 ⭐
+
+```sql
+-- 查看
+SELECT @@global.time_zone, @@session.time_zone;
+SELECT NOW(), UTC_TIMESTAMP(), CURDATE(), CURTIME();
+SELECT TIMEDIFF(NOW(), UTC_TIMESTAMP()) AS tz_offset;   -- ⭐ 反推当前时区偏移
+
+-- 设置（三种形式）
+SET GLOBAL time_zone = ''SYSTEM'';        -- 跟随操作系统时区 ⭐ 推荐
+SET GLOBAL time_zone = ''+08:00'';        -- 固定偏移
+SET GLOBAL time_zone = ''Asia/Shanghai''; -- 命名时区（需导入时区表）⭐
+
+-- ⚠️ 命名时区需要先导入时区数据（否则报 "Unknown or incorrect time zone"）
+--  Linux: mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql
+--  或在 my.cnf 里写 time_zone = ''+08:00'' 避免依赖时区表
+```
+
+**配置文件**：
+
+```ini
+[mysqld]
+default-time-zone = ''+08:00''      # 或 ''Asia/Shanghai'' 或 ''SYSTEM''
+log_timestamps = SYSTEM            # ⭐ 让日志用本地时间（默认 UTC，容易误判）
+```
+
+**`TIMESTAMP` 相关的转换函数**：
+
+```sql
+SELECT CONVERT_TZ(''2024-05-01 10:00:00'', ''+08:00'', ''+00:00'');   -- ''2024-05-01 02:00:00''
+SELECT UNIX_TIMESTAMP(''2024-05-01 10:00:00'');                    -- 秒数（按会话时区解释）
+SELECT FROM_UNIXTIME(1714528800);                                -- 按会话时区格式化
+```
+
+**⚠️ `CONVERT_TZ` 用命名时区时需要时区表**，否则返回 `NULL`。
+
+## 四、跨时区系统的设计建议 ⭐
+
+### 方案 A：统一存 UTC（推荐给国际化系统）⭐⭐
+
+```
+① 数据库 time_zone = ''+00:00''（或 UTC）
+② 时间字段用 DATETIME(3)，存 UTC
+③ 应用层负责：输入时把用户本地时间转 UTC 再存；输出时把 UTC 转用户时区再显示
+④ 用 BIGINT 存 Unix 时间戳也可以（无时区语义，最不容易出错）
+```
+
+**优势**：**存储层完全没有时区歧义**；换时区不用改数据。
+
+### 方案 B：统一存业务本地时间（推荐给单区域系统）⭐
+
+```
+① 数据库和应用都设为同一时区（如 ''+08:00''）
+② 用 DATETIME(3)，存本地时间
+③ 显示时直接用（不需要转换）
+```
+
+**优势**：简单直观，SQL 里 `DATE(created_at)`、`WHERE created_at >= CURDATE()` 都很好用。
+**劣势**：将来要国际化就得改。
+
+**本项目（博客系统）** 属于单区域，**方案 B 足够**，但要注意：
+
+```
+① 服务器、MySQL、应用三处时区必须一致 ⭐
+② 用 DATETIME(3) 而不是 TIMESTAMP（避免 2038 和自动改值）
+③ 在配置文件里显式写 default-time-zone，不要依赖"服务器当前时区"
+```
+
+### 方案 C：全球用户但只有展示层需要时区
+
+```
+存 UTC（方案 A），同时单独存用户的时区偏好（user.timezone）
+渲染时按用户时区转换
+```
+
+## 五、常见坑 ⭐
+
+| 坑 | 现象 | 解决 |
+|---|---|---|
+| **服务器时区改了但 MySQL 没重启** | `time_zone=SYSTEM` 只在启动时解析一次 | 重启 mysqld，或显式设 `+08:00` |
+| **命名时区报错** | `Unknown or incorrect time zone: ''Asia/Shanghai''` | 导入时区表，或改用偏移量 `+08:00` ⭐ |
+| **日志时间差 8 小时** | `log_timestamps=UTC`（默认）| 改 `log_timestamps=SYSTEM` ⭐ |
+| **`TIMESTAMP` 自动改值** | 每次 `UPDATE` 都把 `updated_at` 改了（即使没动它）| 用 `DATETIME` + 显式 `ON UPDATE CURRENT_TIMESTAMP` 控制 ⭐ |
+| **`TIMESTAMP` 2038 溢出** | 存 2039 年的时间报错 | 用 `DATETIME` |
+| **`DATE(created_at)` 导致索引失效** | 时间范围查询慢 | 改成 `created_at >= ''2024-05-01'' AND created_at < ''2024-05-02''` ⭐ |
+| **`NOW()` 有时区语义** | 会话时区不同 → 结果不同 | 明确统一会话时区（连接串或 `SET time_zone`）|
+| **`FROM_UNIXTIME` 与会话时区耦合** | 应用以为存的是 UTC | 显式 `SET time_zone=''+00:00''` 或用 `CONVERT_TZ` |
+| **应用和 DB 时区不一致** ⭐ | 写入时差 8 小时 | 在连接串/连接初始化时显式设置时区 |
+| **`TIMESTAMP` 的 `DEFAULT 0`** | 老数据里的 `0000-00-00 00:00:00` | 迁移成 `NULL`（`NO_ZERO_DATE` 模式下不允许）|
+
+**应用连接时区（C API / 连接串）** ⭐：
+
+```cpp
+// C API：连接后立即设置时区
+mysql_query(conn, "SET time_zone = ''+08:00''");
+// 或者修改会话变量
+```
+
+```
+# JDBC
+jdbc:mysql://host:3306/db?serverTimezone=Asia/Shanghai&useSSL=false
+# 或统一 UTC
+jdbc:mysql://host:3306/db?serverTimezone=UTC
+```
+
+**最稳的做法** ⭐：**不要靠"应用连接串的时区"和"服务器时区"偶然一致**，而是在**连接初始化时显式 `SET time_zone`**，或者**完全用 UTC + 应用层转换**。
+
+## 六、时间精度 ⭐
+
+```sql
+-- 毫秒精度（推荐）
+created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+-- 微秒
+updated_at DATETIME(6) ...
+```
+
+**为什么需要毫秒精度**：高并发下同一秒内多条记录，**只有秒级精度会导致排序不稳定**（`ORDER BY created_at DESC` 的结果不唯一）→ 分页可能重复/漏数据 ⭐ 这在"每日一题"这种按时间排序的场景很关键。
+
+**精度与索引**：`DATETIME(3)` 占 7 字节（`DATETIME` 是 5 字节；每增加 1~2 位小数多 1 字节）。
+
+## 七、一句话总结
+
+**`DATETIME` 存字面值（不受时区影响），`TIMESTAMP` 存 UTC（自动时区转换且 2038 溢出）**；**用 `DATETIME(3)`，用 `NOW()` 而不是 `SYSDATE()`**；时区要么**全栈统一本地时区**（单区域，简单），要么**全栈 UTC + 应用层转换**（国际化，最不容易错）；**三处时区（OS/MySQL/应用）必须一致，且在连接初始化时显式设置**；别忘了 `log_timestamps=SYSTEM`，否则日志时间会让你怀疑人生。', 1),
+
+('MySQL', '归档,冷热分离,数据生命周期', 2,
+ '历史数据越来越多该怎么办？冷热数据怎么分离？归档方案怎么设计？',
+ '## 一、为什么必须做数据生命周期管理 ⭐
+
+```
+表越大 → ① B+ 树越高（IO 次数多）② 索引越大（内存放不下）
+       ③ 备份/DDL 时间越来越长 ④ 统计信息失真 ⑤ 查询优化器更容易选错
+```
+
+**现实**：绝大多数业务的查询是**"最近的数据最热"**（帕累托分布）。
+
+```
+访问分布（典型）：最近 7 天 ~ 80% 的查询
+                  最近 30 天 ~ 95%
+                  30 天以上 ~ 5%
+```
+
+**所以"把冷数据挪走"是性价比极高的优化** ⭐
+
+## 二、冷热分离的四个层次 ⭐
+
+| 层次 | 做法 | 复杂度 |
+|---|---|---|
+| **① 分区 + DROP PARTITION** ⭐ | 时间序列表按月分区 | 低 |
+| **② 冷热分表（同库）** | `posts` + `posts_archive` | 低 |
+| **③ 冷热分库（历史库）** | 历史数据搬到只读实例/低配实例 | 中 |
+| **④ 数据湖 / 数仓** | 归档到对象存储 + 离线分析 | 高 |
+
+## 三、方案一：分区表 + `DROP PARTITION` ⭐（首选）
+
+```sql
+-- 按月 RANGE 分区（日志、流水、消息类表）⭐
+CREATE TABLE access_log (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    dt DATE NOT NULL,
+    url VARCHAR(500),
+    ip VARCHAR(45),
+    PRIMARY KEY (id, dt)          -- ⚠️ 分区键必须在所有唯一键里
+) ENGINE=InnoDB
+PARTITION BY RANGE COLUMNS(dt) (
+    PARTITION p202404 VALUES LESS THAN (''2024-05-01''),
+    PARTITION p202405 VALUES LESS THAN (''2024-06-01''),
+    PARTITION pmax    VALUES LESS THAN (MAXVALUE)
+);
+
+-- 每天/每月维护任务：
+-- ① 提前建未来分区
+ALTER TABLE access_log REORGANIZE PARTITION pmax INTO (
+    PARTITION p202406 VALUES LESS THAN (''2024-07-01''),
+    PARTITION pmax    VALUES LESS THAN (MAXVALUE)
+);
+-- ② 删除过期分区（秒级！不产生大量 undo/binlog）⭐
+ALTER TABLE access_log DROP PARTITION p202401;
+```
+
+**优势** ⭐：
+- **`DROP PARTITION` 是元数据操作，秒级完成**（对比 `DELETE` 要几分钟到几小时）
+- **不产生大量 binlog** → 不会拖垮从库
+- **不需要额外磁盘**（不像 `OPTIMIZE`）
+- **无碎片**
+
+**维护脚本思路**（可用 Event Scheduler 或外部 cron）：
+
+```sql
+-- 每天 03:00 跑
+-- 1. 建下个月的分区（幂等：先判断是否存在）
+-- 2. 删 N 个月前的分区
+-- 3. 记录日志
+```
+
+**怎么判断分区是否存在**：
+
+```sql
+SELECT COUNT(*) FROM information_schema.partitions
+WHERE table_schema=''blogdb'' AND table_name=''access_log'' AND partition_name=''p202406'';
+```
+
+## 四、方案二：冷热分表（同库）⭐
+
+**适用于：单表数据量大，但业务查询天然区分冷热**。
+
+```sql
+-- 热表：保留最近 N 天/N 个月
+CREATE TABLE orders        LIKE orders_archive;   -- 结构相同
+-- 归档流程（分批 + 事务）：
+-- 1. 从热表按主键范围取一批
+-- 2. INSERT INTO orders_archive SELECT ... 
+-- 3. DELETE FROM orders WHERE id IN (...)
+-- 4. 循环直到完成
+```
+
+**安全归档的注意点** ⭐：
+
+| 注意点 | 说明 |
+|---|---|
+| **先写后删** | 必须"先成功插入归档表，再删热表"，**顺序不能反** ⭐ |
+| **同一事务** | 保证"插了必删、删了必插"，避免数据丢失/重复 |
+| **按主键范围分批** | 避免大事务（见"大事务"题）⭐ |
+| **批间 sleep** | 让从库追上 |
+| **记录进度** | 用一张进度表，支持中断续跑 |
+| **幂等** | 重复执行同一批不产生重复数据（用 `INSERT IGNORE` 或 `REPLACE`）|
+| **限速** | 控制每分钟归档行数，避免打满 IO |
+| **查两边** ⭐ | 应用查询需要 union 或路由（按时间范围决定查哪张表）|
+
+**归档存储过程示例**：
+
+```sql
+DELIMITER $$
+CREATE PROCEDURE archive_orders(IN p_before DATE, IN p_batch INT)
+BEGIN
+    DECLARE v_affected INT DEFAULT 1;
+    DECLARE v_min_id BIGINT; DECLARE v_max_id BIGINT;
+    
+    SELECT MIN(id), MAX(id) INTO v_min_id, v_max_id
+    FROM orders WHERE created_at < p_before;
+    
+    WHILE v_min_id <= v_max_id DO
+        START TRANSACTION;
+        -- ⭐ 先插后删，同一事务
+        INSERT IGNORE INTO orders_archive
+        SELECT * FROM orders
+        WHERE id BETWEEN v_min_id AND v_min_id + p_batch - 1
+          AND created_at < p_before;
+        DELETE FROM orders
+        WHERE id BETWEEN v_min_id AND v_min_id + p_batch - 1
+          AND created_at < p_before;
+        COMMIT;
+        
+        SET v_min_id = v_min_id + p_batch;
+        DO SLEEP(0.05);      -- 让从库追上 ⭐
+    END WHILE;
+END$$
+DELIMITER ;
+```
+
+**⚠️ 应用层的路由问题** ⭐：归档后"查某用户的所有订单"要**同时查热表和归档表**（并做合并分页）。解决方案：
+
+```
+① 应用层按时间范围路由（"最近 3 个月"→热表，"更早"→归档表）⭐
+② 用 union 视图（但性能差，且不能带索引优化）
+③ 维护一张"归档索引表"记录"哪些数据在哪个表"
+④ 产品层面限制："只保留最近 N 个月的记录可查"
+```
+
+## 五、方案三：冷热分库 ⭐
+
+**思路**：历史数据搬到**独立的实例**（低配、只读、可与分析混用）。
+
+```
+主库（热）：orders（最近 3 个月）
+归档库（冷）：orders_all（全部）+ 只读实例
+              ↑ 查询历史走这个，减轻主库压力
+```
+
+**怎么搬**：
+
+| 方式 | 说明 |
+|---|---|
+| **`mysqldump` 单表导出 + 导入** | 简单，需要停写窗口或分批 |
+| **`SELECT INTO OUTFILE` + `LOAD DATA`** ⭐ | 最快（比 INSERT 快数倍），适合大批量 |
+| **binlog 订阅（Canal/Debezium）** | 实时同步到归档库（可做成"主库删、归档库留"）|
+| **原生工具** `mysqlsh util copy` | 8.0 支持 |
+
+**`SELECT INTO OUTFILE` 的注意点**：
+
+```sql
+-- ⚠️ 需要 FILE 权限 + secure_file_priv 目录
+SELECT * FROM orders WHERE created_at < ''2023-01-01''
+INTO OUTFILE ''/var/lib/mysql-files/orders_2023.tsv''
+FIELDS TERMINATED BY ''\\t'' ENCLOSED BY ''"''
+LINES TERMINATED BY ''\\n'';
+
+-- 归档库导入（比 INSERT 快 10~20 倍）
+LOAD DATA INFILE ''/var/lib/mysql-files/orders_2023.tsv'' INTO TABLE orders_archive;
+```
+
+## 六、方案四：数仓/数据湖 ⭐（大数据量）
+
+```
+MySQL（热数据） 
+     │ 每日增量同步（binlog / Airbyte / Canal / DataX）
+     ↓
+数仓（Hive/ClickHouse/Doris）  ← 全量历史，列存，适合分析
+     │ 
+     ↓
+BI / 报表
+```
+
+**好处**：主库永远只留热数据；历史查询完全不占主库资源；分析查询可以很复杂（列存、MPP）。
+**代价**：需要额外组件与同步链路。
+
+## 七、其他配套手段 ⭐
+
+| 手段 | 说明 |
+|---|---|
+| **软删除代替硬删除** | `deleted_at`，保留数据；但要注意唯一索引冲突（见"表设计"题）|
+| **冗长大字段分离** | 把 `content`（TEXT）拆到独立表，主表保持精简 ⭐ 这是很有效的"轻量化" |
+| **列表页不读大字段** | 用 `summary` 冗余列，避免列表查询拉出 `MEDIUMTEXT` |
+| **摘要表/汇总表** | 统计类查询定时汇总（昨天/上周），避免每次扫全表 |
+| **物化视图替代（定时任务）** | MySQL 无物化视图，用定时任务维护汇总表 |
+| **读缓存（Redis）** | 热门查询结果缓存，减少 DB 压力 |
+| **搜索引擎（ES）** | 全文检索/复杂筛选走 ES，DB 只负责事务性读写 ⭐ |
+
+## 八、归档的完整决策流程 ⭐
+
+```
+① 数据增速评估：每月增长多少行/多少 GB？
+② 访问分布评估：多少查询落在"最近 N 天"？（用慢查询日志/performance_schema 统计）
+③ 选出"冷数据"的时间边界（如 3 个月）
+④ 选方案：
+   · 纯时间序列表（日志/流水）        → 分区 + DROP PARTITION ⭐ 最优
+   · 有业务查询但可分流（订单/消息）  → 冷热分表 + 应用层路由
+   · 需要长期保留+分析               → 归档库 / 数仓
+   · 只需满足"可查询但不常用"        → 冷表 + 只读账号
+⑤ 设计归档任务：分批、幂等、限速、可中断续跑、有进度记录 ⭐
+⑥ 设计应用路由：查询怎么知道该查哪张表
+⑦ 设计验证：归档前后行数、关键数据抽样对比
+⑧ 设计回滚：归档出错了怎么恢复（从归档表往回搬）
+```
+
+## 九、一句话总结
+
+**冷热分离的收益极高（80% 的查询只需 20% 的数据），首选"时间时序表用分区 + `DROP PARTITION`"**；需要保留可查时用"**冷热分表 + 应用层按时间路由**"；再大就上**归档库/数仓**。归档任务的铁律是：**先写后删、同一事务、按主键分批、批间 sleep、幂等可续跑、有进度记录**。', 1),
+
+('MySQL', '索引管理,冗余索引,审计', 2,
+ '怎么发现冗余索引和从未使用的索引？删索引有什么风险、怎么做才安全？',
+ '## 一、冗余索引的判定 ⭐
+
+**冗余（Redundant）**：**一个索引是另一个索引的"前缀"**，且没有额外价值。
+
+```
+索引 A: (a)        索引 B: (a, b)
+  → A 是 B 的前缀 → A 冗余 ⭐（B 能完全替代 A 的定位能力）
+
+索引 A: (a, b)     索引 B: (b, a)
+  → 不冗余（前缀关系不成立，各有各的用途）
+```
+
+**为什么冗余有害**：
+
+| 危害 | 说明 |
+|---|---|
+| **写放大** ⭐ | 每次 INSERT/UPDATE/DELETE 要维护**所有**索引 → 写性能下降 |
+| **空间浪费** | 索引占空间（可能比数据还大）|
+| **优化器困惑** | 候选计划变多 → 可能选错 |
+| **DDL 变慢** | 重建表时要重建更多索引 |
+
+**部分冗余的判定**：
+
+```
+索引 A: (a, b)   索引 B: (a, b, c)
+  → A 是 B 的前缀 → A 冗余 ⭐
+
+索引 A: (a, b)   主键 PK: (id)
+索引 C: (a, b, id)  ← ⚠️ 注意：二级索引叶子本来就带主键
+  → 显式加 id 到尾部的联合索引是"隐式冗余"（InnoDB 的二级索引自动附带主键）⭐
+```
+
+## 二、如何发现冗余索引 ⭐
+
+### 方法 1：`sys` 库（最简单）⭐
+
+```sql
+SELECT * FROM sys.schema_redundant_indexes\\G
+-- 输出字段：
+--   table_schema, table_name
+--   redundant_index_name          ← 冗余的索引
+--   redundant_index_columns
+--   dominant_index_name           ← 能替代它的索引
+--   dominant_index_columns
+--   sql_drop_index                ← ⭐ 直接给出 DROP 语句！
+```
+
+**一条命令拿到可执行的 `DROP INDEX` 语句**，非常实用。
+
+### 方法 2：手工分析（理解原理）
+
+```sql
+-- 列出所有索引的列（按顺序）
+SELECT table_name, index_name, seq_in_index, column_name, non_unique
+FROM information_schema.statistics
+WHERE table_schema = ''blogdb'' AND table_name = ''posts''
+ORDER BY index_name, seq_in_index;
+```
+
+**判定规则**：
+
+```
+① 单列索引 (a) 与 (a, ...) 并存 → 单列的冗余
+② (a, b) 与 (a, b, c) 并存 → (a,b) 冗余
+③ 索引数与表列数相当 → 大概率过度索引
+④ 注意主键：二级索引尾部隐式包含主键，所以 (a) 与 (a, id) 等价 ⭐
+```
+
+## 三、如何发现未使用的索引 ⭐
+
+```sql
+SELECT * FROM sys.schema_unused_indexes;
+-- 输出：object_schema, object_name, index_name
+```
+
+**⚠️ 这个视图的巨大陷阱** ⭐：
+
+| 陷阱 | 说明 |
+|---|---|
+| **统计窗口不完整** | 数据来自 `performance_schema`（内存表），**实例重启后清零** ⭐ 所以刚重启两天的实例，结论毫无意义 |
+| **周期性业务未覆盖** | 月末结算、季度报表的 SQL 可能几个月才跑一次 ⭐ |
+| **主从角色不同** | 从库的读模式和主库不同 |
+| **唯一索引永远"被使用"** | 因为写入时要做唯一性检查，不算"未使用"（但可能仍可删）|
+| **主键索引不会被列为 unused** | |
+| **`performance_schema` 未开** | `table_io_waits_summary_by_index_usage` 需要在重启后运行足够久 |
+
+**所以**：`schema_unused_indexes` 只作为**线索**，**绝不能直接照它删索引** ⭐
+
+## 四、安全删索引的流程 ⭐⭐
+
+**这是本问题的核心：删索引必须有"观察期"。**
+
+```
+① 先确认候选：sys.schema_unused_indexes + 人工核对（结合业务知识）
+② 检查约束：这个索引是唯一索引吗？是主键吗？是外键需要的吗？⭐
+③ 设为不可见（INVISIBLE），而不是直接删 ⭐⭐
+   ALTER TABLE posts ALTER INDEX idx_x INVISIBLE;
+④ 观察 N 天（至少覆盖一个业务周期，建议 2~4 周）⭐
+   监控指标：慢查询数量、P99 延迟、错误率
+⑤ 无异常 → 真正删除
+   ALTER TABLE posts DROP INDEX idx_x;      （8.0 也可 ALTER INDEX idx_x INVISIBLE 后 DROP）
+⑥ 有异常 → 立即恢复可见（秒级，无需重建表！）⭐
+   ALTER TABLE posts ALTER INDEX idx_x VISIBLE;
+```
+
+**`INVISIBLE` 索引的价值** ⭐：
+
+| 特性 | 说明 |
+|---|---|
+| **优化器忽略它** | 查询计划里不会选它（等价于"删了"）|
+| **但仍在维护** | 写入时仍会更新它（**唯一区别：写入开销不省**）⚠️ |
+| **秒级恢复可见** | 真正的 `DROP` 后要重建表（大表几小时）|
+| **可查看影响** | `EXPLAIN` 看有没有计划变化 |
+
+**⚠️ `INVISIBLE` 的代价**：索引**仍被维护**，所以**没有省下写开销和空间**。它的价值是**"安全试错"**——确认无用后再 `DROP` 才真正省下开销。
+
+```sql
+-- 检查哪些索引不可见
+SELECT table_name, index_name, is_visible
+FROM information_schema.statistics
+WHERE is_visible = ''NO'';
+
+-- 建索引时直接设不可见
+CREATE INDEX idx_new (col) INVISIBLE;
+-- 然后手动让它可见（等价于"预热"一个新索引）
+ALTER TABLE t ALTER INDEX idx_new VISIBLE;
+```
+
+**主键不能设为 INVISIBLE** ⚠️；**唯一索引可以**（但设为不可见后唯一约束**仍然生效**！因为约束不是靠索引查找实现的）⭐
+
+## 五、索引审计的常规做法 ⭐
+
+**定期（每季度）做一次索引体检**：
+
+```sql
+-- ① 冗余索引
+SELECT * FROM sys.schema_redundant_indexes;
+
+-- ② 未使用索引（仅供线索）
+SELECT * FROM sys.schema_unused_indexes;
+
+-- ③ 索引数量过多的表
+SELECT object_name AS tbl, COUNT(DISTINCT index_name) AS idx_cnt
+FROM performance_schema.table_io_waits_summary_by_index_usage
+WHERE object_schema=''blogdb''
+GROUP BY object_name ORDER BY idx_cnt DESC LIMIT 20;
+-- 一般单表索引数 > 6 就要审视 ⭐
+
+-- ④ 索引空间占用 TOP
+SELECT table_name, index_name,
+       ROUND(SUM(stat_value * @@innodb_page_size)/1024/1024, 2) AS idx_mb
+FROM mysql.innodb_index_stats
+WHERE stat_name=''size'' AND database_name=''blogdb''
+GROUP BY table_name, index_name
+ORDER BY idx_mb DESC LIMIT 20;   -- ⭐ 找出最占空间的索引
+
+-- ⑤ 低选择性的索引（Cardinality 接近行数说明选择性差）
+SELECT table_name, index_name, cardinality,
+       (SELECT table_rows FROM information_schema.tables t2
+         WHERE t2.table_schema=statistics.table_schema
+           AND t2.table_name=statistics.table_name) AS rows_est,
+       ROUND(cardinality / NULLIF((SELECT table_rows FROM information_schema.tables t2
+             WHERE t2.table_schema=statistics.table_schema
+               AND t2.table_name=statistics.table_name),0), 4) AS selectivity
+FROM information_schema.statistics
+WHERE table_schema=''blogdb'' AND seq_in_index=1
+ORDER BY selectivity ASC LIMIT 20;   -- ⭐ 选择性最差的索引排最前
+```
+
+**选择性差的索引（< 0.01）通常没用**（如 `status` 只有 3 个值）—— **除非它出现在联合索引的第一位用于"低基数前缀 + 高基数后续列"的组合**，或配合 ICP 使用。
+
+## 六、写索引的正确姿势 ⭐
+
+| 原则 | 说明 |
+|---|---|
+| **优先联合索引** | 一个 `(a,b,c)` 常常能替代 `(a)`、`(a,b)`、`(a,b,c)` 三个 ⭐ |
+| **高频查询优先** | 只为"出现频率高 + 单次耗时长"的查询建索引（用 `sys.statement_analysis` 找）|
+| **覆盖索引控制列数** | 覆盖列太多会让索引膨胀 |
+| **避免为低选择性列单独建索引** | `is_deleted`、`status` |
+| **主键列不要重复加进二级索引尾部** | InnoDB 已隐式附带 ⭐ |
+| **索引总数控制** | 单表 ≤ 5~6 个；写密集型表更要少 |
+| **外键列要建索引** | MySQL 不自动为外键列建索引（与 Oracle 不同）⚠️ 这会导致父表删除时锁表 |
+| **不要在相同列上建 (a) 和 (a, b)** | 典型冗余 |
+| **字符集/collation 一致** | 否则 JOIN 时索引失效（见字符集题）|
+| **命名规范** | `idx_表_列` / `uk_表_列`，便于审计 ⭐ |
+| **变更走变更流程** | 用 `pt-osc`/`gh-ost`/`INVISIBLE`，不要直接从生产删 ⭐ |
+
+## 七、外键索引的坑 ⭐
+
+```sql
+-- MySQL 建外键时会自动创建所需索引吗？
+-- ⚠️ 只有当外键列上"没有可用索引"时才会自动创建；
+--    如果已有索引但"前缀不匹配"，就会出问题
+CREATE TABLE orders (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT,
+    KEY idx_user_created (user_id, created_at),   -- 前缀匹配 user_id ✅ 可以
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+-- 子表上有 (user_id, ...) 的索引即可 ✅
+
+-- ❌ 危险情况：子表外键列没有以该列开头的索引
+--    → 删除父表记录时，子表要全表扫描确认无引用 → 长时间锁表 ⭐⭐
+```
+
+**实践建议**：互联网业务**尽量不用外键**，改在应用层保证引用完整性；如果用了，**务必给外键列建索引**。
+
+## 八、一句话总结
+
+**冗余索引 = "一个索引是另一个的前缀"，用 `sys.schema_redundant_indexes`（直接给 DROP 语句）检测**；**未使用的索引用 `sys.schema_unused_indexes`，但它重启就清零、有周期性盲区，绝不能照它直接删** ⭐；**安全删索引的唯一正确流程是"先 `INVISIBLE` 观察一个业务周期，再 `DROP`"**（`INVISIBLE` 秒级可回滚，但仍被维护所以不省开销）。', 1),
+
+('MySQL', 'C++,C API,后端集成,踩坑', 3,
+ '用 C/C++ 通过 MySQL C API 访问数据库有哪些常见坑？（结合 Crow 博客项目实战）',
+ '## 一、资源管理：必须成对释放 ⭐
+
+| 资源 | 释放函数 | 常见泄漏点 |
+|---|---|---|
+| `MYSQL*` | `mysql_close()` | 异常/提前 return 时漏掉 |
+| `MYSQL_RES*` | `mysql_free_result()` | **最常见** ⭐ 每次 `mysql_store_result` 都要释放 |
+| `MYSQL_ROW` | 无需单独释放（属于 RES）| — |
+| `MYSQL_STMT*` | `mysql_stmt_close()` | 预处理语句 |
+| **`MYSQL_RES` 未释放的后果** | 内存泄漏 + **连接会一直处于"结果集未读完"状态**，后续查询报 `Commands out of sync` ⭐ |
+
+**正解：RAII 包装** ⭐
+
+```cpp
+// 智能指针 + 自定义删除器
+using ResPtr = std::unique_ptr<MYSQL_RES, decltype(&mysql_free_result)>;
+using ConnPtr = std::unique_ptr<MYSQL, decltype(&mysql_close)>;
+
+// 或包装成一个小 RAII 类
+class QueryResult {
+    MYSQL_RES* res_ = nullptr;
+public:
+    explicit QueryResult(MYSQL_RES* r) : res_(r) {}
+    ~QueryResult() { if (res_) mysql_free_result(res_); }
+    QueryResult(const QueryResult&) = delete;
+    QueryResult& operator=(const QueryResult&) = delete;   // 防止重复释放 ⭐
+    MYSQL_RES* get() const { return res_; }
+};
+```
+
+## 二、`mysql_store_result` vs `mysql_use_result` ⭐
+
+| | `mysql_store_result` | `mysql_use_result` |
+|---|---|---|
+| 行为 | **一次性把结果全拉到客户端内存** | 逐行从服务器读 |
+| 内存 | 结果集大小（大结果集可能 OOM）⚠️ | 一行 |
+| 速度 | 快（一次网络往返）| 慢（多往返）|
+| 是否阻塞连接 | ✅ 可以立刻发下一条查询 | ❌ 结果没读完前**不能发其他查询** ⭐ |
+| 适用 | 一般查询（结果集不大）| 超大结果集（导表）|
+
+**坑**：用 `mysql_use_result` 时如果结果没读完就发别的查询 → `Commands out of sync; you can''t run this command now` ⭐
+
+**判断是否有结果集**：
+
+```cpp
+if (mysql_field_count(conn) > 0) {
+    MYSQL_RES* res = mysql_store_result(conn);
+    // SELECT 类语句
+} else {
+    // INSERT/UPDATE/DELETE，无结果集
+    // 用 mysql_affected_rows(conn) 获取影响行数
+}
+```
+
+**⚠️ `mysql_store_result` 返回 NULL 有两种情况** ⭐：
+
+```cpp
+MYSQL_RES* res = mysql_store_result(conn);
+if (!res) {
+    if (mysql_field_count(conn) == 0) {
+        // ✅ 正常：这不是 SELECT（无结果集）
+    } else {
+        // ❌ 真的出错了
+        std::cerr << mysql_error(conn) << std::endl;
+    }
+}
+```
+
+**不做这个区分就会误判"查询失败"**。
+
+## 三、错误处理 ⭐
+
+```cpp
+if (mysql_query(conn, sql.c_str()) != 0) {
+    // 用 mysql_error 拿可读信息，mysql_errno 拿错误码 ⭐
+    std::cerr << "SQL error " << mysql_errno(conn) << ": " << mysql_error(conn)
+              << " | SQL: " << sql << std::endl;
+}
+```
+
+**要点**：
+
+| 要点 | 说明 |
+|---|---|
+| **一定要在日志里带上 SQL** | 否则无法定位 ⭐（但**要注意脱敏**，别把密码写进日志）|
+| **错误信息不要返回给前端** | 会泄露表名/结构（见安全那题）|
+| **区分错误码做业务处理** ⭐ | `1062` = 唯一键冲突（可提示"已存在"）、`1213` = 死锁（可重试）、`1205` = 锁等待超时（可重试）、`1040` = 连接过多、`2006/2013` = 连接断开 |
+| **`mysql_errno` 不能用于连接级错误** | 连接断开时要用 `mysql_errno` 的 2000+ 段（客户端错误）；`mysql_error` 依然可用 |
+
+**错误码处理示例** ⭐：
+
+```cpp
+int err = mysql_errno(conn);
+if (err == 1062) {                      // 唯一键重复
+    return error(409, "记录已存在");
+} else if (err == 1213 || err == 1205) { // 死锁 / 锁超时
+    retry();                             // 有限次重试
+} else if (err == 2006 || err == 2013) { // server gone away / lost connection
+    reconnect();                         // 重连并重试
+}
+```
+
+## 四、字符集（本项目实战重灾区）⭐⭐
+
+```cpp
+// 连接后必须确认/设置字符集
+mysql_options(conn, MYSQL_SET_CHARSET_NAME, "utf8mb4");   // 在 mysql_real_connect 之前调用
+mysql_real_connect(conn, host, user, pass, db, port, NULL, 0);
+// ⚠️ 某些环境/版本下 MYSQL_SET_CHARSET_NAME 未生效！
+// 兜底：连接后显式执行 ⭐
+mysql_query(conn, "SET NAMES utf8mb4");
+```
+
+**本项目踩过的完整链条**（详见"字符集"那题）：
+
+```
+① 老表数据是"经 latin1 连接写入"的 → 存的是 UTF-8 字节的 cp1252 转义
+② 应用连接恰好是 latin1 → 读老表正常显示（整站靠这个巧合工作）
+③ questions 表是 mysql CLI 以 utf8mb4 导入的真中文 → latin1 连接读 → 逐字符变 ?
+④ 判据：1 汉字 : 1 ? ⇒ MySQL 字符集转换；1 汉字 : 3 ? ⇒ 程序按字节处理
+```
+
+**教训** ⭐：
+
+| 教训 | 说明 |
+|---|---|
+| **连接字符集必须显式验证** | 用 `SHOW VARIABLES LIKE ''character_set_client''` 确认，别假设 `MYSQL_SET_CHARSET_NAME` 生效了 ⭐ |
+| **不要凭 UI 截图判断** | 必须用 `curl` / `HEX()` 这类非视觉证据 |
+| **诊断命令要能"测出差异"** | `HEX(LEFT(question,4))` 取到的是 ASCII 前缀 `std:`（恒为 `7374643A`），测不出问题 ⭐⭐ |
+| **迁移顺序：备份 → 迁数据 → 再部署新二进制** | 反过来部署 = 整站立刻乱码 |
+| **换解释方式 ≠ 重新编码** | 用 `CONVERT(... USING latin1) → CAST AS BINARY → CONVERT(... USING utf8mb4)`，**不要用 `ALTER TABLE ... CONVERT TO`** ⭐ |
+
+## 五、SQL 注入防护 ⭐
+
+见"权限与安全"那题，这里只强调 **C API 特有的两点**：
+
+| 要点 | 说明 |
+|---|---|
+| **不要开 `CLIENT_MULTI_STATEMENTS`** | 否则一条 SQL 里能用 `;` 执行多条 → 注入危害翻倍 ⭐ |
+| **`mysql_real_escape_string` 依赖连接字符集** ⭐ | 连接字符集不对（如 latin1）时会**漏转义**某些多字节字符 → 注入风险。**必须先 `SET NAMES utf8mb4` 再转义** |
+| **`mysql_stmt_*` 预处理更安全** | 结构/数据分离，原理上不可能注入 ⭐ |
+| **`mysql_real_escape_string` 需要有效连接** | 传 NULL 连接会失败 |
+
+**预处理 + 缓冲区的正确写法**（容易漏 `buffer_length`）⭐：
+
+```cpp
+MYSQL_BIND bind = {};
+std::string val = "abc";
+unsigned long len = val.size();
+bind.buffer_type   = MYSQL_TYPE_STRING;
+bind.buffer        = const_cast<char*>(val.data());
+bind.buffer_length = static_cast<unsigned long>(val.size());  // ⭐ 必须设，否则可能读越界
+bind.length        = &len;                                     // ⭐ 变长类型需 length 指针
+mysql_stmt_bind_param(stmt, &bind);
+```
+
+## 六、连接与线程安全 ⭐⭐
+
+**这是 C++ 多线程服务（如 Crow 的 `multithreaded()` 模式）最容易出事的地方**：
+
+| 要点 | 说明 |
+|---|---|
+| **`mysql_init` 必须在 `mysql_thread_init` 之后** | 通常自动调用；但**手动创建线程时**要在该线程里调用 `mysql_thread_init()` ⭐ |
+| **一个 `MYSQL*` 连接不能被多个线程同时使用** ⭐⭐ | 连接是**非线程安全**的！多线程共享同一连接会导致协议错乱、结果串包、崩溃 |
+| **正确做法：每线程一个连接，或连接池** ⭐ | 池化时注意"借出的连接只能被借出它的线程用" |
+| **`mysql_library_init` / `mysql_library_end`** | 进程级初始化/清理（`mysql_init` 会自动调用前者）|
+| **`mysql_thread_end()`** | 线程退出前调用，释放线程局部存储（否则内存泄漏）⭐ |
+| **Crow 场景** | Crow 的 handler 在**事件循环线程**里执行 → 建议按线程维护连接，或用**带锁的连接池** |
+
+**本项目（Crow 多线程）的正确架构** ⭐：
+
+```
+方案 A（简单）：每个 worker 线程一个 MYSQL* 连接（thread_local）
+    thread_local MYSQL* conn = nullptr;
+    if (!conn) { conn = mysql_init(nullptr); ... mysql_real_connect(...); }
+    → 每个线程独立连接，天然无竞争 ✅
+    ⚠️ 缺点：连接数 = 线程数（Crow 默认线程数较多，连接数会偏多）
+
+方案 B（推荐）：连接池
+    维护一个 std::vector<MYSQL*> + mutex + condition_variable
+    借出时从池取，用完归还
+    ⚠️ 归还前必须把连接"清理干净"：确保上一条查询的结果集已 free
+    ⚠️ 检测到连接断开（2006/2013）时丢弃并新建
+
+方案 C：每次请求新建连接
+    ❌ 性能差（握手 + 认证开销），高并发下会打满 max_connections
+```
+
+**连接池归还前的清理** ⭐（极易忽略）：
+
+```cpp
+void ConnPool::release(MYSQL* c) {
+    // ⭐ 关键：确保没有未读完的结果集，否则下个使用者会拿到 "Commands out of sync"
+    while (mysql_next_result(c) == 0) {          // 处理多结果集
+        MYSQL_RES* r = mysql_store_result(c);
+        if (r) mysql_free_result(r);
+    }
+    // 重置会话状态（防止 SET 语句污染下一个使用者）
+    // mysql_query(c, "ROLLBACK");   // 若启用了事务
+    { std::lock_guard<std::mutex> lk(mu_); idle_.push_back(c); }
+    cv_.notify_one();
+}
+```
+
+## 七、其他容易踩的点 ⭐
+
+| 坑 | 说明 |
+|---|---|
+| **`mysql_real_connect` 的 `client_flag`** | 不要开 `CLIENT_MULTI_STATEMENTS`；需要事务可用 `CLIENT_FOUND_ROWS`（让 `affected_rows` 返回"匹配的行数"而非"实际改变的行数"）⭐ |
+| **`Wait_timeout` 断连** | 空闲太久连接被服务端断掉 → 报 2006/2013。**池要设 `max_lifetime` < `wait_timeout`**，并做"借出前探活"（`mysql_ping`）⭐ |
+| **`MYSQL_OPT_RECONNECT`** | 自动重连**有陷阱**（重连后会丢会话状态：临时表、用户变量、事务）→ 官方不推荐依赖它 ⭐ 应该自己管理重连 |
+| **`mysql_ping` 开销** | 每次借出都 ping 会多一次往返；可用 `mysql_options(..., MYSQL_OPT_CONNECT_TIMEOUT)` + 定期探活 |
+| **`max_allowed_packet`** | 插入大文本/BLOB 超过限制会断连 → 调大服务端参数，并注意客户端 `MYSQL_OPT_MAX_ALLOWED_PACKET` ⭐ |
+| **`mysql_affected_rows` 的语义** | `UPDATE` 时返回**实际被改变的行数**；若值没变则返回 0（容易误判"更新失败"）→ 需要"匹配行数"就开 `CLIENT_FOUND_ROWS` ⭐ |
+| **`mysql_insert_id` 类型** | 返回 `my_ulonglong`，不要截断成 `int` ⭐ |
+| **`MYSQL_ROW` 里的 NULL** | 用 `mysql_fetch_lengths` 判断：**长度为 0 且指针为 NULL 才是 SQL NULL**；长度 0 但指针非 NULL 是空串 ⭐ 这是很难发现的坑 |
+| **大结果集 + `mysql_store_result`** | 内存胀大（尤其 `content` 这类 TEXT）→ 用 `LIMIT` 或 `use_result` |
+| **`mysql_query` 与 `mysql_real_query`** | 有二进制数据（含 `\\0`）时必须用 `mysql_real_query` 并传长度 ⭐ |
+| **`MYSQL_OPT_CONNECT_TIMEOUT` / `READ_TIMEOUT` / `WRITE_TIMEOUT`** | 必须设置，避免请求线程被卡死 ⭐ |
+
+**NULL 判断的正确写法** ⭐：
+
+```cpp
+MYSQL_ROW row = mysql_fetch_row(res);
+unsigned long* lengths = mysql_fetch_lengths(res);
+// NULL 判断：
+bool is_null = (row[i] == nullptr);
+// 空串：
+bool is_empty = (row[i] != nullptr && lengths[i] == 0);
+// 取值（必须用 lengths，不能用 strlen —— 二进制数据含 \\0）
+std::string val(row[i], lengths[i]);   // ⭐ 正确
+// std::string val(row[i]);            // ❌ 遇到 \\0 会截断
+```
+
+**注意 `MYSQL_OPT_RECONNECT` 的官方立场** ⭐：MySQL 8.0.34+ 中该选项已被标记为 **deprecated**，官方明确建议**不要依赖自动重连**，而应在应用层实现重连逻辑（因为重连会静默丢失会话状态）。
+
+## 八、一句话总结
+
+**C API 的坑集中在四类：资源（RAII 保证 `free_result`/`close`）、字符集（显式 `SET NAMES` 并验证）、线程安全（连接非线程安全，多线程必须每线程连接或池化）、错误处理（错误码分支 + 池归还前清理结果集）**；本项目尤其要注意 **`mysql_store_result` 返回 NULL 的双重含义**、**连接字符集与老数据形态的匹配**、以及 **Crow 多线程下每个线程独立连接**。', 1),
+
+('MySQL', '云数据库,RDS,选型', 2,
+ '自建 MySQL 和云数据库（RDS）怎么选？云 RDS 有哪些隐藏的坑？',
+ '## 一、对比总表 ⭐
+
+| 维度 | **自建 MySQL** | **云 RDS** |
+|---|---|---|
+| **初始成本** | 低（自己装）| 略高（含托管费）|
+| **运维人力** ⭐ | **高**（备份、监控、扩容、故障、升级、安全）| **低**（厂商托管）|
+| **高可用** | 要自己搭 MHA/MGR ⭐ | 一键多可用区 ⭐ |
+| **备份** | 自己写脚本 + 验证 | 自动备份 + 时间点恢复 ⭐ |
+| **监控** | 自己搭 Prometheus + Grafana | 自带看板 + 告警 ⭐ |
+| **权限** ⭐ | **完全控制**（可改任意参数、装插件、`SUPER` 权限）| **受限**（部分参数不可改、无 `SUPER`、不能装任意插件）⚠️ |
+| **版本与内核** | 任意版本、可编译 Percona 版 | 仅厂商支持版本 |
+| **成本弹性** | 需预留峰值资源 | 按需升降配 ⭐ |
+| **数据主权** | 完全自己掌握 | 数据在厂商（可用加密/专有云缓解）⭐ |
+| **延迟** | 内网极低 | 同可用区较低，跨可用区有额外延迟 |
+| **常见场景** | 有 DBA、有特殊需求、成本敏感的大规模部署 | 中小团队、快速上线、无专职 DBA ⭐ |
+
+## 二、成本真相（容易被忽略）⭐
+
+```
+自建的真实成本 = 机器 + 磁盘 + 机房/带宽 + 备份存储
+                 + 【人力成本】⭐ + 【故障损失】
+
+云 RDS 的成本 = 实例费 + 存储费 + 备份费 + 流量费
+                + 【跨可用区/只读实例的额外费用】⚠️
+```
+
+**关键判断**：
+
+| 场景 | 建议 |
+|---|---|
+| **没有专职 DBA** + 业务重要 | **云 RDS** ✅ |
+| 有 DBA + 规模很大（几十个实例） | 自建可能更省（但要算人力和故障成本）|
+| 有特殊内核/插件需求 | 自建（或用云上的"专属实例"）|
+| 只是练手/博客/小工具 | **自建**或云上最低配 ✅ |
+| 需要极致成本优化 | 自建裸金属 |
+
+## 三、云 RDS 的"隐藏坑" ⭐
+
+### 1. 参数受限 ⭐
+
+| 受限项 | 影响 |
+|---|---|
+| **无 `SUPER` 权限** | 很多诊断和运维操作做不了 |
+| **`sync_binlog` / `innodb_flush_log_at_trx_commit` 不可改** | 厂商为了保证高可用，通常**强制双 1** → 写入性能比自建可调的差 ⭐ |
+| **不能装插件** | 审计插件、`semisync` 等要看厂商是否支持 |
+| **某些参数有上下限** | `max_connections`、`innodb_buffer_pool_size` 与所选规格绑定 ⭐（小规格实例的 buffer pool 很小，性能上不去）|
+| **不能直接访问底层文件** | 无法手动拷数据文件（但 Clone 插件可能可用）|
+
+**实践建议**：**买之前先看厂商的"参数白名单"文档**，确认关键参数（`sql_mode`、`character_set_*`、`transaction_isolation`、`binlog_format`、`slow_query_log`）能改 ⭐
+
+### 2. 规格与性能不成正比 ⭐
+
+```
+⚠️ 云 RDS 的"规格"通常同时决定 CPU、内存、连接数上限、IOPS
+   → 小规格实例可能"连接数上限只有几十" → 业务莫名报 Too many connections ⭐
+   → 存储 IOPS 与容量挂钩（容量小 → IOPS 低 → 慢查询）⚠️
+```
+
+**要检查的三项**：CPU 核数、内存、**最大连接数**、**存储 IOPS 上限** ⭐
+
+### 3. 跨可用区/多可用区的延迟 ⭐
+
+```
+主可用区 A ←→ 备可用区 B
+   · 同步复制（半同步）→ 每次提交多一个跨 AZ 的 RTT（可能 1~3ms）⭐
+   · 高并发小事务场景，这个延迟会显著降低 TPS
+   · 单可用区（无高可用）延迟低但故障会中断
+```
+
+**权衡**：**关键业务用多可用区（可接受延迟换取高可用）；极致延迟场景用单可用区 + 云盘快照**。
+
+### 4. 只读实例的坑 ⭐
+
+| 坑 | 说明 |
+|---|---|
+| **延迟不可控** | 官方通常只保证"最终一致"，延迟可能秒级 |
+| **按规格计费** | 只读实例也是钱 ⚠️ |
+| **不支持所有引擎/版本组合** | |
+| **连接地址不同** | 应用要改配置 |
+
+### 5. 备份与恢复 ⭐
+
+| 坑 | 说明 |
+|---|---|
+| **备份保留期有限**（通常 7~30 天）| 长期归档要自己导出 ⭐ |
+| **跨地域备份要额外付费** | |
+| **恢复到新实例耗时**（可能几十分钟到几小时）| RTO 要实测 ⭐ |
+| **逻辑备份（mysqldump）在云上受限** | 可能没有 `FILE` 权限（`INTO OUTFILE` 不可用）⭐ |
+| **`pt-*` 工具部分受限** | 需要 `SUPER` 或特定权限的场景会失败 |
+
+### 6. 其他
+
+| 坑 | 说明 |
+|---|---|
+| **版本升级不可随意** | 厂商可能只支持特定版本的升级路径 |
+| **大版本升级要停机**或走"建新实例 + DTS 迁移" |
+| **云盘突发性能耗尽** | 某些云盘有"突发 IOPS 额度"，用完就掉速 ⚠️ |
+| **公网访问** | 默认仅内网；开公网要额外配置且有安全风险 |
+| **账号体系** | 通常有"高权限账号"和"普通账号"两级；**高权限账号仍不是 root** ⭐ |
+| **跨云迁移成本** | 数据导出、格式兼容、停机窗口 ⭐ |
+| **计费陷阱** | 快照存储、跨区域流量、备份存储都可能额外计费 ⚠️ |
+
+## 四、选型决策树 ⭐
+
+```
+开始
+ │
+ ├─ 有专职 DBA 吗？
+ │    ├─ 没有 → 【云 RDS】⭐
+ │    └─ 有 →
+ │         ├─ 实例数 > 20 且规模大吗？
+ │         │    ├─ 是 → 自建可能更省（但要算故障成本）
+ │         │    └─ 否 → 【云 RDS】更省心 ⭐
+ │
+ ├─ 有特殊需求吗（特定内核/插件/任意参数）？
+ │    ├─ 有 → 自建 或 云的"专属/独享"实例
+ │    └─ 无 → 【云 RDS】
+ │
+ ├─ 预算极紧 且 数据可容忍短时中断？
+ │    ├─ 是 → 自建单机 + 定时备份 ⭐（本项目场景）
+ │    └─ 否 → 【云 RDS 高可用版】
+ │
+ └─ 需要全球部署？
+      ├─ 是 → 多云/多区域方案（更复杂，可能自建+云混合）
+      └─ 否 → 【云 RDS】
+```
+
+## 五、折中方案 ⭐
+
+| 方案 | 说明 |
+|---|---|
+| **云主机 + 自建 MySQL** ⭐ | 便宜、可控，但**要自己做高可用和备份**（本项目就在这条路上）|
+| **云 RDS + 自建从库** | 主库用 RDS（托管高可用），从库自建（便宜，用于分析/备份）|
+| **混合云** | 核心数据 RDS，日志/分析自建 |
+| **Serverless 数据库** | 按用量计费（如 Aurora Serverless、云原生 Serverless MySQL），适合间歇性负载 ⭐ |
+| **NewSQL**（TiDB Cloud / OceanBase）| 原生分布式，免分库分表 ⭐ 但成本高 |
+| **托管 + 只读实例 + 分析型数据库** | 事务在 RDS，分析在 ClickHouse/Doris ⭐ |
+
+## 六、本项目（博客系统）的定位 ⭐
+
+**当前**：云主机 + 自建 MySQL + systemd 部署（`blog.service` → `task_server` :8080）
+
+**这个选择是合理的**，因为：
+
+```
+✔ 流量小，单机足够
+✔ 成本敏感
+✔ 需要完全控制（改字符集、参数、直接访问文件、用 mysql CLI 导入种子 SQL）⭐
+✔ 没有专职 DBA，但运维复杂度可控
+```
+
+**应该补的三件事**（成本极低、收益极高）⭐：
+
+| 事项 | 做法 |
+|---|---|
+| **① 定时备份 + 验证恢复** | `mysqldump` + cron 到对象存储；**每月真实恢复演练一次** ⭐ |
+| **② 创建最小权限的应用账号** | 别用 root 跑应用（本项目 README 提到 `blog` 账号但服务器只有 root —— 应该真的创建它）⭐ |
+| **③ 慢查询日志开启** | `slow_query_log=ON`, `long_query_time=1`，定期看 ⭐ |
+
+**如果要升级**：加一个从库（异地/同机房）做备份 + 只读查询，成本很低但能显著提升可用性。
+
+## 七、迁移到云的注意点 ⭐
+
+```
+① 版本兼容：云上的版本可能与自建不同 → 先测 sql_mode、字符集、认证插件 ⭐
+② 权限模型：从 root 改成云的高权限账号 → 应用连接串要改，且某些 SQL 会失败
+③ 参数差异：云**强制双 1**，写入性能可能下降
+④ 字符集：**迁移必须用 --default-character-set=utf8mb4 导出** ⭐ 否则乱码（本项目刚踩过）
+⑤ 网络：内网打通（VPC）、白名单、SSL
+⑥ 停机窗口：用 DTS/双写减少停机
+⑦ 验证：迁移后逐表对比行数与校验和（pt-table-checksum）
+⑧ 回滚方案：保留自建实例一段时间 ⭐
+```
+
+**导出命令的字符集参数是本项目的血泪教训** ⭐：
+
+```bash
+mysqldump -u root -p --default-character-set=utf8mb4 \\
+  --single-transaction --routines --triggers --events \\
+  --hex-blob blogdb > blogdb_$(date +%F).sql
+# ⚠️ 不写 --default-character-set 很可能导出乱码
+```
+
+## 八、一句话总结
+
+**没有专职 DBA 就用云 RDS（备份/高可用/监控都是白送的）**；云 RDS 的坑集中在 **参数受限（尤其强制双 1）、规格与连接数/IOPS 绑定、跨可用区延迟、备份保留期**；**小站（如本项目）用"云主机 + 自建 MySQL"完全合理，但必须补上"定时备份 + 恢复演练 + 最小权限账号 + 慢查询日志"这四件低成本高收益的事**。', 1),
+
+('MySQL', '执行流程,架构,Server层', 2,
+ '一条 SQL 从客户端发出到返回结果，中间经历了哪些阶段？Server 层和引擎层各自负责什么？',
+ '## 一、整体链路 ⭐
+
+```
+客户端 → 【连接器】→ 查询缓存(8.0已移除) → 【解析器】→ 【预处理器】→ 【优化器】→ 【执行器】
+                                                                                    ↓
+                                                                        【存储引擎层 InnoDB】
+                                                                                    ↓
+                                                             Buffer Pool / redo / undo / 数据页
+```
+
+## 二、逐层拆解 ⭐
+
+### ① 连接器（Connection Layer）
+
+```
+· TCP 握手 → 认证（账号密码 + host）→ 权限表查询 → 分配线程
+· 读取该用户的权限，缓存到会话（⚠️ 之后改权限不影响已建立的连接）
+```
+
+**关键点**：
+
+| 点 | 说明 |
+|---|---|
+| **连接是"重量级"的** ⭐ | 需 TCP + 认证 + 分配线程 + 会话内存（200KB~1MB），所以要用连接池 |
+| **`wait_timeout`** | 空闲超过该时间连接被断开（默认 28800s）|
+| **权限缓存** | 会话建立后改权限不生效，需 `FLUSH PRIVILEGES` + 重连 ⭐ |
+| **一个连接一个线程** | 这就是 `max_connections` 与内存挂钩的原因 |
+| **8.0 的 `caching_sha2_password`** | 首次认证较重，之后有缓存 |
+
+### ② 查询缓存（已废弃）⚠️
+
+```
+5.7 及之前：以 SQL 文本 + 数据库为 key 缓存结果，命中直接返回
+问题：
+  · 任何对该表的写操作都会让所有相关缓存失效 → 命中率极低 ⭐
+  · 额外的加锁与内存管理开销
+  · 很多人的经验是"开了更慢"
+→ 【MySQL 8.0 彻底移除】⭐
+```
+
+**现状**：缓存交给应用层/Redis/ProxySQL。
+
+### ③ 解析器（Parser）
+
+```
+① 词法分析：把 SQL 拆成 token（关键字、标识符、字面量、运算符）
+② 语法分析：生成【语法树（parse tree）】
+③ 若语法错误 → ERROR 1064 (You have an error in your SQL syntax) ⭐
+```
+
+**注意**：**解析阶段不做语义校验**（表存不存在、列对不对是下一步）。
+
+### ④ 预处理器（Preprocessor）
+
+```
+① 语义校验：表/列是否存在？别名是否冲突？权限是否足够？
+② 把 `SELECT *` 展开为具体列
+③ 处理视图（展开视图定义）
+④ 生成"规范化的语法树"
+```
+
+**这一步会报的典型错误**：`ERROR 1146 Table doesn''t exist`、`ERROR 1054 Unknown column` ⭐
+
+### ⑤ 优化器（Optimizer）⭐
+
+```
+① 逻辑优化：子查询上拉/物化、外连接转内连接、常量折叠、谓词下推、
+              等价类推导、`GROUP BY` 优化（松散索引扫描）
+② 物理优化：基于【代价模型】选择
+   · 访问路径（全表 / 索引 / 覆盖索引 / ICP / MRR）
+   · 连接顺序（表数 ≤ 7 穷举，> 7 贪心启发式）⭐
+   · 连接算法（NLJ / BNL / BKA / Hash Join）
+③ 生成【执行计划】
+```
+
+**关键**：**优化器只做"逻辑等价"的改写，不改语义**。它的选择依赖**统计信息**（见"统计信息与优化器"那题）。
+
+### ⑥ 执行器（Executor）
+
+```
+① 检查权限（表级/列级）—— 权限校验在优化器之后 ⭐ 有点反直觉
+② 按执行计划"自顶向下"调用存储引擎接口
+③ 逐行处理：
+   · 若无索引 → 用 InnoDB 的"全表扫描接口"（read_first_row / read_next_row）
+   · 若有索引 → 用"索引扫描接口"（index_first / index_next）
+   · 判断是否满足 WHERE → 满足则加入结果集
+④ 把结果集返回客户端
+```
+
+**执行器只用 4 类接口** ⭐：`read_first_row`、`read_next_row`、`index_first`、`index_next`。这就是"**MySQL 执行器与引擎之间的握手协议**"。
+
+## 三、Server 层 vs 引擎层 ⭐
+
+| 层次 | 组件 | 职责 |
+|---|---|---|
+| **Server 层** | 连接器、查询缓存、解析器、优化器、执行器 | **所有引擎共有的逻辑**：SQL 解析、优化、执行调度 |
+| **引擎层（InnoDB）** | 数据读写、事务、锁、MVCC、redo/undo | **数据的存与取** |
+| **Server 层还有** | **binlog**（所有引擎共用）| 复制与恢复 ⭐ |
+| **InnoDB 还有** | **redo log / undo log**（引擎私有）| 崩溃恢复 / 回滚 ⭐ |
+
+**Server 层独有的关键概念**：
+
+```
+· 视图、触发器、存储过程、函数、事件
+· binlog（与引擎无关）
+· 表定义/权限/字符集
+· `SET` 类语句（会话变量）
+· `SELECT` 里的表达式求值、函数计算
+· 排序、临时表、`GROUP BY`、`DISTINCT` 的 Server 层实现
+```
+
+**引擎层独有的**：
+
+```
+· 索引组织（B+ 树、聚簇/二级索引）
+· 事务与隔离级别实现（MVCC、Next-Key Lock）
+· 锁的粒度（行锁/表锁/意向锁）
+· redo log / undo log
+· 双写缓冲、Buffer Pool、Change Buffer、AHI
+· 崩溃恢复
+```
+
+**一句话区分** ⭐：**"SQL 语义归 Server 层，数据语义归引擎层"**。
+
+## 四、`SELECT` 的完整实例 ⭐
+
+```sql
+SELECT id, title FROM posts WHERE status = 1 ORDER BY created_at DESC LIMIT 20;
+```
+
+```
+① 连接器：认证、分配线程
+② （5.7 的查询缓存：key = 整个 SQL 文本，未命中）
+③ 解析器：生成语法树（SELECT / FROM / WHERE / ORDER BY / LIMIT 节点）
+④ 预处理器：查表存在？列存在？权限够？展开 `*`（本例已显式列名）
+⑤ 优化器：
+   · 候选 1：全表扫描 + 排序 → cost = 45000（假设 45000 行）
+   · 候选 2：用 idx(status, created_at) 索引 → cost = 25 ✅ 选它
+   · 生成计划：index scan on idx_status_created, 带 LIMIT 提前终止
+⑥ 执行器：
+   · 调 InnoDB 的 index_first/index_next 遍历 idx(status, created_at)
+   · status=1 满足 → 取 (id, title)（若索引含这两列则覆盖索引，否则回表）
+   · 每拿到一行就检查 ORDER BY 是否天然满足 → 满足则直接输出 ⭐
+   · 累积到 20 行 → LIMIT 提前终止，不再扫描 ⭐
+⑦ 返回结果集给客户端
+```
+
+**注意两个优化点**：**覆盖索引免回表** + **LIMIT 提前终止**（这是 INDEX + ORDER BY 命中时能很快的原因）。
+
+## 五、`UPDATE` 的完整流程 ⭐
+
+```sql
+UPDATE posts SET views = views + 1 WHERE id = 100;
+```
+
+```
+①~⑥ 同上（Server 层解析/优化/执行）
+⑦ 执行器调用 InnoDB 接口：先"当前读" id=100 的行（加 X 锁）⭐
+⑧ InnoDB：
+   · 从 Buffer Pool 找页；不在则从 .ibd 读入
+   · 写 undo log（记录旧值，供回滚 + MVCC）⭐
+   · 修改 Buffer Pool 中的页（标脏）
+   · 写 redo log 到 Log Buffer
+⑨ Server 层写 binlog（事务提交时）
+⑩ 提交：
+   · 【两阶段提交】：redo prepare → 写 binlog → redo commit ⭐
+   · 按 `innodb_flush_log_at_trx_commit` 和 `sync_binlog` 刷盘
+⑪ 返回 affected_rows 给客户端
+⑫ 脏页由 Page Cleaner 异步刷盘（可能很久之后）
+```
+
+## 六、常见的"阶段相关"错误排查 ⭐
+
+| 报错/现象 | 阶段 | 原因 |
+|---|---|---|
+| `ERROR 1064` 语法错误 | 解析器 | SQL 写错了（**注意：8.0 新增保留字如 `RANK`/`LEAD` 要加反引号**）⭐ |
+| `ERROR 1054 Unknown column` | 预处理器 | 列不存在（可能是 `sql_mode` 或视图展开问题）|
+| `ERROR 1146 Table doesn''t exist` | 预处理器 | 表不存在 / 选错库 |
+| `ERROR 1142 command denied` | 执行器（权限校验）| 权限不足 |
+| **SQL 慢但 `EXPLAIN` 看起来正常** | 优化器 | 统计信息失真，选了次优计划 ⭐ |
+| **`Rows_examined` 很大** | 执行器 | 扫描行数多（索引不好）⭐ |
+| **`Commands out of sync`** | 连接器/协议 | 上一条语句的结果集没读完（C API 场景）|
+| **`Too many connections`** | 连接器 | 连接打满 |
+
+## 七、一句话总结
+
+**一条 SQL 的路径是"连接器 → （旧版查询缓存）→ 解析器 → 预处理器 → 优化器 → 执行器 → 引擎层"**；**Server 层负责"SQL 语义"（解析/优化/调度/binlog），引擎层负责"数据语义"（读写/事务/锁/MVCC/redo/undo）**；**优化器是性能的关键节点**（依赖统计信息，容易选错计划），**执行器只有 4 个引擎接口**（`read_first/read_next/index_first/index_next`）。', 1),
+
+('MySQL', '慢查询,实战,优化清单', 3,
+ '线上发现一条慢 SQL，完整的排查与优化流程是什么？',
+ '## 一、标准流程（七步）⭐
+
+```
+① 确认现象 → ② 采集证据 → ③ 分析执行计划 → ④ 定位根因
+                                        ↓
+                   ⑧ 回归验证 ← ⑦ 上线灰度 ← ⑥ 实施 ← ⑤ 制定方案
+```
+
+## 二、① 确认现象 ⭐
+
+| 问题 | 要问清楚的 |
+|---|---|
+| 什么时候慢 | 一直慢 / 偶发 / 高峰期 |
+| 有多慢 | P50 / P95 / P99（**平均值会掩盖长尾**）⭐ |
+| 影响什么 | 单个接口 / 整个站点 |
+| 数据量 | 表多少行、结果集多大 |
+| 最近有变化吗 | 上线？数据增长？索引被删？ |
+
+**判断"一直慢"还是"偶发慢"极其重要** ⭐：
+- **一直慢** → 索引/写法问题 → `EXPLAIN`
+- **偶发慢** → 锁等待、IO 抖动、统计信息、缓冲区冷、主从延迟 ⭐
+
+## 三、② 采集证据 ⭐
+
+```sql
+-- 1. 慢查询日志（最直接）⭐
+SHOW VARIABLES LIKE ''slow_query_log'';
+SHOW VARIABLES LIKE ''long_query_time'';
+-- 日志条目里的关键字段：
+--   Query_time  总耗时
+--   Lock_time   锁等待（大 → 锁竞争）⭐
+--   Rows_sent   返回行数
+--   Rows_examined  扫描行数 ⭐ Rows_examined/Rows_sent 比值是关键判据
+
+-- 2. 此刻正在跑什么
+SHOW FULL PROCESSLIST;
+SELECT id, user, host, db, command, time, state, LEFT(info,200) sql
+FROM information_schema.processlist
+WHERE command <> ''Sleep''
+ORDER BY time DESC LIMIT 20;      -- ⭐ time 大 = 长耗时
+
+-- 3. 按 SQL 模板聚合（比慢日志更强）⭐
+SELECT query, exec_count, total_latency, avg_latency,
+       rows_examined_avg, rows_sent_avg, tmp_tables, full_scans
+FROM sys.statement_analysis
+ORDER BY total_latency DESC LIMIT 10;
+
+-- 4. 全表扫描的 SQL
+SELECT * FROM sys.statements_with_full_table_scans ORDER BY total_latency DESC LIMIT 10;
+
+-- 5. 索引使用情况
+SELECT * FROM sys.schema_unused_indexes;         -- 白建的索引
+SELECT * FROM sys.schema_redundant_indexes;      -- 冗余索引
+
+-- 6. 锁等待现场（偶发慢的头号嫌疑）⭐
+SELECT * FROM sys.innodb_lock_waits\\G
+-- 输出：waiting_pid, waiting_query, blocking_pid, blocking_query
+
+-- 7. InnoDB 内部状态
+SHOW ENGINE INNODB STATUS\\G
+-- 看：History list length（长事务）、Buffer pool hit rate（内存）、
+--     LATEST DETECTED DEADLOCK、Log sequence number - Last checkpoint
+```
+
+## 四、③ 分析执行计划 ⭐
+
+```sql
+EXPLAIN <SQL>;                        -- 基础
+EXPLAIN FORMAT=JSON <SQL>;            -- 含 cost 明细与"考虑过的其他计划" ⭐
+EXPLAIN FORMAT=TREE <SQL>;            -- 树形，8.0 默认风格
+EXPLAIN ANALYZE <SQL>;                -- ⭐ 真实执行，对比"估算行数 vs 实际行数"
+SHOW WARNINGS;                        -- 看优化器改写后的 SQL（很有用）
+```
+
+**`EXPLAIN ANALYZE` 的输出解读** ⭐：
+
+```
+-> Limit: 20 row(s)  (cost=... rows=20) (actual time=0.05..8234 rows=20 loops=1)
+                                        ↑ 估算           ↑ 实际（8234ms！）
+    -> Index scan on posts using idx_status  (cost=... rows=20) (actual time=0.04..8230 rows=450000 loops=1)
+                                                                              ↑ 实际扫了 45 万行 ⭐
+```
+
+**关键判据** ⭐：
+
+| 现象 | 结论 |
+|---|---|
+| **估算行数 ≪ 实际行数** | **统计信息失真** → `ANALYZE TABLE`、加直方图 ⭐ |
+| **`rows_examined ≫ rows_sent`** | 索引不好 → 加/改索引 |
+| **`type=ALL`** | 全表扫描 → 需要索引或改写 |
+| **`Using filesort`** | 额外排序 → 让索引覆盖 `ORDER BY` ⭐ |
+| **`Using temporary`** | 临时表（`GROUP BY`/`DISTINCT`）→ 优化索引或改写 |
+| **`Using join buffer`** | 被驱动表无索引 → 给连接列建索引 ⭐ |
+| **`key=NULL`** | 没用索引 → 找原因（隐式转换/函数/字符集/最左前缀）|
+
+## 五、④ 定位根因（对照表）⭐
+
+| 根因 | 典型 `EXPLAIN` 特征 | 证据 |
+|---|---|---|
+| **缺索引** | `type=ALL`，`Rows_examined` 极大 | 慢日志 |
+| **索引失效（函数/运算）** | `WHERE DATE(col)=...` | 看 SQL 写法 |
+| **隐式类型转换** ⭐ | 字符串列与数字比较 → `key=NULL` | `SHOW WARNINGS` 会提示 |
+| **隐式字符集转换** ⭐ | JOIN 两表字符集/collation 不同 | `SHOW CREATE TABLE` 对比 |
+| **违反最左前缀** | 联合索引只用了一部分（看 `key_len`）| 索引定义 vs WHERE |
+| **深分页** | `LIMIT 1000000, 20` | SQL 里有大 offset ⭐ |
+| **锁等待** ⭐ | `Lock_time` 大 | `sys.innodb_lock_waits` ⭐ |
+| **主从延迟导致读到…** | 查询本身快但整体慢 | `SHOW SLAVE STATUS` |
+| **统计信息失真** | 估算与实际差几个数量级 | `EXPLAIN ANALYZE` ⭐ |
+| **返回数据量太大** | `Bytes_sent` 很大 | 慢日志 + 有 TEXT/BLOB |
+| **大排序/大临时表** | `Using filesort` + `Using temporary` | `tmp_table_size` 溢出到磁盘 |
+| **锁竞争的偶发慢** | P99 高但 P50 正常 | `SHOW ENGINE INNODB STATUS` 的 SEMAPHORES ⭐ |
+| **缓冲区冷启动** | 重启后一段时间慢 | 观察 `Buffer pool hit rate` |
+| **IO 抖动（云盘突发耗尽）** | 周期性慢 | `iostat -xz 1` |
+
+## 六、⑤⑥ 制定方案与实施（按性价比排序）⭐
+
+```
+优先级 1：加 / 改索引            ← 收益最大、风险最小 ⭐
+优先级 2：改写 SQL              ← 零风险，立竿见影
+优先级 3：调整表结构            ← 适度反范式、加冗余列
+优先级 4：改参数               ← Buffer Pool、tmp_table_size 等
+优先级 5：加缓存（Redis）        ← 绕过 DB
+优先级 6：读写分离 / 归档 / 分片  ← 架构级，成本最高
+```
+
+### 加索引的实战模板 ⭐
+
+```sql
+-- 场景：WHERE status=1 AND category=''x'' ORDER BY created_at DESC LIMIT 20
+-- 索引设计：等值列在前（顺序无关），排序列在后，覆盖列最后
+CREATE INDEX idx_post_list ON posts (status, category, created_at);
+--                                     等值     等值        排序
+
+-- 如果还需要 title（列表页展示），做覆盖索引
+CREATE INDEX idx_post_list_cover ON posts (status, category, created_at, title);
+-- EXPLAIN → Extra: Using index，且无 Using filesort ✅
+```
+
+**大表加索引必须用在线工具** ⭐：
+
+```bash
+# 8.0 加二级索引本身支持 INPLACE + LOCK=NONE，一般可直接加
+ALTER TABLE posts ADD INDEX idx_x (...), ALGORITHM=INPLACE, LOCK=NONE;
+# 但更大更复杂的变更用 pt-osc / gh-ost 更稳
+```
+
+### 改写 SQL 的实战模板 ⭐
+
+```sql
+-- ① 函数包裹索引列 → 改成范围
+❌ WHERE DATE(created_at) = ''2024-05-01''
+✅ WHERE created_at >= ''2024-05-01'' AND created_at < ''2024-05-02''
+
+-- ② 深分页 → 键集分页
+❌ SELECT * FROM posts ORDER BY id LIMIT 1000000, 20
+✅ SELECT * FROM posts WHERE id > 1000000 ORDER BY id LIMIT 20
+
+-- ③ 深分页（保留 offset 语义）→ 延迟关联
+✅ SELECT p.* FROM posts p
+   JOIN (SELECT id FROM posts ORDER BY id LIMIT 1000000, 20) t ON p.id = t.id
+
+-- ④ OR → UNION ALL（+ 排除重复）
+❌ WHERE a = 1 OR b = 2
+✅ SELECT * FROM t WHERE a = 1
+   UNION ALL
+   SELECT * FROM t WHERE b = 2 AND a <> 1
+
+-- ⑤ IN 子查询 → EXISTS 或 JOIN（视 MySQL 优化能力）
+❌ SELECT * FROM a WHERE id IN (SELECT a_id FROM b WHERE ...)
+✅ SELECT DISTINCT a.* FROM a JOIN b ON a.id = b.a_id WHERE ...
+
+-- ⑥ COUNT(*) 优化 → 走最小二级索引 或 用汇总表
+✅ 加一个最小的二级索引让 COUNT(*) 扫它
+
+-- ⑦ 大字段拖累 → 列表页不读大字段
+❌ SELECT * FROM posts WHERE status=1         （带出 MEDIUMTEXT content）
+✅ SELECT id, title, summary FROM posts WHERE status=1   （summary 是冗余的摘要列）⭐
+```
+
+## 七、⑦⑧ 验证与灰度 ⭐
+
+```
+① 在从库或测试环境先跑：EXPLAIN ANALYZE 对比优化前后
+② 用压测工具量化（sysbench / mysqlslap / 业务压测）
+   对比指标：P50 / P95 / P99、QPS、Rows_examined
+③ 索引上线：8.0 可先 INVISIBLE 观察，或直接加（INPLACE 不锁）
+④ 灰度观察：慢日志、P99、错误率、主从延迟 ⭐
+⑤ 加索引后记得 ANALYZE TABLE 更新统计信息 ⭐
+⑥ 回滚预案：DROP INDEX（或 INVISIBLE → VISIBLE）
+```
+
+## 八、一个完整的实战案例 ⭐
+
+**现象**：文章列表接口 P99 = 8s，高峰期更差。
+
+```
+① 采集：慢日志发现
+   Query_time: 8.01  Lock_time: 0.00  Rows_sent: 20  Rows_examined: 4520000
+   SQL: SELECT * FROM posts WHERE status=1 ORDER BY created_at DESC LIMIT 20;
+
+② EXPLAIN：
+   type=ALL  key=NULL  rows=4520000  Extra=Using where; Using filesort ❌
+   → 全表扫描 + 文件排序
+
+③ 根因：只有 (id) 主键索引，(status, created_at) 无索引
+   Rows_examined/Rows_sent = 226000 : 1  → 典型的"扫描效率极低"
+
+④ 方案：
+   a) 加索引 CREATE INDEX idx_status_created ON posts (status, created_at);
+   b) 顺便消除回表：改为覆盖索引 (status, created_at, id, title, summary)
+      （用 summary 冗余列，避免列表页拉 MEDIUMTEXT content）⭐
+
+⑤ 验证：EXPLAIN → type=range, key=idx_status_created, Extra=Using index ✅
+   EXPLAIN ANALYZE → actual rows=20 loops=1（只扫 20 行）
+
+⑥ 上线：ALTER TABLE ... ADD INDEX ..., ALGORITHM=INPLACE, LOCK=NONE; ANALYZE TABLE posts;
+
+⑦ 结果：P99 从 8s 降到 12ms（约 660 倍提升）
+```
+
+## 九、防复发机制 ⭐
+
+| 机制 | 说明 |
+|---|---|
+| **慢查询日志常开** | `long_query_time=1`，每日自动汇总（pt-query-digest）|
+| **SQL 上线评审** | 新 SQL 必须过 `EXPLAIN`，禁止 `type=ALL` 的大表查询 ⭐ |
+| **DDL/索引变更走流程** | 用 pt-osc/gh-ost/INVISIBLE，避免误删索引 |
+| **监控告警** | 慢查询数、`Threads_running`、主从延迟、`History list length` ⭐ |
+| **定期索引体检** | 每季度跑 `sys.schema_redundant_indexes` / `unused_indexes` |
+| **压测常态化** | 大促前压测，提前发现容量问题 |
+| **框架层防护** | 强制分页上限、禁止无 `LIMIT` 的大查询 ⭐ |
+
+## 十、一句话总结
+
+**慢 SQL 的排查是一条固定链路：慢日志/`sys` 表采集 → `EXPLAIN ANALYZE` 看"估算 vs 实际" → 对照根因表定位 → 按"索引 > 改写 SQL > 表结构 > 参数 > 缓存 > 架构"的顺序优化 → 压测量化 → 灰度观察**。两个最快的判据是 **`Rows_examined / Rows_sent` 比值** 和 **`EXPLAIN ANALYZE` 的估算/实际行数差**。', 1),
+
+('MySQL', '监控,指标,告警', 2,
+ 'MySQL 应该监控哪些指标？各自的含义和告警阈值是什么？',
+ '## 一、监控的四个层次 ⭐
+
+```
+① 资源层（OS）：CPU / 内存 / 磁盘 IO / 网络 / 文件句柄
+② 实例层（MySQL）：连接、QPS/TPS、线程、缓冲池
+③ 存储引擎层（InnoDB）：锁、事务、redo、undo、IO
+④ 业务层：慢查询、错误率、主从延迟
+```
+
+**排查原则**：**自下而上** —— 先确认 OS 没瓶颈，再看实例，最后看 SQL ⭐
+
+## 二、资源层（OS）⭐
+
+| 指标 | 健康范围 | 告警阈值 | 说明 |
+|---|---|---|---|
+| **CPU 使用率** | < 70% | > 80% 持续 5min | MySQL 是 CPU 密集型，但要区分 `%us` / `%sy` / `%wa` ⭐ |
+| **iowait（%wa）** | < 10% | > 20% | 高 → 磁盘瓶颈 |
+| **磁盘 `%util`** | < 70% | **> 90%** ⭐ | `iostat -xz 1`，接近 100% 就是打满 |
+| **磁盘 `await`** | < 10ms（SSD）| > 50ms | 单次 IO 平均等待 |
+| **磁盘剩余空间** | > 30% | **< 20%** ⭐ | 满了会导致写失败、复制中断 |
+| **内存可用** | `MemAvailable` 充足 | 触发 swap ⚠️ | **swap 是性能杀手**，应尽量禁用或设极低 `vm.swappiness` |
+| **网络** | — | 重传率高 | 影响复制延迟 |
+| **文件句柄数** | 远小于上限 | > 80% | `open_files_limit` 耗尽会导致无法建连接 ⭐ |
+| **load average** | < 核数 | > 核数 × 2 ⭐ | 结合 `nproc` 判断 |
+
+## 三、实例层（MySQL 状态）⭐
+
+### 连接类
+
+```sql
+SHOW GLOBAL STATUS LIKE ''Threads%'';
+SHOW GLOBAL STATUS LIKE ''Max_used_connections'';
+SHOW GLOBAL STATUS LIKE ''Aborted%'';
+SHOW GLOBAL STATUS LIKE ''Connection%'';
+```
+
+| 指标 | 含义 | 告警阈值 |
+|---|---|---|
+| **`Threads_connected`** | 当前连接数 | > `max_connections` × 0.8 |
+| **`Threads_running`** ⭐ | **正在执行的线程**（最该盯的）| **> 核数 × 2** ⭐ |
+| **`Max_used_connections`** | 历史峰值 | `Max_used / max_connections` > 85% ⭐ |
+| **`Aborted_connects`** | 握手失败次数 | 持续增长 → 网络/认证问题 |
+| **`Aborted_clients`** | 非正常断开的客户端 | 持续增长 → 客户端没 quit/超时 |
+| **`Connections`** | 累计连接数 | 增长速度 = 建连频率 |
+
+**为什么 `Threads_running` 比 `Threads_connected` 重要** ⭐：连接多不等于忙，但**正在执行的线程多 = 真的忙**。`Threads_running` 长期高 → CPU 争抢，说明需要优化 SQL 而不是加连接。
+
+### 吞吐类
+
+```sql
+SHOW GLOBAL STATUS LIKE ''Queries'';        -- 累计查询数 → 计算 QPS ⭐
+SHOW GLOBAL STATUS LIKE ''Com_commit'';     -- 累计提交
+SHOW GLOBAL STATUS LIKE ''Com_rollback'';   -- ⭐ 回滚比例高说明有大量失败事务
+SHOW GLOBAL STATUS LIKE ''Com_select'';
+SHOW GLOBAL STATUS LIKE ''Com_insert'';
+SHOW GLOBAL STATUS LIKE ''Com_update'';
+SHOW GLOBAL STATUS LIKE ''Com_delete'';
+```
+
+| 指标 | 含义 |
+|---|---|
+| **QPS** | `Queries` 的每秒增量 ⭐ |
+| **TPS** | `(Com_commit + Com_rollback)` 的每秒增量 ⭐ |
+| **读写比** | `Com_select / (Com_insert+Com_update+Com_delete)` |
+| **回滚率** ⭐ | `Com_rollback / (Com_commit + Com_rollback)`；高 → 大量 SQL 失败（锁冲突/唯一键冲突）|
+
+**注意：QPS 高低本身没有绝对健康值**，要看趋势和与业务量的匹配。**突然的毛刺比高 QPS 更值得关注** ⭐
+
+### 查询质量类 ⭐
+
+```sql
+SHOW GLOBAL STATUS LIKE ''Handler%'';
+```
+
+| 指标 | 含义 | 告警 |
+|---|---|---|
+| **`Handler_read_rnd_next`** ⭐ | 按顺序读下一行（**全表扫描的标志**）| **增长快 = 全表扫描多** ⭐⭐ |
+| `Handler_read_key` | 按索引读取 | 越大越好 |
+| `Handler_read_next` | 按索引顺序读下一行 | 范围扫描 |
+| `Handler_read_rnd` | 随机读（排序后回表）| 大 → 排序 + 回表多 |
+| `Handler_read_first` | 读索引第一行（全索引扫描）| 大 → 有 `SELECT COUNT(*)` 之类的操作 |
+| `Handler_commit` / `Handler_rollback` | 提交/回滚 | — |
+| `Handler_update` / `Handler_delete` | 更新/删除行数 | — |
+
+**`Handler_read_rnd_next` 是最容易被忽略的关键指标** ⭐ —— 它直接反映"有多少次全表扫描式的顺序读"。**如果它的增速远超业务量，说明缺索引**。
+
+### 临时表与排序类 ⭐
+
+```sql
+SHOW GLOBAL STATUS LIKE ''Created_tmp%'';
+SHOW GLOBAL STATUS LIKE ''Sort%'';
+SHOW GLOBAL STATUS LIKE ''Select%'';
+```
+
+| 指标 | 含义 | 告警 |
+|---|---|---|
+| **`Created_tmp_disk_tables` / `Created_tmp_tables`** ⭐ | **落在磁盘的临时表比例** | **> 25% 需要优化** ⭐（`tmp_table_size` 太小或有 `GROUP BY` 大结果集）|
+| `Created_tmp_tables` | 临时表总数 | 高 → 有 `GROUP BY`/`DISTINCT`/`UNION` |
+| **`Sort_merge_passes`** ⭐ | 排序需要多轮归并（说明 `sort_buffer_size` 不够）| 增长快 → 调大 `sort_buffer_size` |
+| `Sort_scan` / `Sort_range` | 排序次数 | |
+| `Select_full_join` ⭐ | **无索引的 JOIN 次数** | **应为 0** ⭐ 非 0 → 缺索引 |
+| `Select_scan` | 全表扫描次数 | 增长快 → 缺索引 |
+| `Select_range_check` | 范围检查（JOIN 无索引）| 应为 0 |
+
+**`Select_full_join` 和 `Handler_read_rnd_next` 是"缺索引"的两个最直接证据** ⭐
+
+## 四、InnoDB 层 ⭐⭐
+
+```sql
+SHOW GLOBAL STATUS LIKE ''Innodb%'';
+```
+
+### Buffer Pool（最重要）
+
+| 指标 | 含义 | 告警 |
+|---|---|---|
+| **`Innodb_buffer_pool_read_requests`** | 逻辑读次数 | — |
+| **`Innodb_buffer_pool_reads`** | **物理读次数** ⭐ | — |
+| **命中率** ⭐ | `1 - reads / read_requests` | **< 99% 需关注，< 98% 明显不足** ⭐⭐ |
+| `Innodb_buffer_pool_pages_free` | 空闲页 | 长期为 0 → 池已满 |
+| `Innodb_buffer_pool_pages_dirty` | 脏页数 | 长期 > `max_dirty_pages_pct` → 刷脏压力大 ⭐ |
+| **`Innodb_buffer_pool_wait_free`** ⭐ | **等待空闲页的次数** | **应恒为 0** ⭐ 非 0 → Buffer Pool 不够或刷脏太慢 |
+| `Innodb_buffer_pool_pages_flushed` | 刷脏页数 | |
+
+**命中率计算（累计值，比瞬时值可靠）** ⭐：
+
+```sql
+SELECT
+  ROUND(100 - (s1.v / s2.v * 100), 3) AS hit_rate_pct
+FROM (SELECT VARIABLE_VALUE v FROM performance_schema.global_status
+      WHERE VARIABLE_NAME=''Innodb_buffer_pool_reads'') s1,
+     (SELECT VARIABLE_VALUE v FROM performance_schema.global_status
+      WHERE VARIABLE_NAME=''Innodb_buffer_pool_read_requests'') s2;
+```
+
+**`Innodb_buffer_pool_wait_free > 0` 是"必须加大 Buffer Pool"的强信号** ⭐
+
+### 日志与刷盘
+
+| 指标 | 含义 | 告警 |
+|---|---|---|
+| `Innodb_log_waits` ⭐ | **等 Log Buffer 空间的次数** | **应恒为 0** ⭐ 非 0 → `innodb_log_buffer_size` 太小 |
+| `Innodb_log_write_requests` | 写 redo 请求数 | |
+| `Innodb_log_writes` | 实际写 redo 次数 | |
+| `Innodb_os_log_fsyncs` | redo fsync 次数 ⭐ | 增长极快 → 每次提交都刷（`=1`），可用组提交优化 |
+| `Innodb_os_log_pending_fsyncs` | 待处理的 fsync | 非 0 → IO 跟不上 |
+
+### 行操作
+
+| 指标 | 含义 |
+|---|---|
+| `Innodb_rows_read` | 读行数 ⭐ |
+| `Innodb_rows_inserted/updated/deleted` | 写行数 |
+| `Innodb_rows_read / (rows_inserted+updated+deleted)` | **读写比** —— 比值异常大 → 可能有全表扫描 ⭐ |
+
+### 其他 InnoDB 指标
+
+| 指标 | 含义 | 告警 |
+|---|---|---|
+| `Innodb_row_lock_waits` | 行锁等待次数 | 增长快 → 锁竞争 ⭐ |
+| `Innodb_row_lock_time_avg` | **平均锁等待时间（ms）** | **> 100ms 需关注** ⭐ |
+| `Innodb_row_lock_time_max` | 最大锁等待时间 | > 1s 需查 |
+| `Innodb_deadlocks` ⭐ | 死锁次数 | **任何非 0 增长都要查** ⭐ |
+| `Innodb_data_reads` / `Innodb_data_writes` | 数据文件读/写次数 | |
+| `Innodb_data_read` / `Innodb_data_written` | 读/写字节数 | |
+| `Innodb_data_fsyncs` | fsync 次数 | |
+| `Innodb_data_pending_reads/writes/fsyncs` ⭐ | 待处理 IO | **非 0 → IO 积压** ⭐ |
+| `Innodb_pages_created/read/written` | 页操作 | |
+
+### `SHOW ENGINE INNODB STATUS` 里的衍生指标 ⭐
+
+| 指标 | 来源 | 告警 |
+|---|---|---|
+| **`History list length`** ⭐⭐ | TRANSACTIONS 段 | **> 10000 关注，> 100000 危险**（长事务堵塞 purge）|
+| **`Buffer pool hit rate`** | BUFFER POOL 段 | < 995/1000 需关注 |
+| **`Log sequence number - Last checkpoint`** ⭐ | LOG 段 | 接近 redo 容量 → 频繁 checkpoint |
+| **最长的活跃事务时长** | TRANSACTIONS 段 | > 60s ⭐ |
+| **`OS waits`（SEMAPHORES）** | SEMAPHORES 段 | 大 → latch 竞争 |
+
+**这四个指标在 `SHOW ENGINE INNODB STATUS` 里，但很多监控工具不采集** ⭐ 建议自己写脚本采集并落盘。
+
+## 五、复制层（主从）⭐
+
+```sql
+SHOW SLAVE STATUS\\G
+```
+
+| 指标 | 含义 | 告警 |
+|---|---|---|
+| **`Slave_IO_Running`** | IO 线程状态 | **必须 Yes** ⭐ |
+| **`Slave_SQL_Running`** | SQL 线程状态 | **必须 Yes** ⭐ |
+| **`Seconds_Behind_Master`** ⭐ | 延迟秒数 | **> 10s 关注，> 60s 告警** ⭐ 但**为 0 不代表真同步**（IO 断了也可能是 NULL/0）|
+| **`Retrieved_Gtid_Set` vs `Executed_Gtid_Set`** ⭐ | 拉取 vs 执行 | 差集大 → 有延迟（GTID 模式下更准）|
+| `Last_IO_Error` / `Last_SQL_Error` | 最近错误 | 非空 → 复制中断 ⭐ |
+| `Master_Log_File / Read_Master_Log_Pos` vs `Relay_Master_Log_File / Exec_Master_Log_Pos` | 位点对比 | 差距 → 延迟 |
+| `Relay_Log_Space` | relay log 占用 | 持续增大 → SQL 线程跟不上 ⭐ |
+
+**⚠️ `Seconds_Behind_Master` 的局限** ⭐：
+```
+① 它是"主库写入时间 - 从库执行时间"，时钟不同步会影响
+② IO 线程断了时它可能返回 NULL 或 0（假健康）⚠️
+③ 大事务重放期间可能一直是 0，然后突然跳到很大
+→ 更可靠：用 pt-heartbeat 注入心跳表，精度到毫秒 ⭐
+```
+
+## 六、业务层 ⭐
+
+| 指标 | 说明 |
+|---|---|
+| **慢查询数量**（每分钟）| `Slow_queries` 状态变量 ⭐ 突增 → 有问题 |
+| **`Slow_queries / Questions`** | 慢查询占比 ⭐ 比绝对数更能反映健康度 |
+| **错误率** | 连接失败、SQL 报错、`Aborted_*` |
+| **`Table_locks_waited`** | 表锁等待（MyISAM 或 DDL 场景）|
+| **`Table_open_cache_hits / misses`** | 表缓存命中率，misses 高 → 调大 `table_open_cache` |
+| **`Open_tables` / `Opened_tables`** | 当前打开的 / 累计打开的表 |
+| **`Qcache_*`** | 5.7 才有（8.0 已移除）|
+
+**`Slow_queries` 是最实用的业务指标** ⭐
+
+## 七、告警阈值总表（可直接用）⭐
+
+| 指标 | 警告 | 严重 |
+|---|---|---|
+| CPU 使用率 | > 70% 5min | > 90% 5min |
+| 磁盘 `%util` | > 70% | > 90% |
+| 磁盘剩余 | < 30% | < 15% |
+| `Threads_running` | > 2×核数 | > 4×核数 |
+| `Max_used_connections / max_connections` | > 75% | > 85% |
+| **Buffer Pool 命中率** ⭐ | < 99% | < 97% |
+| **`Innodb_buffer_pool_wait_free` 增量** | > 0 | > 10/min |
+| **`Innodb_deadlocks` 增量** | > 0 | > 5/min |
+| `Innodb_row_lock_time_avg` | > 100ms | > 500ms |
+| `Created_tmp_disk_tables / Created_tmp_tables` | > 25% | > 50% |
+| `Select_full_join` 增量 | > 0 | > 10/min |
+| **`History list length`** ⭐ | > 10000 | > 100000 |
+| 最长活跃事务 | > 60s | > 600s |
+| 主从延迟 | > 10s | > 60s |
+| `Slave_IO_Running` / `Slave_SQL_Running` | — | ≠ Yes |
+| `Slow_queries` 增速 | 突增 2× | 突增 10× |
+| `Aborted_connects` 增速 | 突增 | 持续增长 |
+| swap 使用 | > 0 | > 100MB |
+
+## 八、工具链 ⭐
+
+| 层 | 工具 |
+|---|---|
+| **采集** | `mysqld_exporter`（Prometheus）、`node_exporter`（OS）、PMM、Zabbix |
+| **存储与告警** | Prometheus + Alertmanager ⭐ / Zabbix / Grafana |
+| **可视化** | Grafana 看板（社区有现成 MySQL 看板）⭐ |
+| **开箱即用** | **PMM（Percona Monitoring and Management）** ⭐ 自带看板 + 慢查询分析 |
+| **慢查询** | `pt-query-digest`、`sys.statement_analysis` |
+| **压测** | `sysbench`、`mysqlslap` |
+
+**告警设计原则** ⭐：
+
+```
+① 告警必须"可行动"（收到告警知道该干什么），否则会被忽略 ⭐
+② 分级：Warning（看板） / Critical（电话）
+③ 避免抖动：持续时间 + 恢复延迟 双阈值
+④ 关键指标双人确认（避免误报疲劳）
+⑤ 告警要关联"最近变更"（上线、DDL）
+```
+
+## 九、一句话总结
+
+**必盯的五项：① Buffer Pool 命中率（要不要加内存）② `Threads_running`（真的忙吗）③ `Innodb_deadlocks` / 行锁等待（锁竞争）④ `History list length` + 最长活跃事务（长事务）⑤ 主从延迟 + `Slave_*_Running`（复制健康）**；再加上 **`Handler_read_rnd_next` / `Select_full_join`** 监控"缺索引"，**`Created_tmp_disk_tables` 比例**监控"排序/临时表溢出"，**磁盘剩余空间**监控"最基础的生存条件"。', 1),
+
+('MySQL', '容量规划,压测,sysbench', 3,
+ '如何做 MySQL 容量规划？压测该怎么做才有意义？',
+ '## 一、容量规划要回答的四个问题 ⭐
+
+```
+① 现在能扛多少？（当前容量）
+② 什么时候会不够？（增长预测）
+③ 需要什么规格？（CPU / 内存 / 磁盘 IOPS / 存储容量）
+④ 什么时候该扩容/分片？（水位线）
+```
+
+## 二、容量评估的输入 ⭐
+
+| 输入 | 来源 |
+|---|---|
+| **当前 QPS / TPS** | `Queries`、`Com_commit` 增速 |
+| **读写比** | `Com_select` vs 写 |
+| **数据量** | 各表 `data_length + index_length` |
+| **日增长量** | 每日新增行数/字节数 |
+| **热数据比例** ⭐ | 多大数据量能满足 99% 的查询（决定 Buffer Pool 大小）|
+| **峰值系数** | 峰值 QPS / 平均 QPS（通常 3~10 倍）|
+| **单行大小 / 单请求读写行数** | 决定 IO 量 ⭐ |
+| **业务增长预期** | 产品规划 |
+
+## 三、CPU 与内存的估算 ⭐
+
+### 内存
+
+```
+总内存分配方案（专用 MySQL 服务器）：
+  · Buffer Pool:        50% ~ 80%（核心）
+  · 每连接私有内存:      连接数 × (sort_buffer + join_buffer + read_buffer + ...)
+                        ⚠️ 这是"每连接"的，容易被忽略 ⭐
+  · 其他（dict、log buffer、临时表）: 5% ~ 10%
+  · 留给 OS（page cache、网络栈）:    5% ~ 10%
+
+例：32GB 内存
+  innodb_buffer_pool_size = 22GB
+  连接 500 × 每连接 2MB = 1GB
+  其他 = 2GB
+  OS = 7GB
+```
+
+**Buffer Pool 该多大？** ⭐
+
+```
+经验公式：Buffer Pool ≈ 热数据大小 × 1.2
+
+热数据大小怎么估：
+  ① 看 innodb_buffer_pool_reads（物理读）—— 若持续 > 0 且命中率 < 99% → 不够
+  ② 看 innodb_buffer_pool_wait_free —— 出现 > 0 → 必须加大 ⭐
+  ③ 白盒估：data_length + index_length 里"最近 30 天数据"的大小
+```
+
+**⚠️ 唯一正确的方法是"观察指标"而不是"套公式"** ⭐：命中率和 `wait_free` 是直接信号。
+
+### CPU
+
+```
+MySQL 每核的 QPS 能力（经验，SSD + 良好索引）：
+  · 简单主键查询:      5000 ~ 30000 QPS/核
+  · 带 JOIN/排序的查询: 500 ~ 2000 QPS/核
+  · 写操作（TPS）:      500 ~ 5000 TPS/核
+
+→ 结论：**必须先压测**，经验值只能用来做粗估 ⭐
+```
+
+**核数的作用**：
+- **少于 8 核** → 高并发下线程争抢明显
+- **16~32 核** → 主流规格
+- **> 32 核** → 需要特别注意 `innodb_buffer_pool_instances`、`innodb_thread_concurrency`、NUMA ⭐
+
+## 四、磁盘的估算 ⭐（最容易低估）
+
+```
+① 容量
+   数据 + 索引 + binlog + redo + undo + 临时文件
+   ⚠️ 还要留：备份文件、DDL/OPTIMIZE 的临时空间（约 1~2 倍表大小）⭐
+   → 建议预留 40% 以上空闲
+
+② IOPS ⭐
+   计算：写 IOPS ≈ TPS × 每事务平均脏页数 × (1 + 索引数/10)
+        读 IOPS ≈ (QPS × 每查询平均页读) × (1 - 命中率)  ← 命中率关键
+   
+   例：QPS=5000，命中率 99% → 读 IOPS ≈ 5000 × 5 × 0.01 = 250
+       TPS=500，每事务 3 个脏页 → 写 IOPS ≈ 1500
+   → 总需 ~2000 IOPS
+
+③ 吞吐（MB/s）
+   写吞吐 ≈ TPS × 每事务字节（含 redo + binlog + 数据页）
+```
+
+**SSD vs 云盘的坑** ⭐：
+
+| 项 | 注意 |
+|---|---|
+| **云盘 IOPS 与容量挂钩** ⭐ | 容量小 → IOPS 上限低 → 即使 CPU/内存够也慢 |
+| **突发 IOPS 额度** | 某些云盘有"突发积分"，用完掉速 ⚠️ |
+| **网络盘延迟** | 比本地 SSD 高（0.5~2ms vs 0.1ms）|
+| **`innodb_io_capacity` 要匹配** ⭐ | 告诉 InnoDB 磁盘能力；设小了刷脏慢，设大了打满盘 |
+
+## 五、压测的正确做法 ⭐
+
+### 工具
+
+| 工具 | 特点 |
+|---|---|
+| **`sysbench`** ⭐ | 最标准的 MySQL 压测工具（OLTP 场景）|
+| `mysqlslap` | MySQL 自带，简单 |
+| `tpcc-mysql` | TPC-C 标准（更贴近真实业务）|
+| `BenchmarkSQL` | TPC-C 的 Java 实现 |
+| JMeter / Locust | 可做端到端（含应用层）|
+| **业务真实流量回放** ⭐ | 最准确（用生产 SQL 的采样回放）|
+
+### `sysbench` 的标准流程 ⭐
+
+```bash
+# 1. 准备数据（表数、表大小要与生产接近）⭐
+sysbench oltp_read_write \\
+  --mysql-host=127.0.0.1 --mysql-user=root --mysql-db=test \\
+  --tables=10 --table-size=10000000 \\
+  --threads=64 \\
+  prepare
+
+# 2. 预热（把数据加载进 Buffer Pool）⭐ 关键！
+sysbench oltp_read_write --tables=10 --table-size=10000000 \\
+  --threads=64 --time=60 --rate=0 run
+
+# 3. 正式压测
+sysbench oltp_read_write --tables=10 --table-size=10000000 \\
+  --threads=64 --time=300 \\
+  --report-interval=10 \\
+  --rand-type=uniform \\
+  run
+
+# 4. 阶梯加压找拐点 ⭐
+for t in 8 16 32 64 128 256; do
+  sysbench oltp_read_write --tables=10 --table-size=10000000 \\
+    --threads=$t --time=120 run | tee /tmp/bench_$t.txt
+done
+```
+
+**关键输出指标** ⭐：
+
+```
+transactions:    50000 (166.62 per sec.)      ← TPS
+queries:         1000000 (3332.41 per sec.)   ← QPS
+latency (ms):
+         min:                                   1.20
+         avg:                                   3.84   ← 平均值会掩盖长尾 ⚠️
+         max:                                 512.33   ← 要看这个 ⭐
+         95th percentile:                       8.21   ← ⭐ 95 分位
+         sum:                              192000.00
+
+errors: 0                    ← ⭐ 错误必须为 0
+reconnects: 0
+```
+
+**必须同时监控服务器** ⭐：压测时要有 `vmstat`、`iostat -xz 1`、`SHOW GLOBAL STATUS` 的采样，否则只知道"慢"不知道"为什么慢"。
+
+### 压测的六个铁律 ⭐
+
+| # | 铁律 |
+|---|---|
+| **① 数据量与生产同数量级** ⭐ | 100 万行的表和 1 亿行的表，索引深度、缓存命中率完全不同。**数据量不够 = 结论无效** |
+| **② 必须预热** ⭐ | 冷 Buffer Pool 的第一次压测毫无意义（都是物理读）|
+| **③ 压测机不能与被测机同机** | 压测工具本身要消耗 CPU/网络 |
+| **④ 看 P95/P99 而不是平均值** ⭐ | 平均值掩盖长尾；业务的痛点在 P99 |
+| **⑤ 阶梯加压找"拐点"** ⭐ | 并发从 8 加到 256，找 QPS 不再增长、延迟开始飙升的点 |
+| **⑥ 一次只改一个变量** | 改参数后重新压测，否则不知道是谁的功劳 |
+| **⑦ 复现生产的数据分布** | `--rand-type`：`uniform`（均匀）vs `zipfian`（倾斜，更真实）⭐ |
+| **⑧ 用真实 SQL 回放** ⭐ | 最准（从慢日志采样，或用 `sys.statement_analysis` 得到 SQL 模板和占比）|
+
+## 六、找"拐点"（容量拐点）⭐
+
+```
+并发  QPS    P99延迟    CPU    %util   结论
+  8   8000ms  2ms      12%    15%    资源充足
+ 32  28000    5ms      40%    45%    线性增长 ✅
+ 64  45000    12ms     65%    70%    接近线性
+128  52000    45ms     85%    88%    ⚠️ 增长放缓，开始竞争
+256  54000   180ms     96%    95%    ❌ 拐点已过，加并发只涨延迟
+512  51000   600ms     98%   100%    ❌ 吞吐下降，过载
+```
+
+**结论**：**这个实例的安全容量约在 128 并发 / 52000 QPS**，留 30% 余量 → **生产目标 90 并发 / 36000 QPS** ⭐
+
+**拐点后的三个典型现象**：
+- QPS 不再增长（或下降）
+- P99 延迟指数上升
+- CPU/IO 有一个打满，另一个还在等
+
+## 七、容量水位线与扩容策略 ⭐
+
+| 水位 | 含义 | 动作 |
+|---|---|---|
+| **< 50%** | 健康 | — |
+| **50%~70%** | 正常 | 关注增长趋势 |
+| **70%~85%** | 预警 | 制定扩容计划 ⭐ |
+| **> 85%** | 危险 | 立即扩容（加从库/升配/分片）⭐ |
+| **触顶** | 过载 | 限流降级，防止雪崩 |
+
+**水位怎么算** ⭐：
+
+```
+以 QPS 为例：
+  实测拐点 = 52000 QPS
+  留 30% 余量 → 安全容量 = 36000 QPS
+  当前峰值 = 30000 QPS
+  水位 = 30000 / 36000 = 83%  → ⚠️ 危险，需要扩容
+```
+
+**同样的方法用于**：TPS、磁盘 IOPS、磁盘容量、连接数、Buffer Pool 命中率。
+
+**增长预测**：
+
+```
+按当前增速：每月峰值涨 8%
+当前 83% 水位 → 1 个月后 90%（已超警戒）
+→ 估算：3 个月内必须扩容 ⭐
+```
+
+## 八、扩容的优先级 ⭐
+
+```
+① 加索引 / 优化 SQL          ← 成本 0，收益最大
+② 加缓存（Redis）            ← 挡住 80% 的读
+③ 升配（CPU/内存/磁盘）      ← 最直接，但有上限且成本高 ⭐
+④ 加从库 + 读写分离          ← 读扩展
+⑤ 归档冷数据                 ← 释放单表压力
+⑥ 垂直分库                   ← 业务解耦
+⑦ 水平分片                   ← 最后手段，成本最高 ⭐
+```
+
+**关键**：**先做 ①②，再做 ③④，最后才 ⑦**。很多团队跳过 ① 直接分片，结果分片后还是慢（因为索引依然不好）⚠️
+
+## 九、监控与容量管理的关系 ⭐
+
+```
+容量管理是"持续过程"，不是"一次性任务"：
+
+① 常态化压测：大促前、大版本前、架构变更后必压 ⭐
+② 常态化监控：QPS/TPS/水位/延迟/P99 → 自动告警 ⭐
+③ 季度体检：数据增长、索引审计、慢查询 TOP10
+④ 应急预案：过载时如何限流/降级/切从库
+⑤ 演练：真实恢复演练 + 切库演练 ⭐
+```
+
+## 十、一句话总结
+
+**容量规划 = "观测指标定当前容量 + 压测找拐点定安全容量 + 增长预测定扩容时间"**；**压测的八条铁律里最重要的是"数据量与生产同量级"和"必须预热"**（否则结论无效）；**扩容优先级永远是"优化 SQL/索引 → 缓存 → 升配 → 从库 → 归档 → 分片"**，跳步直接分片是最常见的昂贵错误。', 1),
+
+('MySQL', '故障处理,应急,实战', 3,
+ '线上 MySQL 常见故障有哪些？各自的应急处置和根因排查是什么？',
+ '## 一、故障分类总览 ⭐
+
+| 类别 | 典型现象 |
+|---|---|
+| **连接类** | `Too many connections`、连接建立慢、连接被断开 |
+| **性能类** | QPS 骤降、响应变慢、CPU/IO 打满 |
+| **锁与并发类** | 大量锁等待、死锁频发、SQL 被阻塞 |
+| **空间类** | 磁盘满、undo/ibdata1 暴涨 |
+| **复制类** | 主从延迟大、复制中断 |
+| **数据类** | 误删数据、数据不一致、乱码 |
+| **可用性类** | 实例挂了、无法启动 |
+
+**应急处理的三条原则** ⭐：
+
+```
+① 先止血，后定位（恢复业务优先，但保留现场证据）
+② 保留证据（SHOW ENGINE INNODB STATUS、processlist、日志快照）
+    ⚠️ 一旦重启，很多现场信息就没了 ⭐
+③ 根因不查清绝不收工（否则会再犯）
+```
+
+## 二、连接类故障 ⭐
+
+### `ERROR 1040: Too many connections` ⭐
+
+```sql
+-- 现场：先看谁占了连接
+SHOW PROCESSLIST;
+SELECT user, host, db, command, COUNT(*) cnt
+FROM information_schema.processlist GROUP BY user, host, db, command ORDER BY cnt DESC;
+
+-- 找出长时间 Sleep 的连接
+SELECT id, user, host, db, command, time, state
+FROM information_schema.processlist
+WHERE command=''Sleep'' ORDER BY time DESC LIMIT 20;
+
+-- 找出长时间运行的查询（真凶）
+SELECT id, user, host, time, state, LEFT(info,200) sql
+FROM information_schema.processlist
+WHERE command <> ''Sleep'' ORDER BY time DESC LIMIT 20;
+```
+
+**应急处置** ⭐：
+
+```sql
+-- ① 快速腾出连接（用有 SUPER/CONNECTION_ADMIN 的账号登录 —— 8.0 会保留一个给管理员）
+KILL <id>;                    -- 杀单个连接
+-- 批量杀 Sleep 超过 300 秒的
+SELECT CONCAT(''KILL '', id, '';'') FROM information_schema.processlist
+WHERE command=''Sleep'' AND time > 300;
+-- 复制输出并执行
+
+-- ② 临时提高上限（⚠️ 也要考虑内存）
+SET GLOBAL max_connections = 1000;
+
+-- ③ 从库/其他实例分流（如果有）
+```
+
+**根因与长效对策** ⭐：
+
+| 根因 | 对策 |
+|---|---|
+| **没有连接池** | 上连接池 |
+| **连接泄漏** | RAII 保证归还；开 `leakDetectionThreshold` ⭐ |
+| **慢 SQL 拖住连接** | 优化慢 SQL；设置查询超时 ⭐ |
+| **`wait_timeout` 太长 + 客户端异常退出** | 调小 `wait_timeout` |
+| **业务量增长** | 升配 or 分库 |
+| **应用多实例各自连很多** | 总量规划：`Σ(池上限) × 1.3 < max_connections` ⭐ |
+
+### 连接被断开（`ERROR 2006/2013`）
+
+```
+现象：MySQL server has gone away / Lost connection during query
+根因：
+  ① 空闲连接被 wait_timeout 断开 → 池里是死连接 ⭐
+  ② 查询包超过 max_allowed_packet 被拒
+  ③ 网络抖动 / 防火墙超时
+  ④ 服务端 OOM 或重启
+对策：
+  ① 池的 maxLifetime < wait_timeout ⭐
+  ② 调大 max_allowed_packet
+  ③ 借出前探活（mysql_ping）或用 keepalive
+```
+
+## 三、性能类故障 ⭐
+
+### QPS 骤降 / 响应变慢（最紧急）⭐
+
+**应急处置（5 分钟内）**：
+
+```sql
+-- ① 看此刻在跑什么
+SHOW FULL PROCESSLIST;         -- 找 time 大、state 异常的
+-- ② 看 InnoDB 内部
+SHOW ENGINE INNODB STATUS\\G    -- ⭐ 保留现场（复制输出到文件）
+-- ③ 看有没有长事务
+SELECT trx_id, trx_started, TIMESTAMPDIFF(SECOND,trx_started,NOW()) sec,
+       trx_state, trx_mysql_thread_id, trx_query
+FROM information_schema.innodb_trx ORDER BY trx_started;
+-- ④ 看锁等待链
+SELECT * FROM sys.innodb_lock_waits\\G   -- ⭐ 找出"堵住一切的元凶"
+-- ⑤ 看系统层
+--    top / vmstat 1 / iostat -xz 1
+```
+
+**快速止血手段** ⭐：
+
+| 手段 | 说明 |
+|---|---|
+| **KILL 掉"堵住一切"的长事务** ⭐ | 找 `blocking_pid`，杀掉它；⚠️ 大事务 KILL 后还要回滚很久 |
+| **限流** | 在应用/网关层降级，先保核心业务 ⭐ |
+| **临时提高 buffer pool 相关参数** | 治标 |
+| **切读流量到从库** | 减轻主库 |
+| **重启** | **最后手段**（会丢现场、恢复慢、可能长时间崩溃恢复）⚠️ |
+
+**根因排查矩阵** ⭐：
+
+| 现象 | 首要怀疑 |
+|---|---|
+| CPU 打满（%us 高）| 缺索引导致全表扫描；SQL 复杂度；并发过高 |
+| CPU 打满（%sy 高）| 上下文切换多（连接过多）；锁竞争 |
+| iowait 高 / %util 100% | Buffer Pool 太小；刷脏风暴；大查询；备份任务抢 IO ⭐ |
+| 大量锁等待 | 长事务；缺索引导致锁全表；访问顺序不一致 |
+| `Threads_running` 高但 QPS 低 | 大量 SQL 在等待资源（锁/IO/latch）⭐ |
+| 突然大量 `Aborted_connects` | 网络问题、认证问题、连接池配置错误 |
+
+### 磁盘 IO 打满 ⭐
+
+```
+常见原因：
+  ① buffer pool 太小（命中率低）→ 物理读多
+  ② checkpoint 风暴（redo 太小）
+  ③ 备份/统计/DDL 在跑 ⭐
+  ④ 云盘 IOPS 额度耗尽
+  ⑤ 大查询（无索引的全表扫描）
+  ⑥ change buffer merge 积压（重启后）
+对策：
+  ① 加大 innodb_buffer_pool_size ⭐
+  ② 加大 innodb_redo_log_capacity（8.0）/ innodb_log_file_size
+  ③ 把备份/DDL 挪到低峰 + 限速（pt-osc 的 --max-load / --critical-load）⭐
+  ④ 优化慢查询
+  ⑤ 检查 innodb_io_capacity 是否匹配磁盘
+```
+
+## 四、锁与并发类故障 ⭐
+
+### 死锁频发（`ERROR 1213`）
+
+```sql
+SHOW ENGINE INNODB STATUS\\G     -- 看 LATEST DETECTED DEADLOCK
+-- 开启全量记录（排查期）
+SET GLOBAL innodb_print_all_deadlocks = ON;   -- 所有死锁写入 error log ⭐
+
+-- 8.0 更精确的锁信息
+SELECT * FROM performance_schema.data_locks;
+SELECT * FROM performance_schema.data_lock_waits;
+```
+
+**根因与对策** ⭐：
+
+| 根因 | 对策 |
+|---|---|
+| **访问顺序不一致** | 统一顺序（如都按主键升序）⭐ |
+| **缺索引导致间隙锁范围过大** | 给 WHERE 条件加索引 ⭐ |
+| **RR 的间隙锁** | 考虑改用 RC（需配合 binlog=ROW）⭐ |
+| **长事务** | 缩短事务 |
+| **批量操作顺序不同** | 批量更新前对 ID 排序 ⭐ |
+| **应用无重试** | 捕获 1213/1205 后有限次重试 ⭐ |
+
+### 大量锁等待（`ERROR 1205: Lock wait timeout exceeded`）
+
+```sql
+-- 找等待链
+SELECT * FROM sys.innodb_lock_waits\\G
+-- waiting_pid / waiting_query / blocking_pid / blocking_query / locked_table
+-- ⭐ 沿着 blocking_pid 往上找，直到找到"根阻塞者"（它没人阻塞它）
+KILL <root_blocker_pid>;      -- 杀掉根阻塞者，整条链解开 ⭐
+```
+
+### `Metadata lock`（MDL）等待 ⭐ 比行锁更常见
+
+**现象**：一个 `ALTER TABLE` 卡住，然后**所有对这张表的访问全部排队** ⚠️⚠️
+
+```sql
+-- 查看 MDL 等待（5.7+）
+SELECT * FROM performance_schema.metadata_locks WHERE lock_status=''PENDING'';
+SELECT * FROM sys.schema_table_lock_waits\\G   -- ⭐ 8.0 更好用
+```
+
+**根因**：`ALTER TABLE` 需要 MDL 排他锁，但**有未提交的事务/长查询**持着 MDL 共享锁 → `ALTER` 等待 → 后续所有请求排队。**这就是"一个 DDL 卡死整个业务"的机制**。
+
+**对策**：
+
+```
+① 紧急：KILL 掉持有 MDL 共享锁的长事务 ⭐
+② 长效：
+   · 用 pt-osc / gh-ost（减少 DDL 持锁时间）⭐
+   · 设置 lock_wait_timeout（DDL 的超时）
+   · DDL 在低峰做
+   · 监控 information_schema.innodb_trx 的长事务
+```
+
+## 五、空间类故障 ⭐
+
+### 磁盘满（`ERROR 1114 / 1030: Disk full`）
+
+```bash
+df -h
+du -sh /var/lib/mysql/* | sort -h | tail -20
+# 找大文件：
+#  · ibdata1（通用表空间，只增不减）⚠️
+#  · undo_001/undo_002（undo 膨胀）
+#  · binlog（未清理）
+#  · 大表 .ibd
+#  · slow.log / general.log
+#  · 临时文件（大排序产生）
+```
+
+**应急处置** ⭐：
+
+```sql
+-- ① 清理 binlog（⚠️ 确认从库已应用！）
+PURGE BINARY LOGS BEFORE DATE_SUB(NOW(), INTERVAL 3 DAY);
+-- 或
+PURGE BINARY LOGS TO ''mysql-bin.000123'';
+
+-- ② 触发生成可回收文件
+FLUSH LOGS;                 -- 切 binlog
+FLUSH TABLES;               -- 必要时
+
+-- ③ 截断 undo 表空间
+SET GLOBAL innodb_undo_log_truncate = ON;
+SET GLOBAL innodb_max_undo_log_size = 1073741824;
+
+-- ④ 关掉 general_log（如果开着）⚠️
+SET GLOBAL general_log = OFF;
+```
+
+```bash
+# ⑤ 清理慢日志/通用日志（先备份再清）
+: > /var/log/mysql/slow.log
+```
+
+**⚠️ 不要把 `ibdata1` 或 `.ibd` 删掉！**（那是数据）
+
+**长效**：容量水位告警、日志切割、binlog 定期清理、`innodb_undo_log_truncate=ON`。
+
+### undo / History list length 暴涨
+
+```
+根因：长事务阻塞 purge ⭐
+处置：
+  ① 找并 KILL 长事务
+  ② 调大 innodb_purge_threads
+  ③ 确认 innodb_undo_log_truncate=ON
+  ④ 检查有没有"忘了提交"的代码（RAII 保证）⭐
+```
+
+## 六、复制类故障 ⭐
+
+### 主从延迟大
+
+```
+应急处置：
+  ① 看从库负载（是否被其他查询拖住）
+  ② 看是否有大事务/DDL 在重放
+  ③ 临时把读流量切回主库 ⭐
+  ④ 必要时跳过（⚠️ 危险）
+
+长效：
+  ① 拆小事务 ⭐
+  ② 并行复制（slave_parallel_workers + LOGICAL_CLOCK / WRITESET）⭐
+  ③ 从库配置不低于主库
+  ④ 从库不做重查询（单独分析实例）⭐
+  ⑤ ProxySQL 的 max_replication_lag 自动摘除延迟从库 ⭐
+```
+
+### 复制中断（`Last_SQL_Error` / `Slave_SQL_Running: No`）⭐
+
+```sql
+SHOW SLAVE STATUS\\G
+-- 看 Last_SQL_Error 与 Last_SQL_Errno
+
+-- 常见错误与处理：
+-- ① 1062 主键冲突 → 数据已不一致
+--    处理：确认从库已有的数据是否与主库一致 → 一致则跳过
+SET GLOBAL SQL_SLAVE_SKIP_COUNTER = 1;   -- 老语法
+STOP SLAVE; START SLAVE;                   -- 8.0 可用 GTID 跳过
+-- GTID 模式：
+SET GTID_NEXT=''<出错的 GTID>'';
+BEGIN; COMMIT;
+SET GTID_NEXT=''AUTOMATIC'';
+START SLAVE;
+-- ⚠️ 跳过是"止血"，之后必须做数据校验（pt-table-checksum）⭐
+
+-- ② 1032 行不存在 → 从库缺数据
+-- ③ 1064 语法错误 → 版本不兼容（如 8.0 主库 → 5.7 从库）⭐
+-- ④ 1114 磁盘满 → 清理空间
+-- ⑤ 1594 relay log 损坏 → 重新做从库
+```
+
+**⚠️ 铁律**：**跳过错误后必须做一致性校验**，否则不一致会越积越多。
+
+### 重新搭建从库（最彻底的方案）⭐
+
+```bash
+# 方案 A：物理克隆（最快）⭐
+# 主库执行
+CLONE INSTANCE FROM ''user''@''host'':3306 IDENTIFIED BY ''pass'';
+# 或独立工具
+xtrabackup --backup --target-dir=/backup/full
+# 拷到从库 → --prepare → --copy-back → 配 replication → START SLAVE
+
+# 方案 B：mysqldump（小库）
+mysqldump --single-transaction --master-data=2 --source-data=2 ...
+```
+
+## 七、数据类故障 ⭐
+
+### 误删数据 ⭐
+
+```
+① 立即停止写入（或至少判断写入是否会覆盖要恢复的位置）
+② 用 binlog 做 PITR（时间点恢复）⭐
+   mysqlbinlog --start-position=... --stop-datetime=''误操作前一刻'' \\
+     mysql-bin.000012 | mysql -u root -p
+   ⚠️ 先用 `> recover.sql` 落成文件，用编辑器去掉误操作那段，再执行 ⭐
+③ 用备份恢复 + binlog 补齐
+④ 如果是从库误删 → 从主库/其他从库重建 ⭐
+```
+
+**预防**：`sql_safe_updates=ON`（禁止无 WHERE 的 UPDATE/DELETE）⭐、`super_read_only`、权限最小化、DDL 审核。
+
+### 中文乱码（`?` 或 `åŠŸèƒ½`）⭐
+
+见"字符集"那题。**关键判据：1 汉字 : 1 `?` ⇒ MySQL 字符集转换；1 汉字 : 3 `?` ⇒ 程序按字节处理**。**先分清"MySQL 转换"还是"程序处理"，再决定迁移方案，绝不要盲目 `ALTER ... CONVERT TO`** ⭐
+
+## 八、可用性类故障 ⭐
+
+### 实例无法启动
+
+```bash
+# ① 看 error log（第一站）⭐
+tail -100 /var/log/mysql/error.log
+journalctl -u mysqld -n 100 --no-pager
+
+# 常见原因：
+#  · 端口被占用          → ss -lntp | grep 3306
+#  · 数据目录权限不对    → chown -R mysql:mysql /var/lib/mysql
+#  · 配置文件语法错误    → mysqld --validate-config
+#  · redo/undo 损坏       → innodb_force_recovery（从 1 逐步到 6）⚠️
+#  · 磁盘满
+#  · InnoDB 崩溃恢复中   → 耐心等（看 error log 的进度），别急着重启
+```
+
+**`innodb_force_recovery` 的使用警告** ⚠️：只能在**数据抢救**场景临时用（`=1` 到 `=6` 递增，越大越危险），**必须立即备份数据**，之后重建实例。**不要在 `force_recovery > 0` 的情况下继续长期运行**。
+
+### 崩溃恢复太慢
+
+```
+根因：redo log 太大（要重放很久）+ 双写缓冲
+对策：
+  ① 恢复期耐心等并监控 error log
+  ② 长效：控制 redo 容量（不要过大），或依赖更高可用架构（MGR / 云多可用区）⭐
+```
+
+## 九、故障应急的通用方法论 ⭐
+
+```
+【黄金三步】
+
+① 止血（分钟级）
+   · 限流 / 降级 / 切流 / KILL 阻塞者 / 扩容临时资源
+   · 目标：恢复核心业务可用
+   · ⚠️ 保留现场（复制相关输出到文件）⭐
+
+② 定位（小时级）
+   · 用 processlist / innodb status / sys 表 / 系统工具
+   · 自下而上：OS → 实例 → 引擎 → SQL
+   · 找到"根因"而不是"表象"
+
+③ 修复与防复发（天级）
+   · 长效修复（架构/代码/索引/参数）
+   · 加监控告警（能提前发现同类问题）⭐
+   · 写复盘文档（含时间线、根因、改进项）⭐
+   · 演练（确保下次更快）
+
+【必备的"故障工具箱"（提前准备好）】
+  □ 高权限应急账号（或在 my.cnf 里预留）
+  □ 一键采集现场脚本（dump 关键状态到文件）⭐
+  □ 从库/备份可用且已验证
+  □ 限流/降级开关（应用层）
+  □ 回滚方案（发布回滚、数据回滚）
+  □ 值班联系方式与升级路径
+```
+
+## 十、一句话总结
+
+**MySQL 故障处理的核心是"先止血保业务，同时保留现场，再查根因"**；最常见的四类根因是 **缺索引导致的全表扫描、长事务导致的锁/purge 阻塞、`max_connections` 与连接池不匹配、主从延迟/中断**；**必备的应急手段是 KILL 根阻塞者、限流降级、切读流量到从库**；**最容易踩的坑是"''已经重启了但现场没保留''和''KILL 大事务后以为立刻就好了（实际还要回滚很久）''"**。', 1),
+
+('MySQL', '缓存,一致性,Redis', 3,
+ '缓存和数据库怎么保证一致性？为什么"先删缓存再更新数据库"会有问题？',
+ '## 一、四种模式对比 ⭐
+
+| 模式 | 读 | 写 | 问题 |
+|---|---|---|---|
+| **Cache-Aside（旁路缓存）** ⭐ | 先读缓存，miss 查 DB 回填 | **先更新 DB，再删缓存** | 有短暂不一致窗口 |
+| **Read-Through** | 缓存组件自己回源 | 同 | 需缓存组件支持 |
+| **Write-Through** | — | 写缓存时同步写 DB | 写延迟高 |
+| **Write-Behind（写回）** | — | 写缓存，异步批量写 DB | **一致性弱，可能丢数据** ⚠️ |
+
+**实践：绝大多数系统用 Cache-Aside** ⭐
+
+## 二、四个经典错误组合 ⭐
+
+### ① ❌ 先更新 DB，再更新缓存
+
+```
+T1: A 更新 DB 为 1
+T2: B 更新 DB 为 2
+T3: B 更新缓存为 2
+T4: A 更新缓存为 1        ← ⚠️ 缓存最终是 1，DB 是 2 → 不一致！
+```
+**问题**：两个并发的"更新"操作**顺序交错**（DB 和缓存的更新顺序不一定一致）。
+
+**另一个问题**：如果缓存值需要复杂计算（多表 JOIN 拼装），**"更新缓存"的成本很高**，而且可能"写了根本没人读"（浪费）→ **应该删缓存而不是更新缓存** ⭐
+
+### ② ❌ 先删缓存，再更新 DB ⭐（经典问题）
+
+```
+T1: A 删除缓存
+T2: B 读缓存 miss → 读 DB（旧值 100）→ 回填缓存 100     ← ⚠️ 把旧值写回来了！
+T3: A 更新 DB 为 200
+结果：DB = 200，缓存 = 100 → 长期不一致（直到缓存过期）❌
+```
+
+**根因**：**"删缓存"和"读 DB 回填"之间有时间窗口**，读请求趁机把旧值塞回缓存。这个窗口越大（DB 查询慢），越容易出问题 ⭐
+
+### ③ ❌ 先更新 DB，再删缓存 ⭐（推荐，但仍有极小概率）
+
+```
+T1: A 读缓存 miss → 读 DB（旧值 100）
+T2: A 被阻塞（GC / 网络 / 调度）
+T3: B 更新 DB 为 200
+T4: B 删除缓存
+T5: A 恢复 → 把读到的旧值 100 写入缓存      ← ⚠️ 写入旧值
+结果：DB = 200，缓存 = 100 → 不一致 ❌
+```
+
+**为什么仍推荐这个方案** ⭐：**出现条件极其苛刻** —— 需要"读线程在 `读DB` 和 `写缓存` 之间被阻塞，且阻塞时间超过一个完整的写事务"。现实中要求：
+
+```
+① 读操作先到，读 DB 拿到旧值
+② 读操作在写缓存之前被长时间阻塞（GC/网络抖动/线程调度）
+③ 写操作在阻塞期间完成"更新 DB + 删缓存"
+④ 读操作恢复后才写缓存
+```
+
+**概率极低**，而且**缓存有过期时间兜底**（最终一致）。所以这是**工业界的默认选择**。
+
+### ④ ⚠️ 只删缓存不更新 DB（显然错）
+
+## 三、一致性等级 ⭐
+
+| 等级 | 手段 | 代价 |
+|---|---|---|
+| **强一致** | 不用缓存 / 缓存只读不写 / 分布式锁 | 性能差 |
+| **准强一致**（秒级） | 先更新 DB 再删缓存 + **延迟双删** ⭐ | 低 |
+| **最终一致**（毫秒~秒） | 缓存设 TTL + **binlog 订阅同步** ⭐⭐ | 中 |
+| **弱一致** | 定时刷新 | 可能差几分钟 |
+
+**实践结论** ⭐：**没有"强一致 + 高并发"的缓存方案**。要根据业务容忍度选：
+
+```
+· 商品详情、文章列表 → 最终一致足够（延迟双删 + TTL）
+· 库存、余额 → 不要用缓存，直接读 DB（或只缓存"粗粒度"的数量）⭐
+· 配置、字典 → 长 TTL + 主动失效
+```
+
+## 四、工业界的三套方案 ⭐⭐
+
+### 方案 A：先更新 DB，再删缓存 + 延迟双删 ⭐
+
+```cpp
+// 1. 更新数据库
+updateDB(...);
+// 2. 立即删缓存
+delCache(key);
+// 3. ⭐ 延迟一小段时间后再删一次（覆盖"读请求回填旧值"的窗口）
+scheduleAfter(500ms, [key]() { delCache(key); });
+
+// 延迟时间怎么定：
+//    > 读请求"读DB + 写缓存"的总耗时 ⭐
+//    经验值：写库耗时 + 几百毫秒（通常 500ms ~ 1s）
+```
+
+**为什么"延迟双删"有效**：它把"读请求回填旧值"的那个窗口**关掉**——第二次删除会把这个旧值清掉 ⭐
+
+**缺点**：延迟删除是异步的，需要可靠的任务调度（线程池 / 延时队列 / 消息队列的延时消息）⭐
+
+### 方案 B：binlog 订阅 + 异步删除（最可靠）⭐⭐
+
+```
+业务代码：只更新 DB（不管缓存）
+                ↓
+            MySQL binlog
+                ↓
+        Canal / Debezium / Maxwell（伪装成从库）
+                ↓
+        消息队列（Kafka/RocketMQ）
+                ↓
+            消费者删除/更新缓存
+```
+
+**优势** ⭐：
+
+| 优势 | 说明 |
+|---|---|
+| **业务代码完全解耦** | 不用在业务里写缓存维护逻辑 |
+| **顺序性** | binlog 天然有序，可按主键 hash 到同一分区保证顺序 ⭐ |
+| **可靠性** | MQ 保证至少一次，可重试 |
+| **覆盖所有写入** | 包括手动 SQL、其他服务的写入 ⭐（这是"业务代码里删缓存"做不到的）|
+| **可追溯** | 有变更日志 |
+
+**这才是大厂的标准方案** ⭐。本项目若要加缓存，也应该走这条路线（或先用简单的 TTL 兜底）。
+
+### 方案 C：读写都加锁（成本太高，很少用）
+
+```
+读：加锁 → 读缓存/DB → 解锁
+写：加锁 → 更新 DB → 删缓存 → 解锁
+```
+分布式锁会成为瓶颈 ⚠️
+
+## 五、缓存三大问题（必考）⭐
+
+### ① 缓存穿透（查不存在的数据）⭐
+
+```
+现象：大量请求查"不存在"的 key → 缓存永远 miss → 全部打到 DB
+      （典型：恶意攻击用不存在的 id 刷接口）⚠️
+```
+
+| 方案 | 说明 |
+|---|---|
+| **缓存空值** ⭐ | 查不到也缓存一个 `NULL`（短 TTL，如 60s）→ 挡住重复查询。**简单有效** |
+| **布隆过滤器** ⭐ | 前置拦截"一定不存在"的 key（**有假阳性但无假阴性**）→ 拦截绝大多数无效请求 |
+| **参数校验** | 在入口层校验 id 格式、范围（如自增 id 必须 > 0）⭐ |
+| **限流 + 黑名单** | 防攻击 |
+
+### ② 缓存击穿（热点 key 过期瞬间）⭐
+
+```
+现象：某个超热 key 过期 → 瞬间大量请求同时查 DB → DB 被打崩
+```
+
+| 方案 | 说明 |
+|---|---|
+| **互斥锁（只让一个请求回源）** ⭐ | `SETNX lock` 成功者去查 DB 并回填，其他请求短暂 sleep 后重试 |
+| **逻辑过期** ⭐ | 缓存**永不物理过期**，value 里存"逻辑过期时间"；发现逻辑过期时由**一个线程异步重建**，其他请求先返回旧值 |
+| **热点 key 永不过期 + 后台定时刷新** ⭐ | 运维上用定时任务刷新 |
+
+**逻辑过期是推荐的方案**（不阻塞请求，可用性最好）：
+
+```
+value = { data: {...}, expireAt: 1714528800 }
+
+读：
+  if (now < expireAt) → 直接返回 data ✅
+  else → 返回 data（旧值，用户无感）⭐
+       → 异步：抢锁 → 重建缓存 → 更新 value
+```
+
+### ③ 缓存雪崩（大量 key 同时过期 / 缓存服务挂了）⭐
+
+```
+现象 A：大量 key 设置了相同的过期时间 → 同一时刻集体失效 → DB 被冲垮 ⚠️
+现象 B：Redis 集群挂了 → 所有请求直达 DB → DB 被冲垮 ⚠️
+```
+
+| 方案 | 说明 |
+|---|---|
+| **过期时间加随机抖动** ⭐ | `TTL = base + rand(0, 300s)` —— **最简单有效** |
+| **多级缓存** ⭐ | 本地缓存（Caffeine/进程内 LRU）+ Redis；本地缓存抖动用本地兜底 |
+| **熔断降级** | 检测到 DB 压力过大 → 限流/返回兜底数据 ⭐ |
+| **预热** | 上线/重启前提前把热点数据加载进缓存 |
+| **Redis 高可用** | 主从 + 哨兵 / Cluster |
+| **持久化 + 快速恢复** | RDB/AOF 让 Redis 重启能快速恢复 |
+
+## 六、缓存的通用实践清单 ⭐
+
+| 项 | 建议 |
+|---|---|
+| **key 设计** | `业务:实体:标识`，如 `post:detail:123`；**避免大 key / 热 key** ⭐ |
+| **TTL 必设** | **所有缓存都要有过期时间**（兜底最终一致）⭐ |
+| **TTL 加抖动** | 防雪崩 ⭐ |
+| **大 key 拆分** | 单个 value > 10KB 考虑拆分；集合元素 > 5000 考虑分片 ⭐ |
+| **热 key 打散** | 加随机后缀分散到多个 key（`hot:123:0~9`）|
+| **不要缓存敏感数据** | 或加密 + 短 TTL |
+| **缓存命中率监控** | 命中率骤降 → 有异常（可能是穿透攻击）⭐ |
+| **降级预案** | 缓存不可用时如何兜底（DB 只读 + 限流）⭐ |
+| **序列化统一** | JSON / MessagePack / Protobuf，团队统一 |
+| **避免"缓存全量数据"** | 内存有限，只缓存热点 |
+
+## 七、`Redis` 与 `MySQL` 的数据边界 ⭐
+
+**一个实用的划分原则**：
+
+```
+MySQL 掌管：
+  ✔ 事务性数据（订单、支付、库存的最终值）
+  ✔ 需要强一致的约束（唯一性）
+  ✔ 复杂查询 / JOIN / 聚合
+  ✔ 数据持久性要求高的数据
+
+Redis 掌管：
+  ✔ 热点读（列表页、详情页、排行榜）
+  ✔ 计数器（浏览量、点赞数）  ← 但要注意异步落库 ⭐
+  ✔ 会话（Session、Token）
+  ✔ 分布式锁
+  ✔ 限流 / 去重
+  ✔ 排行榜（ZSet）
+  ✔ 消息队列（Stream / List）
+```
+
+**关键**：**Redis 是缓存和加速层，不是"数据的第二份真相"** ⭐。**任何"只在 Redis 里的数据"都要问一句："Redis 挂了会丢什么？"**
+
+## 八、本项目（博客系统）的缓存建议 ⭐
+
+```
+当前状态：无缓存（直接查 MySQL）
+
+优先级 1（成本极低、收益高）：
+  ✔ 文章详情：`post:detail:<id>` 缓存 10min + 更新后删除
+  ✔ 文章列表第一页：`post:list:page:1` 缓存 1min
+  ✔ 每日一题：当天题目几乎不变 → 缓存到当天结束 ⭐（和项目的"懒生成"机制天然契合）
+  ✔ 站点统计（总文章数、总访问量）：缓存 5min
+
+实现方式（本项目 Crow 场景，没有 Redis 时）：
+  ✔ 进程内 LRU 缓存（C++ 用 std::unordered_map + 过期时间戳 + mutex）
+  ✔ 或简单的 "map + 定时清理"
+  ⚠️ 多线程要注意加锁；且"更新文章"时要清对应的缓存项 ⭐
+
+有 Redis 后：
+  ✔ 按上面 Cache-Aside + 先更新 DB 再删缓存
+  ✔ TTL 兜底（哪怕删除逻辑有 bug，最坏也就脏 N 分钟）⭐
+```
+
+**关键提醒** ⭐：本项目**文章发布/编辑**后必须**清掉列表页缓存**（因为列表会变），否则用户看不到自己的新文章 —— 这是"缓存导致用户困惑"的最典型场景。
+
+## 九、一句话总结
+
+**"先更新 DB 再删缓存"是主流方案（出现不一致的条件极其苛刻）**，配合 **延迟双删** 可基本消除；**最可靠的是 "binlog 订阅 + 异步删缓存"**（业务解耦、覆盖所有写入、顺序可保证）⭐⭐；**缓存三大问题的解法分别是"空值缓存/布隆过滤器"、"互斥锁/逻辑过期"、"TTL 加随机抖动 + 多级缓存"**；**所有缓存必须设 TTL 作为最终一致的兜底**。', 1),
+
+('MySQL', '全文索引,搜索,ES', 2,
+ 'MySQL 的全文索引怎么用？什么时候该换成 Elasticsearch？',
+ '## 一、全文索引基础 ⭐
+
+**全文索引（FULLTEXT）** 专为**文本分词检索**设计，解决 `LIKE ''%keyword%''` 无法用索引、只能全表扫描的问题。
+
+| 支持情况 | 说明 |
+|---|---|
+| **InnoDB** | **5.6+ 支持** ⭐（之前只有 MyISAM）|
+| **MyISAM** | 支持（老方案）|
+| **适用列类型** | `CHAR` / `VARCHAR` / `TEXT` |
+| **中文分词** | ⚠️ **默认分词器不支持中文**（见下文）|
+
+```sql
+-- 建全文索引
+ALTER TABLE posts ADD FULLTEXT INDEX ft_posts (title, content) WITH PARSER ngram;
+
+-- 或建表时
+CREATE TABLE posts (
+    ...
+    FULLTEXT KEY ft_posts (title, content) WITH PARSER ngram
+) ENGINE=InnoDB;
+
+SHOW INDEX FROM posts WHERE Index_type=''FULLTEXT'';
+```
+
+## 二、三种查询模式 ⭐
+
+```sql
+-- ① 自然语言模式（默认）
+SELECT * FROM posts WHERE MATCH(title, content) AGAINST(''数据库 索引'');
+-- 特点：按相关性排序，忽略停用词和 <50% 的词（MyISAM 限制）
+
+-- ② 布尔模式 ⭐（最常用，可控性强）
+SELECT * FROM posts
+WHERE MATCH(title, content) AGAINST(''+MySQL -Redis'' IN BOOLEAN MODE);
+-- 运算符：
+--   +word   必须包含
+--   -word   必须不包含
+--   word*   前缀匹配
+--   "a b"   短语（必须相邻）
+--   >word   提高权重   <word 降低权重
+--   ~word   降低该词的相关性贡献
+--   (a b)   分组
+--   ""      引号内为短语
+
+-- ③ 查询扩展模式
+SELECT * FROM posts
+WHERE MATCH(title, content) AGAINST(''数据库'' WITH QUERY EXPANSION);
+-- 先用原词查，再用结果中的高频词二次查询（扩大召回，但可能引入噪声）
+```
+
+**相关性打分**：
+
+```sql
+SELECT id, title,
+       MATCH(title, content) AGAINST(''MySQL 索引'' IN BOOLEAN MODE) AS score
+FROM posts
+WHERE MATCH(title, content) AGAINST(''MySQL 索引'' IN BOOLEAN MODE)
+ORDER BY score DESC LIMIT 20;
+```
+
+## 三、中文分词：`ngram` 解析器 ⭐⭐（关键）
+
+**默认分词器按"空格/标点"切词** → 中文整句变成一个 token → **`MATCH` 几乎失效** ⚠️
+
+**解决：`ngram` 解析器**（MySQL **5.7.6+** 内置）⭐
+
+```sql
+CREATE FULLTEXT INDEX ft_posts ON posts (title, content) WITH PARSER ngram;
+
+-- 控制 n-gram 长度（默认 2，即 bigram）
+-- 写进 my.cnf
+[mysqld]
+ngram_token_size = 2      # ⚠️ 建索引后修改必须重建索引才生效
+```
+
+**行为**：`ngram_token_size=2` 时，"数据库索引" → `数据` / `据库` / `库索` / `索引`
+
+```sql
+-- 中文查询
+SELECT * FROM posts WHERE MATCH(title, content) AGAINST(''索引'' IN BOOLEAN MODE);
+-- ✅ 生效
+
+-- ⚠️ 单字查询在 ngram_token_size=2 时搜不到！
+SELECT * FROM posts WHERE MATCH(title, content) AGAINST(''索'' IN BOOLEAN MODE);
+-- 因为 token 最小是 2 字 → "索"不是有效 token ❌
+-- 解决：用 LIKE 兜底，或把 ngram_token_size 设为 1（索引会变大）⭐
+```
+
+**关键参数**：
+
+| 参数 | 默认 | 说明 |
+|---|---|---|
+| `ngram_token_size` | **2** | 分词长度；**改动后需重建所有 FULLTEXT 索引** ⭐ |
+| `innodb_ft_min_token_size` | 3 | 英文最小词长（英文场景）|
+| `innodb_ft_max_token_size` | 84 | 最大词长 |
+| `innodb_ft_enable_stopword` | ON | 停用词 |
+| `innodb_ft_result_cache_limit` | 2G | 结果缓存上限 |
+
+**`ngram` 的坑** ⭐：
+
+| 坑 | 说明 |
+|---|---|
+| **相关性打分不准** | bigram 分词导致相关性排序不如专业引擎 |
+| **索引体积大** | 每个 2 字组合都是 token → 索引可能比数据还大 ⚠️ |
+| **写入慢** | 维护大量 token |
+| **不支持同义词/词干** | "数据库"与"DB"不算同义 ⚠️ |
+| **不支持拼音/错字容错** | ⚠️ |
+
+## 四、全文索引的限制 ⭐
+
+| 限制 | 说明 |
+|---|---|
+| **必须整列匹配** | `MATCH(col1, col2) AGAINST(...)` 里的列必须与索引定义**完全一致**（顺序也要一致）⚠️ |
+| **不能与其他条件复用同一索引** | `MATCH(...) AND status=1` 时，`status` 需要另一个索引 → 优化器可能选一个而不用另一个 |
+| **MyISAM 的 50% 阈值** | MyISAM 下，出现频率 > 50% 的词视为停用词（**InnoDB 已取消此限制**）⭐ |
+| **停用词表** | `INFORMATION_SCHEMA.INNODB_FT_DEFAULT_STOPWORD`（可自定义 `innodb_ft_user_stopword_table`）|
+| **`ngram_token_size` 改动要重建索引** ⚠️ | |
+| **不支持"必须存在"与"模糊"混合的复杂查询** | 复杂查询语法有限 |
+| **不擅长多维过滤 + 排序** | 如"分类=X 且 价格 100~200 且 按销量排序" → 全文索引帮不上 |
+
+**检查停用词**：
+
+```sql
+SELECT * FROM INFORMATION_SCHEMA.INNODB_FT_DEFAULT_STOPWORD;
+-- 自定义
+SET GLOBAL innodb_ft_user_stopword_table = ''blogdb/my_stopwords'';   -- 需先建表
+```
+
+**分词结果调试**（很有用）⭐：
+
+```sql
+SET GLOBAL innodb_ft_aux_table = ''blogdb/posts'';
+SELECT * FROM INFORMATION_SCHEMA.INNODB_FT_INDEX_TABLE LIMIT 50;
+-- 能看到实际分了哪些 token、出现在哪个文档、位置 ⭐ 排查"为什么搜不到"的利器
+```
+
+## 五、什么时候换 Elasticsearch ⭐⭐
+
+### 用 MySQL FULLTEXT 就够的情况 ✅
+
+```
+✔ 数据量小（几十万行以内）
+✔ 只需要"关键词匹配"，不需要复杂的相关性排序
+✔ 查询简单（不涉及多维过滤 + 排序 + 聚合的组合）
+✔ 不想引入额外的中间件与运维负担 ⭐
+✔ 数据一致性要求高（避免"MySQL 与 ES 数据不一致"）⭐
+```
+
+### 该换 ES 的情况 ❌
+
+| 需求 | 为什么 FULLTEXT 做不了 |
+|---|---|
+| **复杂相关性排序**（TF-IDF/BM25 + 字段权重 + 时间衰减）| FULLTEXT 打分能力弱 ⭐ |
+| **同义词、词干、拼音、错字容错** | 不支持（ES 有丰富的 analyzer）⭐ |
+| **高亮（highlight）** | ES 原生支持 |
+| **多维过滤 + 排序 + 聚合 + 分面（facet）** | "分类+价格+品牌+评分排序" → ES 原生 |
+| **数据量大（千万级以上）** | FULLTEXT 索引体积与写入开销过大 ⚠️ |
+| **搜索日志与效果分析** | ES 有搜索分析能力 |
+| **中文分词质量要求高** | ES 有 IK / jieba / THULAC 等成熟分词器 ⭐ |
+| **近实时搜索（NRT）+ 高并发查询** | ES 专为此设计 |
+| **地理位置搜索** | ES 有 geo 类型 |
+
+### 引入 ES 的代价 ⚠️（必须权衡）
+
+| 代价 | 说明 |
+|---|---|
+| **运维复杂度** | 又一个集群（ES 对内存/磁盘要求高）⭐ |
+| **数据同步** ⭐ | MySQL → ES 的同步链路（Canal/Logstash/自研），要处理**一致性、延迟、失败重试** |
+| **一致性挑战** ⭐ | MySQL 写了但 ES 还没同步 → 用户"刚发布的搜不到"（和主从延迟同类问题）|
+| **成本** | 机器 + 人力 |
+| **调试难度** | 分词器、mapping、查询 DSL 都有学习成本 |
+
+**结论** ⭐：**"搜索是核心功能"才上 ES；"搜索是辅助功能"用 MySQL FULLTEXT + LIKE 兜底**。
+
+## 六、推荐的演进路径 ⭐
+
+```
+阶段 1：数据量小 → LIKE ''kw%''（前缀匹配，能用索引）
+         ⚠️ 但 ''%kw%'' 用不了索引，只能全表扫
+
+阶段 2：需要关键词检索，数据量 < 100 万
+         → MySQL FULLTEXT + ngram ⭐ 零额外运维
+
+阶段 3：搜索体验要求提高（相关性、高亮、纠错）
+         → 引入 Elasticsearch + IK 分词 ⭐
+         → 用 binlog 订阅（Canal/Debezium）保持同步
+
+阶段 4：搜索是核心业务
+         → ES 集群 + 搜索质量评估体系 + AB 测试
+```
+
+**中间方案的变体** ⭐：
+
+| 方案 | 说明 |
+|---|---|
+| **ES 只存检索必需字段** | 倒排索引 + 少量展示字段；详情仍查 MySQL（避免 ES 成为数据源）⭐ |
+| **搜索走 ES，回表走 MySQL** | 典型两段式：ES 返回 id 列表 → MySQL 批量查详情 ⭐ |
+| **本地缓存 + FULLTEXT 混合** | 热搜索词结果缓存，冷词走 FULLTEXT |
+| **云搜索服务** | 阿里云 OpenSearch / 腾讯云 ES（省运维）⭐ |
+
+## 七、本项目（博客）的建议 ⭐
+
+```
+场景：博客搜索 —— 按标题/正文/标签搜文章
+
+数据量：几百到几千篇 → ⭐ **MySQL FULLTEXT 完全够用**
+
+具体方案：
+① 建 ngram 全文索引
+   ALTER TABLE posts ADD FULLTEXT INDEX ft_posts (title, summary, content) WITH PARSER ngram;
+   ⚠️ 注意：与已有索引的列顺序要一致
+
+② 查询（布尔模式，支持多词与排除）
+   SELECT id, title, summary,
+          MATCH(title, summary, content) AGAINST(? IN BOOLEAN MODE) AS score
+   FROM posts
+   WHERE status = 1
+     AND MATCH(title, summary, content) AGAINST(? IN BOOLEAN MODE)
+   ORDER BY score DESC, created_at DESC
+   LIMIT 20;
+
+③ 参数要考虑 ngram_token_size = 2 → 用户输入单字搜不到
+   → 前端限制最少输入 2 个字，或对单字走 LIKE 兜底 ⭐
+
+④ 用户输入的运算符要转义/白名单（`+`、`-`、`"` 在布尔模式下有语义）⭐
+   ⚠️ 这是安全与体验的双重问题
+
+⑤ 写入开销：全文索引会让 INSERT/UPDATE 变慢
+   → 用 summary 而不是 content 全文索引？或分离到独立表 ⭐
+
+⑥ 备选（不引入 ES 的"加料"方案）：
+   · 标题权重高于正文 → 分别查两次，标题命中加权 ⭐
+   · 搜索词高亮 → 应用层做（拿到结果后用正则加 <mark>）
+   · 搜索历史/热词 → Redis
+```
+
+**`MATCH ... AGAINST` 与 `status=1` 的索引冲突** ⭐：优化器通常只能用一个索引。如果 `status=1` 过滤后行数很少，可能选 `idx_status` + 逐行 `MATCH` 过滤（慢）；反之可能用 `ft_posts` 再过滤 status。**用 `EXPLAIN` 确认，必要时用 hint 或改成两段式查询**（先全文检索出 id，再按 status 过滤）。
+
+## 八、一句话总结
+
+**MySQL FULLTEXT 的价值是"零额外运维的关键词检索"，中文必须配 `ngram` 解析器（且 `ngram_token_size=2` 意味着单字搜不到）⭐**；**当需求升级到"复杂相关性 + 同义词 + 高亮 + 多维过滤聚合"或数据量到千万级时，才值得引入 ES** —— 但要同时接受 **"数据同步链路 + 一致性延迟 + 运维成本"** 这三项代价；**博客这种量级，FULLTEXT 完全够用**。', 1),
+
+('MySQL', '空间数据,GIS,索引原理', 2,
+ 'MySQL 支持空间数据吗？空间索引的原理是什么？和 B+ 树有什么区别？',
+ '## 一、MySQL 的空间数据类型 ⭐
+
+| 类型 | 说明 |
+|---|---|
+| **`GEOMETRY`** | 通用几何（可存任意类型）|
+| **`POINT`** | 点（经纬度）⭐ |
+| **`LINESTRING`** | 线（路径、轨迹）|
+| **`POLYGON`** | 多边形（区域、围栏）⭐ |
+| **`MULTIPOINT` / `MULTILINESTRING` / `MULTIPOLYGON`** | 复合 |
+| **`GEOMETRYCOLLECTION`** | 混合集合 |
+
+**核心特性**：
+
+| 特性 | 说明 |
+|---|---|
+| **SRID**（空间参考系统标识）| 8.0 起支持；**必须指定 SRID 才能做正确的距离计算** ⭐ |
+| **WGS84（SRID 4326）** | 常用经纬度坐标系（GPS）|
+| **SRID 0** | 笛卡尔平面（无地理语义）|
+| **内部格式** | 二进制（WKB/内部格式），比 WKT 文本更紧凑 ⭐ |
+
+```sql
+CREATE TABLE shops (
+    id    BIGINT PRIMARY KEY,
+    name  VARCHAR(100),
+    loc   POINT NOT NULL SRID 4326,          -- ⭐ 8.0 语法
+    SPATIAL INDEX idx_loc (loc)              -- 空间索引
+) ENGINE=InnoDB;
+```
+
+## 二、`SRID` 的重要作用 ⭐⭐
+
+```sql
+-- ❌ 没有 SRID 时，"距离"是平面上的欧几里得距离（错误的经纬度距离）
+-- ✅ 指定 SRID 4326 后，距离按球面计算
+
+-- 8.0 正确写法
+INSERT INTO shops (id, name, loc) VALUES (1, ''A'', ST_SRID(POINT(116.397, 39.908), 4326));
+-- 或
+INSERT INTO shops (id, name, loc) VALUES (1, ''A'', ST_GeomFromText(''POINT(116.397 39.908)'', 4326));
+
+-- 距离查询（球面，单位"米"）⭐
+SELECT id, name,
+       ST_Distance_Sphere(loc, ST_SRID(POINT(116.400, 39.910), 4326)) AS meters
+FROM shops
+ORDER BY meters LIMIT 10;
+```
+
+**⚠️ `ST_Distance_Sphere` 是 MySQL 内置的球面距离（Haversine 变体），单位是米** ⭐ 这是地理场景最常用的函数。
+
+## 三、空间索引的原理：R 树 ⭐⭐
+
+### 为什么不能用 B+ 树？
+
+**B+ 树只能索引"一维有序"的数据**。二维坐标有**两个维度**，无法用一个标量排序同时保持两维的局部性：
+
+```
+问题：按经度排序后，纬度就乱了；按纬度排序，经度又乱了
+     → B+ 树无法同时支持"经度范围 + 纬度范围"的查询 ⚠️
+```
+
+### R 树（R-Tree）的核心思想 ⭐
+
+**用"最小外包矩形（MBR, Minimum Bounding Rectangle）"组织数据，形成层级包围盒**：
+
+```
+                    ┌─────────────────────────┐
+        根节点：     │  R1 (整个区域的外包框)     │
+                    └─────────────────────────┘
+                     /                       \\
+        ┌──────────────────┐      ┌──────────────────┐
+   中层：│ R2 (覆盖左半区域) │      │ R3 (覆盖右半区域) │
+        └──────────────────┘      └──────────────────┘
+           /        \\                    /       \\
+      ┌───────┐ ┌───────┐          ┌───────┐ ┌───────┐
+叶子：│P1 P2  │ │P3 P4  │          │P5 P6  │ │P7 P8  │
+      └───────┘ └───────┘          └───────┘ └───────┘
+      每个叶子存实际对象（点/线/多边形）
+```
+
+**查询过程**（以"找某个矩形区域内的所有点"为例）：
+
+```
+① 从根节点开始，检查哪些子节点的 MBR 与查询区域**相交**
+② 不相交的整个子树**直接剪枝**（这是 R 树的威力所在）⭐
+③ 相交的继续向下递归
+④ 到叶子节点后，对每个对象做**精确的几何判断**
+   （MBR 相交 ≠ 对象真的相交，MBR 只是"粗筛"）⭐
+```
+
+**关键概念：过滤（filter）+ 精炼（refine）两阶段** ⭐
+
+```
+阶段 1（Filter）：用 MBR 做粗筛，快速排除大量无关数据 → 利用 R 树索引
+阶段 2（Refine）：对候选集做精确几何计算（ST_Contains / ST_Intersects）
+```
+
+**InnoDB 的空间索引实际上用的是 B+ 树 + MBR 的混合实现** ⭐：InnoDB 没有独立的 R 树实现，而是**在 B+ 树的键上存 MBR**（把 MBR 编码成可比较的形式）。所以它是"**B+ 树形态的 R 树语义**"。
+
+### R 树 vs B+ 树 ⭐
+
+| | **B+ 树** | **R 树（空间索引）** |
+|---|---|---|
+| 数据维度 | **一维**（有序值）| **多维**（通常 2D）|
+| 节点内容 | 键值区间 | **最小外包矩形（MBR）** |
+| 重叠 | 无（区间可完全划分）| **子节点的 MBR 可能重叠** ⚠️ |
+| 查询 | 范围/等值 | **空间相交/包含/邻近** |
+| 更新代价 | 低 | **较高**（重插可能导致 MBR 重算、分裂）⚠️ |
+| 最优性 | 有保证 | **启发式**（插入策略影响性能）|
+
+**R 树的关键弱点** ⭐：**MBR 之间的重叠导致剪枝效率下降**。如果数据分布差（如大量细长的对象），MBR 会大面积重叠 → 剪枝失效 → 退化为全扫。这就是"空间索引不如 B+ 树高效"的根本原因。
+
+### 其他空间索引算法（了解）
+
+| 算法 | 特点 |
+|---|---|
+| **R 树 / R\\* 树** | 主流（MySQL、PostGIS 用）|
+| **四叉树（Quadtree）** | 递归四分空间；简单，适合均匀分布 ⭐ |
+| **Geohash** ⭐ | 把二维坐标编码成一维字符串（前缀越长越精确）→ **可以用普通 B+ 树索引！** ⭐ |
+| **Hilbert 曲线** | 空间填充曲线，保持更好的局部性 ⭐ |
+| **网格索引** | 把空间划成网格，每个网格记录包含的对象 |
+
+**Geohash 是最实用的"绕过 R 树"方案** ⭐：
+
+```
+原理：把经纬度递归二分并编码，得到一串 base32 字符串
+      前缀相同的点在空间上相邻（或者说，前缀相同 → 在同一个格子内）
+
+"wx4g0b" → 精度约 1.2km × 0.6km
+"wx4g0"  → 精度约 4.9km × 4.9km
+
+查询"附近的点"：
+  ① 算出目标点的 geohash 前缀（如 6 位）
+  ② 查 `WHERE geohash LIKE ''wx4g0b%''` → 能用普通 B+ 树索引 ⭐
+  ③ 对结果做精确距离计算（ST_Distance_Sphere 或 Haversine）
+  ④ ⚠️ 要注意"格子边界"问题：需要同时查**相邻 8 个格子** ⭐
+```
+
+**Geohash vs R 树**：
+
+| | Geohash | R 树 |
+|---|---|---|
+| 索引类型 | **普通 B+ 树** ⭐ | 空间索引 |
+| 实现 | 简单（应用层或生成列）| 数据库原生 |
+| 边界问题 | ⚠️ 需要查 9 个格子 | 无需处理 |
+| 精度调整 | 改前缀长度 | — |
+| 适合 | **"附近的点"查询** ⭐ | 任意空间关系 |
+
+## 四、空间查询函数 ⭐
+
+```sql
+-- 构造
+ST_GeomFromText(''POINT(116.4 39.9)'', 4326)
+ST_SRID(POINT(116.4, 39.9), 4326)
+ST_GeomFromGeoJSON(''{"type":"Point","coordinates":[116.4,39.9]}'')
+
+-- 转换
+ST_AsText(geom)          -- 转 WKT 文本
+ST_AsGeoJSON(geom)       -- 8.0+，转 GeoJSON ⭐ 前端友好
+ST_X(point) / ST_Y(point)  -- 取坐标
+ST_SRID(geom)
+
+-- 距离与关系 ⭐
+ST_Distance_Sphere(g1, g2)      -- 球面距离（米）⭐
+ST_Distance(g1, g2)             -- SRID 0 时是欧氏距离；4326 时也是球面（8.0）
+ST_Contains(polygon, point)     -- 包含
+ST_Within(point, polygon)       -- 在内部
+ST_Intersects(g1, g2)           -- 相交
+ST_Equals(g1, g2)               -- 相等
+ST_Touches / ST_Crosses / ST_Overlaps
+
+-- 构造与分析
+ST_Buffer(geom, 100)            -- 缓冲（半径 100）
+ST_Envelope(geom)               -- 最小外包矩形（MBR）⭐
+ST_ConvexHull(geom)             -- 凸包
+ST_Centroid(geom)               -- 质心
+ST_Area(geom)                   -- 面积
+ST_Length(line)                 -- 长度
+ST_MakeEnvelope(lng1, lat1, lng2, lat2)   -- 8.0，构造矩形 ⭐
+
+-- 判断是否为 MBR 相交（粗略，可用于索引粗筛）
+MBRContains(g1, g2)
+MBRIntersects(g1, g2)
+```
+
+**⚠️ SRID 必须一致** ⚠️：`ST_Distance_Sphere` / `ST_Contains` 等函数要求两个几何的 SRID 相同，否则报错。
+
+## 五、空间索引的使用限制 ⚠️
+
+| 限制 | 说明 |
+|---|---|
+| **列必须 `NOT NULL`** ⭐ | 空间索引不支持 NULL 值（建索引时要求列非空）|
+| **引擎限制** | **MyISAM 和 InnoDB 都支持**（InnoDB 5.7+）|
+| **每表只能一个空间索引？** | 实际上可以多个，但一般只建一个 |
+| **`WHERE` 必须用空间函数** | ⚠️ **只有包含 `ST_*` / `MBR*` 函数的条件才能用空间索引**；`WHERE lng BETWEEN ... AND lat BETWEEN ...` **用不了** ⭐⭐ |
+| **函数参数顺序有讲究** | 索引列应该是函数的**第一个参数**才能命中索引 ⭐ |
+| **多条件混合** | 空间索引 + 其他条件（如 `status=1`）→ 优化器可能只用一个 |
+| **不能用于 `ORDER BY`** | 空间索引不提供排序能力 |
+| **更新代价高** | 频繁更新的表慎用 ⚠️ |
+
+**关键：用 MBR 函数让优化器用上空间索引** ⭐：
+
+```sql
+-- ❌ 用不了空间索引（BETWEEN 不受支持）
+SELECT * FROM shops
+WHERE lng BETWEEN 116.39 AND 116.41 AND lat BETWEEN 39.90 AND 39.92;
+
+-- ✅ 用 MBRContains 或 ST_Within 才能用到 ⭐
+SELECT * FROM shops
+WHERE MBRContains(ST_MakeEnvelope(116.39, 39.90, 116.41, 39.92), loc);
+-- 或（SRID 一致时）
+SELECT * FROM shops
+WHERE ST_Within(loc, ST_MakeEnvelope(116.39, 39.90, 116.41, 39.92, 4326));
+```
+
+**"附近的人/店"的标准写法** ⭐：
+
+```sql
+-- 用 MBR 先粗筛（走空间索引），再做精确距离计算
+SELECT id, name,
+       ST_Distance_Sphere(loc, ST_SRID(POINT(116.400, 39.910), 4326)) AS meters
+FROM shops
+WHERE MBRContains(
+        ST_MakeEnvelope(
+            116.400 - 0.01, 39.910 - 0.009,   -- ⚠️ 经度要按纬度做 cos 修正
+            116.400 + 0.01, 39.910 + 0.009
+        ), loc)
+ORDER BY meters
+LIMIT 10;
+```
+
+**⚠️ 经度修正** ⭐：1 度经度的实际距离随纬度变化（`111.32 km × cos(纬度)`）。在北纬 40° 附近，1 度经度约 85 km，1 度纬度约 111 km。**用固定偏移会导致搜索区域是"椭圆"而不是"圆"**。
+
+## 六、MySQL 空间 vs PostGIS ⭐
+
+| | **MySQL** | **PostGIS（PostgreSQL）** |
+|---|---|---|
+| 功能丰富度 | 基础（够用）| **极强**（行业标准）⭐ |
+| 空间索引 | B+ 树 + MBR | **真正的 GiST / R 树** ⭐ |
+| 函数数量 | 约 100 个 | **上千个** |
+| 坐标系支持 | SRID 支持有限 | **完整 PROJ 支持** |
+| 拓扑/栅格 | ❌ | ✅ |
+| 性能（复杂空间查询）| 一般 | **优秀** |
+| 适用 | **简单 LBS 需求**（附近的点、区域包含）⭐ | 专业 GIS |
+
+**结论**：**"附近的 XX" 用 MySQL 足够；专业 GIS（路网、拓扑分析、轨迹）用 PostGIS**。
+
+## 七、其他替代方案 ⭐
+
+| 方案 | 说明 |
+|---|---|
+| **Redis GEO** ⭐ | 底层是 **Geohash + ZSet（sorted set）**；`GEOADD` / `GEOSEARCH` / `GEODIST` 非常简单高效 ⭐ 适合"附近的点"+ 高频读 |
+| **Elasticsearch geo_point / geo_shape** ⭐ | 支持空间查询 + 与全文检索组合；底层用 **BKD 树** |
+| **MongoDB 2dsphere** | 地理索引；`$near` / `$geoWithin` |
+| **专业地图服务** | 高德/百度/腾讯地图的 POI 搜索 API ⭐ 免维护 |
+| **PostGIS** | 专业 GIS |
+| **Geohash + 普通索引** ⭐ | 最轻量的自研方案（不需要空间索引）|
+
+**选型建议** ⭐：
+
+```
+需求：查"我附近的商铺（1km 内）"
+  · 数据量小 + 查询不多 → MySQL 空间索引（或 Geohash + B+ 树）⭐
+  · 高频查询 + 已用 Redis → Redis GEO ⭐
+  · 需要与关键词搜索组合（"附近的火锅店"）→ Elasticsearch ⭐
+```
+
+## 八、一句话总结
+
+**空间索引（R 树）的核心是"最小外包矩形（MBR）分层剪枝 + 过滤/精炼两阶段"**，它解决的是"B+ 树只能索引一维"的根本限制；**MySQL 的"附近的点"查询必须用 `MBRContains`/`ST_Within` 这类空间函数才能命中索引（`BETWEEN` 用不了）⭐**，且必须**明确 SRID 4326** 才能得到正确的球面距离；**轻量替代是 Geohash + 普通 B+ 树索引（注意边界要查 9 个格子）或 Redis GEO**；专业 GIS 场景应该用 PostGIS。', 1),
+
+('MySQL', 'ORM,误区,实践', 2,
+ 'ORM 有哪些常见误区？手写 SQL 和 ORM 该怎么选？',
+ '## 一、ORM 的价值与代价 ⭐
+
+**价值**：
+
+| 价值 | 说明 |
+|---|---|
+| **开发效率** | 不用手写 CRUD |
+| **防注入（通常）** | 参数绑定 ⭐ |
+| **可移植性** | 换数据库只改方言（但现实中很少真的换）|
+| **关联管理** | 级联、懒加载 |
+| **类型安全**（现代 ORM）| 编译期检查 |
+
+**代价** ⚠️：
+
+| 代价 | 说明 |
+|---|---|
+| **"看不见的 SQL"** ⭐⭐ | 最难排查的性能问题都藏在这里（N+1、隐式全表扫描）|
+| **生成的 SQL 可能很蠢** | 复杂查询时 ORM 生成的 SQL 往往不如手写 ⭐ |
+| **学习成本** | 每个 ORM 都有自己的"魔法" |
+| **优化困难** | 想加个 hint / 改写 SQL 要绕过 ORM |
+| **`SELECT *` 倾向** | 默认拉全部列（包括 TEXT/BLOB）⚠️ |
+
+## 二、七大常见误区 ⭐⭐
+
+### ① N+1 查询（最经典、最致命）⭐⭐
+
+```python
+# ❌ N+1：1 次查列表 + N 次查关联
+posts = Post.objects.all()              # 1 次
+for p in posts:
+    print(p.author.name)                # 每篇一次 → N 次
+# 100 篇文章 = 101 次查询 ⚠️
+
+# ✅ 解法：预加载（JOIN / IN 批量查）
+posts = Post.objects.select_related(''author'').all()   # 1 次（JOIN）
+posts = Post.objects.prefetch_related(''tags'').all()   # 2 次（列表 + IN）
+```
+
+**为什么致命**：**每次查询都是一个网络往返**（即使只查 1 行，也要 RTT + 解析 + 优化）。100 次查询 = 100 个 RTT，即使每次 1ms 也是 100ms，而一次 JOIN 只要 2ms ⭐
+
+**怎么发现** ⭐：**用慢日志/`sys` 表看"同一个 SQL 模板的执行次数"** —— `sys.statement_analysis` 里 `exec_count` 异常高的 `SELECT ... WHERE id = ?` 就是 N+1 的信号。
+
+### ② 懒加载陷阱 ⭐
+
+```python
+# 序列化时触发懒加载（在"渲染/JSON 化"时才发 SQL）
+class PostSerializer:
+    author_name = serializers.CharField(source=''author.name'')   # 懒加载 ⚠️
+# 在循环外看不出来，序列化时才爆发 N+1
+```
+
+**对策**：**在查询层显式预加载**；开启"检测懒加载"的开发模式（如 Rails 的 `bullet`、Django 的 `nplusone`）。
+
+### ③ 隐式类型转换 / 隐式 JOIN ⚠️
+
+```python
+# ORM 可能生成你意想不到的 SQL
+Post.objects.filter(author__name=''x'')     # 生成 JOIN，可能没走索引
+Post.objects.filter(id__in=ids)            # 大 IN 列表 → SQL 极长 ⚠️
+Post.objects.filter(created_at__date=today)  # 生成 DATE(col)=... → 索引失效 ⚠️
+```
+
+**对策**：**开 SQL 日志，审查生成的 SQL** ⭐（几乎所有 ORM 都支持打印 SQL）。
+
+### ④ 默认 `SELECT *` 带出大字段 ⚠️
+
+```python
+Post.objects.all()    # 把 content（MEDIUMTEXT）也拉出来了
+```
+
+**对策**：**用 `.only()` / `.values()` / 投影指定列** ⭐ 列表页只取需要的列。
+
+### ⑤ 在循环里逐条写（批量操作没批量）
+
+```python
+# ❌ N 条 INSERT
+for p in posts: p.save()
+
+# ✅ 批量插入 ⭐
+Post.objects.bulk_create(posts, batch_size=500)
+```
+
+**对策**：用 ORM 的 bulk 接口；或直接用驱动/`LOAD DATA`。
+
+### ⑥ 在事务里做非数据库操作 ⚠️
+
+```python
+with transaction.atomic():
+    order.save()
+    requests.post(''https://payment.example.com/pay'')   # ⚠️ 网络调用，可能超时 30s
+    order.status = ''paid''
+```
+
+**后果**：**事务持有锁 30 秒** → 其他写被阻塞 → 可能雪崩 ⭐（见"大事务"题）
+
+**对策**：**事务里绝不放 RPC / 文件 IO / 长循环**；拆成"先写状态 → 事务外调用 → 再写结果"。
+
+### ⑦ 忽略 ORM 的"隐式提交"
+
+很多 ORM 的 `save()` 会**自动提交**（autocommit），导致你以为在一个事务里其实是多条独立事务 ⚠️
+
+**对策**：**显式声明事务边界**（`transaction.atomic()` / `@Transactional`），并确认 ORM 的事务模型。
+
+## 三、其他容易踩的点 ⭐
+
+| 坑 | 说明 |
+|---|---|
+| **迁移（Migration）工具生成的 DDL 很差** ⚠️ | 常生成"COPY 算法"的 DDL（重建表）→ 必须人工审查并改用 `ALGORITHM=INPLACE` 或 pt-osc ⭐ |
+| **迁移文件与真实表结构漂移** | 手工改过库 → migration 与实际不一致 ⚠️ 用 `makemigrations --check` 检测 |
+| **`save()` 全量更新** | ORM 往往 `UPDATE` 所有列（即使只改了一个字段）→ 增大 binlog 与锁范围 ⭐ |
+| **`NULL` 与空串混用** | 不同 ORM 对 `null`/`blank` 的处理不同 ⚠️ |
+| **时区处理** | ORM 的时区配置与 MySQL 的 `time_zone` 不一致 → 差 8 小时 ⭐ |
+| **字符集未指定** | 连接字符集不对 → 乱码（本项目踩过）⭐ |
+| **连接池配置** | ORM 自带池的 `maxLifetime` 与 `wait_timeout` 不匹配 → 死连接 ⭐ |
+| **软删除与唯一索引冲突** | 软删除后无法插入同唯一值 ⭐ |
+| **`count()` 很慢** | ORM 的 `count()` 生成 `SELECT COUNT(*)` → 大表慢 ⭐ |
+| **`exists()` vs `count()`** | 判断存在性用 `exists()`（`LIMIT 1`）而不是 `count()` ⭐ |
+| **分页用 `OFFSET`** | 深分页慢；ORM 通常只支持 offset ⭐ |
+| **`save()` 的竞态** | "读-改-写"应改成原子 SQL（`UPDATE ... SET n = n + 1`）⭐ |
+
+## 四、手写 SQL vs ORM 的选型 ⭐
+
+| 场景 | 推荐 |
+|---|---|
+| **简单 CRUD** | **ORM** ⭐（效率高）|
+| **复杂分析查询**（多表 JOIN + 聚合 + 窗口函数）| **手写 SQL** ⭐ |
+| **批量操作** | 手写 SQL / `LOAD DATA` ⭐ |
+| **报表/统计** | 手写 SQL（或专门的分析库）⭐ |
+| **需要 hint / 强制索引** | 手写 SQL ⭐ |
+| **性能关键路径** | 手写 SQL + 审查执行计划 ⭐ |
+| **数据迁移/一次性脚本** | 手写 SQL / 脚本 |
+| **管理后台的通用查询** | ORM（开发效率优先）|
+
+**最佳实践：ORM 为主 + 关键路径手写 SQL（ORM 都支持"原生 SQL 转义"）** ⭐
+
+```
+Django: Post.objects.raw(''...'')  / cursor.execute
+Rails:  Post.find_by_sql(''...'')  / ActiveRecord::Base.connection.execute
+TypeORM: query() / createQueryBuilder
+MyBatis: XML 里的 SQL（本质是手写 SQL + 参数绑定）⭐
+
+→ 注意：手写 SQL 时**必须用参数绑定**，不要字符串拼接 ⭐
+```
+
+## 五、C++ 场景的对应讨论 ⭐（本项目）
+
+**C++ 的 ORM 生态相对较弱**（没有 Django/Rails 那种成熟的"全栈 ORM"）：
+
+| 库 | 类型 | 特点 |
+|---|---|---|
+| **原始 MySQL C API** | 驱动 | 最底层，最灵活，需手写 SQL + 参数绑定 ⭐（本项目用的就是这个）|
+| **mysql-connector-c++** | 驱动 | C++ 接口，支持 `PreparedStatement` ⭐ |
+| **sqlpp11** | 类型安全查询构建器 | 编译期检查列名/类型 ⭐ |
+| **SOCI** | 通用数据库抽象 | 支持多后端 |
+| **ODB** | 真正的 C++ ORM | 需要代码生成（编译器插件），学习成本高 |
+| **sqlite_orm / sqlpp11** | 轻量 ORM | 模板元编程，编译慢 |
+
+**本项目的合理选择** ⭐：
+
+```
+✔ 直接用 C API（当前方案）+ 手写 SQL + 参数绑定
+  · 性能最好、可控性最强
+  · 适合少量、明确的查询（博客的 CRUD 不复杂）
+
+✔ 关键纪律：
+  ① 所有用户输入走 mysql_real_escape_string 或 mysql_stmt_* 预处理 ⭐
+  ② 表名/列名/排序方向用白名单（无法参数化）⭐
+  ③ MYSQL_RES 必须 free（RAII 包装）⭐
+  ④ 连接字符集显式 SET NAMES utf8mb4 ⭐
+  ⑤ 每线程独立连接（Crow 多线程）⭐
+  ⑥ 事务用 RAII 守卫保证提交/回滚 ⭐
+```
+
+**"ORM 化的思想"可以借鉴**：
+
+```
+✔ 把"表 → 结构体"的映射集中在少数函数里（`rowToPost(MYSQL_ROW)`）
+✔ 把 SQL 集中在少数文件/区域（不要散落在业务逻辑里）
+✔ 提供参数化的查询构建小工具（如 `selectPostsByStatus(int status)`）
+✔ 用统一的错误处理（错误码 → 业务异常）
+```
+
+## 六、无论用不用 ORM 都必须做的三件事 ⭐⭐
+
+```
+① 打印/审查生成的 SQL ⭐
+   · ORM 必开 SQL 日志（至少开发环境）
+   · 上线前对关键查询跑 EXPLAIN
+
+② 保证参数绑定（防注入）⭐
+   · ORM 通常自动做
+   · 手写 SQL 必须显式用参数/转义
+   · 表名/列名/排序方向用白名单
+
+③ 监控 SQL 的执行次数与耗时 ⭐
+   · 用 sys.statement_analysis / 慢日志
+   · 找 exec_count 异常高的 SQL → N+1
+   · 找 avg_latency 高的 SQL → 慢查询
+```
+
+## 七、一句话总结
+
+**ORM 的误区集中在"N+1 查询"和"看不见的 SQL"**；**手写 SQL 与 ORM 不是二选一，而是"ORM 做常规 CRUD + 手写 SQL 做复杂/性能关键查询"**；**无论用哪个，都必须保证"参数绑定防注入 + 审查生成的 SQL + 监控执行次数"这三件事**；**C++ 场景（如本项目）用 C API + 手写 SQL + 预处理是合理选择，但必须用 RAII 管资源、白名单管标识符、显式设字符集**。', 1),
+
+('MySQL', 'undo,purge,版本链治理', 3,
+ 'undo log 膨胀（History list length 很大）是怎么回事？怎么治理？',
+ '## 一、undo log 的作用回顾 ⭐
+
+| 作用 | 说明 |
+|---|---|
+| **事务回滚** | 记录旧值，回滚时反向应用 |
+| **MVCC** | 提供历史版本，供快照读沿 `DB_ROLL_PTR` 遍历版本链 |
+
+**undo 的存在周期**：
+- 事务**提交前**：必须存在（回滚需要）
+- 事务**提交后**：**只要还有 Read View 需要看到更老的版本，就必须保留** ⭐
+- **无人需要时**：由 **purge 线程**回收
+
+## 二、`History list length` 是什么 ⭐⭐
+
+```sql
+SHOW ENGINE INNODB STATUS\\G
+-- TRANSACTIONS 段
+-- History list length 12345
+```
+
+**语义**：**"已提交但尚未被 purge 的 undo 记录数"**（准确说是 undo 页/记录的积压量）。
+
+**它为什么重要** ⭐：**这是"系统健康度"的廉价指标** —— 正常情况下应该保持在很小的值（几百到几千）。
+
+| 数值 | 状态 |
+|---|---|
+| **< 1000** | 健康 ✅ |
+| **1000 ~ 10000** | 正常偏大，关注 |
+| **10000 ~ 100000** | ⚠️ 警告：有长事务或 purge 跟不上 |
+| **> 100000** | 🔴 危险：查询会系统性变慢，未提交事务或长事务严重 |
+
+## 三、膨胀的根因 ⭐⭐
+
+### ① 长事务（头号原因）⭐⭐
+
+```
+只要有一个事务开了很久还没提交：
+  · 它的 Read View 会"钉住"一个很老的时间点
+  · purge 线程判断"还有 Read View 需要这个版本" → 不敢删 ⭐
+  · 于是从该事务开始之后的所有 undo 都必须保留 ⚠️
+```
+
+**关键机制**：`purge` 只能回收到**最老活跃 Read View 所需位置**为止（这部分叫 **`purge boundary`**）。一个长事务就能让边界冻住不动。
+
+**长事务的常见来源** ⭐：
+
+| 来源 | 说明 |
+|---|---|
+| **显式 `BEGIN` 后忘了 `COMMIT`/`ROLLBACK`** | 应用 bug（异常路径没回滚）⭐ |
+| **事务里做了慢操作** | RPC 调用、文件 IO、等待用户输入、长循环 |
+| **`SELECT ... FOR UPDATE` 后长时间不提交** | 拿锁后做业务计算 |
+| **ORM 的隐式长事务** | `@Transactional` 包了一个很慢的方法 |
+| **从库的大事务重放** | 从库 SQL 线程持有一个大事务 |
+| **备份工具** | `mysqldump --single-transaction` 在备份期间**持有一个长事务** ⭐（大库备份几小时 → undo 积压几小时）|
+| **`autocommit=0`** | 忘记设置，导致所有语句都在一个隐式事务里 ⭐ |
+
+### ② purge 线程跟不上 ⭐
+
+```
+undo 产生速度 > purge 回收速度
+原因：
+  · innodb_purge_threads 太少（默认 4）
+  · purge 是"单线程遍历 undo 段"的部分存在瓶颈
+  · 磁盘 IO 慢（purge 需要读 undo 页）
+  · 大量 UPDATE/DELETE 产生海量 undo
+```
+
+### ③ 大事务制造海量 undo
+
+```sql
+UPDATE big_table SET col = 1 WHERE ...;   -- 影响 500 万行 → 500 万条 undo
+```
+
+### ④ 长查询（一致性读）
+
+一个跑了 10 分钟的 `SELECT`（大报表查询）也持有 Read View → **同样会阻塞 purge** ⭐（这一点常被忽略！不只是"写事务"，**长查询**也会）
+
+## 四、膨胀的连锁危害 ⭐⭐
+
+```
+History list length 大
+        ↓
+① 每次快照读要沿版本链遍历更多版本 → 单个查询变慢 ⭐
+② 需要读取更多 undo 页 → 物理读增加 → IO 压力大
+③ undo 表空间（undo_001/undo_002）持续增长 → 磁盘占满 ⚠️
+④ 系统表空间（ibdata1）也可能增长（历史原因）
+⑤ 极端情况下 purge 崩溃 → 实例直接不可用 🔴
+```
+
+**"查询系统性变慢"是它最隐蔽的表现** ⭐ —— 不是某条 SQL 慢，而是**所有查询都慢了**（因为每条都要遍历更长的版本链）。这种"全局变慢"很难归因，所以**必须监控 `History list length`**。
+
+## 五、排查流程 ⭐⭐
+
+```sql
+-- ① 看当前积压
+SHOW ENGINE INNODB STATUS\\G   -- TRANSACTIONS 段的 History list length
+
+-- ② 找出所有活跃事务（按开始时间排序）⭐
+SELECT trx_id,
+       trx_started,
+       TIMESTAMPDIFF(SECOND, trx_started, NOW()) AS age_sec,
+       trx_state,                    -- RUNNING / LOCK WAIT / COMMITTING
+       trx_mysql_thread_id,          -- ⭐ 用这个 KILL
+       trx_isolation_level,
+       trx_rows_modified,            -- 已修改行数 ⭐
+       trx_rows_locked,
+       trx_tables_locked,
+       LEFT(trx_query, 200) AS query
+FROM information_schema.innodb_trx
+ORDER BY trx_started;                -- ⭐ 最老的排最前
+
+-- ③ 找出长查询（SELECT 也会阻塞 purge）⭐
+SELECT id, user, host, db, command, time, state, LEFT(info,200) sql
+FROM information_schema.processlist
+WHERE command <> ''Sleep'' AND time > 60
+ORDER BY time DESC;
+
+-- ④ 看 undo 表空间占用 ⭐
+SELECT name, file_size, allocated_size, state
+FROM information_schema.innodb_tablespaces
+WHERE name LIKE ''%undo%'';
+-- 或
+ls -lh /var/lib/mysql/undo_*
+
+-- ⑤ 看 purge 线程状态
+SHOW GLOBAL STATUS LIKE ''Innodb_purge%'';
+-- Innodb_purge_rseg_truncate_frequency
+-- Innodb_purge_mark_delete / rseg_truncate ...
+SELECT * FROM information_schema.innodb_metrics
+WHERE name LIKE ''purge%'';
+
+-- ⑥ 看是否有人在跑备份（mysqldump --single-transaction 是长事务）⭐
+SELECT id, user, host, db, command, time, LEFT(info,100)
+FROM information_schema.processlist
+WHERE info LIKE ''%SELECT%'' AND info NOT LIKE ''%information_schema%''
+ORDER BY time DESC;
+```
+
+**定位长事务的"根阻塞者"** ⭐：
+
+```sql
+-- 找到最老的活跃事务 —— 它就是 purge 的边界 ⭐
+SELECT trx_id, trx_started, trx_mysql_thread_id, trx_rows_modified, trx_query
+FROM information_schema.innodb_trx
+ORDER BY trx_started ASC LIMIT 1;
+-- KILL 它，purge 就能往前推进
+```
+
+## 六、治理方案 ⭐⭐
+
+### 立即止血
+
+```sql
+-- ① KILL 长事务（⚠️ 大事务 KILL 后还要回滚很久，锁依然持有）
+KILL <trx_mysql_thread_id>;
+
+-- ② KILL 长查询（大报表 SELECT）
+KILL <id>;
+
+-- ③ 确认 purge 推进（观察 History list length 是否下降）
+SHOW ENGINE INNODB STATUS\\G
+```
+
+### 参数治理 ⭐
+
+```ini
+[mysqld]
+# ① purge 并发（8 核以上建议 4~8）
+innodb_purge_threads = 4                     # 默认 4，可调到 8
+
+# ② 允许自动截断 undo 表空间 ⭐
+innodb_undo_log_truncate = ON                # 默认 ON（8.0）
+innodb_max_undo_log_size = 1073741824        # 1GB，超过则截断
+innodb_undo_tablespaces = 2                  # 至少 2 个（截断需要轮换）⚠️ 只能初始化时设
+innodb_purge_rseg_truncate_frequency = 128   # 截断频率（越小越频繁）
+
+# ③ 撤销日志相关的历史参数
+innodb_undo_directory = /var/lib/mysql/      # undo 文件位置（可放独立盘）
+```
+
+**⚠️ `innodb_undo_tablespaces` 只能在初始化时设置**（8.0 起由 `innodb_undo_tablespaces` 与 `innodb_undo_log_truncate` 共同控制；某些版本的变更需重建实例）。
+
+**undo 表空间截断的条件**（必须全部满足）：
+
+```
+① innodb_undo_log_truncate = ON
+② undo 表空间大小 > innodb_max_undo_log_size
+③ 至少有 2 个 undo 表空间（截断需要"轮换"：截断当前未使用的那个）
+④ purge 线程能空闲出来处理截断
+```
+
+### 应用层治理（根本）⭐⭐
+
+| 措施 | 说明 |
+|---|---|
+| **事务要短** | 事务里绝不放 RPC / 文件 IO / 长循环 ⭐ |
+| **RAII 保证提交/回滚** ⭐ | C++ 用析构函数；Java 用 `try-with-resources`；防"忘了提交" |
+| **`autocommit=1`** | 避免隐式长事务 ⭐ |
+| **批量操作分批** | 大 `UPDATE`/`DELETE` 改成 `LIMIT` 循环 ⭐ |
+| **加事务超时** | 应用层计时器，超时强制回滚 ⭐ |
+| **ORM 事务边界审查** | 检查 `@Transactional` 方法里有没有外部调用 |
+| **大报表查询走从库/离线库** | 避免长查询阻塞 purge ⭐ |
+| **备份策略调整** | `mysqldump --single-transaction` 备份大库会长时间持有 Read View ⭐ → 改用 **XtraBackup（物理备份，几乎不影响 purge）** 或 Clone Plugin ⭐ |
+
+**⚠️ 备份工具的隐藏影响** ⭐：大库用 `mysqldump --single-transaction` 备份时**会持有一个长事务**，导致备份期间 undo 无法回收。**这是很常见的"莫名的 History list length 高"的原因**。改用 XtraBackup 就解决了。
+
+## 七、监控与告警 ⭐
+
+```sql
+-- 定期采集（脚本 + Prometheus mysqld_exporter）
+-- ① History list length（从 SHOW ENGINE INNODB STATUS 解析，或用 innodb_metrics）
+SELECT COUNT AS history_list_length
+FROM information_schema.innodb_metrics
+WHERE NAME = ''trx_rseg_history_len'';       -- ⭐ 8.0 有专门指标！
+
+-- ② 最长老事务时长（自研 SQL 采集）
+SELECT MAX(TIMESTAMPDIFF(SECOND, trx_started, NOW())) AS max_trx_age_sec
+FROM information_schema.innodb_trx;
+
+-- ③ 最长查询时长
+SELECT MAX(time) AS max_query_sec FROM information_schema.processlist
+WHERE command <> ''Sleep'';
+```
+
+**告警阈值建议** ⭐：
+
+| 指标 | Warning | Critical |
+|---|---|---|
+| `trx_rseg_history_len` | > 10000 | > 100000 ⭐ |
+| 最长活跃事务 | > 60s | > 600s ⭐ |
+| 最长非 Sleep 查询 | > 300s | > 1800s |
+| undo 表空间总大小 | > 10GB | > 50GB |
+| `Innodb_purge_*` 是否有积压 | — | — |
+
+## 八、一个典型事故复盘 ⭐
+
+```
+现象：
+  · 网站"整体变慢"，所有接口 P99 从 20ms 涨到 800ms ⭐（不是某一条 SQL 慢！）
+  · 磁盘告警：io 使用率高，undo_001 涨到 30GB ⚠️
+
+排查：
+  ① SHOW ENGINE INNODB STATUS → History list length 1280000 🔴
+  ② information_schema.innodb_trx → 发现一个 RUNNING 状态、已持续 4.5 小时的
+     事务（trx_rows_modified = 320000000）⭐
+  ③ 查该连接的 processlist → 是运维的 mysqldump 备份任务（--single-transaction）⚠️
+
+根因：
+  备份任务持有一个长 Read View → purge 边界冻住 4.5 小时
+  → 期间所有 CONMT/DELETE/UPDATE 的 undo 都无法回收
+  → 版本链暴长 → 所有快照读变慢 → 全局变慢
+
+处置：
+  ① KILL 备份连接（改到维护窗口重跑）
+  ② History list length 在几分钟内从 128 万降到几千 ✅
+  ③ 接口 P99 恢复到 20ms ✅
+
+防复发：
+  ① 备份改用 XtraBackup（物理备份，不做长事务）⭐
+  ② 监控 History list length + 最长老事务，加告警 ⭐
+  ③ 备份任务限制运行时长 / 加限速
+  ④ 备份时间挪到绝对低峰
+```
+
+**这个案例的核心教训** ⭐：**"全局变慢"往往是 undo 膨胀的信号，而 undo 膨胀的根因常常是"长查询/长事务"而不是"慢 SQL"** —— 排查方向完全不同。
+
+## 九、一句话总结
+
+**`History list length` = "已提交但未 purge 的 undo 数"，它是系统健康度的廉价指标**；**膨胀的根因是"长事务或长查询冻结了 purge 边界"（注意 `mysqldump --single-transaction` 也是一个长事务 ⭐）**；**危害是"全局性查询变慢"（不是单条 SQL 慢）+ undo 表空间撑爆**；**治理靠"KILL 长事务/长查询 + 应用层保证事务短小（RAII）+ 分批操作 + 换 XtraBackup 备份 + 监控 `trx_rseg_history_len` 告警"**。', 1),
+
+('MySQL', '面试题,大表,方案设计', 3,
+ '线上有一张 5000 万行的订单表，查询越来越慢，请给出一套完整的优化方案。',
+ '## 一、先问清楚的四个问题 ⭐
+
+**面试时一定要先澄清需求和约束，不要直接给方案**：
+
+```
+① 慢在哪？        某几个接口慢，还是整体慢？P50/P95/P99 各是多少？
+② 什么查询模式？  按用户查？按时间查？按状态查？统计类查询？
+③ 写入量？        每天新增多少行？是否有更新/删除？
+④ 约束条件？      能否停机？能否改表结构？能否加机器？能否改应用？
+```
+
+**这些问题的答案会导向完全不同的方案** ⭐
+
+## 二、第一步：采集证据（不猜）⭐
+
+```sql
+-- ① 慢 SQL 分布（按模板聚合）⭐
+SELECT query, exec_count, total_latency, avg_latency,
+       rows_examined_avg, rows_sent_avg, tmp_tables, full_scans
+FROM sys.statement_analysis ORDER BY total_latency DESC LIMIT 20;
+
+-- ② 全表扫描的 SQL
+SELECT * FROM sys.statements_with_full_table_scans ORDER BY total_latency DESC LIMIT 10;
+
+-- ③ 表规模与索引
+SELECT table_name, table_rows,
+       ROUND(data_length/1024/1024/1024, 2) AS data_gb,
+       ROUND(index_length/1024/1024/1024, 2) AS idx_gb,
+       ROUND(data_free/1024/1024/1024, 2) AS free_gb
+FROM information_schema.tables WHERE table_name=''orders'';
+
+SHOW INDEX FROM orders;
+
+-- ④ 索引使用情况（有没有白建的索引）⭐
+SELECT * FROM sys.schema_unused_indexes WHERE object_name=''orders'';
+SELECT * FROM sys.schema_redundant_indexes WHERE table_name=''orders'';
+
+-- ⑤ Buffer Pool 是否够（5000 万行能不能全装进内存）⭐
+SHOW GLOBAL STATUS LIKE ''Innodb_buffer_pool_read%'';
+-- 计算命中率 = 1 - reads/read_requests
+SHOW ENGINE INNODB STATUS\\G   -- LOOK: Buffer pool hit rate、History list length
+
+-- ⑥ 系统层
+-- top / vmstat 1 / iostat -xz 1
+```
+
+**5000 万行的关键估算** ⭐：
+
+```
+假设每行 500 字节 → 数据约 25GB，加索引可能 40~60GB
+若 Buffer Pool 只有 8GB → 命中率必然低 → 大量物理随机读 ❌
+→ 这是"表大了就慢"的物理根源：索引树变深 + 缓存装不下
+```
+
+## 三、第二步：按代价从低到高执行 ⭐⭐
+
+### 层 1：索引优化（成本最低，收益最大）⭐⭐
+
+```sql
+-- 先搞清查询模式，再设计索引
+-- 假设主要查询是：
+--   A) WHERE user_id=? AND status=? ORDER BY created_at DESC LIMIT 20
+--   B) WHERE status=? AND created_at BETWEEN ? AND ?
+--   C) WHERE order_no=?                            -- 唯一
+
+-- 设计：
+CREATE INDEX idx_user_status_created ON orders (user_id, status, created_at);
+--                                            等值     等值       排序
+CREATE INDEX idx_status_created ON orders (status, created_at);
+--                              （若 A 已覆盖前缀，B 可能需要单独索引）
+-- order_no 已是唯一索引 ✅
+
+-- 覆盖索引（消灭回表）⭐
+CREATE INDEX idx_user_status_created_cover
+  ON orders (user_id, status, created_at, order_no, amount, created_at);
+--                                                     ↑ 覆盖列（仅取值）
+
+-- EXPLAIN 验证：
+--   期望 type=range/ref, key=idx_..., Extra: Using index（无 Using filesort）✅
+EXPLAIN ANALYZE SELECT order_no, amount FROM orders
+WHERE user_id=1 AND status=1 ORDER BY created_at DESC LIMIT 20;
+```
+
+**这一步通常能解决 70% 的问题** ⭐。注意：
+
+| 要点 | 说明 |
+|---|---|
+| **大表加索引要用 INPLACE/在线工具** ⭐ | `ALTER TABLE ... ADD INDEX ..., ALGORITHM=INPLACE, LOCK=NONE`（8.0 加二级索引支持）|
+| **加完 `ANALYZE TABLE`** | 更新统计信息 ⭐ |
+| **删无用索引** | 减少写放大（用 `INVISIBLE` 观察后再删）⭐ |
+| **控制索引数量** | 单表 5~6 个以内 |
+
+### 层 2：SQL 改写（零风险，见效快）⭐
+
+```sql
+-- ① 深分页 → 键集分页 ⭐
+❌ SELECT * FROM orders ORDER BY id LIMIT 1000000, 20
+✅ SELECT * FROM orders WHERE id > 1000000 ORDER BY id LIMIT 20
+
+-- ② 深分页（保留 offset）→ 延迟关联
+✅ SELECT o.* FROM orders o
+   JOIN (SELECT id FROM orders WHERE ... ORDER BY id LIMIT 1000000, 20) t ON o.id=t.id
+
+-- ③ 函数包裹索引列 → 范围
+❌ WHERE DATE(created_at)=''2024-05-01''
+✅ WHERE created_at >= ''2024-05-01'' AND created_at < ''2024-05-02''
+
+-- ④ 大 IN 列表 → 拆分 / 临时表 / JOIN
+❌ WHERE id IN (5000 个 id)
+✅ 分批（每批 500）+ 或 JOIN 临时表
+
+-- ⑤ COUNT(*) 优化 → 走最小二级索引 / 汇总表 ⭐
+-- 或产品层面去掉"总数"
+
+-- ⑥ 列表页不读大字段 ⭐
+❌ SELECT * FROM orders ...          （带出 remark TEXT 等）
+✅ SELECT id, order_no, amount, status, created_at ...
+
+-- ⑦ OR → UNION ALL
+-- ⑧ 子查询 → JOIN（或用 EXISTS）
+-- ⑨ 避免 SELECT * 
+```
+
+### 层 3：架构层面（成本高，效果大）⭐⭐
+
+#### 3.1 冷热分离 ⭐⭐（对订单表最有效）
+
+```
+观察：99% 的查询落在"最近 3 个月"
+→ 把 3 个月前的订单归档
+
+方案 A：分区表（新表设计）⭐
+   RANGE COLUMNS(created_at) 按月分区
+   → 老数据 DROP PARTITION（秒级）
+   ⚠️ 但"改造已存在的 5000 万行表为分区表"需要重建表
+
+方案 B：冷热分表 + 应用层路由 ⭐
+   orders（最近 3 个月，约 500 万行）  ← 热
+   orders_archive（历史，4500 万行）  ← 冷
+   查询路由：按时间范围决定查哪张表
+   ⚠️ 需要改应用代码
+
+方案 C：归档到独立实例 ⭐
+   历史数据搬到低配只读实例
+   查询历史走那个实例（或走数仓）
+```
+
+**冷热分离的效果估算** ⭐：
+
+```
+5000 万行 → 500 万行热表（缩小 10 倍）
+· B+ 树从 4 层降到 3 层 → IO 次数减少
+· 缓存命中率大幅提升（500 万行可能全装进内存）⭐
+· 索引也缩小 10 倍
+```
+
+#### 3.2 读写分离
+
+```
+主库写 + 从库读（订单查询走从库）
+⚠️ 必须解决"下单后立刻查订单查不到" → 写后读主 ⭐
+```
+
+#### 3.3 加缓存（Redis）
+
+```
+缓存"订单详情"、"订单列表第一页"
+⚠️ 订单状态会变 → 更新时要删缓存（先更新 DB 再删缓存 + TTL 兜底）⭐
+```
+
+#### 3.4 汇总表（统计类查询）⭐
+
+```sql
+-- 日报/月报统计不要实时算
+CREATE TABLE order_daily_stats (
+    dt DATE PRIMARY KEY,
+    order_count INT, total_amount DECIMAL(18,2), ...
+);
+-- 定时任务（每天凌晨）汇总
+-- 或用 binlog 订阅实时增量更新
+```
+
+#### 3.5 垂直拆分
+
+```
+orders（主表，精简）      ← 高频字段
+order_ext（扩展表，1:1）  ← 备注、大字段、JSON
+→ 主表变小 → 一页放更多行 → 查询更快 ⭐
+```
+
+#### 3.6 分库分表（最后手段）⭐
+
+```
+前提：单表 > 2000 万行 且 已做完上述所有优化 且 单机已到极限
+分片键：user_id（因为"按用户查订单"是最高频查询）⭐
+预分片：一次性分 1024 个逻辑片
+分裂问题：
+  · 后台按 order_no 查 → 需要【异构索引表】(order_no → user_id) ⭐
+  · 跨片统计 → 走汇总表 / 数仓
+  · 全局唯一 ID → 雪花算法
+  · 分布式事务 → 尽量避免
+工具：ShardingSphere / 或直接用 TiDB（免改造）⭐
+```
+
+### 层 4：硬件与参数 ⭐
+
+```
+① 加大 innodb_buffer_pool_size（最直接的性能提升）⭐
+   若内存有限：优先保证 Buffer Pool，减少连接数与每连接 buffer
+② 换 SSD（随机读 IOPS 提升几倍到几十倍）
+③ innodb_buffer_pool_instances（按 buffer pool 大小 / 1G，减少 latch 竞争）
+④ innodb_io_capacity 匹配磁盘
+⑤ innodb_flush_method = O_DIRECT
+⑥ SSD 上 innodb_flush_neighbors = 0
+⑦ 考虑 innodb_page_size = 8K（大行、SSD 场景）
+⑧ 归档 + OPTIMIZE TABLE 消除碎片（⚠️ 需要额外磁盘）
+```
+
+## 四、推荐的执行顺序（路线图）⭐
+
+```
+【第 1 周】证据采集 + 索引优化
+  · 用 sys.statement_analysis 找出 TOP 慢 SQL
+  · 设计/补索引（INPLACE 在线加）
+  · 删无用索引（先 INVISIBLE 观察）
+  · ANALYZE TABLE
+  · 预期收益：70% 的问题解决 ⭐
+
+【第 2 周】SQL 改写 + 应用层改造
+  · 深分页改键集分页
+  · 列表页去掉大字段（用冗余摘要列）
+  · 统计类查询改汇总表
+  · 预期收益：再解决 15%
+
+【第 3~4 周】冷热分离 + 缓存
+  · 归档 3 个月前的数据（分批、幂等、可续跑）⭐
+  · 关键查询上缓存（延迟双删 + TTL）⭐
+  · 预期收益：再解决 10%
+
+【第 2~3 月】架构级（按需）
+  · 读写分离（延迟感知）
+  · 垂直拆分（大字段分离）
+  · 加大 buffer pool / 换 SSD
+  · 预期收益：最后的 5%
+
+【长期】分库分表（仅在前述都不够时）
+  · 或者迁移到 TiDB（应用无改造）⭐
+```
+
+**关键**：**每做一步都要压测/灰度验证，量化收益**（P99 从多少降到多少）⭐
+
+## 五、必须同时做的三件事 ⭐
+
+### ① 备份与可恢复性
+
+```
+5000 万行的表必须有：
+  ✔ 定时全量备份（XtraBackup 物理备份 ⭐ 比 mysqldump 快得多）
+  ✔ binlog 保留（PITR 用）
+  ✔ 定期恢复演练（否则备份等于没有）⭐
+  ⚠️ 用 mysqldump --single-transaction 备份大表会长时间持有 Read View
+     → 导致 undo 膨胀、全局变慢 ⭐ 必须换 XtraBackup
+```
+
+### ② 监控与告警
+
+```
+必盯：
+  · Buffer Pool 命中率（< 99% 告警）⭐
+  · 慢查询数（突增告警）
+  · 最长活跃事务 + History list length（长事务告警）⭐
+  · 主从延迟
+  · 磁盘水位（< 30% 告警）⭐
+  · QPS/TPS 与 P99
+```
+
+### ③ 防复发
+
+```
+  · 新 SQL 上线必须过 EXPLAIN 评审 ⭐
+  · 禁止无 LIMIT 的大表查询（框架层强制分页上限）
+  · 禁止 SELECT * （lint 规则）
+  · 定期索引体检（每季度）
+  · 大表查询统一走"按用户/按时间"的路由层 ⭐
+```
+
+## 六、面试答题的结构化模板 ⭐
+
+```
+① 先澄清需求（4 个问题）—— 显得专业，避免答偏 ⭐
+② 采集证据（不猜）：慢日志、sys 表、EXPLAIN ANALYZE
+③ 分层给方案，按代价排序：
+   索引 → SQL → 架构（冷热分离/缓存/读写分离/汇总表/垂直拆）→ 硬件参数 → 分片
+④ 给出量化预期（"冷热分离后热表缩小 10 倍，命中率从 94% 提到 99.8%"）
+⑤ 说明风险与回滚（在线 DDL 用 INPLACE，删索引先 INVISIBLE）
+⑥ 补充"必须同时做的"（备份、监控、防复发）
+⑦ 最后说明"什么情况下才考虑分库分表" —— 体现不滥用
+```
+
+## 七、一句话总结本题
+
+**5000 万行变慢的物理根源是"B+ 树变高 + 缓存装不下"**；**解决顺序必须是"先索引（解决 70%）→ 再 SQL 改写 → 再冷热分离/缓存（对订单表最有效）→ 最后才考虑读写分离和分库分表"**；**对订单表而言，"按时间冷热分离"通常是收益最大的单步操作**（热表缩小 10 倍，缓存能全装下）；**同时必须补上 XtraBackup 备份、`History list length` 等监控、以及 SQL 上线 EXPLAIN 评审来防复发**。', 1),
+
+('MySQL', '内存,配置,资源管理', 2,
+ 'MySQL 的内存都花在哪了？为什么连接数一多内存就爆？怎么规划内存分配？',
+ '## 一、内存的两大类 ⭐⭐
+
+```
+MySQL 内存 = 【全局共享内存】 + 【每连接私有内存】
+                ↑                    ↑
+          与连接数无关            ⚠️ 与连接数成正比
+```
+
+**这是"连接数一多内存就爆"的根本原因** ⭐
+
+## 二、全局共享内存 ⭐
+
+| 组件 | 说明 | 参数 |
+|---|---|---|
+| **InnoDB Buffer Pool** ⭐⭐ | 缓存数据页/索引页，**占大头** | `innodb_buffer_pool_size`（通常 50%~80%）|
+| **InnoDB Log Buffer** | 缓存 redo log | `innodb_log_buffer_size`（默认 16M）|
+| **InnoDB 额外缓冲** | AHI、锁信息、数据字典 | `innodb_additional_mem_pool_size`（已废弃，8.0 自动）|
+| **Tmp Table（内存临时表）** | 全局上限 | `max_heap_table_size`（每个临时表的上限）|
+| **Table Cache** | 打开表的缓存 | `table_open_cache` ⭐ |
+| **Thread Cache** | 复用线程 | `thread_cache_size` |
+| **Key Buffer** | MyISAM 索引缓存 | `key_buffer_size`（InnoDB 表用不到）|
+| **Binary Log Cache** | 每个会话有，但会话间复用 | `binlog_cache_size`（**每会话**，算在半私有里）|
+| **Query Cache** | 5.7 之前 | `query_cache_size`（8.0 已移除）|
+
+## 三、每连接私有内存 ⭐⭐（关键）
+
+**每个连接都会分配**：
+
+| 缓冲 | 参数 | 默认 | 说明 |
+|---|---|---|---|
+| **`sort_buffer_size`** ⭐ | 排序缓冲 | **256KB** | ⚠️ **不是共享的！每连接可能分配多份**（多表排序时每个表一份）|
+| **`join_buffer_size`** ⭐ | JOIN 缓冲（BNL 用）| **256KB** | ⚠️ **每个 JOIN 一份**（3 表 JOIN 可能 2 份）|
+| **`read_buffer_size`** | 顺序扫描缓冲 | 128KB | 每个被顺序扫描的表一份 |
+| **`read_rnd_buffer_size`** | 随机读缓冲（排序后回表）| 256KB | |
+| **`binlog_cache_size`** | 事务的 binlog 缓存 | 32KB | 每个有事务的会话一份 |
+| **`tmp_table_size` / `max_heap_table_size`** | 内存临时表 | 16M/16M | 每个会话可能建多个临时表 ⚠️ |
+| **连接栈** | `thread_stack` | 256KB~1MB | 每个线程 |
+| **net buffer** | `net_buffer_length` | 16KB | 起手就分配，按需增长到 `max_allowed_packet` ⚠️ |
+| **`net_buffer_length`（增长到）** | — | — | 大查询可能涨到 `max_allowed_packet`（默认 64M）⚠️⚠️ |
+| **预处理语句缓冲** | 每个 `MYSQL_STMT` | — | 用预处理的连接内存更高 ⭐ |
+| **表缓存条目** | — | — | 每个连接持有的表句柄 |
+
+**⚠️ 最容易被低估的三个** ⭐：
+
+```
+① sort_buffer_size 与 join_buffer_size 是"每连接 × 可能多份"
+   → 设 4M 的话，100 个连接、平均 2 份 = 800MB ⚠️
+② tmp_table_size 每个会话可能建多个临时表
+   → 设 256M 的话，20 个会话各建 3 个临时表 = 15GB 🔴
+③ max_allowed_packet（默认 64M）—— 大查询的连接会真的涨到这么大 ⚠️
+```
+
+## 四、内存估算公式 ⭐⭐
+
+```
+总内存需求 ≈ innodb_buffer_pool_size
+           + innodb_log_buffer_size
+           + table_open_cache × 每表句柄（约 1~4KB）
+           + max_connections × (sort_buffer + join_buffer + read_buffer
+                                + read_rnd_buffer + binlog_cache + thread_stack
+                                + net_buffer 增长 + 临时表可能性)
+           + 其他固定开销
+
+⚠️ "max_connections × 每连接"是【最坏情况】，实际是"同时在跑的连接 × 每连接"
+   —— 但必须按最坏情况规划（否则可能 OOM）⭐
+```
+
+**实例计算**（16GB 内存，8 核）：
+
+```
+要保证：峰值不 OOM + 留足余量
+
+方案 A（保守，推荐）⭐
+  innodb_buffer_pool_size = 10GB
+  连接相关：
+    假设每连接峰值 3MB（含临时表）
+    max_connections = 500 → 1.5GB
+  其他（log buffer、table cache、thread cache）= 1GB
+  OS 预留 = 2GB
+  ─────────────────────
+  合计 14.5GB ✅ 有余量
+
+方案 B（激进，危险）⚠️
+  innodb_buffer_pool_size = 12GB
+  每连接 sort_buffer = 8M, join_buffer = 8M
+  max_connections = 1000
+  → 连接相关最坏 = 1000 × 20MB = 20GB 🔴 直接 OOM
+```
+
+**关键原则** ⭐：**"宁可 Buffer Pool 大、连接私有 buffer 小"** —— 因为 Buffer Pool 是**共享且必然被用到**的，而每连接 buffer 只在特定查询时才分配，**但一旦分配就会按配置的大小一次性分配** ⚠️
+
+## 五、`sort_buffer_size` / `join_buffer_size` 的正确设法 ⭐⭐
+
+```ini
+[mysqld]
+# ⚠️ 这两个参数是"每连接"的，绝不能设大！
+sort_buffer_size     = 1M        # 默认 256K；一般 1M 足够
+join_buffer_size     = 1M        # 默认 256K
+read_buffer_size     = 512K
+read_rnd_buffer_size = 512K
+# 8.0 新增：限制 JOIN 缓冲总量（防止一个连接占用过多）⭐
+join_buffer_size     = 1M
+# 8.0.18+ 可限制单个 JOIN 的缓冲池总量
+```
+
+**为什么不能设大** ⭐：
+
+```
+sort_buffer_size 的真实分配行为：
+  · 只有需要排序的查询才会分配
+  · ⚠️ 但如果一条 SQL 有多个排序（如多表 JOIN 每个表都要排序），
+     可能分配多份
+  · 它是在"需要时"按配置大小一次性分配，不是按需增长 ⚠️
+  → 设 16M 时，10 个并发排序查询 = 160MB（看起来还好）
+  → 但 500 个并发排序查询 = 8GB 🔴
+```
+
+**正确诊断方法** ⭐：
+
+```sql
+-- 用 performance_schema 看实际用了多少
+SELECT * FROM sys.memory_by_thread_by_current_bytes ORDER BY current_alloc DESC LIMIT 10;
+SELECT * FROM sys.memory_global_by_current_bytes LIMIT 20;
+-- ⭐ 直接告诉你"谁在吃内存"
+
+-- 也可以按事件名看
+SELECT EVENT_NAME, CURRENT_NUMBER_OF_BYTES_USED
+FROM performance_schema.memory_summary_global_by_event_name
+ORDER BY CURRENT_NUMBER_OF_BYTES_USED DESC LIMIT 20;
+```
+
+## 六、`tmp_table_size` 与临时表 ⭐
+
+**临时表的两种形态**：
+
+```
+① 内存临时表（Heap/Memory 引擎）—— 快
+   条件是：临时表大小 ≤ MIN(tmp_table_size, max_heap_table_size)
+② 磁盘临时表（InnoDB 或 Aria）—— 慢 ⚠️
+   超出限制就落盘
+```
+
+**触发临时表的语句** ⭐：
+
+```sql
+GROUP BY（没有合适索引时）、DISTINCT、UNION、
+ORDER BY（有 filesort 时的中间结果）、
+子查询物化、派生表、窗口函数
+```
+
+**监控**（见"监控"题）：
+
+```sql
+SHOW GLOBAL STATUS LIKE ''Created_tmp%'';
+-- Created_tmp_tables       总临时表数
+-- Created_tmp_disk_tables  落盘的临时表数 ⭐
+-- 磁盘比例 = disk / total，> 25% 需要优化 ⭐
+```
+
+**⚠️ 大 `tmp_table_size` 的风险** ⭐：
+
+```
+设 tmp_table_size = 256M
+若 20 个会话各建 2 个临时表 → 20 × 2 × 256M = 10GB 🔴 内存爆
+→ 建议 64M ~ 128M，并用索引/改写 SQL 来避免临时表 ⭐
+```
+
+## 七、`max_connections` 与内存的关系 ⭐⭐
+
+```
+问题："我要提高并发 → 调大 max_connections"
+
+真相：max_connections 不是"并发能力"的旋钮，而是"内存风险"的旋钮 ⚠️
+     真正的并发能力受 CPU 核数限制
+```
+
+**正确的扩容顺序** ⭐：
+
+```
+① 先优化 SQL（减少每个查询的资源消耗）
+② 加连接池（复用连接，减少连接数需求）
+③ 减少每连接的 buffer（sort/join/tmp_table）
+④ 再考虑调大 max_connections
+⑤ 都不够 → 升配 / 加从库 / 分片
+```
+
+**"每连接内存"监控** ⭐：
+
+```sql
+-- 平均每连接占用内存
+SELECT ROUND(
+    (SELECT VARIABLE_VALUE FROM performance_schema.global_status
+     WHERE VARIABLE_NAME=''Threads_connected'') AS conn,
+    ...
+);
+-- 更直接：用 sys.memory_by_thread_by_current_bytes 求平均
+SELECT AVG(current_alloc) AS avg_per_conn FROM (
+    SELECT THREAD_ID, SUM(CURRENT_NUMBER_OF_BYTES_USED) AS current_alloc
+    FROM performance_schema.memory_summary_by_thread_by_event_name
+    GROUP BY THREAD_ID
+) t;
+```
+
+## 八、OS 层的内存（别忘了）⭐
+
+```
+MySQL 之外，OS 也要内存：
+  · 文件系统 page cache（⚠️ 用 innodb_flush_method=O_DIRECT 可避免双重缓存）
+  · 网络栈缓冲
+  · mysqld 可执行文件与共享库
+  · 其他进程
+
+⚠️ 最危险的：swap
+  一旦 MySQL 内存被换到 swap → 性能断崖式下跌 ⚠️
+  建议：
+    · 专用服务器：vm.swappiness = 1（尽量不用 swap）⭐
+    · 或干脆不配 swap（但要确保内存充足，否则 OOM Killer 直接杀进程）⭐
+    · ⚠️ OOM Killer 杀 mysqld 是很常见的事故
+```
+
+**监控** ⭐：
+
+```bash
+free -h                    # MemAvailable 才是真正的可用内存
+vmstat 1                   # si/so 非 0 = 在用 swap ⚠️
+dmesg | grep -i ''oom''      # 看有没有被 OOM Killer 杀过 ⭐
+cat /proc/meminfo
+```
+
+## 九、内存配置模板 ⭐
+
+### 小内存（4GB，开发/小站）
+
+```ini
+[mysqld]
+innodb_buffer_pool_size = 2G
+innodb_buffer_pool_instances = 1
+innodb_log_buffer_size = 16M
+max_connections = 100
+sort_buffer_size = 512K
+join_buffer_size = 512K
+read_buffer_size = 256K
+read_rnd_buffer_size = 256K
+tmp_table_size = 32M
+max_heap_table_size = 32M
+table_open_cache = 400
+thread_cache_size = 30
+performance_schema = OFF          # ⭐ 小内存可关掉省内存
+```
+
+### 中内存（16GB）
+
+```ini
+[mysqld]
+innodb_buffer_pool_size = 10G
+innodb_buffer_pool_instances = 8   # ⭐ 每实例约 1G，减少 latch 竞争
+innodb_log_buffer_size = 32M
+max_connections = 500
+sort_buffer_size = 1M
+join_buffer_size = 1M
+read_buffer_size = 512K
+read_rnd_buffer_size = 512K
+tmp_table_size = 64M
+max_heap_table_size = 64M
+table_open_cache = 2000
+thread_cache_size = 100
+```
+
+### 大内存（64GB+）
+
+```ini
+[mysqld]
+innodb_buffer_pool_size = 48G
+innodb_buffer_pool_instances = 16
+innodb_log_buffer_size = 64M
+max_connections = 2000
+sort_buffer_size = 1M              # ⚠️ 仍是 1M！不要因为机器大就设大
+join_buffer_size = 1M
+tmp_table_size = 128M
+max_heap_table_size = 128M
+table_open_cache = 4000
+thread_cache_size = 200
+```
+
+**注意** ⭐：**从 16GB 到 64GB，变的是 Buffer Pool，不是每连接 buffer**。
+
+## 十、内存问题排查清单 ⭐
+
+| 现象 | 排查 |
+|---|---|
+| **内存持续上涨** | `sys.memory_by_thread_by_current_bytes` 找哪个线程吃内存；检查是否有连接泄漏 ⭐ |
+| **OOM Killer 杀了 mysqld** | `dmesg \\| grep -i oom`；`max_connections × 每连接` 是否超了 ⭐ |
+| **用 swap 了** | `vmstat 1` 的 si/so；调 `vm.swappiness=1` ⭐ |
+| **瞬时内存尖峰** | 大查询（大排序、大临时表、大 JOIN）；`tmp_table_size` 设置过大 ⭐ |
+| **`Created_tmp_disk_tables` 比例高** | 临时表落盘 → 改 SQL / 加 `tmp_table_size`（小心别太大）⭐ |
+| **内存没满但性能差** | Buffer Pool 可能不够（看命中率）；或 double cache（`innodb_flush_method`）⭐ |
+| **每连接内存很高** | `sort_buffer_size` / `join_buffer_size` / `tmp_table_size` 设大了 ⭐ |
+
+**一键查看内存分布** ⭐：
+
+```sql
+-- 全局内存（按事件类型）
+SELECT EVENT_NAME,
+       FORMAT_BYTES(CURRENT_NUMBER_OF_BYTES_USED) AS used
+FROM performance_schema.memory_summary_global_by_event_name
+ORDER BY CURRENT_NUMBER_OF_BYTES_USED DESC LIMIT 15;
+
+-- 按线程
+SELECT t.PROCESSLIST_ID, t.PROCESSLIST_USER,
+       FORMAT_BYTES(SUM(m.CURRENT_NUMBER_OF_BYTES_USED)) AS mem
+FROM performance_schema.memory_summary_by_thread_by_event_name m
+JOIN performance_schema.threads t USING (THREAD_ID)
+GROUP BY t.PROCESSLIST_ID, t.PROCESSLIST_USER
+ORDER BY SUM(m.CURRENT_NUMBER_OF_BYTES_USED) DESC LIMIT 15;   -- ⭐
+```
+
+## 十一、一句话总结
+
+**MySQL 内存分"全局共享"（Buffer Pool 是大头）和"每连接私有"（sort/join/read/tmp_table 缓冲）**；**"连接数一多就爆内存"的根因是后者是"每连接 × 可能多份"且"按配置大小一次性分配"** ⭐；**规划原则是"Buffer Pool 尽量大、每连接 buffer 尽量小"**，用 `sys.memory_by_*` 视图看真实占用而不是套公式；**别忘了 OS 层的 swap 与 page cache（用 `O_DIRECT` 避免双重缓存）**，以及 **OOM Killer 杀 mysqld 是常见事故**。', 1),
+
+('MySQL', '三范式,反范式,设计案例', 2,
+ '请用一个具体案例说明三范式的应用，以及什么时候应该反范式。',
+ '## 一、一个"错误起点"：把所有数据放一张表 ⭐
+
+**电商订单的"大宽表"（反面教材）**：
+
+```sql
+CREATE TABLE bad_orders (
+    id          BIGINT PRIMARY KEY,
+    user_id     BIGINT,
+    user_name   VARCHAR(50),      -- 用户信息
+    user_phone  VARCHAR(20),
+    user_email  VARCHAR(100),
+    product_ids VARCHAR(500),     -- ⚠️ "1,2,3" 逗号分隔（违反 1NF）
+    product_names VARCHAR(1000),  -- ⚠️ 冗余
+    product_prices VARCHAR(500),  -- ⚠️ 冗余
+    total_amount DECIMAL(18,2),
+    addr_province VARCHAR(30),
+    addr_city   VARCHAR(30),
+    addr_detail VARCHAR(200),
+    pay_no      VARCHAR(64),
+    pay_time    DATETIME,
+    ...
+);
+```
+
+**问题清单**：
+
+| 问题 | 说明 |
+|---|---|
+| **违反 1NF** | `product_ids` 用逗号分隔（不是原子值）→ 无法索引、无法 JOIN、`FIND_IN_SET` 只能全表扫 ⚠️ |
+| **违反 2NF/3NF** | `user_name` 依赖 `user_id`（传递依赖）；`product_names` 依赖 `product_ids` |
+| **更新异常** | 用户改名要更新**所有**他的订单行 ⚠️（可能几百万行）|
+| **插入异常** | 没有订单就不能存商品信息 |
+| **删除异常** | 删掉唯一订单会丢失商品信息 |
+| **NULL 泛滥** | 未支付的订单 `pay_*` 全是 NULL |
+| **单行过大** | 一页放不下几行 → 查询效率低 |
+
+## 二、按三范式重构 ⭐
+
+### 1NF：原子性 —— 拆掉逗号分隔
+
+```
+坏：product_ids = "1,2,3"
+好：拆成 order_items 表（一商品一行）⭐
+```
+
+### 2NF：消除部分依赖
+
+```
+坏：(order_id, product_id) → product_name
+    product_name 只依赖 product_id（主键的一部分）
+好：product_name 放在 products 表 ⭐
+```
+
+### 3NF：消除传递依赖
+
+```
+坏：order.user_id → user_name（user_name 依赖 user_id，而 user_id 依赖 order.id）
+好：user_name 放在 users 表 ⭐
+
+坏：order.total_amount 依赖 order_items（汇总值）
+好：可由 order_items 计算得出 → 不存（或明确作为"快照"存）⭐
+```
+
+### 重构结果 ⭐
+
+```sql
+-- 用户表
+CREATE TABLE users (
+    id       BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(32) NOT NULL,
+    phone    VARCHAR(20)  NULL,
+    email    VARCHAR(100) NULL,
+    UNIQUE KEY uk_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 商品表
+CREATE TABLE products (
+    id      BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name    VARCHAR(200) NOT NULL,
+    price   DECIMAL(18,2) NOT NULL,
+    stock   INT UNSIGNED NOT NULL DEFAULT 0,
+    KEY idx_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 订单表（只放"订单自身的属性"）
+CREATE TABLE orders (
+    id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_no    VARCHAR(32) NOT NULL,
+    user_id     BIGINT UNSIGNED NOT NULL,
+    status      TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT ''0待支付 1已支付 2已发货 3完成 4取消'',
+    total_amount DECIMAL(18,2) NOT NULL DEFAULT 0.00,
+    created_at  DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at  DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    UNIQUE KEY uk_order_no (order_no),
+    KEY idx_user_created (user_id, created_at),      -- ⭐ 覆盖"我的订单"查询
+    KEY idx_status_created (status, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 订单明细（一对多）
+CREATE TABLE order_items (
+    id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id   BIGINT UNSIGNED NOT NULL,
+    product_id BIGINT UNSIGNED NOT NULL,
+    quantity   INT UNSIGNED NOT NULL,
+    -- ⭐ 关键：这里的 price 是"下单时的价格快照"，不是冗余！
+    unit_price DECIMAL(18,2) NOT NULL COMMENT ''下单时的单价快照'',
+    amount     DECIMAL(18,2) NOT NULL,
+    KEY idx_order (order_id),
+    KEY idx_product (product_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 收货地址（订单的"地址快照"，不是引用 users_address 的 id）⭐
+CREATE TABLE order_addresses (
+    order_id   BIGINT UNSIGNED PRIMARY KEY,
+    receiver   VARCHAR(50)  NOT NULL,
+    phone      VARCHAR(20)  NOT NULL,
+    province   VARCHAR(30)  NOT NULL,
+    city       VARCHAR(30)  NOT NULL,
+    detail     VARCHAR(200) NOT NULL,
+    KEY idx_phone (phone)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 支付记录（与订单 1:1，但单独成表，因为很多订单未支付）⭐
+CREATE TABLE order_payments (
+    order_id   BIGINT UNSIGNED PRIMARY KEY,
+    pay_no     VARCHAR(64) NOT NULL,
+    pay_time   DATETIME(3) NOT NULL,
+    UNIQUE KEY uk_pay_no (pay_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+**重构收益** ⭐：
+
+| 收益 | 说明 |
+|---|---|
+| **无更新异常** | 用户改名只改 `users` 一行 ⭐ |
+| **无删除异常** | 删订单不影响用户和商品 |
+| **可索引** | 每个字段都可单独索引 |
+| **单行小** | 一页放更多行 → 查询快 |
+| **避免 NULL** | 支付信息独立成表，未支付就是"没有这行" ⭐ |
+
+## 三、什么时候应该反范式 ⭐⭐
+
+**判断标准：这个冗余是"为了读性能的必要代价"吗？**
+
+### 应该反范式的场景 ✅
+
+| 场景 | 冗余什么 | 为什么 |
+|---|---|---|
+| **下单时的价格快照** ⭐⭐ | `order_items.unit_price` | **这不是冗余，是业务必需** —— 商品后来降价了，历史订单必须保留当时价格 ⭐ |
+| **订单地址快照** ⭐⭐ | `order_addresses` | 用户改了地址，历史订单的收货地址不能变 ⭐ |
+| **列表页需要的摘要** ⭐ | `posts.summary` | 避免列表页拉 `MEDIUMTEXT content`（溢出页 IO）⭐ |
+| **高频 JOIN 的展示字段** ⭐ | `orders.user_name`（可接受）| "我的订单"列表要显示用户名，避免每行 JOIN。**但要保证用户名变更时同步** |
+| **统计汇总** ⭐ | `order_daily_stats` | 实时算 `SUM` 太贵，用定时任务/触发器维护汇总表 |
+| **计数器** ⭐ | `posts.views`、`posts.comment_count` | 避免每次 `COUNT(*)`。⚠️ 用原子 SQL 更新 |
+| **搜索用的拼装字段** | `search_text`（标题+标签拼接）| 配合全文索引 |
+| **多级分类的路径** ⭐ | `category.path = "1/5/23"` | 避免递归查询 |
+
+### 不应反范式的场景 ❌
+
+| 场景 | 为什么 |
+|---|---|
+| **用户表的字段冗余到订单表**（除了用户名这种展示字段）| 用户信息变更频繁，同步成本高、易不一致 ⚠️ |
+| **商品价格实时冗余到订单** | 应该冗余**快照**而不是"当前值" |
+| **为了"少写一个 JOIN"而冗余大部分字段** | 收益 < 同步成本 |
+| **冗余"可以算出来"的字段但又不保证同步** | 数据会不一致 ⭐ |
+
+## 四、反范式的代价与维护策略 ⭐⭐
+
+**核心问题：一致性怎么保证？**
+
+| 策略 | 说明 | 适用 |
+|---|---|---|
+| **同一事务内一起改** ⭐ | 改 `users.username` 时，同时更新 `orders.user_name` | 小范围冗余、低频变更 |
+| **异步同步（消息队列 / binlog 订阅）** ⭐ | 用户改名后发消息，异步刷订单表 | 大范围冗余、高频变更 |
+| **定时任务全量重刷** | 每天凌晨重算 | 统计类汇总表 ⭐ |
+| **只读时容忍短暂不一致** ⭐ | 缓存 + TTL 兜底 | 展示类字段 |
+| **不做冗余，用 JOIN** | 最安全 | 冗余收益不明显时 |
+
+**⚠️ 反范式的黄金判断** ⭐：
+
+```
+收益（读性能的提升） > 代价（同步复杂度 + 一致性风险）？
+且
+有明确的"一致性能容忍多久"的答案？
+→ 都是"是"才做反范式
+```
+
+## 五、真实案例：本项目（博客）的表设计 ⭐
+
+```sql
+-- 文章表：适度反范式
+CREATE TABLE posts (
+    id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    title      VARCHAR(200) NOT NULL,
+    summary    VARCHAR(500) NOT NULL DEFAULT '''' COMMENT ''⭐ 反范式：列表页摘要，避免读 content'',
+    content    MEDIUMTEXT   NULL     COMMENT ''正文 markdown'',
+    category   VARCHAR(50)  NOT NULL DEFAULT '''' COMMENT ''分类（可接受不建表，因为几乎不变）'',
+    tags       VARCHAR(200) NOT NULL DEFAULT '''' COMMENT ''⭐ 反范式：少量标签用逗号分隔，配合全文索引'',
+    views      INT UNSIGNED NOT NULL DEFAULT 0 COMMENT ''⭐ 反范式：计数器'',
+    comment_cnt INT UNSIGNED NOT NULL DEFAULT 0 COMMENT ''⭐ 反范式：避免 COUNT(*)'',
+    status     TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT ''0草稿 1已发布'',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    KEY idx_status_created (status, created_at),
+    FULLTEXT KEY ft_search (title, summary, tags) WITH PARSER ngram
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+```
+
+**这里的反范式决策与理由** ⭐：
+
+| 字段 | 是否反范式 | 理由 |
+|---|---|---|
+| `summary` | ✅ 是 | **避免列表页拉 MEDIUMTEXT** ⭐ 收益明显（避免溢出页 IO）|
+| `tags` | ✅ 是 | 标签是"文章属性"而非独立实体（博客场景）；数量少且几乎不变；配合全文索引更好用 |
+| `views` | ✅ 是 | 计数器，避免每次统计；**用 `UPDATE posts SET views = views + 1` 原子更新** ⭐ |
+| `comment_cnt` | ✅ 是 | 避免 `SELECT COUNT(*) FROM comments WHERE post_id=?`；⚠️ 但**必须保证评论增删时同步**（同一事务）⭐ |
+| `category` | ⚠️ 半反范式 | 严格 3NF 应有 `categories` 表；但博客分类少且极少改，**用字符串更简单** |
+| `content` | ❌ 不冗余 | 属于文章本体 |
+
+**`comment_cnt` 的陷阱** ⭐：如果评论是异步/宽松的（比如防刷），可能偶尔不同步。**应该提供一个"后台重算"的修复任务**：
+
+```sql
+-- 修复 SQL（定时跑或手工跑）
+UPDATE posts p
+LEFT JOIN (SELECT post_id, COUNT(*) c FROM comments GROUP BY post_id) x
+  ON p.id = x.post_id
+SET p.comment_cnt = IFNULL(x.c, 0);
+# ⚠️ 大表要分批 + 用 pt-osc 思路；或只修 comment_cnt 与真实值不符的行
+```
+
+## 六、范式化的实践清单 ⭐
+
+| 原则 | 说明 |
+|---|---|
+| **先 3NF，再按需反范式** ⭐ | 不要一上来就冗余 |
+| **快照 vs 引用** ⭐⭐ | 历史数据要**快照**（订单价格），实时数据可以**引用**（用户当前头像）|
+| **反范式必须有维护策略** ⭐ | 每次冗余都要回答"怎么保证一致" |
+| **冗余字段加注释说明来源** | `COMMENT ''冗余自 users.username，用户改名时需同步''` ⭐ |
+| **统计类冗余用汇总表 + 定时任务** | 而不是在业务表里塞聚合结果 |
+| **避免存"可推导"的字段** | 除非明确是快照 |
+| **计数器用原子 SQL** ⭐ | `SET n = n + 1` 而不是"读出来加一再写回"（后者有竞态）⭐ |
+| **写代码前先想清楚查询模式** ⭐ | 表结构服务于查询，不是反过来 |
+
+## 七、一句话总结
+
+**三范式的目标是"消除更新/插入/删除异常"，反范式的目标是"减少 JOIN 与 IO"**；**关键区分是"快照"与"冗余"** —— **订单里的商品价格不是冗余而是业务必需的快照** ⭐；**反范式只在"读性能收益 > 同步成本"且"有一致性维护策略"时才做**，且**必须在字段注释里写明来源与同步方式**；**实践路线是"先 3NF 建表，再按真实查询模式做有策略的反范式"**。', 1),
+
+('MySQL', '资源组,CPU,NUMA', 3,
+ 'MySQL 8.0 的资源组（Resource Group）是什么？NUMA 架构下有什么注意事项？',
+ '## 一、资源组（Resource Group）⭐
+
+**目的**：**把不同类型的工作负载隔离**，防止"报表查询/备份任务把 OLTP 业务的 CPU 抢光"。
+
+```sql
+-- 查看现有资源组
+SELECT * FROM information_schema.resource_groups;
+-- 默认有两个：
+--   USR_default（前台线程）
+--   SYS_default（后台线程）
+
+-- 创建资源组 ⭐
+CREATE RESOURCE GROUP rg_oltp
+  TYPE = USER
+  VCPU = 0-7                  -- ⭐ 绑定到 CPU 0~7
+  THREAD_PRIORITY = 0         -- 优先级（-20 ~ 19，越小优先级越高）
+  ENABLE;                     -- 启用
+
+CREATE RESOURCE GROUP rg_report
+  TYPE = USER
+  VCPU = 8-15
+  THREAD_PRIORITY = 19        -- ⭐ 最低优先级
+  ENABLE;
+
+-- 修改
+ALTER RESOURCE GROUP rg_oltp VCPU = 0-3 THREAD_PRIORITY = 0;
+
+-- 把线程分配到资源组
+SET RESOURCE GROUP rg_report;              -- 当前会话
+SET RESOURCE GROUP rg_report FOR 1234;      -- 指定线程 ID ⭐
+-- 也可以在连接串/初始化时设置（应用侧指定）
+
+-- 删除
+DROP RESOURCE GROUP rg_report;
+
+-- 禁用（保留定义）
+ALTER RESOURCE GROUP rg_report DISABLE;
+```
+
+**关键特性**：
+
+| 特性 | 说明 |
+|---|---|
+| **`VCPU`** | 指定可用的 CPU 核（`0-7` 或 `0,2,4`）|
+| **`THREAD_PRIORITY`** | 线程优先级（`-20` 最高 ~ `19` 最低）|
+| **`TYPE`** | `USER`（前台）或 `SYSTEM`（后台线程，如 purge、page cleaner）⭐ |
+| **绑定范围** | ⚠️ **只影响该资源组内的线程**；未分配的走 `USR_default`（不限制）|
+| **权限** | 需要 `RESOURCE_GROUP_ADMIN` / `RESOURCE_GROUP_USER` |
+
+**典型用途** ⭐：
+
+```
+✓ 把"报表查询"绑到低优先级 + 少数核，避免影响 OLTP
+✓ 把"批量导入"和"在线业务"隔离
+✓ SYSTEM 组可以把 purge 线程绑到特定核，避免和前台争抢 ⭐
+✓ 多租户场景下隔离不同业务的资源
+```
+
+**注意** ⚠️：
+
+| 注意点 | 说明 |
+|---|---|
+| **VCPU 不重叠则强隔离** | 两个组设不同的核 → 真正的物理隔离 |
+| **CPU 亲和有内核开销** | 频繁切换可能影响缓存局部性 |
+| **不是"限流"** | 它不限制 QPS，只限制"用哪些核"与优先级 |
+| **需要 OS 支持** | Linux 上通过 `sched_setaffinity` 与 `setpriority` 实现 |
+| **在容器里可能受限** | cgroup 的 cpuset 会限制可用核 ⚠️ |
+
+## 二、NUMA 架构 ⭐⭐
+
+### 什么是 NUMA
+
+```
+【UMA（SMP，老架构）】
+  所有 CPU 通过同一条总线访问同一块内存
+  → 核多了，总线成为瓶颈 ⚠️
+
+【NUMA（Non-Uniform Memory Access）】
+  ┌─────────────────┐        ┌─────────────────┐
+  │  Node 0          │        │  Node 1          │
+  │  CPU 0-15        │◄─QPI──►│  CPU 16-31       │
+  │  本地内存 64GB    │        │  本地内存 64GB    │
+  └─────────────────┘        └─────────────────┘
+  CPU 0 访问 Node 0 内存 = 本地访问（快，约 100ns）⭐
+  CPU 0 访问 Node 1 内存 = 远程访问（慢，约 1.5~2 倍延迟）⚠️
+```
+
+**核心问题**：**如果 CPU 频繁访问"远程内存"，性能会显著下降**（延迟高、而且 QPI/UPI 带宽有限）。
+
+### NUMA 对 MySQL 的影响 ⭐⭐
+
+```
+问题 1：内存分配"跨节点"
+  · 如果 mysqld 启动时只在一个节点分配了 Buffer Pool
+    但线程在任何节点都可能运行 → 一半的线程在"远程访问" ⚠️
+
+问题 2：线程漂移
+  · OS 调度器可能把线程在 NUMA 节点间迁移
+    → 每次迁移后内存访问都变远程 ⚠️
+
+问题 3：内存带宽瓶颈
+  · 所有内存压力集中在一个节点时，该节点的内存带宽成为瓶颈 ⚠️
+```
+
+**判断是否在 NUMA 上** ⭐：
+
+```bash
+lscpu | grep -i numa
+numactl --hardware
+# 输出会显示 node 0 cpus / node distances 等
+#   若 "NUMA node(s): 1" → 单节点（或 NUMA 已禁用）
+#   若 "NUMA node(s): 2" → 双路服务器，需要处理 ⭐
+
+# 查看 mysqld 的内存分布
+numastat -p $(pidof mysqld)      # ⭐ 关键命令
+# 输出每个 node 的本地/远程分配量
+#   若 "Other" 或某 node 的 "Total" 高得不均衡 → 有问题
+```
+
+### 处理方案 ⭐⭐
+
+**方案 A：BIOS 层关闭 NUMA（最简单，但放弃 NUMA 优势）**
+
+```
+BIOS → Node Interleaving = Enabled
+效果：内存被交错分配（interleaved），所有 CPU 访问所有内存"等距"
+     → 消除了"远程访问"，但也失去了 NUMA 的本地性优势
+     → 对 MySQL 这种"内存访问密集但不太热点集中"的工作负载通常更稳 ⭐
+```
+
+**方案 B：`numactl --interleave=all`（Linux 层交错）⭐**
+
+```bash
+# 启动 mysqld 时用交错模式
+numactl --interleave=all /usr/sbin/mysqld ...
+
+# systemd 服务里配置
+[Service]
+ExecStart=/usr/bin/numactl --interleave=all /usr/sbin/mysqld ...
+```
+
+**效果**：Buffer Pool 被交错分配到所有节点 → 每个 CPU 都能"就近访问一部分"，**避免单个节点内存带宽成为瓶颈** ⭐
+
+**这是 MySQL 社区对 NUMA 最广泛推荐的方案** ⭐
+
+**方案 C：本地绑定（`--cpunodebind` + `--membind`）**
+
+```bash
+# 把 mysqld 完全绑到一个 NUMA 节点
+numactl --cpunodebind=0 --membind=0 /usr/sbin/mysqld ...
+```
+
+**适用**：多实例部署（每个实例绑一个节点）⭐ 这是**多实例场景的标准做法**：
+
+```
+双路 32 核 128GB 机器，跑 2 个 MySQL 实例：
+  实例 A：numactl --cpunodebind=0 --membind=0  （用 CPU 0-15 + 内存 0-63GB）
+  实例 B：numactl --cpunodebind=1 --membind=1  （用 CPU 16-31 + 内存 64-127GB）
+→ 每个实例完全本地访问，互不干扰 ⭐
+```
+
+**方案 D：内核参数**
+
+```bash
+# 减少 NUMA 自动平衡带来的线程迁移
+sysctl kernel.numa_balancing=0        # ⚠️ 会禁用自动 NUMA 平衡
+# 或
+echo 0 > /proc/sys/kernel/numa_balancing
+
+# vm.zone_reclaim_mode = 0（避免在本地内存紧张时过度回收，宁可远程分配）
+sysctl vm.zone_reclaim_mode=0         # ⭐ 推荐 0
+```
+
+**`vm.zone_reclaim_mode` 的坑** ⭐：
+
+```
+默认在某些内核上为 1 或更高 → 本地内存不足时会"强制回收本地页"
+  → 导致大量 swap 或页回收开销 ⚠️
+设为 0 → 本地不足时直接用远程内存
+  → 对数据库通常是更好的选择 ⭐（远程延迟好过 swap）
+```
+
+## 三、其他 CPU 相关的调优 ⭐
+
+| 项 | 说明 |
+|---|---|
+| **CPU 电源策略** ⭐ | BIOS/OS 设为 **Performance**（不要 Power Saving）—— 频率降档会显著影响 DB 延迟 |
+| **`cpupower frequency-set -g performance`** | Linux 下固定性能模式 |
+| **C-State / C1E** | 关闭深度睡眠状态（避免唤醒延迟）⚠️ 极端场景才需要 |
+| **超线程（HT）** ⭐ | MySQL 在 HT 上表现**通常有提升但不如物理核**；且 `innodb_thread_concurrency` 等按"逻辑核"计数要注意 ⚠️ |
+| **`innodb_thread_concurrency`** | 8.0 默认 **0（不限）**；高并发争抢严重时可设 核数×2 ⭐ |
+| **`innodb_read_io_threads` / `write_io_threads`** | IO 线程数，8 核以上建议 4~8 |
+| **`innodb_page_cleaners`** | 应等于 `innodb_buffer_pool_instances` ⭐ |
+| **`innodb_purge_threads`** | 4~8 |
+| **`innodb_adaptive_hash_index`** | 高并发下 AHI 的 btr latch 竞争可能拖慢 → 有时应关闭 ⭐ |
+| **中断亲和** ⭐ | 网卡/磁盘中断绑定到固定核（`irqbalance` 或手工），避免中断与 DB 线程抢同一核 |
+| **隔离核心** ⭐ | 内核参数 `isolcpus=` 把某些核留给 MySQL，把 OS 任务赶走（极端场景）|
+
+## 四、实践配置示例 ⭐
+
+### 单实例（双路 NUMA）⭐
+
+```ini
+# /etc/systemd/system/mysqld.service.d/override.conf
+[Service]
+ExecStart=
+ExecStart=/usr/bin/numactl --interleave=all /usr/sbin/mysqld --defaults-file=/etc/my.cnf
+
+# /etc/my.cnf
+[mysqld]
+innodb_buffer_pool_size = 96G          # 128GB 内存的机器
+innodb_buffer_pool_instances = 16
+innodb_thread_concurrency = 0
+innodb_read_io_threads = 8
+innodb_write_io_threads = 8
+innodb_page_cleaners = 16              # = buffer_pool_instances ⭐
+innodb_purge_threads = 4
+innodb_io_capacity = 4000              # NVMe SSD
+innodb_flush_method = O_DIRECT
+innodb_flush_neighbors = 0             # SSD ⭐
+# ⚠️ innodb_numa_interleave 已被废弃（8.0 移除），改用 numactl ⭐
+```
+
+### 多实例（每个实例绑一个 NUMA 节点）⭐⭐
+
+```bash
+# 实例 A
+numactl --cpunodebind=0 --membind=0 /usr/sbin/mysqld --defaults-file=/etc/my_3306.cnf
+# 实例 B
+numactl --cpunodebind=1 --membind=1 /usr/sbin/mysqld --defaults-file=/etc/my_3307.cnf
+```
+
+**这是"大机器跑多实例"的推荐方式**：每个实例用 CPU + 内存都本地的资源，**完全避免 NUMA 远程访问**，且实例间天然隔离 ⭐
+
+## 五、容器环境（Docker/K8s）的注意点 ⚠️
+
+| 注意点 | 说明 |
+|---|---|
+| **容器 CPU 限制** ⭐ | `--cpus=8` 限制的是"时间片比例"，不是"独占 8 核"；若要真隔离需要 `--cpuset-cpus` ⭐ |
+| **`cpuset` 与 NUMA** ⭐ | `--cpuset-cpus=0-7` 会同时限制 `membind`（与 cpuset 绑定的内存节点），**这是好事** ✅ |
+| **内存限制与 OOM** ⭐⭐ | `--memory=16g` 时，**MySQL 必须按 16G 规划**，而不是宿主机的 128G ⚠️ 否则 OOM Kill |
+| **`innodb_buffer_pool_size` 要按 cgroup 限制设** ⭐ | 一个常见事故：容器限 8G，但 buffer pool 设了 16G → 启动就 OOM |
+| **cgroup v2 的内存统计** | `/sys/fs/cgroup/memory.current` |
+| **`innodb_flush_method`** | 容器里 `O_DIRECT` 可能受 overlayfs 限制 ⚠️ 需实测 |
+| **`performance_schema` 开销** | 容器 CPU 少时更明显，可考虑关掉 |
+
+**容器里看真实资源限制** ⭐：
+
+```bash
+cat /sys/fs/cgroup/memory.max            # cgroup v2 内存上限
+cat /sys/fs/cgroup/cpu.max               # CPU 配额
+nproc                                     # 可能显示宿主机的核数（不对！）⚠️
+# 用 cgroup 里的数据算真实可用核数
+```
+
+**⚠️ 最常见的容器事故** ⭐：`nproc` 返回宿主机核数（如 32），导致 MySQL 按 32 核配置（如 `innodb_read_io_threads=8`、`innodb_page_cleaners=16`），但实际只分到 4 核 → 线程过多、争抢严重、性能反而差。
+
+## 六、诊断命令汇总 ⭐
+
+```bash
+# NUMA
+lscpu | grep -i numa
+numactl --hardware
+numastat -p $(pidof mysqld)          # ⭐ 看内存分布
+cat /proc/$(pidof mysqld)/numa_maps | head
+
+# CPU
+lscpu
+cat /proc/cpuinfo | grep -E ''processor|model name|MHz'' | head -40
+top -H -p $(pidof mysqld)             # ⭐ 看各线程的 CPU 占用（找出热点线程）
+pidstat -t -p $(pidof mysqld) 1       # 按线程统计
+perf top -p $(pidof mysqld)            # ⭐ 看内核态/用户态热点函数
+mpstat -P ALL 1                        # ⭐ 每个核的使用率（看是否不均衡）
+turbostat                              # CPU 频率与 C-state
+
+# 中断
+cat /proc/interrupts | head
+systemctl status irqbalance
+
+# 容器
+cat /sys/fs/cgroup/cpu.max
+cat /sys/fs/cgroup/memory.max
+cat /sys/fs/cgroup/cpuset.cpus.effective
+```
+
+**`mpstat -P ALL 1` 是关键** ⭐：如果发现**某些核 100% 而其他核空闲**，说明有 CPU 热点（可能是单线程瓶颈，如 purge、page cleaner，或 latch 竞争）→ 这才是真正的优化方向。
+
+## 七、一句话总结
+
+**资源组（8.0）用 `VCPU` + `THREAD_PRIORITY` 把不同工作负载隔离**（报表/备份 vs OLTP）；**NUMA 的核心问题是"远程内存访问延迟高 1.5~2 倍"**，**单实例推荐 `numactl --interleave=all`（交错分配，避免单节点内存带宽瓶颈）**，**多实例推荐"每个实例 `--cpunodebind=N --membind=N`"**（完全本地化 + 天然隔离）⭐⭐；**容器里必须按 cgroup 限制配置 MySQL（`nproc` 会骗你）**，并注意 `cpuset` 与内存节点的绑定关系。', 1),
+
+('MySQL', '版本,升级,选型', 2,
+ 'MySQL 该选哪个版本？5.7 升 8.0 的完整流程和风险点是什么？',
+ '## 一、版本选择 ⭐
+
+| 系列 | 状态 | 建议 |
+|---|---|---|
+| **5.6** | 已 EOL（2021-02）| ❌ 不要用 |
+| **5.7** | 已 EOL（2023-10）| ⚠️ 存量系统尽快迁 |
+| **8.0** | **当前主力（LTS 级别）** ⭐ | ✅ 新项目首选 |
+| **8.4 LTS** | 较新 LTS | ✅ 可选（生态稍新）|
+| **9.x** | Innovation 版 | ⚠️ 生产谨慎 |
+| **Percona Server** | 8.0 分支 | 更多诊断特性（`pt-*` 配套）⭐ |
+| **MariaDB** | 分支（已与 MySQL 分道）| ⚠️ 兼容性有差异，不能随意互换 |
+
+**推荐** ⭐：
+
+```
+新项目               → MySQL 8.0（或 8.4 LTS）
+需要更多诊断/工具    → Percona Server 8.0 ⭐
+云上                → 厂商支持的版本（通常是 8.0）
+极致性能 + 新特性    → 8.4（但要验证生态）
+```
+
+**⚠️ 不要选**：`-debug` 版本（性能差）、非 LTS 的最新版（Innovation 版生命周期短）。
+
+## 二、升级前的六项检查 ⭐⭐
+
+### ① `sql_mode` 变化（头号报错源）⭐
+
+```sql
+-- 8.0 默认 sql_mode：
+-- ONLY_FULL_GROUP_BY, STRICT_TRANS_TABLES, NO_ZERO_IN_DATE, NO_ZERO_DATE,
+-- ERROR_FOR_DIVISION_BY_ZERO, NO_ENGINE_SUBSTITUTION
+
+-- ⭐ 在 5.7 上先临时改成 8.0 的默认值，跑全量回归
+SET GLOBAL sql_mode = ''ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'';
+-- 然后跑业务回归，把所有报错的 SQL 修掉
+```
+
+**预期报错**：`ERROR 1055 (GROUP BY)`、`ERROR 1366 (严格模式)`、`ERROR 1292 (日期格式)`。
+
+### ② 默认字符集与排序规则变化 ⭐
+
+```
+5.7 默认：latin1 / latin1_swedish_ci
+8.0 默认：utf8mb4 / utf8mb4_0900_ai_ci
+
+风险：
+  · 新建表若不显式指定 collation → 用 0900_ai_ci
+  · 与老表（可能是 utf8mb4_general_ci 或 utf8mb4_unicode_ci）JOIN 时
+    会发生 COLLATE 转换 → 索引失效 ⚠️
+  · ORDER BY 结果可能与旧规则不同 ⚠️
+对策：
+  · 建表**显式指定 collation**（全库统一）⭐
+  · 已有表如果 collation 不统一，评估是否统一（⚠️ 改 collation 是 COPY 算法）
+```
+
+### ③ 认证插件变化 ⭐
+
+```
+5.7：mysql_native_password
+8.0：caching_sha2_password（默认）
+
+风险：老版本客户端驱动连不上 8.0 的账号 ⚠️
+对策：
+  · 升级驱动（首选）⭐
+  · 或给需要的老账号改回：
+    ALTER USER ''app''@''%'' IDENTIFIED WITH mysql_native_password BY ''<pwd>'';
+```
+
+### ④ 已移除的功能 ⭐
+
+| 移除项 | 替代 |
+|---|---|
+| **查询缓存（Query Cache）** | Redis / ProxySQL ⭐ |
+| `utf8` 作为默认 | `utf8mb4` |
+| `innodb_locks` / `innodb_lock_waits` 表 | `performance_schema.data_locks` / `data_lock_waits` ⭐ |
+| `\\N`（NULL 别名）| `NULL` |
+| `PASSWORD()` 函数 | `CREATE USER` |
+| `GRANT ... IDENTIFIED BY` | 分离 `CREATE USER` + `GRANT` |
+| `PROCEDURE ANALYSE()` | — |
+| `SQL_CALC_FOUND_ROWS`（弃用）| 单独 `COUNT(*)` ⭐（**这个弃用是好事，它本来就慢**）|
+
+### ⑤ 新增保留字 ⭐
+
+```
+RANK, DENSE_RANK, ROW_NUMBER, LEAD, LAG, GROUPS, OVER, WINDOW,
+CUME_DIST, NTILE, PERCENT_RANK, FIRST_VALUE, LAST_VALUE, ...
+→ 老表若用这些做列名，升级后必须加反引号 或 改名 ⚠️
+```
+
+**检查方法**：
+
+```sql
+-- 找出所有可能冲突的列名
+SELECT table_schema, table_name, column_name
+FROM information_schema.columns
+WHERE LOWER(column_name) IN (''rank'',''dense_rank'',''row_number'',''lead'',''lag'',''groups'',''over'',
+                             ''window'',''cume_dist'',''ntile'',''percent_rank'',''first_value'',''last_value'')
+ORDER BY table_schema, table_name;
+```
+
+### ⑥ 复制兼容性 ⭐
+
+```
+8.0 从库 ✅ 可以复制 5.7 主库
+5.7 从库 ❌ 不能复制 8.0 主库（单向兼容）
+
+→ 升级顺序：先升从库（此时从库 8.0 复制 5.7 主库 ✅）
+  再切主从角色，最后升原主库 ⭐
+```
+
+**其他复制注意**：
+
+```
+· 8.0 的 binlog 事件格式与 5.7 在老事件上兼容，但新特性事件老从库不认
+· 认证插件不同可能影响复制账号
+· GTID 模式下要检查 gtid_executed 一致性
+```
+
+## 三、升级流程（推荐路径）⭐⭐
+
+```
+【Stage 0：准备（1~2 周）】
+  ① 全量备份（XtraBackup 物理备份）并**验证可恢复** ⭐
+  ② 在测试环境升级一份数据副本，跑全量回归
+  ③ 用 mysqlsh 的 upgrade checker 扫描 ⭐
+     mysqlsh -- util check-for-server-upgrade root@host:3306 \\
+       --outputFormat=TEXT --outputDir=/tmp/upgrade_check
+  ④ 处理 sql_mode / collation / 保留字 / 认证插件问题
+  ⑤ 确认应用驱动兼容 8.0
+
+【Stage 1：升级从库（低风险）】
+  ① 停从库复制
+  ② 备份从库
+  ③ 原地升级从库（in-place upgrade）
+     systemctl stop mysqld
+     # 替换二进制（yum update 或手动）
+     mysqld --defaults-file=/etc/my.cnf --upgrade=FORCE   # 或启动时自动升级
+     systemctl start mysqld
+  ④ 检查 SHOW SLAVE STATUS 是否正常
+  ⑤ 观察一段时间（延迟、错误日志、慢查询）⭐
+
+【Stage 2：切换（计划内停机，通常分钟级）】
+  ① 停止写入（应用只读或停服）
+  ② 确认主从无延迟
+  ③ 提升 8.0 从库为主库（或直接升级原主库）
+  ④ 应用切换到新主库
+  ⑤ 恢复写入
+
+【Stage 3：升级原主库】
+  ① 用 Stage 1 的流程升级
+  ② 作为从库加回新主库
+
+【Stage 4：观察与收尾】
+  ① 监控 1~2 周（慢查询、错误日志、复制延迟、性能指标）⭐
+  ② 处理残留的 sql_mode/兼容问题
+  ③ 更新文档与运维手册
+```
+
+**原地升级 vs 逻辑迁移** ⭐：
+
+| | 原地升级（in-place）| 逻辑迁移（dump/load 或 Clone）|
+|---|---|---|
+| 速度 | 快（分钟~小时，取决于数据字典升级）| 慢（要重建）|
+| 回滚 | ❌ **难（升级后不能降级！）** ⚠️ | ✅ 易（删新实例即可）|
+| 适用 | 数据量大、停机窗口短 | 数据量小 或 需要保留回滚能力 ⭐ |
+| 风险 | 不可逆 ⚠️ | 低 |
+
+**⚠️ 8.0 升级后不能降级到 5.7**（数据字典格式变了）。所以**必须保留可用的全套备份**，并准备好"用备份重建回 5.7"的最坏方案 ⭐
+
+**升级用 `--upgrade` 参数**：
+
+```bash
+# 显式升级数据字典
+mysqld --upgrade=FORCE    # 强制升级（忽略版本标记）
+--upgrade=MINIMAL          # 只升级必要部分（更快，但某些功能不可用）
+--upgrade=AUTO             # 自动（默认）
+```
+
+## 四、`mysqlsh upgrade checker` 的检查内容 ⭐
+
+```bash
+mysqlsh -- util check-for-server-upgrade root@127.0.0.1:3306 --outputFormat=JSON
+```
+
+**它会检查**：
+
+| 类别 | 内容 |
+|---|---|
+| **保留字冲突** | 表名/列名/别名用了 8.0 新增保留字 ⭐ |
+| **已移除/弃用函数** | `PASSWORD()`、`ENCRYPT()`、`SQL_CALC_FOUND_ROWS` 等 |
+| **`sql_mode` 差异** | 会报错的具体模式 |
+| **字符集** | `utf8mb3` 使用、collation 不统一 ⭐ |
+| **认证插件** | 非默认插件 |
+| **表结构问题** | 索引过长、行格式、分区限制 ⭐ |
+| **引擎** | 非 InnoDB 表 |
+| **复制配置** | GTID、binlog 格式 |
+| **配置参数** | 已移除的参数 ⚠️（启动会失败）|
+
+**这是升级前最有价值的工具** ⭐ 一定要用。
+
+## 五、升级后的必做事项 ⭐
+
+```sql
+-- ① 更新统计信息（升级后统计信息可能过时）⭐
+-- 对所有表执行（大表用 pt-index-usage 或分批）
+SELECT CONCAT(''ANALYZE TABLE '', table_schema, ''.'', table_name, '';'')
+FROM information_schema.tables
+WHERE table_schema NOT IN (''mysql'',''information_schema'',''performance_schema'',''sys'');
+
+-- ② 检查所有表健康
+-- myisamchk（MyISAM）/ CHECK TABLE（InnoDB）
+-- mysqlcheck -u root -p --all-databases
+
+-- ③ 确认字符集/排序规则（新建表会继承新默认值）⭐
+SHOW VARIABLES LIKE ''character_set%'';
+SHOW VARIABLES LIKE ''collation%'';
+SELECT table_name, table_collation FROM information_schema.tables
+WHERE table_schema=''blogdb'';   -- 检查是否统一 ⭐
+
+-- ④ 确认关键参数（有些参数默认值变了）⭐
+SHOW VARIABLES LIKE ''innodb%'';
+SHOW VARIABLES LIKE ''%timeout%'';
+SHOW VARIABLES LIKE ''sql_mode'';
+
+-- ⑤ 检查账户与权限（认证插件）⭐
+SELECT user, host, plugin FROM mysql.user;
+```
+
+**常见"升级后才发现"的问题** ⭐：
+
+| 问题 | 原因 | 处理 |
+|---|---|---|
+| **慢查询变得更快或更慢** | 优化器改进 / 统计信息变化 ⭐ | `ANALYZE TABLE` + 重新审查执行计划 |
+| **JOIN 变慢** | collation 不统一 → 索引失效 ⭐ | 统一 collation |
+| **应用连不上** | 认证插件 ⚠️ | 改驱动或改插件 |
+| **某些 SQL 报错** | `sql_mode` 变严 | 修 SQL |
+| **启动失败** | 配置文件里有已移除的参数 ⚠️ | 用 upgrade checker 提前发现 |
+| **备份脚本失败** | `mysqldump` 参数变化（如 `--master-data` 被废弃为 `--source-data`）⚠️ | 更新脚本 |
+| **`utf8mb3` 警告刷屏** | 老表用了 `utf8` | 迁移到 `utf8mb4` |
+
+## 六、本项目（博客系统）的建议 ⭐
+
+```
+现状：自建 MySQL + systemd 部署
+
+升级建议（如果还在 5.7 或更早）：
+  ① 优先级不高（流量小），但 5.7 已 EOL（无安全补丁）⚠️ → 建议升级
+  ② 升级前必须做的：
+     □ XtraBackup 全量备份 + 验证恢复 ⭐
+     □ 用 --default-character-set=utf8mb4 导出（否则乱码）⭐
+     □ 检查 sql_mode / collation / 保留字（本项目列名正常）
+     □ 检查认证插件（应用是 C API，看驱动版本）⚠️
+  ③ 本项目有特殊点：
+     · 曾经有"latin1 连接 + cp1252 转义数据"的历史 ⭐
+       升级时**务必先核对连接字符集与新数据的形态**
+     · 若曾执行过 charset 迁移，确认已迁完再升
+     · 升级后**重新验证 FAQ/每日一题的中文显示**（用 curl + HEX 而非截图）⭐
+  ④ 升级方式建议：
+     · 数据量小 → 逻辑迁移（mysqldump 到新实例）更安全、可回滚 ⭐
+     · 有停机窗口 → 简单直接
+```
+
+## 七、一句话总结
+
+**新项目上 8.0（或 8.4 LTS）**；**升级的六项检查是"`sql_mode` 变严、默认字符集/collation 变化、认证插件、已移除功能、新增保留字、复制单向兼容"** ⭐；**升级前必用 `mysqlsh -- util check-for-server-upgrade` 扫描，并在 5.7 上临时改成 8.0 的 `sql_mode` 跑回归** ⭐⭐；**强烈注意"8.0 升级后不可降级"** → 必须保留可验证的物理备份作为退路；**升级顺序是"先升从库、再切主、最后升原主库"**。', 1),
+
+('MySQL', '会话变量,连接池,污染', 3,
+ '数据库连接被连接池复用时，会话状态会互相污染吗？有哪些会话级状态需要清理？',
+ '## 一、为什么会话状态是"连接级"的 ⭐⭐
+
+MySQL 的很多设置是**会话（session）级**的，**绑定在连接上**。连接池复用连接时，**上一个使用者留下的状态会被下一个使用者继承** ⚠️
+
+```
+时间线：
+  请求 A：SET SESSION sql_mode = '''';               ← 改了会话变量
+          执行查询... (正常返回)
+  ──────── 连接归还到池 ────────
+  请求 B：借到同一个连接
+          执行 UPDATE ... (意外地没有严格模式！) ⚠️⚠️
+          → 数据被静默截断/转换，而且没人知道为什么
+```
+
+**这是"偶发、难以复现"的 bug 的典型来源** ⭐⭐
+
+## 二、会话级状态清单 ⭐⭐
+
+### ① 会话变量（`SET SESSION ...` / `SET @var`）
+
+| 类型 | 例子 | 污染影响 |
+|---|---|---|
+| **系统变量（会话级）** ⭐ | `sql_mode`、`autocommit`、`time_zone`、`optimizer_switch`、`sort_buffer_size`、`group_concat_max_len`、`transaction_isolation`、`foreign_key_checks`、`unique_checks` | 影响后续查询的**行为与结果** ⚠️ |
+| **用户变量** ⭐ | `SET @x = 1` | 残留值可能被后续 SQL 引用（`WHERE id = @x`）→ **结果完全错误** ⚠️⚠️ |
+| **`@` 变量的隐式使用** | 老的"用户变量模拟窗口函数"技巧 | |
+
+**最危险的三个** ⭐：
+
+```sql
+SET SESSION sql_mode = '''';                -- ⭐⭐ 关闭严格模式（静默改数据）
+SET SESSION foreign_key_checks = 0;       -- ⭐ 关闭外键检查（可能写入脏数据）
+SET SESSION autocommit = 0;               -- ⭐⭐ 后续所有语句都在隐式事务里！
+SET SESSION sql_log_bin = 0;              -- ⚠️ 关闭 binlog → 主从不一致！❗
+SET SESSION unique_checks = 0;            -- 跳过唯一性检查（导入数据时的加速技巧）
+```
+
+**`sql_log_bin = 0` 尤其危险** ⚠️：如果连接池复用时它残留着，**后续的写入不会进 binlog → 从库永远缺这些数据 → 主从静默不一致** ❗
+
+### ② 未提交的事务 ⭐⭐
+
+```
+如果借出的连接上还有一个未提交的事务（上一个使用者忘了 commit/rollback）：
+  · 后续使用者的操作会被"卷进"这个老事务 ⚠️
+  · 老的锁还持有 → 可能死锁
+  · 提交时会一起提交（语义错误）⚠️
+```
+
+**这是最严重的污染之一**。**连接归还前必须确保事务已结束**。
+
+### ③ 未读完的结果集 ⭐
+
+```
+如果上一个使用者用 mysql_use_result 但没有读完：
+  → 连接处于"结果集未结束"状态
+  → 下一个使用者执行任何语句都会报
+    ERROR 2014: Commands out of sync; you can''t run this command now ⚠️
+```
+
+**用 `mysql_store_result` 也有类似问题**：如果 `MYSQL_RES` 没 `free`，连接会持有它。
+
+### ④ 临时表 ⭐
+
+```sql
+CREATE TEMPORARY TABLE tmp_xxx (...);   -- 会话级，连接关闭才消失
+-- 池复用 → 下一个使用者可能：
+--   · 意外看到/覆盖同名临时表 ⚠️
+--   · 或 collide 报错 (Table already exists)
+```
+
+### ⑤ 预处理语句（Prepared Statement）
+
+```
+每个 MYSQL_STMT 是会话级的：
+  · 未关闭会占内存（连接归还后仍占）⚠️
+  · 某些池实现会缓存 prepared statement，需确认语义
+```
+
+### ⑥ 锁 / `GET_LOCK`
+
+```sql
+SELECT GET_LOCK(''mylock'', 10);       -- ⚠️ 命名锁是会话级的
+-- 归还连接后如果没 RELEASE_LOCK → 锁一直被持有 ❗ 其他人全都拿不到
+```
+
+### ⑦ 其他会话状态
+
+| 状态 | 说明 |
+|---|---|
+| **`LAST_INSERT_ID()`** | 会话级；新语句会覆盖，但 `SELECT LAST_INSERT_ID()` 不覆盖 ⭐ 需谨慎 |
+| **`FOUND_ROWS()`** / `ROW_COUNT()` | 会话级 |
+| **当前数据库（`USE db`）** ⭐ | 会话级！上一个使用者 `USE other_db` 后归还 → 下一个使用者可能查错库 ❗ |
+| **字符集（`SET NAMES`）** ⭐ | 会话级（`character_set_client/connection/results`）|
+| **`SET time_zone`** ⭐ | 会话级（影响 `NOW()`、`TIMESTAMP` 转换）|
+| **`SET SESSION TRANSACTION ISOLATION LEVEL`** | 会话级 ⭐ |
+| **`SELECT ... INTO @var`** | 用户变量 |
+| **`SET SESSION innodb_lock_wait_timeout`** | 会话级 |
+| **警告/错误栈** | `SHOW WARNINGS` 的内容 |
+
+## 三、`USE db` 的污染 ⭐⭐（常被忽略）
+
+```cpp
+// 连接池借出连接
+mysql_query(conn, "USE blog_a");          // 上一个使用者
+// ... 归还
+// 下一个使用者以为自己在 blogdb，实际在 blog_a ❗
+mysql_query(conn, "SELECT * FROM posts"); // 查错了库！
+```
+
+**对策**：**连接初始化时显式 `mysql_select_db()`**，或**所有 SQL 都带库名前缀**（`blogdb.posts`）⭐
+
+## 四、`SET time_zone` 的污染 ⭐⭐
+
+```
+上一个使用者：SET time_zone = ''+00:00'';
+归还后：
+  下一个使用者：SELECT NOW();              → 返回 UTC 时间 ⚠️
+                INSERT ... created_at = NOW() → 存入 UTC ⚠️
+                TIMESTAMP 列读取会按 UTC 转换 → 时间全都差 8 小时 ❗
+```
+
+**这类"时间错乱"bug 极难排查**（因为时区设置是"环境状态"，代码里看不见）。
+
+## 五、清理策略 ⭐⭐
+
+### 方案 A：归还前"重置会话"（推荐）⭐⭐
+
+**通用做法：`mysql_reset_connection()`**（C API 5.7.3+）⭐：
+
+```cpp
+// 归还连接前
+mysql_reset_connection(conn);
+// 等价于：
+//   · 回滚活动事务
+//   · 释放表锁、命名锁（GET_LOCK）
+//   · 关闭/清空临时表
+//   · 重置会话变量为全局值 ⭐
+//   · 重置用户变量
+//   · 释放 prepared statements（⚠️ 会清掉语句缓存，需权衡）
+//   · 清空结果集
+// 但**保留连接本身**（不断开 TCP + 不重新认证）⭐
+```
+
+**这是最干净的做法** ⭐。代价：**会清掉 prepared statement 缓存**（如果用了语句缓存，需要重建）。
+
+**如果 `mysql_reset_connection` 不适用**，可以手工执行：
+
+```sql
+-- 归还前的清理脚本
+ROLLBACK;                       -- ⭐ 结束未提交事务
+SET SESSION sql_mode = DEFAULT; -- ⭐ 恢复默认
+SET SESSION autocommit = 1;
+SET SESSION sql_log_bin = 1;    -- ⭐⭐ 特别重要
+SET SESSION foreign_key_checks = 1;
+SET SESSION unique_checks = 1;
+SET SESSION sql_safe_updates = 0;
+SET SESSION time_zone = DEFAULT;   -- ⚠️ DEFAULT 表示用全局值
+SET SESSION TRANSACTION ISOLATION LEVEL <默认>;
+SELECT RELEASE_ALL_LOCKS();        -- ⭐ 释放所有命名锁（5.7.5+）
+-- 释放所有临时表：MySQL 没有 "DROP ALL TEMPORARY TABLES"
+--   → 需要自己记录创建过的临时表名（或干脆不用临时表）⚠️
+-- 释放 prepared statements：
+DEALLOCATE PREPARE ...;             -- 需要逐个释放（难以枚举）⚠️
+-- 重置用户变量：没有 "reset all" → 只能一个个 SET @x = NULL ⚠️
+```
+
+**⚠️ `mysql_reset_connection` 的优势就是它有"重置一切"的语义**（包括那些没法用 SQL 枚举的东西）⭐
+
+### 方案 B：借出时"重新初始化"（更保守）⭐
+
+```cpp
+// 借出连接时，先执行一遍初始化（幂等）
+MYSQL* c = pool->acquire();
+mysql_query(c, "SET NAMES utf8mb4");
+mysql_query(c, "SET SESSION sql_mode = ''...''");   // 项目的标准 sql_mode
+mysql_query(c, "SET SESSION time_zone = ''+08:00''");
+mysql_query(c, "SET SESSION autocommit = 1");
+mysql_select_db(c, "blogdb");
+// 这样即使归还时没清理干净，借出时也会被纠正 ⭐
+```
+
+**优点**：**不依赖"归还时清理是否成功"**（更健壮）⭐
+**缺点**：**借出时多几次往返**（每次约 0.1~0.5ms，可接受）
+
+### 方案 C：归还前先"验活 + 清理"，借出时"验活 + 重置"（最稳）⭐⭐
+
+```
+池归还流程：
+  ① mysql_reset_connection(conn)     ← 重置会话
+  ② 检查连接是否有效（可选 mysql_ping）
+  ③ 放回空闲队列
+
+池借出流程：
+  ① 从队列取一个
+  ② 若 max_lifetime 到期 → 丢弃重建
+  ③ mysql_ping 探活（或直接借出去，让第一次查询暴露问题）
+  ④ 执行会话初始化（SET NAMES / sql_mode / time_zone）
+  ⑤ 交给使用者
+```
+
+## 六、项目约定：哪些东西"不要"放进连接池 ⭐
+
+| 约定 | 理由 |
+|---|---|
+| **不要用临时表** | 无法可靠清理 ⚠️ 用普通表 + 唯一标识隔离 |
+| **不要用用户变量** | 无"全部重置"的手段 ⚠️ |
+| **不要用 `GET_LOCK`** | 依赖池清理（虽然 `RELEASE_ALL_LOCKS` 可用）|
+| **不要改 `sql_log_bin`** | 一旦残留 → 主从不一致 ❗ |
+| **不要靠 `USE db`** | 一律用 `库名.表名` 或每次 `mysql_select_db` ⭐ |
+| **不要长期 `SET GLOBAL`** | 影响所有连接（这是"全局污染"，更危险）⚠️ |
+| **尽量不用 prepared statement 缓存** | 或明确接受 `reset_connection` 会清掉它 |
+| **事务必须显式提交/回滚** | 用 RAII 保证 ⭐ |
+
+## 七、C++ 侧的完整实现模板 ⭐⭐
+
+```cpp
+class MySqlPool {
+public:
+    class Guard {                      // ⭐ RAII：借出即守卫
+        MySqlPool* pool_;
+        MYSQL* conn_;
+    public:
+        Guard(MySqlPool* p, MYSQL* c) : pool_(p), conn_(c) {}
+        ~Guard() {
+            if (conn_) pool_->release(conn_);      // 异常也归还 ⭐
+        }
+        Guard(const Guard&) = delete;
+        Guard& operator=(const Guard&) = delete;
+        MYSQL* get() const { return conn_; }
+        // 显式提前归还（避免长时间占用）
+        void giveBack() { if (conn_) { pool_->release(conn_); conn_ = nullptr; } }
+    };
+
+    Guard acquire() {
+        std::unique_lock<std::mutex> lk(mu_);
+        cv_.wait(lk, [this]{ return !idle_.empty() || idle_.size() + busy_ < max_; });
+        MYSQL* c = nullptr;
+        if (!idle_.empty()) {
+            c = idle_.back(); idle_.pop_back();
+        } else {
+            c = createConn();              // 新建（已做过一次初始化）
+        }
+        ++busy_;
+        lk.unlock();
+
+        // ⭐ 借出时再确保会话状态正确（双保险）
+        initSession(c);
+        return Guard(this, c);
+    }
+
+private:
+    void initSession(MYSQL* c) {
+        mysql_query(c, "SET NAMES utf8mb4");
+        mysql_query(c, "SET SESSION sql_mode = ''ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,"
+                       "NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
+                       "NO_ENGINE_SUBSTITUTION''");
+        mysql_query(c, "SET SESSION time_zone = ''+08:00''");
+        mysql_query(c, "SET SESSION autocommit = 1");
+        mysql_query(c, "SET SESSION sql_log_bin = 1");     // ⭐⭐ 防主从不一致
+        mysql_query(c, "SET SESSION foreign_key_checks = 1");
+        mysql_query(c, "SET SESSION unique_checks = 1");
+        mysql_select_db(c, "blogdb");                       // ⭐ 固定库
+    }
+
+    void release(MYSQL* c) {
+        // ① 收尾：确保没有未读完的结果集
+        while (mysql_next_result(c) == 0) {
+            if (MYSQL_RES* r = mysql_store_result(c)) mysql_free_result(r);
+        }
+        // ② ⭐ 重置会话（最干净）
+        if (mysql_reset_connection(c) != 0) {
+            // 重置失败 → 丢弃这个连接
+            mysql_close(c);
+            std::lock_guard<std::mutex> lk(mu_);
+            --busy_; cv_.notify_one();
+            return;
+        }
+        // ③ 探活（可选）
+        if (mysql_ping(c) != 0) {
+            mysql_close(c);
+            std::lock_guard<std::mutex> lk(mu_);
+            --busy_; cv_.notify_one();
+            return;
+        }
+        // ④ 放回池
+        std::lock_guard<std::mutex> lk(mu_);
+        idle_.push_back(c);
+        --busy_;
+        cv_.notify_one();
+    }
+};
+```
+
+**注意 `mysql_reset_connection` 的行为** ⭐：它会重置会话变量、回滚事务、释放锁、清空临时表与用户变量、**并释放 prepared statements**。**如果应用依赖语句缓存，重置后它们会失效，需要重新 prepare**。
+
+## 八、如何排查"会话污染"类 bug ⭐
+
+**特征**：**偶发、不可复现、换个环境就好、重启就好** ⚠️
+
+```sql
+-- ① 在连接上打印当前会话状态（排查期加日志）
+SELECT @@session.sql_mode, @@session.autocommit, @@session.time_zone,
+       @@session.sql_log_bin, @@session.foreign_key_checks,
+       DATABASE() AS cur_db,
+       @@character_set_client, @@character_set_connection, @@character_set_results;
+
+-- ② 检查有没有未提交事务
+SELECT * FROM information_schema.innodb_trx
+WHERE trx_mysql_thread_id = CONNECTION_ID();
+
+-- ③ 检查有没有残留的用户变量（无法枚举，但可以针对性检查）
+SELECT @x, @y;   -- 若从未设置过应返回 NULL
+```
+
+**排查思路** ⭐：
+
+```
+① "重启应用就好" → 池被重建 → 强烈暗示会话状态污染 ⭐
+② "并发高时才出现" → 连接复用频繁 ⭐
+③ 在连接借出/归还处加日志（打印 CONNECTION_ID + 关键会话状态）
+④ 对比"出问题的连接"与"正常连接"的会话状态差异
+```
+
+## 九、一句话总结
+
+**连接池复用会带来"会话状态污染"** —— 最危险的三类是 **`sql_mode=''''`（静默改数据）、`sql_log_bin=0`（主从不一致 ❗）、`autocommit=0` + 未提交事务**；此外还有 **`USE db` 查错库、`SET time_zone` 时间错乱、临时表/用户变量/`GET_LOCK` 残留、未读完的结果集导致 `Commands out of sync`**；**最干净的解法是归还时 `mysql_reset_connection()`（重置一切且不断连接）**，**最健壮的做法是"归还重置 + 借出时再显式初始化关键会话变量"双保险** ⭐⭐；**项目约定上应避免使用临时表、用户变量、`USE db`、`SET sql_log_bin` 这类无法可靠清理的状态**。', 1),
+
+('MySQL', '变更管理,DDL,上线流程', 2,
+ '数据库变更（加字段、改索引、数据订正）应该怎么管理？如何做到可回滚、可审计？',
+ '## 一、数据库变更的六类 ⭐
+
+| 类型 | 例子 | 风险 |
+|---|---|---|
+| **DDL - 加列** | `ADD COLUMN`（8.0 可 INSTANT）| 低 ⭐ |
+| **DDL - 加索引** | `ADD INDEX`（可 INPLACE）| 低~中 ⭐ |
+| **DDL - 改列类型/字符集** | `MODIFY COLUMN`、`CONVERT TO` | **高（COPY，重建表）** ⚠️ |
+| **DDL - 删列/删索引** | `DROP COLUMN`、`DROP INDEX` | **高（不可逆）** ⚠️ |
+| **DML - 数据订正** | `UPDATE ... WHERE ...` | 中（可能改错数据）⚠️ |
+| **DML - 数据迁移/归档** | 批量搬运 | 中~高 |
+
+**核心原则** ⭐：
+
+```
+① 一切变更走流程（不允许"手工上生产"）
+② 变更必须可审计（谁、何时、改了什么）
+③ 危险变更必须有回滚方案 + 备份 ⭐
+④ 大表 DDL 必须用在线工具，且限速 ⭐
+⑤ 变更前后必须验证（不只是"没报错"）
+```
+
+## 二、DDL 的算法与锁（决定风险评估）⭐
+
+```sql
+ALTER TABLE posts ADD COLUMN x INT,
+  ALGORITHM=INPLACE, LOCK=NONE;
+-- ↑ 指定算法和锁级别（不满足会报错而不是静默降级）⭐
+```
+
+| 操作 | ALGORITHM | LOCK | 能否在线 |
+|---|---|---|---|
+| **加/删二级索引** | INPLACE | NONE | ✅ 不阻塞 ⭐ |
+| **加列（末尾，8.0）** | INSTANT | NONE | ✅ 秒级 ⭐ |
+| **改列默认值**（8.0）| INSTANT | NONE | ✅ |
+| **重命名列**（8.0）| INPLACE | NONE | ✅ |
+| **加/删主键** | COPY | SHARED | ❌ 重建表 ⚠️ |
+| **改列类型** | COPY | SHARED | ❌ 重建表 ⚠️ |
+| **改字符集/collation** | COPY | SHARED | ❌ 重建表 ⚠️ |
+| **加全文索引** | INPLACE | SHARED | ⚠️ 阻塞写 |
+| **`OPTIMIZE TABLE`** | INPLACE | NONE | ✅ 但耗 IO |
+
+**关键** ⭐：**显式指定 `ALGORITHM` 和 `LOCK`** —— 这样如果实际操作会锁表，**MySQL 会直接报错**，而不是静默地把生产锁住 ⚠️
+
+```sql
+-- 如果 INPLACE + LOCK=NONE 不支持 → 报错
+-- ERROR 1846 (0A000): ALGORITHM=INPLACE is not supported. Reason: ...
+-- → 这时才改用 pt-osc / gh-ost ⭐
+```
+
+## 三、大表 DDL 的三种做法 ⭐⭐
+
+### ① 原生 INSTANT（8.0，最快）⭐
+
+```sql
+-- 加列（末尾）：秒级完成，即使 1 亿行
+ALTER TABLE orders ADD COLUMN channel VARCHAR(20) NULL DEFAULT NULL,
+  ALGORITHM=INSTANT;
+-- 限制：新列必须在末尾（8.0.29+ 支持任意位置）；
+--       不支持 AUTO_INCREMENT；不支持同时加索引 ⭐
+```
+
+**不能 INSTANT 时** → 用 pt-osc / gh-ost。
+
+### ② `pt-online-schema-change`（影子表 + 触发器）⭐
+
+```bash
+pt-online-schema-change \\
+  --alter "ADD COLUMN channel VARCHAR(20) NULL DEFAULT NULL" \\
+  --host=127.0.0.1 --user=root \\
+  --max-load      Threads_running=50 \\
+  --critical-load Threads_running=100 \\
+  --chunk-time    0.5 \\
+  --chunk-size    1000 \\
+  --print \\
+  --dry-run \\
+  D=blogdb,t=orders
+# 去掉 --dry-run 才真正执行
+```
+
+**原理**：
+
+```
+① CREATE TABLE _orders_new LIKE orders;  （新结构）
+② ALTER _orders_new ...（改结构）
+③ 在主表上建 3 个触发器（INSERT/UPDATE/DELETE → 同步到新表）⚠️
+④ 分批把老数据拷到新表（chunk）
+⑤ RENAME TABLE orders TO _orders_old, _orders_new TO orders;  ← 原子替换
+⑥ 删触发器和 _orders_old
+```
+
+**要点**：
+
+| 要点 | 说明 |
+|---|---|
+| **要求表有主键/唯一索引** ⚠️ | 没有就没法分 chunk |
+| **`--max-load` / `--critical-load`** ⭐ | 超过负载自动暂停/中止，保护线上 |
+| **`--chunk-time`** | 控制每批耗时（避免长事务）|
+| **需要额外磁盘** | 新表 + 老表并存 ⚠️ 约 1 倍表大小 |
+| **触发器有写放大** ⚠️ | 每次写要同步到新表 |
+| **与原表已有触发器冲突** ⚠️ | 不支持（或需 `--preserve-triggers`）|
+| **外键** | 需 `--alter-foreign-keys-method` 谨慎处理 ⚠️ |
+
+### ③ `gh-ost`（无触发器，从 binlog 同步）⭐⭐
+
+```bash
+gh-ost \\
+  --host=127.0.0.1 --user=root \\
+  --database=blogdb --table=orders \\
+  --alter="ADD COLUMN channel VARCHAR(20) NULL DEFAULT NULL" \\
+  --max-load="Threads_running=50" \\
+  --critical-load="Threads_running=100" \\
+  --chunk-size=1000 \\
+  --max-lag-millis=1500 \\
+  --initially-drop-ghost-table \\
+  --allow-on-master \\
+  --execute
+```
+
+**优势** ⭐：
+
+| 优势 | 说明 |
+|---|---|
+| **无触发器** | 从 binlog 读变更，不影响主库写性能 ⭐ |
+| **可随时暂停** | `--throttle` / 交互式暂停，出问题能立刻停 ⭐ |
+| **限速精细** | `--max-lag-millis` 保证从库延迟可控 ⭐ |
+| **可切换** | 支持 `--cut-over` 的多种策略 |
+| **可测试** | `--test-on-replica` 在从库先演练 ⭐ |
+
+**要求**：**binlog_format = ROW**，且 gh-ost 需要能连到一个从库（或用 `--allow-on-master`）。
+
+**推荐**：**gh-ost 优于 pt-osc**（无触发器、可暂停）⭐
+
+## 四、数据订正（DML）的规范 ⭐⭐
+
+```sql
+-- ❌ 危险操作（无 WHERE、无 LIMIT、无备份）
+UPDATE users SET status = 0;                    -- 全表！❗
+DELETE FROM logs WHERE created_at < ''2023-01-01'';  -- 可能几千万行
+
+-- ✅ 规范做法
+-- ① 先 SELECT 确认影响行数与内容 ⭐
+SELECT COUNT(*) FROM users WHERE id BETWEEN 1 AND 1000 AND status <> 0;
+
+-- ② 备份要改的数据（改错能恢复）⭐
+CREATE TABLE users_bak_20240501 AS
+SELECT * FROM users WHERE id BETWEEN 1 AND 1000;
+
+-- ③ 分批执行 + 限速
+UPDATE users SET status = 0 WHERE id BETWEEN 1 AND 1000 AND status <> 0 LIMIT 1000;
+-- 循环到 affected_rows = 0，批间 sleep
+```
+
+**必做清单** ⭐：
+
+```
+□ 先在从库或测试环境验证 SQL 的影响行数 ⭐
+□ 备份将被修改的数据（CREATE TABLE AS SELECT）⭐
+□ 分批执行（LIMIT + 循环 + sleep）
+□ 记录执行前后的行数与关键字段校验和 ⭐
+□ 有明确的回滚 SQL（基于备份表）⭐
+□ 变更时间在低峰期
+□ 有人二次复核 SQL（`sql_safe_updates=ON` 防无 WHERE）⭐
+```
+
+**`sql_safe_updates`** ⭐：
+
+```sql
+SET SESSION sql_safe_updates = 1;
+UPDATE users SET status = 0;
+-- ERROR 1175: You are using safe update mode and you tried to update a table
+--             without a WHERE that uses a KEY column
+-- → 强制要求"WHERE 必须用索引列" ⭐ 这是很实用的护栏
+```
+
+**⚠️ 但注意**：`sql_safe_updates=1` 时会话级残留 → 连接池污染问题（见"会话变量"那题）。
+
+## 五、变更管理流程 ⭐⭐
+
+### 变更单模板
+
+```
+【变更标题】posts 表增加 channel 列
+【变更类型】DDL - 加列
+【影响范围】posts 表（约 500 万行）；只影响写入性能（短时）
+【执行时间】2024-05-02 03:00（低峰）
+【预估时长】INSTANT 模式，秒级
+【变更 SQL】
+  ALTER TABLE posts ADD COLUMN channel VARCHAR(20) NULL DEFAULT NULL,
+    ALGORITHM=INSTANT;
+【前置检查】
+  □ 已确认 8.0 支持 INSTANT
+  □ 磁盘剩余 > 1GB
+  □ 无长事务（History list length < 1000）
+  □ 主从延迟 < 1s
+【回滚方案】
+  ALTER TABLE posts DROP COLUMN channel;   -- ⚠️ 若已有数据写入会丢失
+  → 前置备份：XtraBackup 全量 + binlog 保留
+【验证方案】
+  □ SHOW CREATE TABLE posts 确认列存在
+  □ 应用写入/读取测试
+  □ 监控 error log、慢查询、复制延迟 15 分钟
+【审批】DBA / 技术负责人
+```
+
+### 执行流程 ⭐
+
+```
+① 变更申请（写 SQL + 影响评估 + 回滚方案）
+② 二次复核（另一人 review SQL）⭐
+③ 备份（大变更前必须）
+   · 单表：CREATE TABLE bak AS SELECT / XtraBackup
+   · 全库：XtraBackup
+④ 在从库/测试环境先跑一遍（验证时长与影响）⭐
+⑤ 生产执行（记录开始/结束时间、执行人）
+⑥ 验证（不只是"没报错"，要验证业务功能）⭐
+⑦ 观察（15~30 分钟，看监控）
+⑧ 记录（变更单归档）
+```
+
+## 六、可审计性 ⭐
+
+| 手段 | 说明 |
+|---|---|
+| **变更单系统** | 所有变更必须有单据（Yearning、Archery、Bytebase 等开源工具）⭐ |
+| **SQL 审核工具** ⭐ | 自动检测"无 WHERE 的 UPDATE/DELETE"、"大表 COPY DDL"、"索引重复"等 |
+| **`general_log` / `audit_log`** | 记录所有执行的 SQL（⚠️ general_log 开销大，审计用 audit_log 插件）|
+| **binlog 作为"最终记录"** ⭐ | binlog 天然记录了所有数据变更（ROW 格式含前后镜像）→ 可追溯 |
+| **`binlog2sql`** ⭐ | 从 binlog 生成"回滚 SQL"（把 UPDATE 反转）—— **数据订正的救星** |
+| **操作留痕** | 谁的账号、什么时间、执行的 SQL（用独立账号，不用 root）⭐ |
+| **配置文件版本化** | `my.cnf` 用 git 管理 ⭐ |
+
+**`binlog2sql` 的用法** ⭐：
+
+```bash
+# 从 binlog 解析出"回滚 SQL"
+python binlog2sql.py -h127.0.0.1 -uroot -p \\
+  -d blogdb -t users \\
+  --start-file=''mysql-bin.000012'' \\
+  --start-datetime=''2024-05-01 10:00:00'' \\
+  --stop-datetime=''2024-05-01 10:05:00'' \\
+  -B > rollback.sql          # -B 表示生成回滚语句 ⭐
+
+# 确认无误后执行
+mysql -uroot -p blogdb < rollback.sql
+```
+
+**这是误操作后的最实用工具**（比全库 PITR 更精确）⭐
+
+## 七、开源变更管理工具 ⭐
+
+| 工具 | 特点 |
+|---|---|
+| **Yearning** ⭐ | 国内流行；SQL 审核 + 工单 + 执行 + 回滚 |
+| **Archery** | SQL 审计 + 查询 + 工单 + 慢日志分析 |
+| **Bytebase** | 现代化、支持多数据库、GitOps 风格 ⭐ |
+| **Goose / Flyway / Liquibase** | 代码化的 Migration（versioned SQL）⭐ |
+| **gh-ost / pt-osc** | 大表在线 DDL |
+| **binlog2sql** | 回滚 SQL 生成 |
+
+**Migration 工具（Flyway/Liquibase/Goose）的价值** ⭐：
+
+```
+✔ 变更即代码（版本化、可 review、可 CI）
+✔ 自动记录已应用的版本（schema_version 表）
+✔ 支持重复执行（幂等）
+✔ 环境一致（dev/test/prod 用同一套）
+⚠️ 生成的 DDL 需要人工审查（避免 COPY 算法）⭐
+```
+
+## 八、本项目的实践建议 ⭐
+
+```
+情况：小站、运维简单、无专职 DBA
+
+建议（低成本可落地）：
+① 变更前必备份：
+   mysqldump -u root -p --single-transaction --default-character-set=utf8mb4 \\
+     --routines --triggers --events blogdb > ~/bak/blogdb_$(date +%F_%H%M).sql
+   ⚠️ 加 --default-character-set=utf8mb4（本项目踩过乱码坑）⭐
+
+② 变更 SQL 先写成文件并纳入 git（tools/migrations/ 目录）⭐
+   例：tools/migrations/20240502_add_channel.sql
+   这样"变更即代码"，可 review、可追溯
+
+③ 变更脚本要求：
+   · 幂等（重复执行不报错）—— 用 information_schema 判断列/索引是否存在 ⭐
+   · 带注释说明目的
+   · 危险操作用 sql_safe_updates
+
+④ 验证用 curl 而非截图（本项目铁律）⭐
+   变更后：curl -s http://127.0.0.1:8080/api/... | 检查中文/字段
+   需要时用 HEX() 验证字节 ⭐
+
+⑤ 记录到 .workbuddy/memory/ 日志（本项目已有此习惯）⭐
+
+⑥ 种子/初始化 SQL 保持幂等（tools/seed_questions.sql 已做到）⭐
+```
+
+**幂等 DDL 的写法** ⭐：
+
+```sql
+-- 加列（存在则跳过）
+SET @exists := (SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema=''blogdb'' AND table_name=''posts'' AND column_name=''channel'');
+SET @sql := IF(@exists = 0,
+  ''ALTER TABLE posts ADD COLUMN channel VARCHAR(20) NULL DEFAULT NULL'',
+  ''SELECT ''''column channel already exists'''' AS msg'');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- 加索引（存在则跳过）
+SET @exists := (SELECT COUNT(*) FROM information_schema.statistics
+                WHERE table_schema=''blogdb'' AND table_name=''posts'' AND index_name=''idx_channel'');
+-- 同上模式
+```
+
+## 九、一句话总结
+
+**数据库变更管理 = "流程 + 工具 + 验证 + 回滚"**；**DDL 必须显式指定 `ALGORITHM`/`LOCK` 让不支持的场景直接报错**，大表用 **8.0 的 INSTANT → gh-ost → pt-osc** 这条优先级链 ⭐⭐；**DML 订正必须"先 SELECT 确认 → 备份被改数据 → 分批执行 → 记录前后校验和 → 准备回滚"**，并用 **`sql_safe_updates=1`** 做护栏；**可审计靠"变更单 + 独立账号 + binlog（必要时 `binlog2sql` 生成回滚 SQL）"**；**本项目的低成本落地方式是"变更 SQL 纳入 git + 幂等 + 备份 + 用 curl/HEX 验证"**。', 1),
+
+('MySQL', '数据安全,RPO,高可靠', 3,
+ '如何做到"已提交的数据绝不丢失"（RPO = 0）？完整方案是什么？',
+ '## 一、先明确 RPO 与 RTO ⭐
+
+| 术语 | 含义 | 决定因素 |
+|---|---|---|
+| **RPO**（Recovery Point Objective） | **能容忍丢多少数据**（时间维度）| 复制方式 + 刷盘策略 + 备份频率 |
+| **RTO**（Recovery Time Objective） | **能容忍停多久** | 恢复方式 + 自动化程度 |
+
+**"RPO = 0"的意思是：任何已向客户端确认成功的提交，都不能丢。** ⭐
+
+## 二、丢数据的五个环节 ⭐⭐
+
+```
+客户端 ──① 网络──► MySQL Server ──② 事务提交──► 存储 ──③ 复制──► 从库
+                                              ↓
+                                          ④ 备份
+                                              ↓
+                                          ⑤ 人为误操作
+```
+
+| 环节 | 丢数据的场景 | 对策 |
+|---|---|---|
+| **① 网络** | 服务端已提交但应答丢失 → 客户端重试可能重复写（是"多"不是"丢"）| 幂等设计 ⭐ |
+| **② 提交刷盘** ⭐ | `innodb_flush_log_at_trx_commit ≠ 1` 时，提交后断电丢 1s | **双 1** ⭐⭐ |
+| **③ 复制** | 异步复制时，主库提交后立即故障 → 从库还没收到 | **半同步 / MGR** ⭐⭐ |
+| **④ 备份** | 备份不完整 / 从未验证 / 与数据同机 | **物理备份 + 异地 + 定期演练** ⭐ |
+| **⑤ 人为误操作** ⭐ | 误 `DELETE` / 误 `DROP` / 错误的数据订正 | binlog PITR + `binlog2sql` + 权限最小化 ⭐ |
+
+**⚠️ 重要认知**：**"RPO = 0"最难的不是"防硬件故障"，而是"防人为误删"** ⭐ —— 硬件故障有复制和备份兜底，但**误删会立刻同步到从库**（复制是"忠实"的）⚠️
+
+## 三、第一层：单机不丢（双 1）⭐⭐
+
+```ini
+[mysqld]
+innodb_flush_log_at_trx_commit = 1   # redo 每次提交 fsync ⭐
+sync_binlog = 1                      # binlog 每次提交 fsync ⭐
+innodb_doublewrite = ON              # 防页撕裂（默认 ON）
+```
+
+**保证**：**服务进程崩溃、操作系统崩溃、断电，都不会丢已提交事务**（前提是磁盘本身不作假）。
+
+**⚠️ 磁盘的"作假"** ⚠️：某些廉价 SSD / 云盘**不支持真正的写缓存刷盘**（`fsync` 只是假的）→ 断电仍可能丢。**企业级 SSD / 云盘要确认有掉电保护（PLP）**，否则双 1 也不保证 ⭐
+
+**验证方法**：
+
+```bash
+# 用 fio 测试 fsync 是否真的落盘（需要掉电测试仪，一般靠厂商承诺）
+# 至少确认:
+SHOW VARIABLES LIKE ''innodb_flush_log_at_trx_commit'';   -- 应为 1
+SHOW VARIABLES LIKE ''sync_binlog'';                       -- 应为 1
+```
+
+**代价** ⭐：**每次提交 2 次 fsync**（redo + binlog）→ 写入性能下降。用**组提交（group commit）** 缓解：并发越高，摊薄到每个事务的 fsync 成本越低。
+
+## 四、第二层：复制不丢（半同步 / MGR）⭐⭐
+
+### 异步复制的问题 ⭐
+
+```
+主库：提交 → 返回客户端 ✅
+      binlog 异步发给从库
+      若此时主库宕机 → 从库还没收到 → 【已确认的事务丢了】❌
+```
+
+**异步复制的 RPO ≠ 0**，取决于主库宕机时机，可能丢几毫秒到几秒的数据。
+
+### 半同步复制（Semi-Sync）⭐
+
+```sql
+-- 主库
+INSTALL PLUGIN rpl_semi_sync_master SONAME ''semisync_master.so'';
+SET GLOBAL rpl_semi_sync_master_enabled = 1;
+SET GLOBAL rpl_semi_sync_master_timeout = 100000;   -- 100s 超时（微秒）
+SET GLOBAL rpl_semi_sync_master_wait_for_slave_count = 1;  -- 至少 1 个从库确认
+
+-- 从库
+INSTALL PLUGIN rpl_semi_sync_slave SONAME ''semisync_slave.so'';
+SET GLOBAL rpl_semi_sync_slave_enabled = 1;
+STOP SLAVE IO_THREAD; START SLAVE IO_THREAD;   -- 重载插件
+```
+
+**语义**：主库**至少等 N 个从库确认"已收到 binlog"** 后才向客户端返回成功。
+
+**⚠️ 半同步的局限** ⭐：
+
+| 局限 | 说明 |
+|---|---|
+| **"收到"≠"重放完"** | 从库收到 binlog 但还没执行 → 主库故障时新主可能还没这些数据 ⚠️（需要等从库追上才能切）|
+| **超时降级** ⚠️ | 超时后**自动退化为异步**（否则主库被阻塞）→ 此时 RPO 又变成"可能丢" |
+| **`AFTER_SYNC` vs `AFTER_COMMIT`** ⭐ | `AFTER_SYNC`（默认，5.7+）更安全：等 ack 后才向客户端确认提交 |
+| **需要插件** | 云 RDS 通常已内置 |
+
+**`AFTER_SYNC` 的语义** ⭐：
+
+```
+AFTER_COMMIT：先提交（客户端可见）→ 再等 ack → 若等不到，事务已提交但可能没传到从库 ⚠️
+AFTER_SYNC ：先等 ack → 再提交 → 若等不到，就不提交（或超时降级）✅ 更安全
+```
+
+### MGR（组复制）⭐⭐
+
+**Paxos 多数派确认** → **真正的 "RPO = 0"**（已确认提交的事务在多数派上都有）。
+
+```sql
+-- 关键配置（MGR 要求）
+gtid_mode = ON
+enforce_gtid_consistency = ON
+binlog_checksum = NONE          # ⚠️ 必须，否则启动失败
+log_slave_updates = ON
+binlog_format = ROW
+group_replication_group_name = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+group_replication_single_primary_mode = ON
+group_replication_start_on_boot = OFF
+group_replication_local_address = "10.0.0.1:33061"
+group_replication_group_seeds = "10.0.0.1:33061,10.0.0.2:33061,10.0.0.3:33061"
+```
+
+**优势** ⭐：
+
+| 优势 | 说明 |
+|---|---|
+| **强一致** | 多数派确认，**已提交的事务在多数派上都有** ✅ |
+| **自动选主** | 不需要外部工具 ⭐ |
+| **防脑裂** | 多数派机制天然防脑裂 ✅ |
+| **RPO = 0** | 只要多数派存活，已确认的事务就不会丢 ✅ |
+
+**限制** ⚠️：
+
+```
+· 表必须有主键
+· 不支持外键（不可靠）
+· 大事务被拒绝（group_replication_transaction_size_limit，默认 150MB）⚠️
+· 跨机房延迟显著（多数派确认要跨网络往返）⚠️
+· 写延迟比异步复制高
+```
+
+**三节点部署建议** ⭐：**同城三可用区（3 副本，可容忍 1 个故障）**；跨城部署要谨慎评估延迟。
+
+### 云 RDS 高可用（最省事）⭐⭐
+
+```
+主实例 + 备实例（同/跨可用区）
+· 同步/半同步复制（厂商实现）
+· 故障自动切换（RTO 秒~分钟）
+· 自动备份 + 时间点恢复
+→ 通常已满足 RPO ≈ 0（厂商承诺的 SLA 里会写明）⭐
+```
+
+**⚠️ 要看清 SLA 条款**：有些云 RDS 的"高可用"是**异步复制**（仍可能丢数据）⚠️ 必须确认是同步或半同步。
+
+## 五、第三层：备份（防灾难与误操作）⭐⭐
+
+### 备份策略 ⭐
+
+```
+① 全量备份：每天 / 每周（XtraBackup 物理备份 ⭐）
+② 增量备份：每小时（XtraBackup --incremental）⭐
+③ binlog 连续备份：实时（用于 PITR）⭐
+④ 异地备份：至少一份在不同地域 ⭐
+⑤ 3-2-1 原则：3 份副本 / 2 种介质 / 1 份异地 ⭐
+⑥ 保留策略：日备 7 天 / 周备 4 周 / 月备 12 月
+⑦ 加密：备份含敏感数据
+⑧ 不与数据库同机（否则一起坏）
+```
+
+### 关键：备份必须"验证可恢复"⭐⭐
+
+```
+❌ "备份任务成功执行了" ≠ "备份可用"
+✅ 必须定期真实恢复一次并校验数据 ⭐
+
+验证清单：
+  □ 恢复到独立实例（不同端口/容器）
+  □ 对比行数（关键表）
+  □ 对比校验和（pt-table-checksum 或自研）
+  □ 抽查最新数据是否存在（如最新一条订单）
+  □ 启动应用连接测试库，跑冒烟测试 ⭐
+  □ 记录恢复耗时（这就是你的 RTO）⭐
+```
+
+**推荐频率**：**每月至少一次完整恢复演练**；自动化（脚本 + 定时任务 + 结果通知）⭐
+
+### binlog 保留 ⭐
+
+```ini
+[mysqld]
+binlog_expire_logs_seconds = 604800      # 7 天（或更长，取决于"能回溯多久"）
+max_binlog_size = 1G
+```
+
+**⚠️ 保留多久取决于"能容忍多晚发现误操作"**：如果误删是 3 天后才发现的，binlog 只留 7 天刚好够（但风险大）→ **关键业务建议留 14~30 天** ⭐
+
+**同时要把 binlog 备份到异地** ⭐（本机的 binlog 会随实例一起故障）。
+
+## 六、第四层：防误操作（最容易被忽略）⭐⭐
+
+**为什么这一层最重要**：因为**误删会立刻同步到从库**（复制是忠实的），**RPO = 0 的复制也救不了你** ⚠️
+
+| 手段 | 说明 |
+|---|---|
+| **权限最小化** ⭐⭐ | 应用账号**不给 `DROP`/`DELETE` 权限**（或只给特定表）；运维操作走独立账号 |
+| **`sql_safe_updates = 1`** ⭐ | 禁止"无索引 WHERE 的 UPDATE/DELETE" |
+| **禁止 `DELETE` 全表** | 用软删除 `deleted_at` ；或先 `SELECT` 确认 |
+| **`super_read_only`** | 从库开启，任何账号（除复制线程）都不能写 ⭐ |
+| **延迟从库** ⭐⭐ | **见下文（最有效的防线）** |
+| **DDL 审核** | 禁止无备份的 `DROP TABLE` / `TRUNCATE` |
+| **操作二次确认** | 生产执行前另一人复核 SQL |
+| **备份"先备份再改"** | 数据订正前 `CREATE TABLE bak AS SELECT` ⭐ |
+| **审计日志** | `audit_log` 插件记录所有操作 ⭐ |
+| **`binlog2sql`** | 误操作后立刻生成回滚 SQL ⭐ |
+
+### 延迟从库（Delayed Replica）⭐⭐⭐
+
+**思路**：**让一个从库"故意慢 N 小时"** —— 主库误删后，这个从库还没重放到误操作，可以挽救 ⭐
+
+```sql
+-- 在专用从库上
+CHANGE MASTER TO MASTER_DELAY = 10800;   -- 延迟 3 小时（单位秒）
+-- 8.0.23+ 语法
+CHANGE REPLICATION SOURCE TO SOURCE_DELAY = 10800;
+START SLAVE;
+```
+
+**效果**：
+
+```
+T0: 主库误 DELETE 全表 ⚠️
+T0: 立即同步到普通从库（也丢了）❌
+T0: 延迟从库还有 3 小时的缓冲 —— 误操作还没重放到它 ✅
+
+救火流程：
+  ① 立刻 STOP SLAVE ON 延迟从库  ← ⭐ 关键！阻止它继续重放
+  ② 从延迟从库导出误删前的数据
+  ③ 恢复到主库（或直接把延迟从库提升为主库）⭐
+  ④ 用 binlog2sql 精确回滚
+```
+
+**⚠️ 延迟从库必须能"及时刹住"** ⭐：误操作后要**第一时间停止它的复制**，否则等它重放到误操作就晚了一步。所以**必须有"误操作告警 → 立即停止延迟从库复制"的应急脚本** ⭐⭐
+
+**这是"防人为误操作"最有效的技术手段**（成本低、效果显著）。
+
+## 七、完整的 RPO = 0 方案 ⭐⭐
+
+```
+【单机层】
+  ✔ innodb_flush_log_at_trx_commit = 1
+  ✔ sync_binlog = 1
+  ✔ 企业级 SSD / 有掉电保护的云盘 ⭐
+
+【复制层】
+  ✔ 半同步复制（master_wait_for_slave_count = 1）
+     或 MGR（3 节点，多数派）⭐
+  ✔ 云 RDS：确认是"同步/半同步高可用版" ⭐
+
+【备份层】
+  ✔ 每日 XtraBackup 全量 + 每小时增量
+  ✔ binlog 实时备份（保留 14~30 天）
+  ✔ 3-2-1 原则（异地）
+  ✔ 每月恢复演练 ⭐
+
+【防误操作层】
+  ✔ 延迟从库（延迟 3~24h）⭐⭐
+  ✔ 应用账号权限最小化
+  ✔ sql_safe_updates / 软删除
+  ✔ DDL 与 DML 变更流程（复核 + 备份）
+  ✔ binlog2sql 应急回滚工具
+  ✔ 误操作告警 + 自动停延迟从库的应急脚本 ⭐
+
+【应用层】
+  ✔ 幂等设计（防重试造成重复写）
+  ✔ 关键操作留审计日志
+  ✔ "数据可重建"的思路（写操作先进持久化日志/MQ）⭐
+```
+
+**"数据可重建"是终极方案** ⭐：
+
+```
+核心业务写操作：
+  ① 先写持久化日志（Kafka / 高可靠 MQ）—— 这是"唯一真相"⭐
+  ② 异步消费落库（DB 只是"物化视图"）
+  ③ DB 挂了 → 用日志重放重建 ✅ RPO = 0
+
+代价：架构复杂度高；适用于"数据价值极高"的场景（金融、计费）
+```
+
+## 八、RPO 与 RTO 的平衡 ⭐
+
+| 方案 | RPO | RTO | 成本 |
+|---|---|---|---|
+| 单机 + 定时备份 | 分钟~小时 | 小时 | 低 ⭐ |
+| 异步主从 | 秒~分钟 | 分钟 | 低 |
+| 半同步主从 | ~秒 | 秒~分钟 | 中 |
+| MGR 三节点 | **0** | 秒 | 中高 ⭐ |
+| 云 RDS 高可用版 | 接近 0 | 秒~分钟 | 中 |
+| 同城双活 | 0 | 秒 | 高 |
+| 异地多活 | 0 | 秒 | 很高 |
+| "数据可重建"架构 | **0** | 分钟 | 高 ⭐ |
+
+**结论** ⭐：**对绝大多数业务，"半同步/MGR + 延迟从库 + 验证过的备份"就已经达到 RPO ≈ 0 且成本可控**；"异地多活"和"数据可重建"只在数据价值极高时才值得。
+
+## 九、验证"真的 RPO = 0"的方法 ⭐
+
+```
+① 模拟故障演练（必须做）⭐
+   · 主库 kill -9 → 观察数据是否丢
+   · 主库断网 → 观察半同步超时降级行为
+   · 断电测试（有条件时）
+② 模拟误操作演练
+   · 在测试库执行"误 DELETE" → 用延迟从库 + binlog2sql 恢复 ⭐
+   · 记录恢复耗时（RTO）
+③ 定期恢复演练
+   · 恢复备份到独立实例并校验数据 ⭐
+④ 监控与告警
+   · Slave_IO/SQL_Running
+   · 半同步状态（Rpl_semi_sync_master_status）
+   · 延迟从库的 MASTER_DELAY 是否生效
+   · 备份任务是否成功（且校验可恢复）⭐
+```
+
+**"没演练过的 RPO = 0 只是理论值"** ⭐
+
+## 十、一句话总结
+
+**RPO = 0 需要四层共同保证：单机"双 1"（+ 有掉电保护的磁盘）、复制"半同步或 MGR"、备份"物理全量 + binlog + 异地 + 每月恢复演练"、以及防误操作的"延迟从库 + 权限最小化 + 变更流程 + `binlog2sql`"** ⭐⭐；**最容易忽略也最重要的是"防人为误删"**（因为误删会立刻同步到从库，复制救不了你），**延迟从库（配合"误操作告警即停复制"的应急脚本）是最有效且成本最低的手段** ⭐；**最终必须以"演练"验证方案真实有效，而不是停留在纸面**。', 1),
+
+('MySQL', '并行查询,派生表,8.0优化', 3,
+ 'MySQL 8.0 有哪些查询优化上的重大改进？派生表、子查询、并行扫描分别有什么变化？',
+ '## 一、派生表合并（Derived Merge）⭐
+
+**问题**：5.7 之前，**派生表（`FROM` 子句里的子查询）一律被物化成临时表** ⚠️
+
+```sql
+SELECT * FROM (SELECT id, title FROM posts WHERE status=1) AS t
+WHERE t.id > 100;
+-- 5.7 及之前：先建临时表存子查询结果（可能落磁盘 ⚠️），再查临时表
+--             → 无法把外层条件 t.id > 100 下推到内层
+```
+
+**8.0 的改进** ⭐：
+
+```
+优化器会尝试把派生表"合并"（merge）到外层查询：
+  SELECT * FROM posts WHERE status=1 AND id > 100;
+  → 完全等价，且两个条件下推，索引可用 ✅
+```
+
+**控制**：
+
+```sql
+-- 阻止合并（强制物化，有时反而更快：子查询要被多次引用时）
+SELECT /*+ NO_MERGE(t) */ * FROM (SELECT ...) t;
+-- 强制合并
+SELECT /*+ MERGE(t) */ * FROM (SELECT ...) t;
+```
+
+**什么时候物化反而更好** ⭐：
+
+```
+· 子查询被外层多次引用（如 JOIN 两次）
+· 子查询里有聚合/GROUP BY（无法简单下推）
+· 子查询结果集很小而外层很大
+· 优化器估算合并后需要扫描很多行（合并反而更慢）
+```
+
+## 二、子查询优化：半连接（Semi-Join）⭐⭐
+
+**问题**：5.5 之前，`IN` 子查询是"对外层每一行执行一次子查询" → O(n × m) ⚠️
+
+```sql
+SELECT * FROM posts p
+WHERE p.author_id IN (SELECT id FROM users WHERE vip=1);
+-- 老实现：对每篇 posts 执行一次子查询 → 灾难 ⚠️
+```
+
+**5.6+ 引入的半连接优化** ⭐：把 `IN`/`EXISTS` 子查询**改写为 JOIN**，然后从 5 种策略里选：
+
+| 策略 | 说明 |
+|---|---|
+| **Table Pull-out** | 把子查询的表"拉出来"参与 JOIN（最优，能多用索引）⭐ |
+| **Duplicate Weedout** | 用临时表去重 |
+| **First Match** | 先找第一条匹配就返回（适合 `EXISTS`）⭐ |
+| **Loose Scan** | 松散索引扫描（子查询表索引前导列有重复值时高效）⭐ |
+| **Materialization** | 物化子查询结果 + 哈希查找 |
+| **8.0 新增：Hash Join** | 无索引时用哈希表代替 BNL ⭐ |
+
+**查看优化器选了哪种** ⭐：
+
+```sql
+EXPLAIN FORMAT=TREE SELECT ...;
+-- 输出里会有：
+--   -> Nested loop inner join
+--   -> Filter: (p.author_id is not null)
+--   -> FirstMatch ... (或 LooseScan / Materialize / DuplicateWeedout)
+SHOW WARNINGS;      -- ⭐ 旧式 EXPLAIN 后跟 SHOW WARNINGS 能看到改写后的 SQL
+```
+
+**开关**：
+
+```sql
+SET optimizer_switch = ''semijoin=on,materialization=on,firstmatch=on,loosescan=on,duplicateweedout=on'';
+```
+
+**⚠️ 什么时候半连接帮不上** ⚠️：
+
+```
+· NOT IN（反连接）的优化较弱（NOT EXISTS 通常更好）
+· 子查询涉及聚合/窗口函数
+· 子查询与外层有复杂关联
+```
+
+**所以实操建议** ⭐：**`IN` 和 `EXISTS` 在 5.6+ 里性能差异通常不大，先用 `EXPLAIN` 看优化器怎么做，不要盲目改写**。真正关键的是**索引**。
+
+## 三、Hash Join（8.0.18+）⭐⭐
+
+**背景**：**没有索引的等值 JOIN** 在 5.7 里只能用 **BNL（Block Nested Loop）**：
+
+```
+BNL 代价：把驱动表分批读入 join buffer，然后对每个被驱动表的行做内存比对
+        ≈ (rows_driver / batch) × rows_driven  ⚠️ O(n×m)
+```
+
+**8.0 的 Hash Join** ⭐：
+
+```
+① 选较小的表作为"构建表"（build table）→ 在内存里建哈希表
+② 扫描另一个表（probe table），用哈希查找匹配
+③ 代价 ≈ O(rows_build) + O(rows_probe)  ← 线性！⭐
+```
+
+**效果对比**（无索引 JOIN）⭐：
+
+| 数据量 | BNL | Hash Join |
+|---|---|---|
+| 1万 × 1万 | 很慢 | 秒级 ⭐ |
+| 100万 × 100万 | 不可用 ❌ | 可接受 ✅ |
+
+**控制 hint**：
+
+```sql
+SELECT /*+ HASH_JOIN(t1, t2) */ ...;       -- 强制 hash join
+SELECT /*+ NO_HASH_JOIN(t1, t2) */ ...;    -- 禁止
+SELECT /*+ NO_BNL(t1) */ ...;              -- 禁止 BNL
+SET optimizer_switch = ''hash_join=off'';
+```
+
+**⚠️ 但 Hash Join 不是万能** ⚠️：
+
+```
+· 只支持【等值】连接（不支持 <、> 等）
+· 构建表太大放不下内存 → 会溢出到磁盘（性能下降）⚠️
+· 对"有索引的等值 JOIN"，NLJ 通常仍更快 ✅
+· 所以：Hash Join 是"无索引时的救命方案"，不是"有了它就不用建索引"❗
+```
+
+**一句话** ⭐：**Hash Join 解决的是"偶发的大表无索引 JOIN"和"临时分析查询"，生产 OLTP 路径上仍应以"连接列建索引 + NLJ"为主**。
+
+## 四、平行查询（Parallel Query，8.0.14+）⭐
+
+**背景**：MySQL 一直是"**单查询单线程**"（`SELECT` 不能并行扫描）→ 大表分析型查询很慢 ⚠️
+
+**8.0 引入并行扫描** ⭐：
+
+```sql
+-- 查看
+SHOW VARIABLES LIKE ''innodb_parallel_read_threads'';    -- 默认 4
+SHOW VARIABLES LIKE ''innodb_dedicated_server'';
+
+-- 会话级调整（可调大以加速大查询）
+SET SESSION innodb_parallel_read_threads = 8;
+```
+
+**⚠️ 关键限制** ⭐⭐：
+
+```
+并行扫描只对【无索引的全表扫描 COUNT(*) / 全表扫描】生效
+  · SELECT COUNT(*) FROM big_table;          ✅ 可并行
+  · SELECT COUNT(*) FROM t WHERE ...;        ⚠️ 仅在能并行扫描时
+  · 走索引的查询                              ❌ 不并行
+  · JOIN、ORDER BY、GROUP BY                  ❌ 不并行（这些阶段仍是单线程）
+
+→ 也就是说：**并行查询的能力非常有限**，别指望它替代"列存/MPP 分析库" ⭐
+```
+
+**判断是否用了并行** ⭐：
+
+```sql
+EXPLAIN FORMAT=TREE SELECT COUNT(*) FROM big_table;
+-- 输出可能出现：
+--   -> Parallel scan on big_table
+--       -> Count rows
+```
+
+**适用场景** ⭐：**大表的 `COUNT(*)`、大表的全表扫描导入/校验**（如 `SELECT ... INTO OUTFILE`）。
+
+**不适用**：复杂分析的 `GROUP BY` / `JOIN` / 排序（这些应该用 ClickHouse/Doris 或走从库/离线库）⭐
+
+## 五、其他 8.0 的查询优化改进 ⭐
+
+| 改进 | 说明 |
+|---|---|
+| **Index Skip Scan**（跳跃扫描）⭐ | 联合索引 `(a,b)` 下，`WHERE b=1`（缺 a）也能用索引：跳过 a 的不同值分别扫描 → 让"违反最左前缀"的查询也能用上索引 ✅ |
+| **降序索引** | `CREATE INDEX idx (a ASC, b DESC)` 真正生效（5.7 语法接受但忽略）→ `ORDER BY a ASC, b DESC` 可用索引 ⭐ |
+| **函数索引** | `CREATE INDEX idx ON t ((SUBSTRING(name,1,10)))` → 表达式查询可用索引 ⭐ |
+| **不可见索引** | `ALTER TABLE t ALTER INDEX idx INVISIBLE` → 安全试错删索引 ⭐ |
+| **`EXPLAIN ANALYZE`** ⭐ | 真实执行并给出"估算 vs 实际"，是排查优化器选错计划的利器 |
+| **`EXPLAIN FORMAT=TREE`** | 树形展示，直观看到执行顺序与并行 |
+| **直方图（Histogram）** ⭐ | `ANALYZE TABLE t UPDATE HISTOGRAM ON col` → 给无索引列提供分布信息，改善倾斜数据的估算 |
+| **`optimizer_cost_model`** | 8.0 可切换代价模型（考虑 SSD/内存），比 5.7 更贴合现代硬件 ⭐ |
+| **临时表引擎改为 InnoDB** | 8.0 默认 `internal_tmp_mem_storage_engine=TempTable`，比老 Memory 引擎更好（支持变长、更少落盘）⭐ |
+| **CTE（含递归）** | 可读性 + 优化器对 CTE 有专门的处理 ⭐ |
+| **窗口函数** | 那些"自连接 / 用户变量"的解法可以退休了 ⭐ |
+| **`NOWAIT` / `SKIP LOCKED`** ⭐ | `FOR UPDATE SKIP LOCKED` 实现高并发任务队列 |
+| **资源组** | CPU 亲和 + 优先级隔离 |
+| **`SELECT ... FOR UPDATE OF tbl`** | 只锁指定表 |
+| **优化器提示（Hint）体系** ⭐ | `/*+ ... */` 统一语法，支持 JOIN 顺序、算法、`SET_VAR` 等 |
+| **`information_schema` 性能** | 改查数据字典，比 5.7 快很多 |
+
+**Index Skip Scan 值得单独说** ⭐：
+
+```sql
+CREATE INDEX idx_ab ON t (a, b);
+-- 5.7: WHERE b = 1  → 用不了索引（违反最左前缀）❌
+-- 8.0: WHERE b = 1  → 可以"跳跃"扫描：跳过不同 a 值分别定位 b=1 ✅
+--     条件是 a 的【不同值个数（基数）很少】（如 a 只有几个取值时才有收益）
+EXPLAIN SELECT * FROM t WHERE b = 1;   -- 可能出现 "Using index for skip scan"
+```
+
+## 六、8.0 优化后的实践建议 ⭐
+
+```
+① 优先"建好索引"，而不是指望优化器变强 ⭐
+   优化器的改进（Hash Join / Skip Scan / 派生表合并）是"兜底"
+   但都不能替代正确的索引设计
+
+② 善用新工具排查
+   · EXPLAIN ANALYZE（看估算 vs 实际）⭐
+   · EXPLAIN FORMAT=TREE（看执行结构）
+   · 直方图（改善倾斜数据的估算）⭐
+
+③ 用新特性简化 SQL
+   · 窗口函数替代自连接/用户变量 ⭐
+   · CTE 替代嵌套子查询
+   · FOR UPDATE SKIP LOCKED 实现任务队列 ⭐
+
+④ 谨慎使用优化器 hint
+   · 优先"改 SQL / 加索引 / ANALYZE TABLE"
+   · hint 是最后手段（把假设硬编码进 SQL）⭐
+
+⑤ 大分析查询不要指望 MySQL 并行
+   · 并行查询能力有限（只对全表扫描）
+   · 报表/统计应该走"汇总表"或"列存分析库"（ClickHouse/Doris）⭐
+```
+
+## 七、一句话总结
+
+**8.0 在查询优化上的三大质变是：① 派生表可合并（条件可下推）、② 无索引等值 JOIN 用 Hash Join（替代灾难性的 BNL）、③ 新增 Index Skip Scan（让违反最左前缀的查询也能用索引）** ⭐；但**"并行查询"的能力非常有限（只对全表扫描的 COUNT/读，不覆盖 JOIN/GROUP BY/ORDER BY）**，别指望它替代分析型数据库 ⚠️；**最实用的新工具是 `EXPLAIN ANALYZE` + 直方图 + `INVISIBLE` 索引** ⭐；**任何优化器改进都不能替代"正确的索引设计"**。', 1),
+
+('网络', 'TCP,三次握手', 2,
+ 'TCP 为什么要三次握手？两次行不行？',
+ '核心目的是 **双向确认双方的收发能力，并同步初始序列号（ISN）**。
+
+**为什么两次不行**：
+- 两次只能确认「客户端→服务端」方向可用，**服务端无法确认自己的发送能力**。
+- 更关键的是**历史连接问题**：客户端一个早已失效的旧 SYN 延迟到达服务端，两次握手会让服务端直接建立连接并等待数据，白白占资源（客户端根本不认这条连接）。
+- ISN 需要**双向同步**，两次握手服务端发了 SYN-ACK 但收不到客户端对 ISN 的确认，服务端无法确定客户端收到了自己的 ISN。
+
+**握手过程**：
+| 步骤 | 报文 | 含义 |
+|---|---|---|
+| 1 | SYN seq=x | 客户端请求建连，发送自己的 ISN=x |
+| 2 | SYN+ACK seq=y ack=x+1 | 服务端同意，发送自己的 ISN=y，确认对方 |
+| 3 | ACK ack=y+1 | 客户端确认服务端的 ISN |
+
+**为什么是随机的 ISN**：防止旧连接的报文被新连接误收（同一四元组在时间上复用时，序列号能区分新旧）。
+
+**一句话总结**：**三次握手不是「多此一举」，而是「双向确认 + 同步 ISN + 排除历史连接」三个需求的最小交互次数。**', 1),
+
+('网络', 'TCP,四次挥手,TIME_WAIT', 3,
+ 'TCP 为什么是四次挥手？TIME_WAIT 的作用是什么？',
+ '**四次挥手**：因为 TCP 是**全双工**，一方关闭只表示「我不再发数据」，对方可能还有数据要发，所以：
+- 主动关闭方发 **FIN**（我想关了）
+- 被动方回 **ACK**（知道了，但我可能还有数据）
+- 被动方数据发完后发 **FIN**（我也关了）
+- 主动方回 **ACK**（确认）
+
+第 2、3 步之间可能间隔很长，所以 ACK 和 FIN 不能合并，因此是四次（若无数据可发，第二、三次可能合并成一次，但协议上仍需按顺序处理）。
+
+**TIME_WAIT（主动关闭方最后进入的状态，持续 2MSL）的作用**：
+1. **保证最后一个 ACK 能到达对端**：若 ACK 丢失，对端会重发 FIN，处于 TIME_WAIT 的一方还能再回 ACK；若直接关闭，对端收不到 ACK 会一直重发 FIN，最终报错。
+2. **让本次连接的残余报文在网络中自然消亡**：避免旧连接的延迟报文被同一四元组的新连接误收。
+
+**为什么是 2MSL**：MSL 是报文最大生存时间，一个来回就是 2MSL，确保「我发出去的 ACK」和「对方可能重发的 FIN」都能在网络中消亡。
+
+**大量 TIME_WAIT 怎么办**：
+- 服务端主动关闭才会产生（**让客户端主动关闭**是最优解）。
+- 内核参数 `net.ipv4.tcp_tw_reuse=1`（**只对安全场景，客户端连接有效**）、`tcp_max_tw_buckets`（限制总数）、`tcp_fin_timeout`。
+- **不要开 `tcp_tw_recycle`**（NAT 环境下会丢包，新版内核已删除）。
+
+**一句话总结**：**四次挥手是全双工的必然；TIME_WAIT 是「可靠关闭 + 隔离旧连接」的保障，宁可等 2MSL 也不能丢包。**', 1),
+
+('网络', 'TCP,CLOSE_WAIT,连接泄漏', 2,
+ 'CLOSE_WAIT 大量堆积说明什么问题？怎么排查？',
+ '**CLOSE_WAIT 是「对端已发 FIN，我方还未调用 close()」的状态**，大量堆积说明**应用层没有正确关闭连接**。
+
+**根因**：
+- 代码里**忘记 `close()`**（异常分支、忘记 finally 释放）。
+- 连接池**只借不还**（用完没归还）。
+- **阻塞在某个慢操作**，导致来不及 close。
+- 读取时未处理 `recv()` 返回 0（对端正常关闭）的情况。
+
+**排查步骤**：
+```bash
+ss -antp | grep CLOSE-WAIT | wc -l          # 数量
+ss -antp state close-wait                    # 看是哪些进程
+ss -antp state close-wait | awk ''{print $6}'' | sort | uniq -c   # 按进程统计
+```
+- 找到进程 PID → `lsof -p PID` / `jstack` / `gdb` 看是哪类连接（数据库？下游 HTTP？）。
+- **这是应用 bug，改内核参数没用**（`tcp_keepalive` 只能兜底回收，治标不治本）。
+
+**对比 TIME_WAIT**：TIME_WAIT 多是**主动关闭方**的正常现象（可调优缓解）；CLOSE_WAIT 多是**被动关闭方**的代码缺陷（必须改代码）。
+
+**一句话总结**：**TIME_WAIT 是「我关了但还在等」，属于机制；CLOSE_WAIT 是「对方关了但我没关」，属于 bug —— 前者调参数，后者改代码。**', 1),
+
+('网络', 'TCP,拥塞控制', 3,
+ 'TCP 拥塞控制有哪些算法？慢启动、拥塞避免、快重传、快恢复分别做什么？',
+ '拥塞控制的目标是**在网络出现拥塞时主动降速，避免雪崩**。经典四阶段：
+
+**1. 慢启动（Slow Start）**
+- `cwnd` 从 1 MSS 开始，**每收到一个 ACK 就 +1 MSS**（指数增长，每 RTT 翻倍）。
+- 直到 `cwnd >= ssthresh` 或发生丢包。
+- **它并不慢**：是指数增长，只是起点小。
+
+**2. 拥塞避免（Congestion Avoidance）**
+- 超过 `ssthresh` 后，**每个 RTT 只 +1 MSS**（线性增长，加性增）。
+- 增长更保守，探测网络上限。
+
+**3. 快重传（Fast Retransmit）**
+- 收到 **3 个重复 ACK** 就立即重传，不等超时（超时太慢）。
+- 触发条件：后续报文到达但对端缺了中间那个。
+
+**4. 快恢复（Fast Recovery）**
+- 快重传后，`ssthresh = cwnd/2`，`cwnd = ssthresh`（而不是回到 1），**直接进入拥塞避免**。
+- 因为重复 ACK 说明网络没完全崩，不必从零开始。
+
+**超时重传**则更严重：`ssthresh = cwnd/2, cwnd = 1`，重新慢启动。
+
+**现代算法**：
+| 算法 | 特点 |
+|---|---|
+| Reno | 经典，丢包即减半，高带宽高延迟下效率低 |
+| CUBIC | **Linux 默认**，用三次函数探测，RTT 无关性好 |
+| BBR | Google 出品，**基于带宽和 RTT 建模**，不靠丢包判断，弱网/高丢包下表现好 |
+
+**一句话总结**：**慢启动快速试探上限，拥塞避免线性逼近，快重传/快恢复避免「一丢包就归零」；现代 CUBIC/BBR 针对高 BDP 网络做了改进。**', 1),
+
+('网络', 'TCP,滑动窗口,流量控制', 2,
+ 'TCP 滑动窗口和流量控制是怎么工作的？',
+ '**滑动窗口解决「发送方不能超过接收方处理能力」的问题**，实现可靠且高效的传输。
+
+**发送窗口 = min(拥塞窗口 cwnd, 接收窗口 rwnd)**：
+- `cwnd` 由拥塞控制决定（网络能承受多少）。
+- `rwnd` 由接收方在 TCP 头部**窗口字段**通告（自己还能收多少）。
+
+**接收窗口机制**：
+- 接收方通告 `rwnd = 接收缓冲区剩余空间`。
+- 发送方**已发送未确认的数据量不能超过 rwnd**。
+- 接收方应用层读走数据后，缓冲区腾空，窗口右移（滑动）。
+
+**零窗口与探测**：
+- 若 `rwnd = 0`，发送方停止发送，并启动**持续计时器**（persist timer），定时发**窗口探测**（1 字节），防止对方窗口更新报文丢失导致死锁。
+- 对方窗口重新打开后用 **窗口更新 ACK** 通知。
+
+**零窗口 + 拥塞窗口的配合**：窗口大小会随 ACK 逐渐「张开」（silly window syndrome 问题，靠 **Nagle 算法（发送方）** 和 **延迟确认（接收方）** 缓解）。
+
+**滑动窗口的「滑动」**：
+```
+[已发送已确认][已发送未确认][可发送未发送][不可发送]
+              ←── 窗口 ──→
+```
+每收到一个 ACK，窗口右边界前移。
+
+**一句话总结**：**流量控制用接收窗口保护接收方，拥塞控制用拥塞窗口保护网络，实际发送量取两者较小值；滑动窗口让「确认一段、发送一段」流水化，不必停等。**', 1),
+
+('网络', 'TCP,Nagle,延迟确认', 2,
+ 'Nagle 算法和延迟确认（Delayed ACK）是什么？什么时候要关闭 Nagle？',
+ '两者都是为了**减少小包数量**，但**组合使用会引发延迟**。
+
+**Nagle 算法（发送方）**：
+- 规则：**最多只能有 1 个未被确认的小包**。
+- 若还有未确认数据，则把小数据攒起来，等 ACK 或攒够 1 MSS 再发。
+- 目的：减少小包（如 telnet 逐字符）造成的网络浪费。
+
+**延迟确认（接收方）**：
+- 收到数据后**不立即回 ACK**，而是等 40ms（Linux 默认）或等有数据要回捎带 ACK。
+- 目的：减少纯 ACK 报文，且给捎带 ACK 机会。
+
+**经典的 40ms 延迟**：
+- 发送方受 Nagle 限制，等 ACK 才能发下一小包；
+- 接收方受延迟确认限制，等 40ms 才发 ACK；
+- 两者叠加 → **每次小交互都要等 ~40ms**（如请求-响应型小包应用）。
+
+**何时关闭 Nagle**：
+- **请求-响应型、小包多、延迟敏感**：Redis、MySQL 客户端、游戏、RPC。
+- 用 `TCP_NODELAY`（`setsockopt`）关闭。
+- **不要盲目全局关**：大文件传输、批量日志场景下 Nagle 有益。
+
+**一句话总结**：**Nagle 攒发送方的小包，延迟确认攒接收方的 ACK；单用各自有益，「Nagle + 延迟确认」组合会让小请求-响应卡 40ms，延迟敏感场景应 `TCP_NODELAY`。**', 1),
+
+('网络', 'TCP,KeepAlive,心跳', 2,
+ 'TCP KeepAlive 和应用层心跳有什么区别？该用哪个？',
+ '**TCP KeepAlive（内核级）**：
+- 空闲 **2 小时**（`tcp_keepalive_time`）后开始探测，每隔 75s 发一个探测包，失败 9 次（`tcp_keepalive_probes`）才断开。
+- 默认参数**太长**，几乎无法及时察觉对端掉线。
+- **无法穿越应用层**：若链路中间有 NAT/防火墙，探测包可能被丢弃但连接看起来还「活」。
+- 各语言可设 socket 选项调整，但**不能携带业务语义**。
+
+**应用层心跳**：
+- 应用自己定期（如 30s）发心跳包，**及时发现断连**。
+- **可以穿越 LB / 代理**（心跳是正常数据）。
+- **可以携带业务信息**（如负载、状态）。
+- **可控**：心跳间隔、超时阈值、重连策略都在你手里。
+
+**对比**：
+| 维度 | TCP KeepAlive | 应用层心跳 |
+|---|---|---|
+| 检测速度 | 慢（小时级） | 快（秒级，可配） |
+| 穿透代理 | 不一定 | 是（是数据包） |
+| 业务语义 | 无 | 有 |
+| 实现成本 | 内核参数 | 需自己写 |
+
+**实践**：
+- **长连接服务（IM、推送、RPC）一定要应用层心跳**，TCP KeepAlive 作为兜底。
+- 心跳间隔要**小于 NAT 空闲超时**（常见 300s / 900s），如 30~60s。
+- 心跳超时后要**主动重连**，不要傻等。
+
+**一句话总结**：**TCP KeepAlive 是内核的「礼貌问候」，默认两小时，太慢且穿不过代理；应用层心跳才是长连接及时探活的正确做法，KeepAlive 只作兜底。**', 1),
+
+('网络', 'HTTP,版本对比', 2,
+ 'HTTP/1.1、HTTP/2、HTTP/3 有什么区别？',
+ '**HTTP/1.1 (1997)**：
+- **文本协议**，一请求一响应。
+- 一个 TCP 连接**串行**处理请求（**队头阻塞 HOL blocking**）。
+- 靠**多开 TCP 连接**（浏览器 6~8 个）和**管道化**（实际少用）缓解。
+- 头部冗长、不压缩。
+
+**HTTP/2 (2015)**：
+- **二进制分帧**，把请求/响应拆成帧（HEADERS/DATA）。
+- **多路复用**：一个 TCP 连接上并行多个流（stream），**解决了 HTTP 层的队头阻塞**。
+- **头部压缩 HPACK**。
+- **服务器推送**（Server Push，实际用得少）。
+- **流优先级**。
+- ⚠️ **仍有 TCP 层队头阻塞**：一个包丢失，所有流都等重传。
+
+**HTTP/3 (2022, RFC 9114)**：
+- 基于 **QUIC（UDP）** 而非 TCP。
+- **彻底解决队头阻塞**：QUIC 的流是独立的，一个流丢包不影响其他流。
+- **0-RTT / 1-RTT 建连**（QUIC 把 TLS 1.3 握手与传输握手合并）。
+- **连接迁移**：用 Connection ID 标识连接，换网络（WiFi→4G）连接不断。
+- 内置加密（TLS 1.3 强制）。
+
+**演进主线**：**解决队头阻塞** —— HTTP/1.1 应用层串行 → HTTP/2 传输层串行但应用层并行 → HTTP/3 连传输层都不串行。
+
+**一句话总结**：**1.1 靠多连接，2 靠多路复用但受 TCP 限制，3 换 UDP+QUIC 彻底并行；HTTP/3 是未来，但需服务端/中间设备支持。**', 1),
+
+('网络', 'HTTPS,TLS,握手', 3,
+ 'HTTPS 的 TLS 握手过程是怎样的？为什么要用非对称 + 对称加密结合？',
+ '**HTTPS = HTTP + TLS**，TLS 在 TCP 之上提供**加密、完整性、身份认证**。
+
+**TLS 1.2 握手（简化）**：
+1. **ClientHello**：客户端发支持的版本、密码套件、随机数 `random_C`。
+2. **ServerHello**：服务端选版本、密码套件、随机数 `random_S`；发**证书**。
+3. **证书校验**：客户端用 CA 公钥验证证书链，取出服务端公钥。
+4. **密钥交换**：客户端生成 `pre_master_secret`，用服务端公钥加密后发送（RSA 方式）；或走 ECDHE 交换。
+5. **生成会话密钥**：双方用 `random_C + random_S + pre_master_secret` 推导出**对称密钥**。
+6. **Finished**：双方发 Finished，验证握手未被篡改。
+
+**TLS 1.3 优化**：
+- 握手**从 2-RTT 降到 1-RTT**，支持 **0-RTT**（会话复用）。
+- 移除 RSA 密钥交换，**只支持 (EC)DHE 前向安全**。
+- 密码套件大幅精简。
+
+**为什么非对称 + 对称结合**：
+- **非对称加密安全但慢**（RSA 比 AES 慢几百倍）→ 只用来**交换密钥 / 认证身份**。
+- **对称加密快** → 用来**加密实际数据**。
+- **结合方案**：非对称加密传输对称密钥，对称密钥加密通信内容。
+
+**证书的作用**：证明「公钥确实属于该域名」——防止中间人替换公钥。证书由 CA 签名，浏览器内置根 CA 信任。
+
+**一句话总结**：**TLS 用非对称加密「安全地协商一个对称密钥」，之后全程用对称加密传数据 —— 兼顾安全与性能；证书链保证公钥可信，防止中间人攻击。**', 1),
+
+('网络', 'HTTPS,证书,中间人', 3,
+ 'HTTPS 如何防止中间人攻击？证书链是怎么验证的？',
+ '**HTTPS 防中间人的核心 = 证书信任链 + 签名验证**。
+
+**证书链结构**：
+```
+根证书（自签名，内置于系统/浏览器）
+    └── 中间 CA 证书（被根 CA 签名）
+            └── 服务器证书（被中间 CA 签名，含域名 + 公钥）
+```
+
+**校验流程**：
+1. 服务端出示**服务器证书**（可能附带中间证书）。
+2. 客户端找**签发者（Issuer）**，用其公钥验证服务器证书的**签名**。
+3. 逐级向上验证，直到**根证书**（内置在系统信任库里）。
+4. 检查**域名匹配**（SAN 字段）、**有效期**、**吊销状态**（CRL / OCSP）、**用途**（KeyUsage / EKU）。
+
+**为什么能防中间人**：
+- 攻击者若想冒充，需要**伪造一个被目标域名信任的证书**，但他没有 CA 私钥，签不出有效证书。
+- 攻击者若替换公钥，签名验证失败（签名对内容敏感）。
+- 攻击者若用自己的证书，链验证到不了受信任的根。
+
+**为什么需要中间 CA**：根 CA 私钥必须离线保存（最高安全），中间 CA 用于日常签发，降低根私钥暴露风险。
+
+**特殊情况**：
+- **自签名证书**：浏览器报警（不受信），除非手动导入信任。
+- **证书固定（pinning）**：App 内写死公钥指纹，防企业代理/系统级 CA 攻击。
+- **公共 WiFi 劫持**：若用户误信了攻击者的根证书，中间人可行 —— 所以**不要随意安装未知根证书**。
+
+**一句话总结**：**防中间人靠「信任链 + 签名」——攻击者拿不到 CA 私钥就伪造不出可信证书；链式验证保证从服务器证书能一路验到系统内置的根证书。**', 1),
+
+('网络', 'DNS,解析流程', 2,
+ '一次 DNS 解析的完整过程是怎样的？用了哪些记录类型？',
+ '**解析过程（递归 + 迭代）**：
+
+1. **本地查询**：先查浏览器缓存 → 系统 hosts → 本地 DNS 缓存（`ipconfig /displaydns`、`resolvectl`）。
+2. **递归查询本地 DNS 服务器**（运营商/公共 DNS，如 8.8.8.8）：如果它没缓存，代为递归。
+3. **迭代查询**（本地 DNS 依次问）：
+   - 问**根域名服务器** → 返回 `.com` 顶级域服务器地址。
+   - 问 **`.com` TLD 服务器** → 返回 `example.com` 权威服务器地址。
+   - 问**权威 DNS 服务器** → 返回该域名最终的 **A/AAAA 记录**。
+4. **返回并缓存**（按 TTL 缓存各级）。
+
+**常见记录类型**：
+| 类型 | 含义 |
+|---|---|
+| A | IPv4 地址 |
+| AAAA | IPv6 地址 |
+| CNAME | 别名（指向另一个域名，**根域名不能设 CNAME**） |
+| MX | 邮件服务器 |
+| NS | 该域的权威 DNS 服务器 |
+| TXT | 文本（SPF、DKIM、域名验证） |
+| SOA | 起始授权，含权威信息 |
+| SRV | 服务定位（`_service._proto.name`） |
+| PTR | 反向解析（IP → 域名） |
+
+**递归 vs 迭代**：递归是「你帮我查到最终答案」，迭代是「你告诉我下一步该问谁」。
+
+**一句话总结**：**DNS 解析 = 逐级缓存 + 根/TLD/权威三级迭代查询；CNAME 做别名、A/AAAA 给最终地址、MX 管邮件、TXT 做验证，TTL 决定缓存时长。**', 1),
+
+('网络', 'CDN,加速原理', 2,
+ 'CDN 的加速原理是什么？回源、预热、缓存策略怎么理解？',
+ '**CDN（Content Delivery Network）= 把内容缓存到离用户最近的边缘节点**，缩短物理距离和网络跳数。
+
+**加速原理**：
+1. **智能 DNS / Anycast**：用户请求域名时，解析到**最近的边缘节点 IP**。
+2. **边缘缓存命中**：节点有内容就直接返回（**最快**）。
+3. **回源**：节点没内容（未命中/过期），向上级节点或**源站**取，取回后缓存。
+
+**核心概念**：
+- **回源（Origin Pull）**：边缘节点向源站拉内容。
+- **回源率**：回源请求 / 总请求，**越低越好**（越高越慢、越吃源站带宽）。
+- **预热（Preheat）**：大促前主动把热点内容推到节点，避免首批用户触发回源。
+- **缓存键（Cache Key）**：默认 `URL + 查询参数`，可自定义（忽略某些参数、按 header 区分）。
+- **TTL**：缓存时长，由源站 `Cache-Control` / `Expires` 决定。
+- **刷新/清缓存**：内容更新后主动清理节点缓存。
+
+**缓存策略**：
+- **静态资源**（JS/CSS/图片）：长 TTL + **文件指纹**（`app.a1b2c3.js`），更新即换名。
+- **HTML**：短 TTL 或不缓存（保证内容新鲜）。
+- **API**：按业务设，动态内容可做边缘计算。
+
+**动态加速**：CDN 也支持回源链路优化（专线、最优路由），降低动态请求延迟。
+
+**一句话总结**：**CDN 靠「就近节点 + 缓存」把内容送到用户门口，命中就快、未命中就回源；配好缓存键和 TTL、静态资源加指纹、热点提前预热，是降低回源率和延迟的关键。**', 1),
+
+('网络', '负载均衡,L4,L7', 2,
+ '四层和七层负载均衡有什么区别？各自的代表实现？',
+ '**四层（传输层）负载均衡**：
+- 基于 **IP + 端口** 转发，**不解析应用层内容**。
+- 工作在 LVS、TCP 代理层面，性能极高（可扛百万并发）。
+- 代表：**LVS（DR/NAT/TUN 模式）**、F5、HAProxy（TCP 模式）、Nginx stream。
+- 特点：快、透明、改不了内容，**无法按 URL/Header 路由**。
+
+**七层（应用层）负载均衡**：
+- 解析 **HTTP/HTTPS**，可按 **URL、Host、Header、Cookie** 路由。
+- 支持**内容改写、SSL 卸载、压缩、缓存、鉴权**。
+- 代表：**Nginx、HAProxy、Envoy、Traefik、云 ALB/CLB**。
+- 特点：灵活、功能多，但性能低于四层（要完整解析）。
+
+**对比**：
+| 维度 | 四层 | 七层 |
+|---|---|---|
+| 依据 | IP/端口 | URL/Header/Cookie |
+| 性能 | 极高 | 高 |
+| 功能 | 转发为主 | 路由/改写/SSL/缓存 |
+| 场景 | 数据库、TCP 服务、超高并发 | HTTP 业务、微服务网关 |
+
+**常见架构**：**LVS（四层）→ Nginx（七层）→ 应用**，四层扛量、七层做业务路由。
+
+**健康检查**：四层靠 TCP 连接/端口探测，七层可请求特定 URL 判断业务健康。
+
+**会话保持**：四层按源 IP（hash），七层可用 Cookie 插入。
+
+**一句话总结**：**四层看 IP/端口、快而透明；七层看 HTTP 内容、灵活而重；大流量入口常用「LVS + Nginx」组合 —— 四层扛并发，七层做路由与业务逻辑。**', 1),
+
+('网络', '代理,正向反向', 1,
+ '正向代理和反向代理有什么区别？',
+ '**正向代理（Forward Proxy）**：
+- **代理客户端**，客户端知道代理存在，服务端不知道真实客户端。
+- 用途：**科学上网、企业出口审计、缓存加速、突破访问限制**。
+- 例子：VPN、浏览器 HTTP 代理设置、公司统一出口。
+
+**反向代理（Reverse Proxy）**：
+- **代理服务端**，客户端不知道真实服务器，以为直接访问的就是服务器。
+- 用途：**负载均衡、SSL 卸载、缓存、安全防护、统一入口**。
+- 例子：**Nginx、Apache、HAProxy、云 WAF**。
+
+**对比**：
+| 维度 | 正向代理 | 反向代理 |
+|---|---|---|
+| 代理谁 | 客户端 | 服务端 |
+| 谁配置 | 客户端 | 服务端运维 |
+| 客户端是否知情 | 是 | 否 |
+| 典型场景 | 翻墙、审计、加速 | 负载均衡、网关 |
+
+**Nginx 在本项目中就是反向代理**：用户访问 `https://lazycat.cc` → Nginx（443）→ 转发到本机 `127.0.0.1:8080` 的 Crow 服务。
+
+**常见请求头**：反向代理转发时要带
+- `X-Real-IP`：真实客户端 IP
+- `X-Forwarded-For`：代理链
+- `X-Forwarded-Proto`：原始协议
+
+后端据此拿到真实客户端信息。
+
+**一句话总结**：**正向代理替客户端的忙（客户端知情、服务端不知情），反向代理替服务端的忙（客户端不知情）；Nginx 作为反向代理承担负载均衡、SSL 卸载、统一入口。**', 1),
+
+('网络', 'NAT,地址转换', 2,
+ 'NAT 是什么？SNAT 和 DNAT 有什么区别？',
+ '**NAT（Network Address Translation）** 解决 IPv4 地址不足，让私网主机共享公网 IP 上网。
+
+**私网地址段**：`10.0.0.0/8`、`172.16.0.0/12`、`192.168.0.0/16`（RFC 1918）。
+
+**SNAT（源地址转换）**：
+- 改**源 IP**：私网主机出公网时，把源 IP 换成网关公网 IP。
+- 场景：**内网访问外网**（家里路由器、公司出口）。
+- 用 conntrack 表记录映射，回包时反向还原。
+
+**DNAT（目的地址转换）**：
+- 改**目的 IP**：把发往公网 IP 的请求转发到内网主机。
+- 场景：**端口映射 / 端口转发**（把公网 `:80` 转到内网 Web 服务器）。
+
+**MASQUERADE**：SNAT 的动态版本，源 IP 随出网口自动取（家宽动态 IP 场景）。
+
+**NAT 类型**：
+- **静态 NAT**：一对一固定映射。
+- **动态 NAT**：多私网映射到公网池。
+- **PAT / NAPT（端口复用）**：**最常见**，多个私网主机通过不同端口共享一个公网 IP（`ip:port` 五元组区分会话）。
+
+**NAT 的问题**：
+- **破坏端到端**：外网无法主动连内网（需端口映射/打洞）。
+- **P2P / VoIP 受阻**：需要 STUN/TURN/UPnP 打洞。
+- **连接跟踪表**：高并发下 conntrack 表可能打满（`nf_conntrack`）。
+
+**一句话总结**：**NAT 让私网共享公网 IP；SNAT 改源（出去），DNAT 改目的（进来），PAT 靠端口复用让多主机共用一个公网 IP —— 代价是破坏了端到端直连，需要端口映射或打洞。**', 1),
+
+('网络', '子网,IP,掩码', 2,
+ '如何划分子网？CIDR 和子网掩码怎么算？',
+ '**IP 地址 = 网络号 + 主机号**，子网掩码决定分界点在哪儿。
+
+**CIDR（无类别域间路由）**：用 `/N` 表示前 N 位是网络号。
+- `192.168.1.0/24` → 掩码 `255.255.255.0`，可用主机 **254** 个（2^8 - 2，去掉网络号和广播地址）。
+- `/25` → 每段 128 个地址，**126 可用**。
+- `/26` → 64 个地址，**62 可用**。
+
+**计算步骤**：
+1. `/N` → 掩码：前 N 位为 1。`/26` = `11111111.11111111.11111111.11000000` = `255.255.255.192`。
+2. 网络地址 = IP **按位与**掩码。
+3. 广播地址 = 网络地址 + (主机位数全 1)。
+4. 可用范围 = 网络地址+1 ~ 广播地址-1。
+
+**例子**：`192.168.1.130/26`
+- 掩码 `/26`，块大小 = 256 - 192 = **64**。
+- 网络地址：130 落在 `128~191` 区间 → `192.168.1.128`。
+- 广播地址：`192.168.1.191`。
+- 可用：`.129 ~ .190`。
+
+**为什么要子网划分**：
+- **控制广播域**（减少广播风暴）。
+- **安全隔离**（不同子网策略不同）。
+- **节省地址 / 便于管理**。
+
+**VLSM**：可变长子网掩码，不同子网用不同长度，节省地址。
+
+**一句话总结**：**`/N` 决定网络位数，掩码按位与得网络地址；块大小 = 256 - 掩码末段，可用地址去掉网络号和广播地址；子网划分控制广播域并便于隔离管理。**', 1),
+
+('网络', 'ARP,ICMP', 1,
+ 'ARP 和 ICMP 分别做什么？ping 和 traceroute 的原理是什么？',
+ '**ARP（地址解析协议）**：**IP → MAC**。
+- 同网段通信需要 MAC 地址，但应用只知道 IP。
+- 主机广播 **ARP 请求**（「谁是 192.168.1.1？」），目标单播回 **ARP 响应**（带 MAC）。
+- 结果缓存到 **ARP 表**（`arp -a`）几十秒。
+- **ARP 欺骗**：攻击者伪造 ARP 响应，中间人攻击；防御靠**静态 ARP / DAI（动态 ARP 检查）**。
+- 跨网段时，ARP 解析的是**网关 MAC**（因为要发给网关）。
+
+**ICMP（Internet 控制消息协议）**：网络层差错与控制报文。
+- 类型：目的不可达、超时、重定向、回显请求/应答。
+- **不承载应用数据**，是网络诊断的基础。
+
+**ping 原理**：发 **ICMP Echo Request**，对端回 **Echo Reply**，据此测 RTT 和丢包。
+
+**traceroute 原理**：
+- 逐跳发探测包，**TTL 从 1 递增**。
+- TTL 减到 0 时，路由器回 **ICMP Time Exceeded**，从而暴露该跳 IP。
+- 直到到达目标。
+- **Linux 默认发 UDP 高端口**，**Windows 默认用 ICMP**，也可用 TCP（穿透防火墙）。
+
+**一句话总结**：**ARP 把 IP 解成 MAC（同网段才需要，跨网段解析网关），ICMP 是网络层的差错/诊断报文；ping 用 Echo 请求应答测连通与延迟，traceroute 用递增 TTL + 超时报文逐跳探测路径。**', 1),
+
+('网络', 'MTU,分片,粘包', 3,
+ 'MTU 和 MSS 有什么区别？TCP 粘包/拆包是怎么回事？',
+ '**MTU（最大传输单元）**：
+- **链路层**能承载的最大帧数据（不含帧头），以太网默认 **1500 字节**。
+- IP 包超过 MTU 要**分片**（IPv4 可分片，IPv6 靠 PMTUD）。
+
+**MSS（最大段大小）**：
+- **TCP 层**单个 TCP 段能携带的最大数据量。
+- `MSS = MTU - IP 头(20) - TCP 头(20) = 1460`（以太网）。
+- MSS 在握手时协商（SYN 报文里带 MSS 选项）。
+
+**关系**：**MSS 是为避免 IP 分片而设的 TCP 层限制**，即「让 TCP 段不撑破 MTU」。
+
+**MTU 相关问题**：
+- **PMTUD（路径 MTU 发现）**：发大包 + DF 位，靠 ICMP「需要分片」消息探测。
+- **黑洞**：中间设备丢弃 ICMP，导致 PMTUD 失败 → **大包丢失、小包通**（典型 VPN/隧道问题）。
+
+**粘包/拆包**：
+- **现象**：TCP 是**字节流**，没有消息边界；应用发 3 个包，接收方可能读到 1 个半或 5 个包。
+- **原因**：Nagle 合并、滑动窗口、接收缓冲区合并、MTU 拆包。
+- **这不是 bug，是 TCP 特性** ⭐。
+
+**解决方案**：
+1. **定长消息**（每包固定长度，不足补齐）。
+2. **分隔符**（如 `\\n`、`\\0`，如 Redis 协议）。
+3. **长度前缀**（先发 4 字节长度，再发内容，**最常用/最可靠**）。
+4. **自描述协议**（如 Protobuf + 长度帧）。
+
+**一句话总结**：**MTU 是链路层上限（1500），MSS 是 TCP 为避免分片的段上限（1460），握手协商；TCP 是字节流没有消息边界，粘包/拆包是固有现象，用「长度前缀 / 分隔符 / 定长」在应用层切分。**', 1),
+
+('网络', 'WebSocket,长连接', 2,
+ 'WebSocket 是怎么建立和工作的？为什么不用轮询？',
+ '**WebSocket 是全双工、长连接的通信协议**，适合实时推送。
+
+**建立过程**：
+1. 客户端发**HTTP Upgrade 请求**：
+```
+GET /chat HTTP/1.1
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Key: <base64随机>
+Sec-WebSocket-Version: 13
+```
+2. 服务端回 **101 Switching Protocols**：
+```
+HTTP/1.1 101 Switching Protocols
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Accept: <SHA1(key + 魔数)>
+```
+3. 握手完成，**复用 TCP 连接**，之后按 WebSocket 帧格式双向收发。
+
+**帧格式要点**：
+- **opcode**：text/binary/close/ping/pong。
+- **掩码**：客户端→服务端必须掩码，服务端→客户端不掩码。
+- **ping/pong** 做心跳和保活。
+
+**为什么不用轮询**：
+| 方式 | 问题 |
+|---|---|
+| **短轮询** | 大量无效请求，实时性差，浪费带宽 |
+| **长轮询** | 服务端 hold 住请求，仍有连接开销，实时性一般 |
+| **SSE** | 服务端→客户端单向，够用但非全双工 |
+| **WebSocket** | 全双工、低开销、低延迟，**实时性最佳** |
+
+**应用场景**：IM 聊天、股票行情、协同编辑、游戏、实时通知、日志推送。
+
+**注意**：
+- **Nginx 反代需配置** `Upgrade`/`Connection` 头透传，设较长 `proxy_read_timeout`。
+- **要应用层心跳**（ping/pong 或业务心跳）防中间设备断连。
+- **要断线重连**（指数退避）。
+- 服务端**连接数**受 FD 限制，需要水平扩展 + 连接路由。
+
+**一句话总结**：**WebSocket 用 HTTP 握手升级成 TCP 长连接，之后全双工通信；相比轮询，它一次建连、双向低延迟；代价是服务端要管理海量长连接并处理心跳、重连、扩容。**', 1),
+
+('网络', 'socket,IO多路复用', 3,
+ 'select、poll、epoll 有什么区别？epoll 的 LT 和 ET 模式怎么选？',
+ '三者都是 **IO 多路复用**，用来在单线程里管理大量连接。
+
+**select**：
+- 用 `fd_set`（位图）传 fd，**有 1024 上限**（`FD_SETSIZE`）。
+- 每次调用都要把 fd 集合从用户态**拷贝到内核**，返回后**遍历所有 fd** 找就绪的 → O(n)。
+- 跨平台（Windows/Linux/Mac）。
+
+**poll**：
+- 用 `pollfd` 数组，**无 1024 上限**。
+- 仍是**拷贝 + 遍历** → O(n)。
+- 相比 select 只去掉了数量限制。
+
+**epoll（Linux）**：
+- **红黑树**管理 fd（`epoll_ctl` 注册，只注册一次）。
+- **就绪链表**由内核回调填充，`epoll_wait` 直接取就绪的，**O(1) 取就绪**。
+- **不需要每次全量拷贝**（fd 常驻内核）。
+- **无上限**（受内存和 `ulimit` 限制）。
+
+**对比**：
+| | select | poll | epoll |
+|---|---|---|---|
+| 上限 | 1024 | 无 | 无 |
+| 复杂度 | O(n) | O(n) | O(1) |
+| 拷贝 | 每次全量 | 每次全量 | 一次注册 |
+| 触发 | LT | LT | LT/ET |
+
+**LT（水平触发，默认）**：
+- 只要 fd 可读/可写就**一直通知**，直到数据读完。
+- **编程简单**，不怕漏读，**新手优先用 LT**。
+
+**ET（边缘触发）**：
+- 只在**状态变化时通知一次**。
+- **必须一次把数据读完**（循环读到 `EAGAIN`），否则剩余数据不再通知 → **容易丢数据**。
+- 配合**非阻塞 fd**。
+- **效率略高**（减少 epoll_wait 调用），但**编程复杂**。
+
+**实践**：
+- **优先 LT + 非阻塞**（Nginx 默认 ET，但也支持 LT）。
+- ET 必须循环读到 `EAGAIN`，且处理连接要小心（`EPOLLOUT` 用 ET 也要写完）。
+
+**一句话总结**：**select/poll 是「全量拷贝 + 遍历」，epoll 用红黑树 + 就绪链表做到 O(1)；LT 简单安全但通知多，ET 高效但必须一次读干净 —— 生产优先 LT，追求极致性能用 ET 且务必读到 EAGAIN。**', 1),
+
+('网络', 'SYN Flood,半连接', 3,
+ 'SYN Flood 攻击的原理是什么？半连接队列和全连接队列怎么理解？怎么防御？',
+ '**两个队列**：
+- **半连接队列（SYN Queue）**：收到 SYN，回 SYN-ACK，**等待客户端 ACK** 的连接。
+- **全连接队列（Accept Queue）**：三次握手完成、**等待应用 `accept()`** 的连接。
+- 握手完成后进全连接队列；`accept()` 取出给应用。
+
+**SYN Flood 原理**：
+- 攻击者发**大量伪造源 IP 的 SYN**，服务端回 SYN-ACK 后进半连接队列等 ACK。
+- **伪造的 IP 不会回 ACK**，半连接超时才释放（默认 60s+）。
+- **半连接队列被占满** → 正常用户的 SYN 被丢弃 → **拒绝服务**。
+
+**防御手段**：
+1. **SYN Cookies**（`net.ipv4.tcp_syncookies=1`）⭐：不立即分配队列资源，把连接信息编码进 SYN-ACK 的序列号，等对方 ACK 再重建 —— **半连接队列无压力**。
+2. **增大队列**：`tcp_max_syn_backlog`、`somaxconn`（全连接队列）。
+3. **缩短超时**：`tcp_synack_retries`（减少重试）。
+4. **限速**：`iptables -m limit`、云 WAF。
+5. **四层清洗**：LVS/云高防在四层过滤异常 SYN。
+6. **SYN_PROXY**：内核 4.6+ 的 SYN 代理（防 SYN Flood 更优雅）。
+
+**全连接队列溢出**：
+- 应用 `accept()` 太慢 → 全连接队列满 → 新连接被丢或重置。
+- 观察：`ss -lnt` 的 `Send-Q`（队列上限）与 `netstat -s | grep overflowed`。
+- 解决：**提高 accept 速度**（多线程 accept、异步 accept）。
+
+**一句话总结**：**SYN Flood 用伪造源 IP 占满半连接队列；首选 SYN Cookies（不占队列）配合队列调优、限速和高防清洗；同时关注全连接队列，accept 慢也会导致正常连接被丢。**', 1),
+
+('网络', 'HTTP,状态码,方法', 1,
+ '常见 HTTP 状态码有哪些？GET 和 POST 有什么区别？',
+ '**状态码分类**：
+- **1xx 信息**：100 Continue、101 Switching Protocols。
+- **2xx 成功**：200 OK、201 Created、204 No Content、206 Partial Content。
+- **3xx 重定向**：301 永久、302 临时、303 See Other、304 Not Modified、307/308 保方法。
+- **4xx 客户端错误**：400 Bad Request、401 未认证、403 禁止、404 未找到、405 方法不允许、409 冲突、429 限流。
+- **5xx 服务端错误**：500 内部错误、501 未实现、502 网关错误、503 不可用、504 网关超时。
+
+**301 vs 302**：301 永久（会被缓存，慎用）、302 临时（每次问）。**307/308 保留原方法和 body**（301/302 历史上可能改成 GET）。
+
+**304**：协商缓存命中，内容未变，不传 body，**省带宽**。
+
+**GET vs POST**：
+| 维度 | GET | POST |
+|---|---|---|
+| 语义 | **获取**（幂等） | **提交/修改**（非幂等） |
+| 参数 | URL query | body |
+| 缓存 | 可缓存 | 默认不缓存 |
+| 幂等性 | **幂等** | 非幂等 |
+| 安全 | 参数可见（日志/history） | body 相对隐蔽（但 HTTPS 才是关键） |
+| 长度 | 受 URL 长度限制 | 基本无限制 |
+
+**注意**：GET 也可带 body（协议允许但不推荐）；**「幂等」指多次执行结果一致**，GET/PUT/DELETE 应幂等，POST 不保证。
+
+**RESTful 方法幂等**：
+- GET/PUT/DELETE/HEAD —— **幂等**。
+- POST —— **非幂等**（重复提交会创建多条）。
+- PATCH —— 不保证。
+
+**一句话总结**：**2xx 成功、3xx 重定向、4xx 客户端错、5xx 服务端错；GET 取数据、幂等、可缓存，POST 提交、非幂等、走 body —— REST 设计里幂等性决定了能否安全重试。**', 1),
+
+('网络', 'HTTP,缓存', 2,
+ 'HTTP 缓存机制是怎样的？强缓存和协商缓存有什么区别？',
+ '**HTTP 缓存分两级：强缓存（不发请求）和协商缓存（发请求验证）**。
+
+**强缓存（本地直接命中，不发请求）**：
+- `Cache-Control: max-age=3600`（相对秒数，**HTTP/1.1 首选**）。
+- `Expires: <绝对时间>`（HTTP/1.0，受客户端时钟影响，已过时）。
+- `Cache-Control` 指令：`no-cache`（**可缓存但要验证**）、`no-store`（完全不缓存）、`public`、`private`、`immutable`（永不重新验证）。
+- **命中则 200 (from disk/memory cache)**，不发网络请求。
+
+**协商缓存（发请求带验证头，服务端判断是否变了）**：
+- **`Last-Modified` ↔ `If-Modified-Since`**：基于修改时间（秒级精度）。
+- **`ETag` ↔ `If-None-Match`**：基于内容指纹（**更精确**，可识别内容变化而时间未变）。
+- 服务端比较后：**未变 → 304 Not Modified**（只回头，不回 body，省带宽）；**变了 → 200 + 新内容**。
+
+**优先级**：
+1. 先看 `Cache-Control`（`no-store` 直接不缓存；`no-cache` 强制走协商）。
+2. 强缓存有效 → 直接用本地，**不发请求**。
+3. 强缓存失效 → 发请求带 `If-None-Match`/`If-Modified-Since` 走协商。
+4. 协商命中 304 → 用本地副本。
+
+**ETag 优于 Last-Modified**：内容改回原样时 Last-Modified 变了但 ETag 不变；且 Last-Modified 只有秒精度。
+
+**实践**：
+- **静态资源**（带指纹）：`Cache-Control: max-age=31536000, immutable`。
+- **HTML**：`Cache-Control: no-cache`（每次协商，保证新鲜）。
+- **CDN + 强缓存**是性能关键。
+
+**一句话总结**：**强缓存不发请求（Cache-Control max-age），协商缓存发请求验证（ETag/If-None-Match，命中回 304）；静态资源长缓存 + 指纹，HTML 走协商，是既快又准的通用策略。**', 1),
+
+('网络', 'Cookie,Session,JWT', 2,
+ 'Cookie、Session、Token（JWT）三者有什么区别？各自适用什么场景？',
+ '**Cookie**：
+- **存储在客户端**的小段数据，随请求自动携带（`Cookie` 头）。
+- 属性：`HttpOnly`（防 JS 读取，防 XSS 窃取）、`Secure`（仅 HTTPS）、`SameSite`（防 CSRF）、`Max-Age`/`Expires`。
+- **本身只是载体**，可以存 Session ID 或 Token。
+
+**Session（服务端会话）**：
+- **状态存在服务端**（内存/Redis/DB），客户端只存 **Session ID**（通常在 Cookie 里）。
+- 优点：可随时失效、可存敏感信息（服务端）。
+- 缺点：**服务端有状态**，多机需**共享存储**（Redis）或会话粘滞；跨域/App 场景不方便。
+
+**Token / JWT**：
+- **状态存在令牌里**，服务端**无状态**（验签即可）。
+- JWT 结构：`header.payload.signature`（Base64URL）。
+- 优点：**无状态、易水平扩展、跨域/移动端友好**。
+- 缺点：**无法主动失效**（签发后到期前一直有效，除非维护黑名单）；payload 是**明文**（只签名不加密），**不能放敏感信息**；体积比 Session ID 大。
+
+**对比**：
+| 维度 | Cookie | Session | JWT |
+|---|---|---|---|
+| 存储位置 | 客户端 | 服务端 | 客户端（令牌） |
+| 状态 | — | 有状态 | 无状态 |
+| 失效控制 | 客户端删 | **服务端可控** | 难（需黑名单） |
+| 跨域/移动端 | 一般 | 一般 | **好** |
+| 扩展性 | — | 需共享存储 | **好** |
+
+**实践**：
+- **同域 Web 应用**：Session + Redis（简单可控）。
+- **前后端分离 / 移动端 / 微服务**：JWT（无状态）。
+- **JWT 续期**：短 Access Token + 长 Refresh Token。
+- **安全**：都用 HTTPS；Cookie 加 `HttpOnly + Secure + SameSite`；JWT 别放敏感信息。
+
+**一句话总结**：**Cookie 是载体，Session 把状态放服务端（可控但需共享存储），JWT 把状态放令牌（无状态易扩展但难失效、别放敏感数据）；同域优先 Session，分布式/移动端优先 JWT + Refresh Token。**', 1),
+
+('网络', 'CSRF,攻击防御', 3,
+ 'CSRF 和 XSS 有什么区别？分别怎么防御？',
+ '两者都是 Web 安全核心问题，但**方向不同**。
+
+**XSS（跨站脚本）**：
+- **攻击者把恶意脚本注入到页面**，在受害者浏览器执行。
+- 类型：**存储型**（存进 DB，如评论）、**反射型**（URL 参数回显）、**DOM 型**（前端 JS 拼接）。
+- 危害：**窃取 Cookie/Token、冒充用户操作、篡改页面**。
+- **防御**：
+  1. **输出编码/转义**（对 HTML/JS/URL 上下文分别转义）—— 根本手段 ⭐。
+  2. **CSP（内容安全策略）**：限制脚本来源。
+  3. **HttpOnly Cookie**：防 JS 读 Cookie。
+  4. **输入校验**（富文本用白名单过滤）。
+  5. **框架默认转义**（React/Vue 默认转义，慎用 `dangerouslySetInnerHTML`/`v-html`）。
+
+**CSRF（跨站请求伪造）**：
+- **攻击者诱导已登录用户，在不知情下发起请求**（利用浏览器自动带 Cookie）。
+- 例：用户登录银行后，访问恶意页面，页面里 `<img src="bank.com/transfer?to=attacker">` 自动触发。
+- 危害：**以用户身份执行敏感操作**。
+- **防御**：
+  1. **CSRF Token**：请求带一次性令牌，服务端校验（令牌不跨站可得）⭐。
+  2. **SameSite Cookie**（`Lax`/`Strict`）：跨站请求不带 Cookie。
+  3. **校验 Referer / Origin**。
+  4. **关键操作二次验证**（密码/验证码）。
+  5. **避免用 GET 做状态变更**（GET 应幂等）。
+
+**对比**：
+| 维度 | XSS | CSRF |
+|---|---|---|
+| 实质 | 注入脚本执行 | 冒用身份发请求 |
+| 信任问题 | 信任了用户输入 | 信任了用户浏览器 |
+| 防御核心 | **输出转义 + CSP** | **Token + SameSite** |
+
+**一句话总结**：**XSS 是「把脚本塞进你的页面执行」（靠输出转义 + CSP 防），CSRF 是「借你的登录态发请求」（靠 CSRF Token + SameSite 防）；两者常组合出现，需同时防护。**', 1),
+
+('网络', 'CORS,跨域', 2,
+ '跨域是什么？CORS 是怎么解决的？预检请求（preflight）何时触发？',
+ '**同源策略**：浏览器限制「协议 + 域名 + 端口」不同的请求读取响应（**防 CSRF/数据泄露**）。
+- 注意：**请求实际发出去了**，只是**响应被浏览器拦截**。
+
+**CORS（跨域资源共享）**：
+- 服务端通过响应头**授权**浏览器放行。
+- 关键响应头：
+  - `Access-Control-Allow-Origin: https://a.com`（或 `*`）。
+  - `Access-Control-Allow-Methods: GET,POST,PUT`。
+  - `Access-Control-Allow-Headers: Content-Type,Authorization`。
+  - `Access-Control-Allow-Credentials: true`（带 Cookie 时要，且 Origin **不能为 `*`**）。
+  - `Access-Control-Max-Age: 86400`（预检缓存）。
+
+**简单请求 vs 预检请求**：
+- **简单请求**（不触发预检）：方法 ∈ {GET, POST, HEAD} 且 `Content-Type` ∈ {text/plain, multipart/form-data, application/x-www-form-urlencoded} 且无自定义头。
+- **预检请求（OPTIONS）触发条件**：
+  - 方法为 PUT/DELETE/PATCH 等。
+  - `Content-Type: application/json`（**最常见**）。
+  - 有自定义请求头（如 `Authorization`、`X-Token`）。
+- 预检：浏览器先发 **OPTIONS** 询问，服务端回 CORS 头同意后，才发真实请求。
+
+**代理方案**：同源部署（Nginx 把 `/api` 反代到后端）可**完全避免跨域**，是最省事的方案。
+
+**常见坑**：
+- `Allow-Credentials: true` + `Allow-Origin: *` 冲突（浏览器拒绝）。
+- 预检要单独处理 OPTIONS（返回 204 + CORS 头）。
+- 自定义头必须在 `Allow-Headers` 里列出。
+
+**一句话总结**：**跨域是浏览器同源策略的拦截（请求已发出，响应被拦）；CORS 靠服务端响应头授权，PUT/JSON/自定义头会触发 OPTIONS 预检；生产环境用 Nginx 同源反代可彻底绕开跨域。**', 1),
+
+('网络', 'TCP,UDP', 1,
+ 'TCP 和 UDP 有什么区别？各自适用什么场景？',
+ '**TCP（传输控制协议）**：
+- **面向连接**（三次握手）。
+- **可靠**：确认、重传、去重、排序。
+- **面向字节流**（无消息边界，有粘包）。
+- **流量控制 + 拥塞控制**。
+- **一对一**。
+- 开销大、首部 20 字节起。
+
+**UDP（用户数据报协议）**：
+- **无连接**（直接发）。
+- **不可靠**：不保证到达、不保证顺序。
+- **面向报文**（保留消息边界，发一个收一个）。
+- **无流量/拥塞控制**。
+- **支持一对一/一对多/多对多**（广播、组播）。
+- 开销小、首部仅 8 字节、延迟低。
+
+**对比**：
+| 维度 | TCP | UDP |
+|---|---|---|
+| 连接 | 面向连接 | 无连接 |
+| 可靠性 | 可靠 | 不可靠 |
+| 顺序 | 保证 | 不保证 |
+| 边界 | 字节流 | 报文 |
+| 速度 | 较慢 | **快** |
+| 场景 | 文件/HTTP/DB | 直播/游戏/DNS/QUIC |
+
+**各自适用**：
+- **TCP**：Web、文件传输、邮件、数据库、RPC —— 需要可靠有序。
+- **UDP**：**实时音视频、直播、游戏、DNS、DHCP、QUIC/HTTP3** —— **快比全可靠更重要**（丢一帧不致命）。
+- **UDP 上自己实现可靠性**（如 QUIC）：既能低延迟又能按需可靠。
+
+**一句话总结**：**TCP 面向连接、可靠有序、字节流、慢而稳；UDP 无连接、不可靠、报文、快而糙；要可靠用 TCP，要低延迟/多播用 UDP，想在 UDP 上要可靠就上 QUIC。**', 1),
+
+('网络', 'TCP,超时重传', 3,
+ 'TCP 超时重传的时间是怎么计算的？RTO 为什么不能设固定值？',
+ '**RTO（Retransmission Timeout）** 是重传定时器的超时时间，**必须自适应**。
+
+**为什么不能固定**：
+- 网络 RTT 动态变化（本地 1ms，跨洲 200ms，拥塞时暴涨）。
+- 固定太小 → 不必要的重传（浪费带宽、加重拥塞）。
+- 固定太大 → 真正丢包时恢复太慢。
+
+**RTT 测量与平滑（Jacobson 算法）**：
+- `SRTT`（平滑 RTT）：`SRTT = (1-α)·SRTT + α·RTT_sample`（α=1/8）。
+- `RTTVAR`（RTT 偏差）：`RTTVAR = (1-β)·RTTVAR + β·|SRTT - RTT_sample|`（β=1/4）。
+- **`RTO = SRTT + 4·RTTVAR`**（4 倍偏差，容忍抖动）。
+
+**Karn 算法**（解决重传歧义）：
+- **重传过的报文，其 ACK 不用于更新 RTT**（因为分不清 ACK 是对原包还是重传包的）。
+- 补偿：重传时 **RTO 指数退避**（RTO 翻倍），避免雪崩。
+
+**指数退避**：
+- 每次超时重传 `RTO = 2 · RTO`，直到上限（如 60s 或 120s）。
+
+**注意**：
+- **RTT 测量只对未重传的段有效**。
+- **Nagle / 延迟确认**会影响 RTT 测量（小包场景）。
+- **时间戳选项（TSopt）**可让重传也能精确测 RTT。
+
+**一句话总结**：**固定 RTO 无法适应动态网络，TCP 用「平滑 RTT + 4 倍偏差」自适应计算 RTO，配合 Karn 算法处理重传歧义、超时指数退避防雪崩 —— 目标是「既不误判重传，也不迟钝恢复」。**', 1),
+
+('网络', '网络分层,OSI', 1,
+ 'OSI 七层模型和 TCP/IP 四层模型分别是什么？各层有哪些协议？',
+ '**OSI 七层（理论模型）**：
+
+| 层 | 名称 | 职责 | 协议/设备 |
+|---|---|---|---|
+| 7 | 应用层 | 为用户提供接口 | HTTP、FTP、SMTP、DNS、SSH |
+| 6 | 表示层 | 数据格式/加密/压缩 | TLS/SSL、JPEG、ASCII |
+| 5 | 会话层 | 建立/管理会话 | RPC、NetBIOS |
+| 4 | 传输层 | 端到端传输 | **TCP、UDP** |
+| 3 | 网络层 | 路由与寻址 | **IP、ICMP、ARP、路由协议** |
+| 2 | 数据链路层 | 成帧、差错、MAC | 以太网、PPP、VLAN、交换机 |
+| 1 | 物理层 | 比特传输 | 网线、光纤、集线器 |
+
+**TCP/IP 四层（实际模型）**：
+- **应用层**（对应 OSI 5-7）：HTTP、DNS、SMTP、SSH。
+- **传输层**（4）：TCP、UDP。
+- **网际层**（3）：IP、ICMP、ARP。
+- **网络接口层**（1-2）：以太网、WiFi、PPP。
+
+**五层折中模型**（教学常用）：应用层 / 传输层 / 网络层 / 数据链路层 / 物理层。
+
+**数据封装**：
+```
+应用数据
+  → +TCP头 = 段（Segment）
+  → +IP头 = 包（Packet）
+  → +帧头帧尾 = 帧（Frame）
+  → 比特流
+```
+每层加自己的头（封装），接收方逐层剥头（解封装）。
+
+**ARP 归属争议**：OSI 里常在链路层和网络层之间；TCP/IP 里归网际层（因为它解析 IP→MAC）。
+
+**一句话总结**：**OSI 七层是理论参考（应用/表示/会话/传输/网络/链路/物理），TCP/IP 四层是工程实现（应用/传输/网际/网络接口）；数据自上而下逐层封装加头，自下而上逐层解封装剥头。**', 1),
+
+('网络', '抓包,tcpdump', 2,
+ '怎么用 tcpdump 抓包分析问题？常见过滤表达式有哪些？',
+ '**tcpdump 是 Linux 命令行抓包工具**，是排查网络问题的第一手段。
+
+**基本用法**：
+```bash
+tcpdump -i eth0 -nn -s0 -w cap.pcap          # 抓所有包写文件
+tcpdump -i any -nn port 8080                 # 抓某端口
+tcpdump -i eth0 -nn host 1.2.3.4             # 抓某主机
+```
+- `-i` 网卡（`any` 所有），`-nn` 不解析域名/端口名，`-s0` 抓完整包，`-w` 写文件，`-c` 限制数量，`-A`/`-X` 打印内容。
+
+**常见过滤表达式**：
+| 需求 | 表达式 |
+|---|---|
+| 指定端口 | `port 80` / `portrange 8000-9000` |
+| 指定主机 | `host 10.0.0.1` |
+| 源/目的 | `src host 1.1.1.1` / `dst port 443` |
+| 协议 | `tcp` / `udp` / `icmp` / `arp` |
+| 组合 | `tcp and port 8080 and host 1.2.3.4` |
+| 排除 | `not port 22` |
+| TCP 标志 | `tcp[tcpflags] & tcp-syn != 0`（SYN 包） |
+| HTTP 内容 | `port 80 and tcp[((tcp[12] & 0xf0) >> 2):4] = 0x47455420`（GET） |
+
+**分析配合 Wireshark**：
+- 命令行抓、`-w` 存文件，拉到本地用 Wireshark 图形化分析（**推荐**）。
+- Wireshark 有 `Follow TCP Stream`、`Statistics`、专家信息。
+
+**常见排查场景**：
+- **无响应**：抓包看有没有到、有没有回。
+- **握手失败**：看 SYN 有没有 SYN-ACK、RST。
+- **重传/乱序**：看 TCP 分析。
+- **慢**：看 RTT、窗口、重传。
+
+**注意**：抓包**可能含敏感数据**（密码明文），注意合规与脱敏；**生产抓包要限流量**（`-c`、过滤），避免磁盘打满。
+
+**一句话总结**：**tcpdump 是排查网络问题的利器：`-i` 选网卡，`host/port/net/proto` 做过滤，`-w` 存包用 Wireshark 分析；「抓包 → 看有没有到/有没有回/重传」是最快的定位路径，但要注意敏感数据与磁盘占用。**', 1),
+
+('网络', '端口,监听', 1,
+ '常用端口有哪些？一个端口能被多个进程监听吗？',
+ '**常用端口**：
+| 端口 | 服务 |
+|---|---|
+| 20/21 | FTP 数据/控制 |
+| 22 | SSH |
+| 23 | Telnet |
+| 25/465/587 | SMTP |
+| 53 | DNS |
+| 67/68 | DHCP |
+| 80 | HTTP |
+| 443 | HTTPS |
+| 3306 | MySQL |
+| 6379 | Redis |
+| 5432 | PostgreSQL |
+| 8080 | HTTP 备用/Tomcat |
+
+**端口范围**：
+- **0~1023**：知名端口（需 root 才能绑定）。
+- **1024~49151**：注册端口。
+- **49152~65535**：动态/临时端口（客户端连接源端口从这里分配）。
+
+**一个端口能被多个进程监听吗**：
+- **同一协议（TCP/UDP）+ 同一 IP:PORT**：**默认不能**，第二个绑定报 `Address already in use`。
+- **例外**：
+  - **`SO_REUSEPORT`**：多进程**绑定同一端口**做负载均衡（内核按流分发）⭐ —— Nginx/多 worker 常用。
+  - **`SO_REUSEADDR`**：允许快速重用处于 TIME_WAIT 的地址（不是同时监听多个进程）。
+  - **不同 IP**：`0.0.0.0:80` 和 `127.0.0.1:80` 会冲突；但 `1.2.3.4:80` 与 `5.6.7.8:80` 可共存。
+  - **TCP 和 UDP** 同端口号互不影响。
+- **父子进程继承 FD** 也算「多个进程持有同一监听套接字」（如 Nginx master + worker）。
+
+**查看监听**：
+```bash
+ss -lntp          # TCP 监听
+ss -lnup          # UDP 监听
+lsof -i :8080     # 谁占了 8080
+```
+
+**一句话总结**：**知名端口 0-1023 需 root，动态端口给客户端；同一 IP:PORT+协议默认只能一个进程监听，靠 `SO_REUSEPORT` 可实现多进程共监听（内核分发），`SO_REUSEADDR` 只是复用 TIME_WAIT 地址。**', 1),
+
+('网络', '代理,nginx配置', 2,
+ 'Nginx 反向代理的核心配置有哪些？proxy_pass 尾斜杠有什么讲究？',
+ '**核心配置**：
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name lazycat.cc;
+    ssl_certificate     /path/fullchain.pem;
+    ssl_certificate_key /path/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";   # WebSocket
+        proxy_read_timeout 300s;
+    }
+}
+```
+
+**`proxy_pass` 尾斜杠的区别（重要）**：
+- `proxy_pass http://backend;`（**无斜杠**）：**保留** location 匹配的路径。
+  - `location /api/ { proxy_pass http://127.0.0.1:8080; }`
+  - 请求 `/api/user` → 转发到 `http://127.0.0.1:8080/api/user`。
+- `proxy_pass http://backend/;`（**有斜杠**）：**替换**掉 location 匹配部分。
+  - `location /api/ { proxy_pass http://127.0.0.1:8080/; }`
+  - 请求 `/api/user` → 转发到 `http://127.0.0.1:8080/user`（**去掉 `/api`**）。
+
+**关键头**：
+- `X-Real-IP` / `X-Forwarded-For`：真实客户端 IP。
+- `X-Forwarded-Proto`：原始协议（http/https），后端据此生成正确链接。
+- `Host`：保留原始 Host（多站点/签名校验需要）。
+
+**其他常用**：
+- `client_max_body_size 20m;`（上传大小限制）。
+- `proxy_buffering`、`proxy_cache`。
+- `gzip on;`（压缩）。
+- 负载均衡：`upstream backend { server 1.1.1.1; server 1.1.1.2; }`。
+
+**一句话总结**：**Nginx 反代核心是 `proxy_pass` + `proxy_set_header`（真实 IP/协议/Host）+ 超时与 WebSocket 头；`proxy_pass` 尾斜杠决定「保留还是去掉」location 前缀 —— 这是最常见的配置坑。**', 1),
+
+('网络', 'TCP,半开,KeepAlive', 3,
+ '什么是 TCP 半开连接？它会导致什么问题？',
+ '**半开连接（Half-Open）**：一方已关闭或崩溃，另一方**仍认为连接有效**（不知道对方已消失）。
+
+**产生原因**：
+- 一端主机**断电/崩溃**（没来得及发 FIN）。
+- **网络中断**（中间链路断了，双方都不知道）。
+- **NAT 表项过期**后连接被静默丢弃。
+- 一端**强杀进程**（可能发了 RST，也可能没有）。
+
+**危害**：
+- **资源泄漏**：服务端保留连接（FD、内存），却不释放。
+- **写失败**：应用写数据时才发现对方不在了（首次写可能成功，因为只是写入内核缓冲）。
+- **读阻塞**：读操作可能永远阻塞（等到 KeepAlive 才醒）。
+- **连接数耗尽**：大量半开连接拖垮服务。
+
+**如何检测/处理**：
+1. **TCP KeepAlive**：内核级探测（默认 2 小时太长，可调 `tcp_keepalive_time`）。
+2. **应用层心跳**：**更可靠**，定期收不到心跳就断开（**推荐**）。
+3. **设置读写超时**：`SO_RCVTIMEO` / `SO_SNDTIMEO`，避免永久阻塞。
+4. **写探测**：定期写小包（但要注意幂等）。
+
+**为什么「首次写」可能不报错**：
+- `write()` 只是把数据放进内核发送缓冲，**成功不代表对端收到**。
+- 要等对端回 ACK 失败、或发 RST，才会在**后续操作**中暴露错误。
+
+**一句话总结**：**半开连接是「一方已走，另一方不知」，会导致资源泄漏、读写异常、连接数耗尽；单靠 TCP KeepAlive（默认 2 小时）太慢，必须配应用层心跳 + 读写超时才能及时清理。**', 1),
+
+('网络', 'QUIC,HTTP3', 3,
+ 'QUIC 协议有什么特点？为什么它能比 TCP 更快？',
+ '**QUIC 是 Google 提出、基于 UDP 的传输协议**（HTTP/3 的底层），已标准化为 RFC 9000。
+
+**核心特点**：
+1. **基于 UDP**：不依赖内核 TCP 栈，**可在用户态快速迭代**（更新不用升内核）。
+2. **0-RTT / 1-RTT 建连**：把**传输握手和 TLS 1.3 握手合并**，首次 1-RTT、复用 0-RTT（TCP+TLS 要 3-RTT）。
+3. **彻底解决队头阻塞**：
+   - QUIC 的**流（stream）相互独立**，一个流丢包**不影响其他流**。
+   - TCP 多路复用时一个包丢，所有流都等重传。
+4. **连接迁移**：用 **Connection ID** 标识连接，**换网络（WiFi↔4G）连接不断**（TCP 靠四元组，IP 一变就断）。
+5. **强制加密**：TLS 1.3 内建，**头部也加密**（中间设备难窥探，也更难被干扰）。
+6. **前向纠错（FEC）** 与更好的拥塞控制（可插拔）。
+
+**为什么更快**：
+- **握手少 RTT**（尤其 0-RTT 复用）。
+- **无队头阻塞**（弱网、丢包场景优势巨大）。
+- **连接迁移**（移动端切网不重连）。
+- **用户态实现**，优化迭代快。
+
+**挑战**：
+- **UDP 可能被某些网络/防火墙限制**（企业网常封 UDP）。
+- **CPU 消耗较高**（用户态处理 + 加密）。
+- **中间设备可见性低**（运维/安全审计困难）。
+
+**一句话总结**：**QUIC 用 UDP 绕开 TCP 的队头阻塞与内核限制，合并 TLS 握手做到 0/1-RTT，用 Connection ID 支持连接迁移；它在弱网和高丢包下显著快于 TCP+TLS，代价是 UDP 可能被限、CPU 开销更高。**', 1),
+
+('网络', '网络排查,链路', 2,
+ '服务「访问不通」时，你的排查思路是什么？',
+ '**分层排查，从下到上，逐步收窄**：
+
+**1. 物理/链路层**
+- 网卡是否 up：`ip link`、`ethtool eth0`。
+- 网线/光模块、交换机端口。
+
+**2. 网络层（能不能通）**
+```bash
+ping <目标IP>                    # 通不通、延迟
+traceroute <目标> / mtr <目标>    # 路径在哪断
+ip route / route -n              # 路由是否正确
+```
+- 不通 → 查路由、网关、防火墙。
+
+**3. 传输层（端口通不通）**
+```bash
+telnet <ip> <port>
+nc -zv <ip> <port>
+ss -lntp                          # 本机是否在监听
+```
+- **本机服务没监听** → 查服务是否启动、绑定 IP/端口。
+- **监听但连不上** → 查本机防火墙 `iptables -L -n`、云**安全组**、SELinux。
+
+**4. 应用层**
+```bash
+curl -v http://127.0.0.1:8080/    # 本机直连服务
+curl -v https://域名/             # 经域名/Nginx
+```
+- 本机通、外部不通 → **Nginx/负载均衡/安全组**问题。
+- 返回 4xx/5xx → 应用逻辑错误。
+
+**5. 其他**
+- **DNS**：`dig`/`nslookup` 域名解析是否正确。
+- **证书**：`openssl s_client -connect host:443` 看证书。
+- **抓包**：`tcpdump` 看请求有没有到、有没有回。
+- **日志**：Nginx error log、应用日志。
+
+**快速定位口诀**：
+> **先 ping 通不通 → 再 telnet 端口 → 再看本机监听 → 再看防火墙/安全组 → 最后看应用日志与抓包。**
+
+**本项目例子**：`lazycat.cc` 打不开 → ① `curl 127.0.0.1:8080` 本机服务是否活 → ② `systemctl status blog` 服务状态 → ③ `ss -lntp | grep 8080` → ④ Nginx 配置与 `nginx -t` → ⑤ 云安全组 443/80 → ⑥ `tcpdump port 443`。
+
+**一句话总结**：**排查「访问不通」要分层：链路 → 网络（ping/route）→ 传输（telnet/ss/防火墙）→ 应用（curl/日志/抓包）；按「本机→本机端口→外部」逐层收窄，能最快定位是网络、防火墙还是应用的问题。**', 1),
+
+('网络', '防火墙,iptables', 3,
+ 'iptables 的四表五链是什么？如何做端口转发？',
+ '**iptables 是 Linux 包过滤/转换框架**。
+
+**四表（表是功能分类）**：
+| 表 | 功能 |
+|---|---|
+| **filter** | 过滤（允许/拒绝），**默认表** |
+| **nat** | 地址转换（SNAT/DNAT） |
+| **mangle** | 修改报文（TTL、TOS、标记） |
+| **raw** | 连接跟踪前处理（NOTRACK） |
+
+**五链（链是处理时机）**：
+- **PREROUTING**：进入本机前（nat/mangle）。
+- **INPUT**：发往本机进程。
+- **FORWARD**：转发经过本机（不同本机进程）。
+- **OUTPUT**：本机进程发出。
+- **POSTROUTING**：离开本机前（nat/mangle）。
+
+**数据流向**：
+- 到本机：`PREROUTING → INPUT → 本地进程`
+- 本机发出：`本地进程 → OUTPUT → POSTROUTING`
+- 转发：`PREROUTING → FORWARD → POSTROUTING`
+
+**常用命令**：
+```bash
+# 查看
+iptables -t filter -L -n -v --line-numbers
+# 开放 80
+iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+# 默认拒绝 + 白名单
+iptables -P INPUT DROP
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+```
+
+**端口转发（DNAT）**：
+```bash
+# 开启转发
+echo 1 > /proc/sys/net/ipv4/ip_forward
+# 把 80 转发到内网 192.168.1.10:80
+iptables -t nat -A PREROUTING -p tcp --dport 80 -j DNAT --to 192.168.1.10:80
+# 出方向做 SNAT（保证回包）
+iptables -t nat -A POSTROUTING -d 192.168.1.10 -p tcp --dport 80 -j SNAT --to-source <本机内网IP>
+```
+
+**注意**：
+- **规则按顺序匹配，先匹配先生效**（`-I` 插到前面，`-A` 追加）。
+- **默认策略很关键**（`-P DROP` 要确保已放行 SSH，否则会锁死自己）。
+- 持久化：`iptables-save > /etc/sysconfig/iptables`、`iptables-persistent`。
+- 现代替代：**nftables**（性能更好，新的默认后端）、firewalld。
+
+**一句话总结**：**iptables 四表（filter/nat/mangle/raw）按功能分，五链（PRE/IN/FWD/OUT/POST）按时机分；端口转发用 nat 表 PREROUTING 做 DNAT + POSTROUTING 做 SNAT；规则顺序和默认策略要格外小心，别把自己锁在外面。**', 1),
+
+('网络', 'HTTP,长连接,TCP复用', 2,
+ 'HTTP 的 keep-alive 和 TCP 的连接复用是怎么回事？为什么能提升性能？',
+ '**keep-alive（持久连接）**：**一个 TCP 连接上发多个 HTTP 请求**，不用每次建连。
+
+**HTTP/1.0**：默认短连接，每个请求建一次 TCP（三次握手）+ 关一次（四次挥手）。
+**HTTP/1.1**：**默认 keep-alive**，用 `Connection: keep-alive`（1.1 默认开，`close` 关闭）。
+
+**性能收益**：
+- **省掉建连/断连的开销**：
+  - 三次握手 1 RTT、四次挥手 + 2MSL。
+  - HTTPS 还要 **TLS 握手（1~2 RTT）** —— 复用的收益更大。
+- **省掉 TCP 慢启动**：新连接一开始 cwnd 小，速度上不来；复用连接已「热身」，窗口大。
+- **降低延迟、减少资源占用**。
+
+**代价**：
+- 连接**长期占用**服务端资源（FD、内存）。
+- 需要**空闲超时**清理（`keepalive_timeout`）。
+- 需要**连接数上限**（否则被占满）。
+
+**浏览器限制**：同域名**并发 6~8 个**连接（HTTP/1.1），靠多连接缓解队头阻塞。
+
+**HTTP/2 的多路复用**：
+- **一个连接上并行多个流**，真正解决 HTTP 层队头阻塞。
+- 不需要多开连接，keep-alive 价值更大（但仍有 TCP 层队头阻塞）。
+
+**关键配置**：
+- Nginx：`keepalive_timeout 65;`、`keepalive_requests 1000;`。
+- 后端 ngx upstream：`keepalive 32;`（复用后端连接）。
+- **注意**：连接**空闲太久**会被中间设备（NAT/LB）静默断开，客户端要能处理「复用了已断连接」的情况（重试）。
+
+**一句话总结**：**keep-alive 让一个 TCP 连接承载多次 HTTP 请求，省去握手和慢启动开销（HTTPS 收益更显著）；代价是连接常驻需超时清理；HTTP/2 多路复用把它推到极致，但要注意中间设备断连导致的「复用失效」。**', 1),
+
+('网络', 'DNS,劫持,优化', 3,
+ 'DNS 劫持是怎么回事？如何优化 DNS 解析速度？',
+ '**DNS 劫持**：攻击者/中间方**篡改 DNS 解析结果**，把域名解析到自己的 IP。
+
+**类型**：
+- **本地劫持**：改 hosts 文件、路由器 DNS。
+- **链路劫持**：运营商/中间设备篡改 DNS 响应（**最常见**）。
+- **DNS 缓存投毒**：污染递归服务器缓存。
+- **DNS 污染（GFW 式）**：对特定域名返回错误 IP 或 RST。
+
+**危害**：**钓鱼（假站点）、广告注入、流量劫持**。
+
+**防御**：
+- **DNSSEC**：对 DNS 响应签名，验证真实性（需权威和递归都支持）。
+- **DoH（DNS over HTTPS）/ DoT（DNS over TLS）**：加密 DNS 查询，防中间篡改。
+- **用可信公共 DNS**：`8.8.8.8`、`1.1.1.1`、`223.5.5.5`（阿里）、`119.29.29.29`（腾讯）。
+- **HTTPS + 证书校验**：即使被劫持到假站点，证书不匹配会报警（**关键兜底**）。
+- **HSTS**：强制 HTTPS，防降级。
+
+**DNS 解析优化**：
+1. **本地缓存**：`nscd` / `systemd-resolved` / `dnsmasq` 缓存结果。
+2. **减少解析链**：避免过多 CNAME（每个 CNAME 多一次查询）。
+3. **预解析（prefetch）**：HTML 里 `<link rel="dns-prefetch" href="//cdn.com">`。
+4. **HTTPDNS**：App 用 HTTP 接口直接拿 IP，**绕过系统 DNS**（防劫持 + 精准调度）⭐。
+5. **TTL 合理**：太短增加解析频率，太长切换慢。
+6. **就近解析**：CDN 智能 DNS + Anycast。
+7. **连接复用**：keep-alive 减少重复解析。
+
+**一句话总结**：**DNS 劫持是篡改解析结果（钓鱼/广告/流量劫持），防御靠 DNSSEC、DoH/DoT、可信 DNS 和「HTTPS 证书兜底」；优化则靠本地缓存、减少 CNAME、DNS 预取和 App 端 HTTPDNS 绕过系统解析。**', 1),
+
+('网络', 'TCP,连接状态', 1,
+ 'TCP 有哪些连接状态？画出状态转换图的关键路径。',
+ '**TCP 11 种状态**：
+
+**建连**：
+- **CLOSED**：初始/关闭。
+- **LISTEN**：服务端等待连接。
+- **SYN_SENT**：客户端已发 SYN，等 SYN-ACK。
+- **SYN_RCVD**：服务端收到 SYN 并回 SYN-ACK，等 ACK。
+
+**连接建立（建立后）**：
+- **ESTABLISHED**：连接已建立，双方可收发。
+
+**关闭**：
+- **FIN_WAIT_1**：主动关闭方发 FIN 后。
+- **FIN_WAIT_2**：收到对方 ACK（对方还没发 FIN）。
+- **TIME_WAIT**：主动关闭方收到对方 FIN 并回 ACK，等 2MSL。
+- **CLOSE_WAIT**：被动关闭方收到 FIN，等应用 close。
+- **LAST_ACK**：被动关闭方发 FIN 后，等最后 ACK。
+- **CLOSING**：双方同时发 FIN 的少见状态。
+
+**关键路径**：
+
+```
+客户端（主动关闭）              服务端（被动关闭）
+ESTABLISHED                     ESTABLISHED
+   |  FIN                          |
+FIN_WAIT_1                        | → CLOSE_WAIT
+   | ← ACK                         |
+FIN_WAIT_2                        |
+   | ← FIN                         |  应用 close → LAST_ACK
+   |  ACK                          |
+TIME_WAIT（2MSL）                  → CLOSED
+   → CLOSED
+```
+
+**排查关注**：
+- 大量 **TIME_WAIT**：主动关闭方，正常（可调优）。
+- 大量 **CLOSE_WAIT**：**应用没 close，是 bug**。
+- 大量 **SYN_RCVD**：可能是 **SYN Flood**。
+- 大量 **FIN_WAIT_2**：对方没发 FIN（可能对方应用卡住）。
+
+**查看命令**：`ss -ant`、`netstat -ant | awk ''{print $6}'' | sort | uniq -c`。
+
+**一句话总结**：**建连 SYN_SENT/SYN_RCVD，建立 ESTABLISHED，关闭 FIN_WAIT_1/2、TIME_WAIT（主动）、CLOSE_WAIT/LAST_ACK（被动）；TIME_WAIT 多属正常、CLOSE_WAIT 多是应用 bug、SYN_RCVD 多要警惕 SYN Flood。**', 1),
+
+('网络', '加密,对称非对称', 2,
+ '对称加密和非对称加密有什么区别？为什么 HTTPS 两者都用？',
+ '**对称加密**：
+- **加解密用同一把密钥**。
+- 算法：**AES、ChaCha20、DES（已淘汰）、3DES**。
+- 优点：**快**（AES 硬件加速可达 GB/s）。
+- 缺点：**密钥分发难**（怎么把密钥安全给对方？）。
+
+**非对称加密**：
+- **公钥加密、私钥解密**（或私钥签名、公钥验签）。
+- 算法：**RSA、ECC（椭圆曲线）、DSA**。
+- 优点：**解决密钥分发**（公钥可公开）。
+- 缺点：**慢**（比对称慢几百到上千倍），密钥长。
+
+**数字签名**：
+- **私钥签名、公钥验签**，用于**身份认证和完整性**（证书、JWT 就是）。
+- 和「公钥加密」方向相反但同属非对称。
+
+**HTTPS 为什么两者都用**：
+1. **非对称**：用来**交换/协商对称密钥**以及**验证服务器身份**（证书）—— 解决「密钥怎么安全给」。
+2. **对称**：握手后**实际数据用对称加密传输** —— 解决「性能」。
+
+**具体**：TLS 1.2 用 RSA 或 ECDHE 交换密钥；TLS 1.3 **只用 (EC)DHE**（**前向安全**：即使私钥泄露，历史会话也解不开）。
+
+**对比**：
+| 维度 | 对称 | 非对称 |
+|---|---|---|
+| 密钥 | 一把 | 一对（公/私） |
+| 速度 | **快** | 慢 |
+| 用途 | 加密数据 | 密钥交换/签名 |
+| 代表 | AES | RSA/ECC |
+
+**一句话总结**：**对称加密快但密钥难分发，非对称慢但解决分发和身份问题；HTTPS 用非对称「安全协商出对称密钥 + 验证身份」，再用对称加密传数据 —— 各取所长。**', 1),
+
+('网络', 'TCP,窗口缩放,SACK', 3,
+ 'TCP 的窗口缩放、SACK、时间戳选项分别解决什么问题？',
+ '这些都是 **TCP 选项（Options）**，用来克服原始 TCP 的局限。
+
+**1. 窗口缩放（Window Scaling，RFC 1323）**：
+- **问题**：TCP 首部窗口字段只有 **16 位**，最大 65535 字节（64KB）。在高带宽高延迟（BDP 大）网络上，64KB 窗口严重限制吞吐。
+- **解决**：握手时用选项协商一个**缩放因子**（最多 14），
+  `实际窗口 = 窗口字段 << scale`，最大可达 **1GB**。
+- **前提**：**双方都要支持**，且只在握手时协商（不能中途改）。
+
+**2. SACK（选择性确认，RFC 2018）**：
+- **问题**：原始 TCP 的 ACK 是**累积确认**，丢了一个包，发送方不知道后面的包到了没有，只能**重传一大段**（go-back-N）。
+- **解决**：接收方用 SACK 选项告知「**哪些不连续的块收到了**」，发送方**只重传丢失的**，大幅减少重传。
+- **DSACK**：还能告知「重复收到的包」，用于探测误重传。
+
+**3. 时间戳（Timestamps，RFC 1323）**：
+- **作用一**：**更精确地测 RTT**（每个包带时间戳，重传包也能测，解决 Karn 算法歧义）。
+- **作用二**：**PAWS（防回绕）**：序列号有 32 位，高速网络下会**回绕（wraparound）**，时间戳可区分「新包」和「旧的重传包」，防误收。
+- **作用三**：可用于检测乱序、优化 RTO。
+
+**组合效果**：这三者 + 现代拥塞控制（CUBIC/BBR），让 TCP 在高 BDP、有丢包的现代网络上仍能跑满带宽。
+
+**一句话总结**：**窗口缩放突破 64KB 窗口上限（BDP 大网络必需），SACK 让丢包时只重传丢失块（不是整段），时间戳同时解决「重传 RTT 测量」和「序列号回绕」；三者共同支撑现代高速 TCP。**', 1),
+
+('网络', 'HTTP,断点续传,Range', 2,
+ 'HTTP 断点续传是怎么实现的？Range 请求头怎么用？',
+ '**断点续传靠 HTTP 的 Range 请求头和 206 响应**。
+
+**原理**：
+1. 客户端**先探测**：发 `HEAD` 请求，读 `Content-Length`（总大小）和 `Accept-Ranges: bytes`（服务端是否支持）。
+2. 客户端**分片请求**：
+```
+GET /bigfile.zip HTTP/1.1
+Range: bytes=1000000-1999999      # 请求第 1MB~2MB
+```
+3. 服务端回 **206 Partial Content**：
+```
+HTTP/1.1 206 Partial Content
+Content-Range: bytes 1000000-1999999/50000000
+Content-Length: 1000000
+```
+4. 客户端**追加写入**本地文件，记录已下载偏移。
+5. **中断后**：下次从断点继续发 Range 请求。
+
+**关键头**：
+| 头 | 方向 | 含义 |
+|---|---|---|
+| `Accept-Ranges: bytes` | 响应 | 服务端支持按字节范围请求 |
+| `Range: bytes=start-end` | 请求 | 请求指定范围 |
+| `Content-Range` | 响应 | 本次返回的范围/总大小 |
+| `If-Range` | 请求 | ETag/时间未变才返回范围，**防文件变了还续传** |
+
+**多线程下载**：把文件分成 N 段，**并发发 N 个 Range 请求**，各自写文件偏移，最后拼接 —— 这就是下载器加速的原理。
+
+**注意**：
+- 服务端要**支持 Range**（静态文件服务器如 Nginx 默认支持）。
+- **动态内容**（边生成边发）通常不支持。
+- 大文件建议用 `ETag` + `If-Range`，防止**下载中途文件被更新**导致拼出错文件。
+- **压缩 + Range 冲突**：内容压缩后长度变化，Range 意义模糊，一般对大文件不压缩。
+
+**一句话总结**：**断点续传 = HEAD 探测（Content-Length + Accept-Ranges）+ `Range` 分段请求 + 206 响应 + `If-Range` 校验；多线程下载就是并发发多个 Range 再合并 —— 静态文件服务器天然支持。**', 1),
+
+('网络', 'HTTP,幂等,REST', 2,
+ 'RESTful API 的设计原则是什么？什么是幂等？',
+ '**RESTful 是「用 HTTP 语义描述资源操作」的设计风格**。
+
+**核心原则**：
+1. **资源导向**：URL 表示**资源**（名词），不是动作。
+   - ✅ `GET /users/1`、`POST /users`
+   - ❌ `GET /getUser?id=1`、`POST /deleteUser`
+2. **用 HTTP 方法表达操作**：
+   | 方法 | 语义 | 幂等 | 安全 |
+   |---|---|---|---|
+   | GET | 查询 | ✅ | ✅ |
+   | POST | 创建 | ❌ | ❌ |
+   | PUT | 全量更新/创建 | ✅ | ❌ |
+   | PATCH | 局部更新 | ❌（不保证） | ❌ |
+   | DELETE | 删除 | ✅ | ❌ |
+3. **用状态码表达结果**：200/201/204/400/404/409/500。
+4. **无状态**：每个请求自带完成所需信息（如 Token），服务端不保存会话。
+5. **统一接口**、**分层（可加代理/网关）**、**可缓存**。
+
+**幂等（Idempotent）**：
+- **同一请求执行一次或多次，服务端状态改变相同**。
+- GET/PUT/DELETE **幂等**；POST **非幂等**。
+- **为什么重要**：**网络超时后可以安全重试**。
+  - 支付/下单这类非幂等操作，要用**幂等键（idempotency key）**：客户端生成唯一 ID，服务端对同一 ID 只处理一次。
+
+**幂等实现**：
+- 唯一约束（`UNIQUE`）防重复插入。
+- 幂等 Token：请求头带 `Idempotency-Key`，服务端去重表。
+- 状态机：只允许特定状态转换（如订单「已支付」不能再支付）。
+
+**PATCH vs PUT**：PUT 是**全量替换**，PATCH 是**局部更新**（只传要改的字段）。
+
+**一句话总结**：**REST 用「名词 URL + HTTP 方法 + 状态码」表达资源操作，无状态、可缓存、可分层；幂等指「重复执行结果一致」，GET/PUT/DELETE 幂等可安全重试，POST 非幂等需用幂等键保证「至少一次」不变成「重复下单」。**', 1),
+
+('网络', 'gRPC,RPC', 3,
+ 'RPC 和 HTTP 有什么区别？gRPC 为什么快？',
+ '**RPC（远程过程调用）**：像调本地函数一样调远程服务，**隐藏网络细节**。
+
+**RPC vs HTTP（REST）**：
+| 维度 | RPC | REST/HTTP |
+|---|---|---|
+| 抽象 | 方法/函数 | 资源 |
+| 协议 | 多为二进制（gRPC/Thrift） | 文本（HTTP/JSON） |
+| 性能 | **高**（二进制、多路复用） | 一般 |
+| 可读性 | 差（需工具解码） | **好**（JSON 可读） |
+| 契约 | IDL（`.proto`）强约束 | OpenAPI 等 |
+| 流式 | **原生支持双向流** | 弱（SSE/WebSocket 另说） |
+| 浏览器 | 需 grpc-web | **原生** |
+| 场景 | 内部微服务 | 对外 API、Web |
+
+**gRPC 为什么快**：
+1. **HTTP/2 传输**：**多路复用**（一个连接并行多请求）、**头部压缩 HPACK**、**二进制分帧**。
+2. **Protobuf 序列化**：**二进制、紧凑**，比 JSON 小 3~10 倍，**编解码快**。
+3. **代码生成**：`protoc` 生成强类型客户端/服务端，**减少手写胶水**。
+4. **流式支持**：unary、server-streaming、client-streaming、**bidirectional streaming**。
+
+**Protobuf 优点**：
+- 体积小、解析快、有 schema、**向前/向后兼容**（字段号机制）。
+
+**代价**：
+- **不可读**（需工具解码）。
+- **浏览器不友好**（grpc-web + 代理）。
+- **IDL 需维护**（`.proto` 变更要管好兼容性）。
+- **调试**比 curl 麻烦。
+
+**一句话总结**：**RPC 是「像调函数一样调远程」，REST 是「操作资源」；gRPC 快在 HTTP/2 多路复用 + Protobuf 二进制 + 代码生成 + 原生流式 —— 适合内部高性能微服务，但对浏览器不友好、可读性差，对外 API 仍多用 REST/JSON。**', 1),
+
+('网络', '网络,通信,长连接上限', 3,
+ '单机支撑十万并发连接需要做什么优化？',
+ '**十万并发（C10K/C100K）的核心是「用最少的资源管理最多的连接」**。
+
+**1. 文件描述符（最基础）**
+```bash
+ulimit -n 1000000                     # 临时
+# /etc/security/limits.conf
+* soft nofile 1000000
+* hard nofile 1000000
+# systemd 服务：LimitNOFILE=1000000
+```
+- 每个连接占 1 个 FD，**默认 1024 远远不够**。
+
+**2. IO 模型**
+- **必须用 epoll**（不是 select/poll），配合**非阻塞 IO**。
+- 用**多线程 + 每个线程一个 epoll**（Reactor 模式），或 **多进程 + SO_REUSEPORT**。
+- 避免「一连接一线程」（线程栈默认 8MB，十万线程 = 800GB，爆掉）。
+
+**3. 内存**
+- **减少每连接内存**：读缓冲/写缓冲调小（但要权衡）。
+- 十万连接 × (读+写缓冲 + 连接上下文)，要精打细算。
+- **内核 socket 缓冲**：`net.core.rmem_default/wmem_default`、`tcp_rmem/tcp_wmem`。
+
+**4. 内核参数**
+```bash
+net.core.somaxconn = 65535            # 全连接队列
+net.ipv4.tcp_max_syn_backlog = 65535  # 半连接队列
+net.ipv4.ip_local_port_range = 1024 65535
+net.ipv4.tcp_tw_reuse = 1
+net.core.netdev_max_backlog = 65535   # 网卡收包队列
+fs.file-max = 1000000                 # 系统级 FD 上限
+net.ipv4.tcp_mem / tcp_rmem / tcp_wmem  # TCP 内存
+```
+
+**5. 架构**
+- **水平扩展**：单机有上限，多机 + 负载均衡。
+- **连接路由**：长连接要能把「同一用户的连接」路由到同一后端（一致性哈希）。
+- **独立网关**：用 C/C++/Go/Rust 写接入层（如 Nginx、Envoy、自研）。
+- **协议轻量化**：减少每连接状态（如 WebSocket 比 HTTP 轮询省）。
+
+**6. 其他**
+- **网卡多队列 + CPU 亲和**（RSS/RPS）分散中断。
+- **避免锁竞争**（每连接独立状态）。
+- **心跳与超时**及时回收死连接。
+
+**一句话总结**：**十万并发的关键是「epoll 非阻塞 + 单连接低内存 + 调大 FD/队列/端口内核参数 + 多机水平扩展」；核心矛盾是「每连接的开销 × 连接数」不能超过单机资源，所以要么压低每连接成本，要么横向拆分。**', 1),
+
+('网络', 'HTTP,序列化,JSON', 2,
+ 'JSON、XML、Protobuf 有什么区别？该怎么选？',
+ '**JSON（JavaScript Object Notation）**：
+- **文本、人类可读**、轻量、语言无关。
+- 类型：对象/数组/字符串/数字/布尔/null。
+- **Web 事实标准**。
+- 缺点：**体积比二进制大**、无 schema（需 JSON Schema）、数字精度/大整数有坑。
+
+**XML**：
+- **文本、可读**、**强 schema（DTD/XSD）**、命名空间、可扩展。
+- 缺点：**冗长**（标签开销大）、解析慢、API 繁琐。
+- 场景：**配置文件、SOAP、企业遗留系统、文档格式（SVG/HTML）**。
+
+**Protobuf（Protocol Buffers）**：
+- **二进制、紧凑、快**、有 `.proto` IDL、**代码生成**。
+- **字段号机制**保证向前/向后兼容。
+- 缺点：**不可读**（需工具）、schema 要维护。
+- 场景：**gRPC、内部微服务、高性能/低带宽场景**。
+
+**对比**：
+| 维度 | JSON | XML | Protobuf |
+|---|---|---|---|
+| 格式 | 文本 | 文本 | **二进制** |
+| 可读性 | **好** | 好 | 差 |
+| 体积 | 中 | **大** | **小** |
+| 速度 | 中 | 慢 | **快** |
+| Schema | 可选 | **强** | **强** |
+| 兼容性 | 靠约定 | 靠 schema | **字段号** |
+| 典型场景 | Web API | 配置/SOAP | gRPC/内部 |
+
+**怎么选**：
+- **对外 Web API**：**JSON**（通用、可读、浏览器友好）。
+- **内部高性能 RPC**：**Protobuf / gRPC**。
+- **配置/文档/强 schema**：XML 或 YAML（配置常改用 YAML/TOML）。
+- **大文件/流式**：二进制（Protobuf/Avro/消息专用）。
+
+**YAML** 补充：比 JSON 更易读（无引号/括号），但缩进敏感、解析歧义多，**只适合配置，不适合传输**。
+
+**一句话总结**：**JSON 通用可读（Web API 首选），XML 强 schema 但冗长（配置/遗留系统），Protobuf 紧凑高效带 schema（gRPC/内部服务）；选择看「对外还是对内、要不要可读、性能是否敏感」。**', 1),
+
+('操作系统', '进程,线程,协程', 1,
+ '进程、线程、协程有什么区别？',
+ '**进程**：
+- **资源分配的基本单位**，有独立地址空间、FD 表、内存。
+- 进程间**相互隔离**（一个崩了不影响另一个）。
+- 切换开销大（要切换页表、刷新 TLB）。
+
+**线程**：
+- **CPU 调度的基本单位**，同一进程内多个线程**共享地址空间**。
+- 共享：代码段、数据段、堆、FD。
+- 私有：**栈、寄存器、程序计数器、线程局部存储**。
+- 切换开销比进程小（不切页表），但仍需**内核态切换**。
+- 通信简单（共享内存）但**要同步**（锁），一个线程崩可能导致整个进程崩。
+
+**协程**：
+- **用户态的轻量级线程**，由**程序自己调度**（不是内核）。
+- 切换成本极低（**不陷入内核**，只切换少量上下文）。
+- 协作式：**自己让出**（`await`/`yield`），不会被动抢占。
+- 适合 **IO 密集**（大量等待时让出）。
+- 一个线程可跑成千上万协程。
+
+**对比**：
+| 维度 | 进程 | 线程 | 协程 |
+|---|---|---|---|
+| 调度者 | 内核 | 内核 | **用户程序** |
+| 隔离性 | **强** | 弱（共享） | 弱（共享） |
+| 切换开销 | 大 | 中 | **极小** |
+| 通信 | IPC | 共享内存+锁 | 共享+让出 |
+| 并发规模 | 百级 | 千级 | **万级+** |
+| 适合 | 隔离/多核 | 计算/并行 | **IO 密集** |
+
+**一句话总结**：**进程是资源隔离的单位，线程是 CPU 调度的单位，协程是用户态调度的轻量并发；进程重隔离、线程重并行、协程重高并发 IO —— 选择取决于「要隔离、要算力还是要吞吐」。**', 1),
+
+('操作系统', '进程,状态', 2,
+ '进程有哪些状态？状态之间如何转换？',
+ '**经典五态模型**：
+
+| 状态 | 含义 |
+|---|---|
+| **新建（New）** | 进程刚被创建，尚未就绪 |
+| **就绪（Ready）** | 具备运行条件，**等待 CPU** |
+| **运行（Running）** | 正占用 CPU 执行 |
+| **阻塞（Blocked/Waiting）** | **等待某事件**（IO、信号量），即使给 CPU 也不能跑 |
+| **终止（Terminated）** | 执行完毕或被杀 |
+
+**转换关系**：
+```
+        创建
+新建 ──────→ 就绪 ←──────────┐
+              │ ↑             │
+     调度     │ │ 时间片用完   │ 阻塞事件完成
+              ↓ │ /被抢占      │
+            运行 ──────→ 阻塞 ─┘
+              │
+              │ 结束
+              ↓
+            终止
+```
+- 就绪 → 运行：**被调度器选中**。
+- 运行 → 就绪：**时间片用完**或被更高优先级**抢占**。
+- 运行 → 阻塞：**主动等待**事件（发起 IO、申请锁、`sleep`）。
+- 阻塞 → 就绪：等待的事件发生（IO 完成、锁释放）。
+- **阻塞不能直接到运行**，必须先回到就绪排队。
+
+**为什么区分就绪和阻塞**：
+- 就绪是「万事俱备只欠 CPU」，阻塞是「给 CPU 也没用」。
+- 区分后调度器只需从**就绪队列**挑，且阻塞不会浪费 CPU。
+
+**Linux 中的状态**（`ps` 的 STAT）：
+- `R` 运行/就绪，`S` 可中断睡眠，`D` 不可中断睡眠（IO），`T` 停止，`Z` 僵尸，`I` 空闲内核线程。
+
+**一句话总结**：**五态为「新建/就绪/运行/阻塞/终止」；就绪等 CPU、阻塞等事件，关键规则是「阻塞必须先回到就绪才能运行」—— 这样调度器永远只从就绪队列挑人，不会让等 IO 的进程白占 CPU。**', 1),
+
+('操作系统', 'IPC,管道,共享内存', 2,
+ '进程间通信（IPC）有哪些方式？各自优缺点？',
+ '**1. 管道（Pipe）**：
+- **匿名管道**：亲缘进程（父子）间，**半双工**，内核缓冲（默认 64KB）。
+- **命名管道（FIFO）**：有文件名，无关进程也能用。
+- 优点：简单；缺点：**只能单向、容量有限、只能亲缘进程（匿名）**。
+
+**2. 消息队列**：
+- 内核维护的**消息链表**，按类型收发。
+- 优点：可带类型、异步；缺点：**有大小限制**、内核态拷贝开销。
+
+**3. 共享内存**：
+- 多进程映射**同一块物理内存**。
+- 优点：**最快**（无内核拷贝）；缺点：**需要自己做同步**（配信号量/互斥锁），复杂。
+
+**4. 信号量（Semaphore）**：
+- 计数器，做**同步与互斥**（P/V 操作）。
+- 常配合共享内存使用。
+
+**5. 信号（Signal）**：
+- 异步通知（`SIGINT`、`SIGTERM`、`SIGKILL`）。
+- 只能传「发生了某事」，**不能传数据**。
+
+**6. Socket**：
+- **可跨主机**，最通用（TCP/UDP/Unix Domain Socket）。
+- UDS 本机通信比 TCP 快（不走网络栈）。
+
+**对比**：
+| 方式 | 速度 | 跨主机 | 同步 |
+|---|---|---|---|
+| 共享内存 | **最快** | ❌ | 需自己做 |
+| Socket/UDS | 快 | ✅ | 自带/需做 |
+| 管道 | 中 | ❌ | 自带 |
+| 消息队列 | 中 | ❌ | 自带 |
+| 信号 | — | ❌ | 异步 |
+| 信号量 | — | ❌ | 专门做同步 |
+
+**选择**：
+- **本机高频数据**：共享内存 + 信号量。
+- **本机通用**：Unix Domain Socket。
+- **跨主机**：Socket。
+- **简单通知**：信号 / 管道。
+
+**一句话总结**：**IPC 分「传数据」和「做同步」两类：共享内存最快但要自己同步，Socket 通用可跨机，管道/消息队列简单但有容量和亲缘限制，信号只能传事件 —— 按「速度需求 + 是否跨机 + 同步复杂度」选。**', 1),
+
+('操作系统', '死锁,四条件', 2,
+ '死锁的四个必要条件是什么？如何预防、避免和检测？',
+ '**死锁**：多个进程**互相持有对方需要的资源并等待**，导致永久阻塞。
+
+**四个必要条件（同时满足才可能死锁）**：
+1. **互斥**：资源同一时间只能被一个进程占用。
+2. **占有并等待**：持有资源的同时等待其他资源。
+3. **不可剥夺**：资源不能被强行抢走。
+4. **循环等待**：存在进程-资源的环形等待链。
+
+**预防（破坏任一条件）**：
+- 破坏互斥：**难**（有些资源本质互斥）。
+- 破坏占有并等待：**一次性申请所有资源**（降低并发、可能浪费）。
+- 破坏不可剥夺：**申请不到就释放已持有的**（可能导致饥饿、实现复杂）。
+- 破坏循环等待：**资源统一编号，按序申请**（**最实用**）⭐。
+
+**避免（运行时判断）**：
+- **银行家算法**：分配前判断是否处于**安全状态**（存在安全序列）。
+- 优点：不保守；缺点：要知道最大需求、开销大，实际少用。
+
+**检测与恢复**：
+- 定期**资源分配图**检测环。
+- 恢复：**杀进程**、**回滚**、**抢占资源**。
+
+**实际工程做法**：
+- **锁排序**（所有线程按固定顺序加锁）。
+- **`try_lock` + 超时**（拿不到就释放重试，打破不可剥夺）。
+- **减小锁粒度、缩短持锁时间**。
+- **避免嵌套锁** / 用**无锁数据结构**。
+- 用**工具检测**（`helgrind`、`ThreadSanitizer`、`gdb` 看线程栈）。
+
+**一句话总结**：**死锁需同时满足「互斥 + 占有等待 + 不可剥夺 + 循环等待」；预防靠破坏其一（最实用是「统一加锁顺序」），避免用银行家算法（少用），检测靠资源分配图 —— 工程上「锁排序 + 超时 + 减小锁粒度」最落地。**', 1),
+
+('操作系统', '内存,虚拟内存', 2,
+ '什么是虚拟内存？它解决什么问题？',
+ '**虚拟内存**：每个进程看到**独立的、连续的地址空间**，由 **MMU** 映射到物理内存。
+
+**解决的问题**：
+1. **内存隔离**：进程之间互不干扰（一个进程崩溃不影响其他）。
+2. **突破物理内存限制**：用**磁盘（swap）**扩展，程序可用空间 > 物理内存。
+3. **简化编程**：程序不用关心物理布局，可假设连续地址。
+4. **内存保护**：页表项有权限位（读/写/执行），越权访问触发段错误。
+5. **共享**：多进程可映射同一物理页（如共享库、COW）。
+
+**关键机制**：
+- **分页**：地址空间分成固定大小**页**（4KB），物理内存分**页框**。
+- **页表**：虚拟页 → 物理页框的映射（**多级页表**省空间）。
+- **TLB**：页表的高速缓存（地址转换加速），**命中率高则快**。
+- **缺页中断**：访问的页不在内存 → 从磁盘调入（或 COW 分配）。
+- **页面置换**：内存满时选一页换出（LRU/Clock 等）。
+
+**地址翻译**：
+```
+虚拟地址 = 页号 + 页内偏移
+页号 → 查页表（经 TLB）→ 物理页框号
+物理地址 = 物理页框号 × 页大小 + 页内偏移
+```
+
+**一句话总结**：**虚拟内存给每个进程一个「独立、连续、可超物理内存」的地址空间，靠 MMU + 多级页表 + TLB + 缺页中断实现；它带来隔离、保护、共享和扩展能力，代价是地址转换开销与缺页延迟。**', 1),
+
+('操作系统', '页面置换,LRU', 3,
+ '页面置换算法有哪些？LRU 是怎么实现的？',
+ '**目标**：内存满时**换出最不可能再用的页**，降低缺页率。
+
+**1. OPT（最优置换）**：
+- 换出**未来最久不用**的页。
+- **理论最优**，需预知未来，**只能做基准**。
+
+**2. FIFO（先进先出）**：
+- 换出**最早进入**的页。
+- 简单，但有 **Belady 异常**（页框增多反而缺页率上升）。
+
+**3. LRU（最近最少使用）**：
+- 换出**最久未被访问**的页。
+- 利用**时间局部性**，效果好。
+- **实现**：
+  - **哈希表 + 双向链表**（O(1) 访问与移动）：访问时移到表头，淘汰时取表尾。
+  - 计数器法（记录访问时间，开销大）。
+  - 近似：**Clock（时钟）算法** ⭐。
+
+**4. Clock（时钟，NRU 近似）**：
+- 页面组织成环，每页一个**访问位**。
+- 指针扫描：访问位=1 → 清零并跳过；=0 → 淘汰。
+- **近似 LRU**，实现简单高效，**Linux 实际采用（二次机会）**。
+
+**5. LFU（最不常用）**：
+- 换出**访问次数最少**的页。
+- 问题：**历史访问多的页难被淘汰**（缓存污染，新页吃亏）。
+
+**Belady 异常**：FIFO 独有（LRU/OPT 属「栈算法」不会有）。
+
+**Linux 的实现**：**双链表 + Clock 变体**（active/inactive 链表，活跃度调整），配合 `kswapd` 回收。
+
+**缺页率与工作集**：若进程**工作集**（当前活跃页）> 可用页框，会**抖动（thrashing）**（频繁换入换出，CPU 利用率骤降）。
+
+**一句话总结**：**OPT 理论最优不可实现，FIFO 简单但有 Belady 异常，LRU 效果好但需哈希+链表（O(1)），Clock 是 LRU 的高效近似（Linux 采用）；根本目标是利用局部性，防抖动要靠「工作集放得下」。**', 1),
+
+('操作系统', '内存,分页分段', 2,
+ '分页和分段有什么区别？为什么现代系统用分页？',
+ '**分页（Paging）**：
+- **固定大小**（如 4KB），**物理划分**，对用户透明。
+- 地址 = **页号 + 页内偏移**，一维地址空间。
+- 解决**外部碎片**（页大小固定，任意页框都能放）。
+- 缺点：**内部碎片**（最后一页可能有浪费）。
+
+**分段（Segmentation）**：
+- **按逻辑划分**（代码段、数据段、栈段），**大小可变**。
+- 地址 = **段号 + 段内偏移**，二维。
+- 符合程序逻辑（便于共享、保护、动态增长）。
+- 缺点：**外部碎片**（段大小不一，难找连续空间）。
+
+**对比**：
+| 维度 | 分页 | 分段 |
+|---|---|---|
+| 划分依据 | **物理，固定大小** | **逻辑，可变大小** |
+| 对用户 | 透明 | 可见（程序员划分） |
+| 地址 | 一维 | 二维 |
+| 碎片 | 内部 | 外部 |
+| 共享/保护 | 较弱 | **强（按逻辑）** |
+
+**为什么现代用分页**：
+1. **无外部碎片**，内存利用率高。
+2. **页表好管理**，配合**多级页表**省空间。
+3. **便于虚拟内存**（按页换入换出，粒度合适）。
+4. 共享/保护可用**页权限位**实现。
+
+**段页式**：先分段（逻辑），再分页（物理）—— 兼具两者优点（x86 历史上用过，现代多纯分页 + 逻辑段）。
+
+**一句话总结**：**分页是「物理上固定大小分割」（无外部碎片、透明、一维），分段是「逻辑上可变分割」（符合程序结构、二维）；现代系统以**分页**为主，因为它无外部碎片、易配合虚拟内存与多级页表，逻辑保护则靠页权限位和段寄存器残留。**', 1),
+
+('操作系统', '调度,算法', 2,
+ '常见进程调度算法有哪些？各自适用场景？',
+ '**1. FCFS（先来先服务）**：
+- 按到达顺序，**非抢占**。
+- 简单，但**长作业阻塞短作业**（护航效应）。
+
+**2. SJF（短作业优先）**：
+- 优先调度**预计运行时间最短**的。
+- 平均等待时间最优（理论上），但需**预知运行时间**、可能**饿死长作业**。
+
+**3. 时间片轮转（RR）**：
+- 每个进程一个**时间片**，用完排到队尾。
+- **公平、响应好**，适合**分时系统**。
+- 时间片太小 → 切换开销大；太大 → 退化成 FCFS。
+
+**4. 优先级调度**：
+- 优先高优先级，可抢占。
+- 问题：**低优先级饥饿** → 用**老化（aging）**缓解。
+
+**5. 多级反馈队列（MLFQ）** ⭐：
+- 多级队列，**优先级从高到低，时间片从小到大**。
+- 新进程进最高优先级；用完时间片降级；等待太久升级（防饥饿）。
+- **兼顾响应与吞吐**，**通用操作系统常用**。
+
+**6. 实时调度**：
+- **RM（速率单调）**：周期越短优先级越高（静态）。
+- **EDF（最早截止优先）**：截止时间最近优先（动态，理论最优）。
+- 用于**工业控制、音视频**。
+
+**关键指标**：
+- **CPU 利用率**、**吞吐量**、**周转时间**、**等待时间**、**响应时间**。
+- 不同系统优化目标不同（批处理重吞吐，交互重响应）。
+
+**Linux 现状**：**CFS（完全公平调度）**，用**虚拟运行时间（vruntime）** 选最「欠账」的进程，配合**红黑树**（O(log n)），权重来自 nice 值。实时任务用 `SCHED_FIFO`/`SCHED_RR`。
+
+**一句话总结**：**FCFS 简单但护航，SJF 最优但需预知且饿死长任务，RR 公平适合分时，MLFQ 兼顾响应与吞吐（通用首选）；Linux 用 CFS 以 vruntime 红黑树实现公平调度 —— 调度算法的选择取决于系统更看重「吞吐、延迟还是公平」。**', 1),
+
+('操作系统', '中断,系统调用', 2,
+ '中断和系统调用有什么区别？为什么需要用户态和内核态？',
+ '**为什么要分用户态/内核态**：
+- **安全与稳定**：用户程序若能直接操作硬件/内存，会互相破坏甚至搞崩系统。
+- **权限隔离**：内核态（Ring 0）能执行特权指令、访问所有内存；用户态（Ring 3）受限。
+
+**系统调用（System Call）**：
+- 用户程序**主动请求内核服务**（读文件、开 socket、创建进程）。
+- 通过**软中断 / `syscall` 指令**陷入内核，切换特权级。
+- 例：`read`、`write`、`open`、`fork`、`mmap`。
+- **同步**、**有明确调用点**。
+
+**中断（Interrupt）**：
+- **硬件/软件异步通知 CPU**发生事件（网卡收包、时钟、键盘）。
+- **中断当前执行流**，跳转中断处理程序。
+- 分**硬中断**（设备）和**软中断**（软件触发，如 `int 0x80`、内核下半部）。
+- **异步**、**由外部/硬件触发**。
+
+**共同点**：都要**切换特权级**（保存上下文、进入内核）—— 所以**开销不菲**。
+
+**对比**：
+| 维度 | 系统调用 | 中断 |
+|---|---|---|
+| 触发者 | **用户程序主动** | 硬件/异步事件 |
+| 时机 | 确定 | 任意 |
+| 目的 | 请求内核服务 | 响应外部事件 |
+| 同步性 | 同步 | **异步** |
+
+**切换开销**：
+- 保存/恢复寄存器、切换栈、可能刷 TLB/缓存。
+- 所以**减少系统调用**（批量 IO、`vmsplice`、`io_uring`）是性能优化点。
+
+**一句话总结**：**用户态/内核态分离是为了安全与稳定（限制特权指令）；系统调用是「用户程序主动陷入内核求服务」（同步、确定），中断是「硬件/事件异步打断 CPU」（异步、任意时刻）—— 两者都要切特权级，因此都贵，减少切换是优化的关键。**', 1),
+
+('操作系统', 'IO模型,Reactor', 3,
+ '五种 IO 模型是什么？Reactor 和 Proactor 有什么区别？',
+ '**五种 IO 模型**：
+
+1. **阻塞 IO（Blocking）**：
+   - 调用 `recv` 一直等到数据到 + 拷贝到用户态。
+   - 简单，但**一连接一线程**，扩展性差。
+
+2. **非阻塞 IO（Non-blocking）**：
+   - `recv` 立即返回（无数据返回 `EWOULDBLOCK`），**要轮询**。
+   - 轮询浪费 CPU。
+
+3. **IO 多路复用（select/poll/epoll）**：
+   - 一个线程**同时监听多个 FD**，就绪后再逐个处理。
+   - **高并发首选**（epoll）。
+
+4. **信号驱动 IO（SIGIO）**：
+   - 数据就绪时**内核发信号**通知，再 `recv`。
+   - 用得少。
+
+5. **异步 IO（AIO / io_uring）**：
+   - `aio_read` 提交请求后**立即返回**，**内核完成「数据到 + 拷贝到用户态」后再通知**。
+   - **真异步**（前四种在「拷贝到用户态」这步都是阻塞的）。
+   - Linux 原生 AIO 弱，**`io_uring`（5.1+）是现代的异步 IO**。
+
+**Reactor vs Proactor**：
+| | Reactor | Proactor |
+|---|---|---|
+| 就绪通知 | **就绪可读/写时通知** | **操作完成时通知** |
+| 谁读数据 | **应用自己读** | **内核读好，应用直接用** |
+| 对应模型 | 多路复用 | **异步 IO** |
+| 典型 | **Nginx、Netty、epoll** | IOCP（Windows）、io_uring |
+
+**通俗理解**：
+- **Reactor**：快递到了通知你，**你自己下楼取**。
+- **Proactor**：快递**直接送上门**，你签收即可。
+
+**epoll 的高效**：红黑树注册 + 就绪链表，**O(1) 取就绪**，无需全量拷贝（见网络部分）。
+
+**一句话总结**：**五模型按「谁等、谁拷」区分：阻塞/非阻塞/多路复用/信号驱动都属「同步 IO」（拷贝阶段应用自己等），异步 IO 才是内核全包；Reactor 是「就绪通知、应用自己读写」（多路复用），Proactor 是「完成通知、内核代劳 IO」（异步 IO）—— 高并发 Web 多用 Reactor（epoll）。**', 1),
+
+('操作系统', '锁,自旋锁,互斥锁', 2,
+ '自旋锁和互斥锁有什么区别？什么时候用哪个？',
+ '**互斥锁（Mutex）**：
+- 拿不到锁时**睡眠（阻塞）**，让出 CPU，等别人释放后**被唤醒**。
+- 有**上下文切换开销**（睡眠 + 唤醒）。
+- 适合**持锁时间长**或**竞争激烈**的场景。
+
+**自旋锁（Spinlock）**：
+- 拿不到锁时**忙等（循环重试）**，**不睡眠**。
+- 无上下文切换，但**浪费 CPU**。
+- 适合**持锁时间极短**且**多核**的场景。
+
+**对比**：
+| 维度 | 互斥锁 | 自旋锁 |
+|---|---|---|
+| 等待方式 | **睡眠** | **忙等** |
+| 切换开销 | 有 | 无 |
+| CPU 浪费 | 无（睡着） | **有**（空转） |
+| 适用 | 持锁久/竞争激烈 | **持锁极短** |
+| 单核 | ✅ | ❌（自旋无意义，因为持有者也需要 CPU） |
+| 临界区可睡眠 | ✅ | ❌（自旋中不能睡眠） |
+
+**关键原则**：
+- **自旋锁保护的临界区必须极短**，且**内部不能睡眠**（否则死锁）。
+- **单核上自旋锁没意义**（持锁线程拿不到 CPU，自旋者白等）—— 单核需关抢占。
+- **内核**里自旋锁常用于短临界区（中断上下文）。
+
+**自适应锁（Adaptive/Futex）**：
+- **先自旋一小会儿，不行再睡眠** —— 兼取两者优点。
+- Linux **futex**：用户态先自旋，需阻塞才陷入内核。
+- **Java 的偏向锁/轻量级锁/重量级锁**也是类似思想（锁升级）。
+
+**读写锁**：读读不互斥、读写互斥、写写互斥；**读多写少**时提升并发。
+
+**一句话总结**：**互斥锁「睡觉等」（有切换开销，适合长临界区），自旋锁「空转等」（无切换但烧 CPU，适合极短临界区且多核）；实践用「先自旋后睡眠」的自适应锁（futex），并根据读写比例选读写锁。**', 1),
+
+('操作系统', '并发,原子操作,CAS', 3,
+ '什么是 CAS？它有什么问题？ABA 问题怎么解决？',
+ '**CAS（Compare-And-Swap）**：**原子的「比较并交换」指令**。
+- 语义：若内存值 == 期望值，则改为新值，返回成功；否则失败。
+- 一条 CPU 指令（`cmpxchg` / `lock cmpxchg`），**硬件保证原子**。
+
+**用途**：实现**无锁（lock-free）**数据结构、原子变量（`std::atomic`）、乐观锁。
+
+**CAS 的问题**：
+1. **ABA 问题**：
+   - 值从 A → B → A，CAS 认为「没变」，但中间其实变过。
+   - **危害**：如无锁栈，A 被弹出又压入，指针复用可能导致错误。
+   - **解决**：
+     - **加版本号**（`AtomicStampedReference`，每次修改版本 +1）。
+     - **标签指针**（指针 + 计数打包）。
+2. **自旋开销**：CAS 失败要**循环重试**，高竞争下**空转烧 CPU**。
+3. **只能保护一个变量**：多变量原子性需额外机制（或打包）。
+4. **ABA + 内存回收**：C++ 无 GC，节点被释放后指针可能复用 → 需 **Hazard Pointer / RCU / 引用计数**。
+
+**乐观锁 vs 悲观锁**：
+- **悲观锁**：假设会冲突，**先加锁**（`SELECT ... FOR UPDATE`、互斥锁）。
+- **乐观锁**：假设不冲突，**先改再验**（CAS、版本号）—— 冲突时重试。
+- **CAS 是乐观锁的底层**。
+
+**一句话总结**：**CAS 是硬件级的「比较并交换」原子指令，用来实现无锁并发（原子变量、乐观锁）；它的问题是 ABA（用版本号解决）、自旋烧 CPU、只能保一个变量、以及无 GC 语言的指针回收（Hazard Pointer/RCU）—— 高竞争下不如锁。**', 1),
+
+('操作系统', '内存,缺页,COW', 3,
+ '缺页中断的处理流程是怎样的？写时复制（COW）是怎么回事？',
+ '**缺页中断（Page Fault）处理流程**：
+
+1. CPU 访问虚拟地址，**MMU 查页表发现页不在内存**（有效位 = 0）→ 触发**缺页异常**。
+2. 陷入内核，保存现场。
+3. 检查地址合法性：
+   - **非法访问** → 发 **SIGSEGV**（段错误），进程终止。
+   - **合法但未调入** → 继续。
+4. 找**空闲页框**：
+   - 有 → 直接用。
+   - 无 → 触发**页面置换**（选牺牲页，脏页先写回磁盘）。
+5. 从**磁盘（或 swap、文件）读取**该页到页框。
+6. **更新页表**（虚拟页 → 物理页框 + 权限位）。
+7. **刷新 TLB**（或惰性）。
+8. 返回用户态，**重新执行**那条指令。
+
+**缺页类型**：
+- **硬缺页（Major）**：要从磁盘读（慢，毫秒级）。
+- **软缺页（Minor）**：页已在内存（如 COW、共享），只需建映射（快）。
+
+**写时复制（COW，Copy-On-Write）**：
+- **fork 时**不真正复制父进程内存，而是**父子共享所有页**，且**标记为只读**。
+- 任一方**写**某页时 → 触发**写保护缺页** → 内核**复制该页**给写方，改回可写。
+- 未写的页**始终共享**。
+- **好处**：fork 快、省内存（`fork` + `exec` 的经典场景收益巨大）。
+- **代价**：写操作触发缺页（有开销），大量写时 COW 页会被逐个复制。
+
+**应用**：
+- `fork`（进程创建）。
+- **`std::string` 的 COW**（早期实现，多线程下有问题，C++11 后多禁用）。
+- **文件系统/快照**（ZFS、Btrfs、OverlayFS）。
+- **Redis `BGSAVE`**（fork 出子进程做持久化，靠 COW 与主进程共享内存）。
+
+**一句话总结**：**缺页中断是「访问的页不在内存」触发内核调入（合法则分配页框 + 换页 + 读盘 + 更新页表 + 重执行，非法则 SIGSEGV）；COW 让 fork 后父子共享只读页、谁写谁复制，实现「延迟复制、按需分配」—— 是 fork 和快照高效的关键。**', 1),
+
+('操作系统', '文件系统,inode', 1,
+ '文件系统里 inode 是什么？硬链接和软链接有什么区别？',
+ '**inode（索引节点）**：
+- **每个文件对应一个 inode**，存**元数据**：权限、属主、大小、时间戳、**数据块指针**、链接数。
+- **不存文件名**（文件名存在目录项 `dentry` 里）。
+- 目录项 = `文件名 → inode 号` 的映射。
+
+**查看**：`stat file`、`ls -i file`（看 inode 号）。
+
+**硬链接（Hard Link）**：
+- **多个文件名指向同一 inode**（`ln a b`）。
+- **共享数据**，删除其中一个不影响另一个（inode 链接计数 -1，到 0 才释放）。
+- **不能跨文件系统**、**不能指向目录**（防环）。
+- `ls -l` 第二列是硬链接数。
+
+**软链接（Symbolic Link）**：
+- **独立文件**，内容是**目标路径**（`ln -s a b`）。
+- 有自己的 inode。
+- **可跨文件系统、可指向目录**。
+- **目标删除后变「断链」**。
+
+**对比**：
+| 维度 | 硬链接 | 软链接 |
+|---|---|---|
+| 本质 | 同 inode 多名字 | 独立文件存路径 |
+| inode | **相同** | 不同 |
+| 跨文件系统 | ❌ | ✅ |
+| 指向目录 | ❌ | ✅ |
+| 目标删除 | 不影响 | **断链** |
+| 原文件删除 | 计数 -1 | 无影响 |
+
+**为什么删了文件名还能访问**：
+- 若进程已打开该文件，**FD 仍持有 inode**，数据不释放，直到进程关闭 FD。
+- 所以「删除正在使用的文件」不会立刻释放空间。
+
+**inode 耗尽**：即使磁盘有空间，**inode 用完**也无法创建新文件（小文件多时常见）—— `df -i` 查看。
+
+**一句话总结**：**inode 存文件元数据（不含文件名），目录项做「名字→inode」映射；硬链接是「同 inode 的多个名字」（不可跨 FS/指向目录，删一个不丢数据），软链接是「存路径的独立文件」（可跨 FS/指向目录，目标删了就断链）—— inode 耗尽是「有空间却建不了文件」的隐形杀手。**', 1),
+
+('操作系统', '磁盘,IO调度', 2,
+ '磁盘 IO 调度算法有哪些？机械盘和 SSD 该选哪个？',
+ '**磁盘调度目标**：减少**寻道时间**（机械盘的主要成本），提高吞吐、保证公平。
+
+**1. FCFS（先来先服务）**：
+- 按请求顺序。简单，但**寻道距离大**。
+
+**2. SSTF（最短寻道时间优先）**：
+- 优先服务**离当前磁头最近**的请求。
+- 吞吐好，但**远端请求饥饿**。
+
+**3. SCAN（电梯算法）**：
+- 磁头**单向扫描**，到尽头再反向。
+- **避免饥饿**，性能好（像电梯）。
+
+**4. C-SCAN（循环扫描）**：
+- 只单向服务，到头**直接回到起点**重新扫。
+- 对各位置**更公平**。
+
+**5. LOOK / C-LOOK**：
+- SCAN 的优化：**不用到物理尽头**，到最远请求就反向。
+
+**Linux IO 调度器**：
+| 调度器 | 特点 |
+|---|---|
+| **noop** | 简单 FIFO，**SSD/NVMe 首选**（无机械寻道，交给设备） |
+| **deadline** | 保证请求的**截止时间**，防饥饿，适合数据库 |
+| **cfq** | 完全公平队列，按进程分时间片（老默认，已移除） |
+| **bfq** | 基于预算的公平队列，**桌面/交互**友好 |
+| **mq-deadline** | 多队列版 deadline，**现代默认之一** |
+| **kyber** | 轻量，针对低延迟设备 |
+
+**机械盘 vs SSD 选择**：
+- **机械盘（HDD）**：**有寻道**，调度算法重要，随机 IO 差。
+- **SSD/NVMe**：**无寻道**，随机 IO 也快，**noop/none 即可**（复杂调度反而增加开销）。
+- 查看/设置：`cat /sys/block/sda/queue/scheduler`、`echo mq-deadline > .../scheduler`。
+
+**NVMe 多队列**：现代设备有**大量硬件队列**，配合 `blk-mq` 多队列框架，**每 CPU 一个队列**，减少锁竞争。
+
+**一句话总结**：**机械盘靠调度减少寻道（SCAN/C-SCAN 防饥饿，SSTF 吞吐高但饿死远端），SSD 无寻道用 noop/none 即可；Linux 现代用 blk-mq 多队列，`mq-deadline`（通用/DB）和 `none`（NVMe）最常见 —— 选调度器要看设备类型和负载特性。**', 1),
+
+('操作系统', '零拷贝,拷贝', 2,
+ '零拷贝是什么？sendfile、mmap 分别怎么减少拷贝？',
+ '**传统文件发送（如 Web 服务器发文件）**：
+```
+1. read(file)  →  磁盘 → 内核页缓存（DMA）
+2. read(file)  →  内核页缓存 → 用户缓冲（CPU 拷贝）
+3. write(sock) →  用户缓冲 → socket 缓冲（CPU 拷贝）
+4. write(sock) →  socket 缓冲 → 网卡（DMA）
+```
+**共 4 次拷贝（2 次 DMA + 2 次 CPU）、4 次上下文切换** —— 中间的 CPU 拷贝纯属浪费（数据没被修改）。
+
+**零拷贝（Zero-Copy）**：**消除内核↔用户态之间的 CPU 拷贝**。
+
+**1. `sendfile(out_fd, in_fd, ...)`**：
+- 数据**在内核内直接从文件页缓存 → socket 缓冲**（一次 CPU 拷贝，甚至可省）。
+- 配合**网卡 SG-DMA**（`sendfile` + `SO_ZEROCOPY`）可做到 **0 次 CPU 拷贝**（真正零拷贝）⭐。
+- **Nginx 的静态文件发送、Kafka 的日志传输**都用它。
+- **缺点**：数据不经过用户态，**无法修改内容**（只能原样发）。
+
+**2. `mmap` + `write`**：
+- `mmap` 把文件**映射到用户地址空间**（共享内核页缓存，**无拷贝**）。
+- `write(sock)` 从映射区拷贝到 socket 缓冲（**1 次 CPU 拷贝**）。
+- 总拷贝 2 DMA + 1 CPU，比传统少一次 CPU 拷贝。
+- 可**在用户态修改**映射内容。
+
+**3. `splice`**：
+- 在两个 FD 间**管道式传输**，内核内移动，**无需用户态**。
+
+**对比**：
+| 方式 | CPU 拷贝 | 能否改数据 | 典型 |
+|---|---|---|---|
+| 传统 read/write | 2 | ✅ | 通用 |
+| mmap + write | 1 | ✅ | 需改内容 |
+| **sendfile** | 0~1 | ❌ | **Web 静态文件、Kafka** |
+| sendfile + SG-DMA | **0** | ❌ | 极致优化 |
+
+**一句话总结**：**零拷贝消除「内核页缓存 ↔ 用户缓冲」的 CPU 拷贝；`sendfile` 让数据在内核内直达网卡（0~1 次拷贝，但不能改内容，Nginx/Kafka 首选），`mmap+write` 少一次拷贝且可改内容 —— 代价是不能修改数据的场景才适合 sendfile。**', 1),
+
+('操作系统', '并发,生产者消费者', 2,
+ '用条件变量实现生产者-消费者模型，要注意什么？',
+ '**经典模型**：生产者放数据到缓冲区，消费者取数据，缓冲区满/空时**等待**。
+
+**核心组件**：
+- **互斥锁**：保护缓冲区。
+- **两个条件变量**：`not_full`（生产者等）、`not_empty`（消费者等）。
+
+**伪代码**：
+```cpp
+std::mutex mtx;
+std::condition_variable not_full, not_empty;
+std::queue<int> q;
+const size_t CAP = 10;
+
+void producer(int v) {
+    std::unique_lock<std::mutex> lk(mtx);
+    not_full.wait(lk, [&]{ return q.size() < CAP; });  // 满则等
+    q.push(v);
+    lk.unlock();
+    not_empty.notify_one();
+}
+
+void consumer() {
+    std::unique_lock<std::mutex> lk(mtx);
+    not_empty.wait(lk, [&]{ return !q.empty(); });     // 空则等
+    int v = q.front(); q.pop();
+    lk.unlock();
+    not_full.notify_one();
+}
+```
+
+**必须注意的点**：
+
+1. **`wait` 必须用谓词（while 循环）**：
+   - `wait(lk, pred)` 等价于 `while(!pred()) wait(lk);`。
+   - **为什么**：**虚假唤醒（spurious wakeup）** 和**被其他线程抢先消费**都可能让条件不成立。
+   - ❌ 错误写法：`if (q.empty()) wait(lk);` —— 醒来后不重新检查。
+
+2. **条件变量必须配锁使用**：`wait` 会**原子地释放锁并睡眠**，被唤醒后**重新持锁**。
+
+3. **通知时机**：
+   - **可以在持锁或不持锁时 `notify`**（但持锁时通知可能造成「惊群 + 立即阻塞」）。
+   - **性能优化**：先 `unlock` 再 `notify`，减少被唤醒线程的等待。
+
+4. **`notify_one` vs `notify_all`**：
+   - `notify_one`：只唤醒一个（适合「一个元素只够一个消费者」）。
+   - `notify_all`：唤醒全部（如「状态整体变化」，或元素数 > 1）。
+   - **选错会导致唤醒无效或惊群**。
+
+5. **有界 vs 无界缓冲**：
+   - 无界：生产者永不阻塞，但可能内存爆。
+   - 有界：**必须处理「满」的等待**（否则丢弃或阻塞）。
+
+**一句话总结**：**生产者-消费者用「互斥锁 + 两个条件变量」实现；核心纪律是「`wait` 必须用谓词循环（防虚假唤醒和抢占）」「notify 在解锁后」「按语义选 notify_one/all」—— 违反任何一条都可能死锁或丢数据。**', 1),
+
+('操作系统', '上下文切换,开销', 3,
+ '上下文切换的开销来自哪里？如何减少？',
+ '**上下文切换**：CPU 从一个执行流（进程/线程/中断）切到另一个，需**保存当前上下文、恢复新上下文**。
+
+**开销来源**：
+1. **保存/恢复寄存器**（通用寄存器、PC、SP、浮点/SIMD 寄存器）。
+2. **切换内核栈 / 用户栈**。
+3. **特权级切换**（用户态 ↔ 内核态）—— 系统调用/中断必经。
+4. **进程切换还要换页表**（CR3）→ **TLB 失效** → 后续访存变慢 ⭐（最贵）。
+5. **CPU 缓存失效**：新执行流的数据不在缓存里 → 缓存未命中率上升。
+6. **调度器开销**：选下一个任务、更新队列。
+
+**量级**：
+- **线程切换**：几微秒。
+- **进程切换**：因 TLB/页表，更贵。
+- **（对比）协程切换**：几十~几百纳秒（用户态）。
+
+**如何减少**：
+1. **减少线程/进程数**，用**线程池**（避免频繁创建销毁）。
+2. **用协程 / 异步 IO**（用户态切换，避开内核）。
+3. **锁优化**：
+   - 用**自旋锁**（短临界区，不睡眠）。
+   - **减小锁粒度**、缩短持锁时间。
+   - **无锁结构 / 原子操作**。
+   - **读写锁**（读多写少）。
+4. **批量处理**：一次系统调用完成更多事（`io_uring`、`writev`）。
+5. **绑核（CPU 亲和）**：减少迁移和缓存失效。
+6. **减少不必要的系统调用**（如 `gettimeofday` 用 vDSO 免陷内核）。
+7. **避免惊群**（`SO_REUSEPORT`、`EPOLLEXCLUSIVE`）。
+
+**监控**：
+- `vmstat`（`cs` 列）、`pidstat -w`、`perf sched`。
+- 上下文切换过高往往说明**锁竞争或 IO 阻塞**严重。
+
+**一句话总结**：**上下文切换的成本主要是「寄存器保存 + 页表/TLB 失效 + 缓存冷启动」；线程切换几微秒，进程更贵，协程最便宜；减少手段是线程池、协程/异步 IO、自旋锁/无锁、减小锁粒度、批处理、绑核 —— `vmstat` 的 `cs` 偏高通常指向锁竞争或阻塞。**', 1),
+
+('操作系统', '并发,锁优化', 3,
+ '什么是优先级反转？怎么解决？',
+ '**优先级反转**：**高优先级任务被低优先级任务间接阻塞**，因为中间还夹着一个中优先级任务。
+
+**经典案例（火星探路者号）**：
+- 低优先级任务 L 持有锁。
+- 高优先级任务 H 需要同一把锁 → 被阻塞。
+- 中优先级任务 M 就绪 → **抢占 L**（因为 M 优先级 > L）。
+- 结果：**L 拿不到 CPU 释放锁，H 一直被 M 拖住** —— H（最高优先级）实际上被 M（中优先级）间接阻塞。
+
+**三种解决/缓解方法**：
+
+1. **优先级继承（Priority Inheritance）** ⭐：
+   - **持有锁的低优先级任务临时提升到与等待者相同的优先级**。
+   - 这样 L 不会被 M 抢占，能尽快跑完释放锁。
+   - **优点**：不改变任务优先级本性；**缺点**：实现复杂、可能连锁继承。
+   - 用于 **POSIX 互斥锁（`PTHREAD_PRIO_INHERIT`）**、**Linux `rt_mutex`**。
+
+2. **优先级天花板（Priority Ceiling）**：
+   - **锁有一个「优先级天花板」**（所有可能用到它的任务的最高优先级）。
+   - 任务一旦持有该锁，**立即提升到天花板优先级**。
+   - **优点**：可静态分析、防死锁；**缺点**：需预知所有使用者，提升可能过度。
+
+3. **关中断 / 关抢占（临界区）**：
+   - 在实时系统中，临界区内**关中断或关抢占**，杜绝中间任务插入。
+   - **简单**，但**扩大不可抢占窗口**，影响实时性。
+
+**实际做法**：
+- **实时系统**：用**优先级继承的互斥锁**，避免用普通二值信号量。
+- **缩短临界区**、**避免持锁调用阻塞操作**（如持锁做 IO）。
+- **不要持锁嵌套其他锁**（放大反转与死锁风险）。
+
+**一句话总结**：**优先级反转是「高优先级任务被低优先级持锁者连累，还被中优先级任务插队」；解决靠「优先级继承」（持锁者临时提权，最常用）或「优先级天花板」（静态预防）或「临界区关抢占」—— 根本是让持锁者尽快释放锁，别让中间任务插队。**', 1),
+
+('操作系统', '内存分配,伙伴系统,slab', 3,
+ '操作系统如何管理物理内存？伙伴系统和 slab 有什么区别？',
+ '**1. 连续分配算法（教学）**：
+- **首次适应（First Fit）**：找第一个够大的空闲区。
+- **最佳适应（Best Fit）**：找最小的够用空闲区（易产生小碎片）。
+- **最差适应（Worst Fit）**：用最大的空闲区（难有足够大的剩余）。
+- 都有**外部碎片**问题，需要**紧凑（压缩）**。
+
+**2. 伙伴系统（Buddy System）**：
+- **按 2 的幂分配**（1、2、4、8... 页）。
+- 需要 N 页 → 找最小的 ≥ N 的 2^k 块；若没有，**向上分裂**。
+- 释放时，若**「伙伴」块也空闲**则**合并**成更大块。
+- **优点**：分配/释放 O(log n)、合并简单（伙伴可通过地址异或算出）。
+- **缺点**：**内部碎片**（只请求 1 页却给 1 页刚好，但请求 3 页给 4 页，浪费 1 页）。
+- **用途**：**管理物理内存页框**（Linux 的 `buddy allocator`）。
+
+**3. slab 分配器**：
+- 针对**内核频繁申请小对象**（如 inode、dentry、task_struct）。
+- **预先分配「对象缓存」**，对象大小固定。
+- **优点**：
+  - **无内部碎片**（按对象大小精确分配）。
+  - **快**（对象复用，免初始化开销）。
+  - **缓存友好**（同类对象在一块）。
+- **用途**：`kmalloc` 底层、`slab`/`slub`/`slob`。
+- 现代 Linux 用 **SLUB**（简化、每 CPU 缓存）。
+
+**分工**：
+- **伙伴系统**管**大块/页级**内存。
+- **slab** 从伙伴系统取页，再**切分成小对象**给内核用。
+- **用户态**：`malloc` 用 `brk`/`mmap` 向内核要内存，再自己管理（glibc 的 tcache/arena）。
+
+**一句话总结**：**伙伴系统按 2 的幂管理页框（O(log n) 合并，但内部碎片），slab 在其上做「固定小对象缓存」（无碎片、快、缓存友好）；用户态 `malloc` 则用 `brk`/`mmap` 向内核要内存再自己管理 —— 三层各管一个粒度。**', 1),
+
+('操作系统', '内存,碎片', 2,
+ '内存碎片有哪两种？怎么解决？',
+ '**内存碎片**：内存总量够，但**没有足够大的连续空间**满足需求。
+
+**1. 内部碎片（Internal Fragmentation）**：
+- **已分配给进程，但进程用不完**。
+- 例：分页最后一页可能只用一半；伙伴系统请求 3 页给 4 页。
+- **特点**：在**分配单元内部**浪费。
+
+**2. 外部碎片（External Fragmentation）**：
+- **空闲内存总量够，但分散成小块**，无法满足大请求。
+- 例：连续分配的段式内存、反复 malloc/free 造成「空洞」。
+- **特点**：在**分配单元之间**浪费。
+
+**解决方法**：
+
+**针对外部碎片**：
+- **分页**：固定大小，不要求连续 → **无外部碎片**（主流方案）。
+- **紧凑/压缩（Compaction）**：移动进程合并空闲区（**代价大**，需重定位，实际少用）。
+- **内存池/伙伴系统**：减少频繁分配释放造成的碎片。
+
+**针对内部碎片**：
+- **减小分配粒度**（如 SLUB、更小的页）。
+- **slab 按对象大小精确分配**。
+- **用户态内存池**（固定大小对象复用）。
+
+**用户态碎片**：
+- **glibc malloc** 长期运行可能碎片化 → 用 **jemalloc / tcmalloc**（更好的多线程和碎片控制）。
+- **定期重启 / 分代回收**。
+- 长生命周期服务优先**预分配 + 池化**。
+
+**一句话总结**：**内部碎片是「分配给你但用不完」，外部碎片是「总量够但没有连续大块」；外部碎片靠**分页**根治，内部碎片靠**减小粒度/slab/内存池**缓解；用户态长跑服务建议用 jemalloc/tcmalloc 并做对象池化。**', 1),
+
+('操作系统', 'buffer,cache,内存', 2,
+ 'free 命令里的 buff/cache 是什么？内存不够时会自动释放吗？',
+ '**`free -h` 输出**：
+```
+              total   used   free   shared  buff/cache   available
+Mem:           16Gi   8.0Gi  1.0Gi   0.2Gi       7.0Gi       7.5Gi
+Swap:           2Gi   0.0Gi  2.0Gi
+```
+
+**buffer**：
+- **块设备的元数据缓存**（如文件系统块、inode、目录项）。
+- 减少对磁盘元数据的读。
+
+**cache（page cache）**：
+- **文件内容的缓存**（读文件时缓存页，写文件时先写缓存）。
+- **读写文件命中缓存就等于内存速度**。
+- **越大越好**（除非挤占应用）。
+
+**关键认知**：
+- **`free` 少 ≠ 内存不够**！Linux **主动用空闲内存做缓存**（「不用白不用」）。
+- **真正看 `available`**：应用**真正可用的内存**（含可回收的 cache）。
+- **缓存是「可回收」的**：内存紧张时，内核会**回收干净的 cache 页**（脏页先写回）。
+
+**内存不够时的行为**：
+1. 先**回收 page cache**（干净页直接丢，脏页写回后丢）。
+2. 再考虑 **swap**（换出不活跃匿名页）。
+3. 还不行 → **OOM Killer** 杀进程（按 `oom_score`）。
+
+**监控**：
+- `free -h`（看 available）。
+- `vmstat 1`（si/so 看 swap 换入换出）。
+- `/proc/meminfo`（MemAvailable、Cached、Dirty、SwapCached）。
+- **`page cache` 打满**常见于：大文件读写、`rsync`、日志 —— 通常无害。
+
+**手动干预**：
+- `echo 3 > /proc/sys/vm/drop_caches`（**清缓存，慎用**，会让性能短时下降）。
+- `vm.swappiness`（0~100，控制换出倾向）。
+
+**一句话总结**：**buffer 缓存块设备元数据、cache 缓存文件内容；`free` 少不等于内存不足，**关键看 `available`** —— Linux 用空闲内存做缓存是设计使然，内存紧张时自动回收干净页、再用 swap、最后才 OOM；`drop_caches` 慎用。**', 1),
+
+('操作系统', '僵尸进程,孤儿进程', 2,
+ '僵尸进程和孤儿进程有什么区别？怎么处理？',
+ '**孤儿进程（Orphan）**：
+- **父进程先退出**，子进程还在跑。
+- **被 init（PID 1）/ systemd 收养**，成为其子进程，正常结束由它回收。
+- **无害**（有进程管它）。
+
+**僵尸进程（Zombie）**：
+- **子进程已退出，但父进程没调用 `wait()`/`waitpid()` 回收**。
+- 子进程的**退出状态和 PCB 保留**（占进程表项），但**不占 CPU/内存**（大部分资源已释放）。
+- 状态 `Z`（`ps aux` 里 STAT 为 Z）。
+- **危害**：**大量僵尸会耗尽 PID / 进程表**，导致无法创建新进程。
+
+**为什么会有僵尸**：
+- 父进程**没处理 SIGCHLD**、**没调 wait**。
+- 父进程**阻塞在别的操作**，来不及 wait。
+
+**处理僵尸**：
+1. **父进程主动 `wait()` / `waitpid()`**（根本解决）。
+2. **注册 SIGCHLD 处理函数**（收到就回收）。
+3. **`signal(SIGCHLD, SIG_IGN)`**：显式忽略 → 子进程退出**自动回收**（不留僵尸）。
+4. **双 fork 技巧**：父 → fork 子 → 子再 fork 孙，子立即退出（被 init 收养），孙变孤儿由 init 管，父不用 wait。
+5. **杀掉父进程**：僵尸的父进程死了后，僵尸被 **init 收养并回收**（僵尸不能直接 kill）。
+
+**注意**：
+- **僵尸不能 `kill -9`**（已经死了）。
+- **杀父进程后僵尸会消失**（被 init 回收）。
+
+**一句话总结**：**孤儿是「父先死，子被 init 收养」（无害），僵尸是「子已死，父不 wait」（占进程表，大量会耗尽 PID）；解决靠父进程 `wait`/SIGCHLD 处理、或 `SIG_IGN`、或双 fork，实在不行杀父进程让 init 回收 —— 僵尸无法被 kill。**', 1),
+
+('操作系统', '字节序,大端小端', 1,
+ '什么是大端和小端？如何判断当前机器的字节序？',
+ '**字节序**：多字节数据在内存中的**存放顺序**。
+
+**大端（Big-Endian）**：
+- **高位字节存低地址**（符合人类阅读顺序）。
+- `0x12345678` → `12 34 56 78`。
+- **网络字节序**统一用大端。
+
+**小端（Little-Endian）**：
+- **低位字节存低地址**。
+- `0x12345678` → `78 56 34 12`。
+- **x86/x64、ARM（默认）** 都是小端。
+
+**判断方法**：
+```cpp
+// 方法1：联合体
+union { int i; char c[4]; } u;
+u.i = 1;
+if (u.c[0] == 1) 小端; else 大端;
+
+// 方法2：指针
+int i = 1;
+char *p = (char*)&i;
+if (*p == 1) 小端; else 大端;
+
+// 方法3：C++20
+#include <bit>
+if constexpr (std::endian::native == std::endian::little) ...
+```
+
+**为什么重要**：
+- **网络传输**：必须统一（`htons`/`htonl` 主机序 → 网络序，`ntohs`/`ntohl` 反转）。
+- **跨平台二进制文件**：不同字节序读同一文件会错。
+- **协议设计**：明确指定字节序（通常大端）。
+
+**协议中的字节序**：
+- TCP/IP 头部字段用**大端**（网络字节序）。
+- 应用中自定义协议**必须显式规定**。
+
+**一句话总结**：**大端「高位在低地址」（符合阅读、网络字节序），小端「低位在低地址」（x86/ARM 默认）；用联合体或指针首字节即可判断；跨网络/跨平台传输必须用 `htons/htonl` 统一成网络字节序，否则多字节数据会反。**', 1),
+
+('操作系统', '并发,并行,Amdahl', 2,
+ '并发和并行有什么区别？Amdahl 定律说明了什么？',
+ '**并发（Concurrency）**：
+- **多个任务在同一时间段内推进**（交替执行）。
+- **可以在单核上实现**（时间片轮转）。
+- 关注**结构**（怎么组织多个任务）。
+
+**并行（Parallelism）**：
+- **多个任务在同一时刻同时执行**（真同时）。
+- **必须多核/多 CPU**。
+- 关注**执行**（怎么同时跑）。
+
+**类比**：
+- 并发 = **一个人交替处理多件事**（快速切换）。
+- 并行 = **多个人同时处理多件事**。
+
+**关系**：**并行是并发的一种实现方式**；单核只能并发不能并行。
+
+**Amdahl 定律**：
+> **加速比上限 = 1 / (S + P/N)**
+> - `S` = 串行部分占比，`P` = 并行部分占比（S+P=1），`N` = 处理器数。
+> - **加速比 ≤ 1/S**（串行部分决定天花板）。
+
+**含义**：
+- 若 10% 串行，**无论多少核，加速比最多 10 倍**。
+- 例子：S=0.1，N=∞ → 加速比 = 1/0.1 = 10。
+- **结论**：**优化并行度收益有上限，减少串行部分是关键** ⭐。
+
+**实践启示**：
+- **先找串行瓶颈**（锁、全局状态、IO）再谈加核。
+- **Gustafson 定律**补充：若**问题规模随核数增长**，加速比可近线性（弱扩展）。
+- 真实系统还要考虑**通信开销、负载不均、内存带宽**。
+
+**一句话总结**：**并发是「交替推进」（单核可），并行是「同时执行」（要多核）；Amdahl 定律指出「加速比受串行部分限制，上限 1/S」—— 别盲目加核，先削串行瓶颈（锁、单点、IO）才是关键。**', 1),
+
+('操作系统', 'TLB,MMU,缓存', 3,
+ 'MMU 和 TLB 是什么？TLB 命中率为什么重要？',
+ '**MMU（内存管理单元）**：
+- **硬件部件**，负责**虚拟地址 → 物理地址**的翻译。
+- 查**页表**，检查**权限**，配合缺页中断。
+
+**TLB（Translation Lookaside Buffer）**：
+- **页表项的高速缓存**（在 MMU 内或紧邻 CPU）。
+- 缓存**「虚拟页号 → 物理页框号」**的映射。
+- 通常几十~几千条目，**全相联/组相联**。
+
+**地址翻译流程**：
+```
+虚拟地址
+  ↓
+查 TLB
+  ├─ 命中 → 直接得物理地址（快，1~2 周期）
+  └─ 未命中 → 查页表（多级）→ 更新 TLB → 得物理地址
+              （可能触发缺页中断）
+```
+
+**为什么 TLB 命中率重要**：
+- **页表在内存里**，每次访问都查多级页表 = **多次内存访问**（4 级页表 = 4 次访存）。
+- 程序有**空间局部性**：连续访问同一页内的地址 → **TLB 命中率通常 >99%**。
+- **TLB 未命中（TLB miss）** 要**逐级查页表** → 显著变慢。
+- **TLB 刷新（flush）**：**进程切换**换页表要刷 TLB → 后续访存变慢（**进程切换贵的主因**）。
+
+**优化**：
+- **大页（HugePages，2MB/1GB）**：一页覆盖更多内存 → **TLB 覆盖范围大增** → 命中率更高 ⭐（数据库、虚拟化常用）。
+- **减少进程/线程切换**（少刷 TLB）。
+- **CPU 亲和**（避免跨核 TLB 未命中）。
+- **`mmap` 局部性好的数据**。
+
+**一句话总结**：**MMU 做地址翻译，TLB 是它的高速缓存；由于页表在内存中、多级查询昂贵，TLB 命中率直接决定访存性能（命中 ~1 周期，未命中要多次访存）；**大页**能显著扩大 TLB 覆盖范围，是数据库/虚拟化的标准优化。**', 1),
+
+('操作系统', '工作集,抖动', 3,
+ '什么是工作集和抖动（thrashing）？怎么缓解？',
+ '**工作集（Working Set）**：
+- 进程在**某段时间窗口内**实际访问的**页面集合**。
+- 反映进程的**局部性**（当前真正需要的页）。
+- `< 工作集大小 ≠ 越省越好`：工作集太大说明局部性差。
+
+**抖动（Thrashing）**：
+- **页面频繁换入换出，CPU 大部分时间在等 IO**，实际计算很少。
+- **表现**：**缺页率极高、CPU 利用率骤降**（看似 CPU 空闲，其实在等盘）。
+- **根因**：**多道程序度过高**，所有进程的工作集之和 **> 物理内存**。
+- **恶性循环**：缺页 → 等 IO → 换出别人的页 → 别人缺页 → 更慢。
+
+**缓解/解决**：
+1. **降低多道程序度**（**挂起/换出部分进程**）—— 最直接。
+2. **增加物理内存**（根治）。
+3. **工作集模型**：为每个进程分配 ≥ 其工作集大小的页框；不够就挂起进程。
+4. **缺页频率（PFF）控制**：缺页率高于上限就加页框，低于下限就减页框。
+5. **优化程序局部性**（数据布局、批量处理）。
+6. **减少 swap 依赖**：`vm.swappiness` 调低（服务器上常设 1~10）。
+7. **大页 / 预取**减少缺页。
+
+**局部性原理**：
+- **时间局部性**：刚访问的还会再访问（循环变量）。
+- **空间局部性**：附近地址会被访问（数组顺序遍历）。
+- **工作集正是局部性的量化**。
+
+**一句话总结**：**工作集是「进程当前真正在用的页集合」，抖动是「所有进程工作集之和超过物理内存导致频繁换页、CPU 空转」；解决靠降低并发度、加内存、按工作集分配页框或 PFF 动态调整 —— 关键指标是「缺页率高 + CPU 利用率低」这个反常组合。**', 1),
+
+('操作系统', '并发,管程,哲学家', 3,
+ '什么是管程（Monitor）？它和信号量有什么区别？',
+ '**管程（Monitor）**：**把共享变量和对它的操作封装在一起**，**同一时刻只允许一个进程进入**的同步机制。
+
+**特点**：
+- **封装共享数据** + **互斥访问**（一次只有一个进程在管程内）。
+- **条件变量**用于等待/通知（`wait`/`signal`）。
+- **互斥由编译器/语言保证**（程序员不用手动加锁）。
+- 代表：**Java 的 `synchronized`**、**C# 的 `lock`**、**管程即「语法层面的同步」**。
+
+**信号量（Semaphore）**：
+- **一个整型计数器** + P/V 原子操作。
+- **互斥和同步都要程序员手动摆放**。
+- 灵活但**易错**（顺序错、忘记 V、死锁）。
+- 可以「计数」（资源数量），管程只能「互斥」。
+
+**对比**：
+| 维度 | 管程 | 信号量 |
+|---|---|---|
+| 抽象层级 | **高（封装）** | 低（裸操作） |
+| 互斥 | **自动** | 手动 P/V 摆放 |
+| 易错性 | 低 | 高 |
+| 计数 | ❌（只互斥） | ✅ |
+| 代表 | `synchronized` | `sem_t`、`Semaphore` |
+
+**管程 vs 条件变量**：
+- 管程 = **互斥锁 + 条件变量 + 共享数据的封装**。
+- 条件变量必须配锁（互斥）。
+
+**经典问题（用管程/信号量都能解）**：
+- **生产者-消费者**、**读者-写者**、**哲学家就餐**。
+
+**哲学家就餐问题**：
+- 5 个哲学家围坐，每人间隔一根筷子，吃饭要拿左右两根。
+- **Naive**（每人先拿左再拿右）→ **循环等待 → 死锁**。
+- **解法**：
+  - 限制**最多 4 人同时拿**（破坏循环等待）。
+  - **奇偶编号**：奇数先拿左、偶数先拿右（破坏循环等待）。
+  - **一次性拿两根**（破坏占有等待），或**用管程/信号量统一分配**。
+
+**一句话总结**：**管程是「把共享数据 + 操作 + 互斥 + 条件变量封成一个模块」（互斥自动、语言级，如 `synchronized`），信号量是「裸的计数 + P/V」（灵活但手动易错）；生产代码优先用管程（锁+条件变量）而非裸信号量，因为前者更不容易写错。**', 1),
+
+('操作系统', '乐观锁,悲观锁', 2,
+ '乐观锁和悲观锁分别是什么？各自适用什么场景？',
+ '**悲观锁（Pessimistic Locking）**：
+- **假设冲突一定会发生**，**先加锁再操作**。
+- 例：`SELECT ... FOR UPDATE`、互斥锁、`synchronized`。
+- **优点**：简单可靠，冲突时不会白做。
+- **缺点**：**持锁期间阻塞别人**，并发度低；可能死锁。
+
+**乐观锁（Optimistic Locking）**：
+- **假设冲突很少**，**先操作，提交时校验**（版本号 / CAS）。
+- 例：**版本号机制**（`UPDATE ... SET v=v+1 WHERE id=? AND v=?`）、CAS、`MVCC`。
+- **优点**：**不加锁**，并发度高，适合读多写少。
+- **缺点**：**冲突时需重试**（高冲突下重试多，反而更差）。
+
+**对比**：
+| 维度 | 悲观锁 | 乐观锁 |
+|---|---|---|
+| 假设 | 冲突多 | 冲突少 |
+| 策略 | 先锁后做 | 先做后验 |
+| 阻塞 | **有** | 无 |
+| 并发度 | 低 | **高** |
+| 冲突处理 | 等待 | **重试** |
+| 适合 | 写多/冲突多 | **读多/冲突少** |
+
+**实现方式**：
+- **乐观锁**：
+  - **版本号**（`version` 字段 + 比较）。
+  - **时间戳**。
+  - **CAS 指令**（`std::atomic::compare_exchange`）。
+  - **数据库 MVCC**（InnoDB 快照读）。
+- **悲观锁**：
+  - 数据库行锁 / 表锁 / gap 锁。
+  - 互斥锁 / 读写锁。
+  - 分布式锁（Redis/ZooKeeper）。
+
+**选型**：
+- **秒杀抢购 / 库存扣减**：**乐观锁**（版本号/CAS）+ 重试，或 Redis 原子操作。
+- **转账 / 强一致写**：**悲观锁**（行锁）。
+- **读多写少**：**乐观锁**。
+- **高冲突**：**悲观锁**或排队/限流。
+
+**一句话总结**：**悲观锁「先锁后做」（可靠但阻塞，适合写多/冲突多），乐观锁「先做后验」（并发高但冲突要重试，适合读多/冲突少）；实现有版本号、CAS、MVCC（乐观）和行锁、互斥锁、分布式锁（悲观）—— 按冲突概率和并发需求选。**', 1),
+
+('操作系统', '内存屏障,内存序', 3,
+ '什么是内存屏障（Memory Barrier）？为什么需要它？',
+ '**内存屏障（Memory Fence/Barrier）**：**限制 CPU 和编译器的指令重排**，保证内存访问顺序。
+
+**为什么需要**：
+- **编译器优化**会**重排指令**（提高 ILP）。
+- **CPU 乱序执行**（Out-of-Order）+ **多级缓存**：不同核心看到的写顺序可能不一致。
+- **缓存一致性协议（MESI）** 保证单变量最终一致，但**不保证多变量间的顺序**。
+
+**典型问题**：
+```cpp
+// 线程1
+data = 42;        // (1)
+ready = true;     // (2)
+
+// 线程2
+while (!ready);   // (3)
+assert(data == 42); // (4) 可能失败！
+```
+- 若 (1)(2) **被重排**，线程2 可能看到 `ready=true` 但 `data` 还是旧值。
+
+**内存序（C++ `std::memory_order`）**：
+
+| 内存序 | 含义 |
+|---|---|
+| `relaxed` | 只保证原子，**不保证顺序** |
+| `acquire` | **读**操作，之后的读写不能重排到它前面 |
+| `release` | **写**操作，之前的读写不能重排到它后面 |
+| `acq_rel` | 兼有 acquire 和 release（读改写） |
+| `seq_cst` | **全序**（默认，最强，最慢） |
+
+**经典配对：release-acquire**：
+```cpp
+// 线程1
+data = 42;
+ready.store(true, std::memory_order_release);   // 之前的不重排到后面
+
+// 线程2
+while (!ready.load(std::memory_order_acquire)); // 之后的不重排到前面
+assert(data == 42);  // 保证成立
+```
+
+**代价**：内存屏障会**阻止优化/流水线**，**降低性能**（`seq_cst` 最贵）。
+
+**一句话总结**：**内存屏障限制编译器和 CPU 的指令重排，因为「多核下不同变量的读写顺序」不会被缓存一致性自动保证；C++ 用内存序表达语义，`release` 写 + `acquire` 读配对可建立 happens-before，`relaxed` 只保原子性 —— 用对内存序是无锁编程正确性的关键，用错会引入极难复现的 bug。**', 1),
+
+('操作系统', '伪共享,缓存行', 3,
+ '什么是伪共享（False Sharing）？怎么避免？',
+ '**伪共享**：**两个不相关的变量落在同一缓存行（通常 64 字节），被不同核心频繁修改**，导致缓存行**来回失效**，性能骤降。
+
+**原理**：
+- CPU 以**缓存行（Cache Line，64 字节）**为单位加载/失效缓存。
+- **MESI 协议**下，一个核写某变量会**独占**该缓存行 → **使其他核的副本失效**。
+- 若两个变量**在同一行**却被不同核写 → **反复互相失效**（明明逻辑无关）→ **缓存颠簸**。
+
+**典型场景**：
+```cpp
+struct Counter {
+    int64_t a;  // 核心1频繁++a
+    int64_t b;  // 核心2频繁++b
+};              // a、b 大概率在同一缓存行 → 伪共享
+```
+
+**后果**：
+- 性能可能**下降数倍**（本该并行的变成串行化的缓存同步）。
+- 难排查（逻辑无关却慢）。
+
+**避免方法**：
+
+1. **填充（Padding）**：把变量**隔离到不同缓存行**。
+```cpp
+struct alignas(64) Counter {  // C++11
+    int64_t a;
+    char pad[64 - sizeof(int64_t)];  // 填充到 64 字节
+};
+```
+2. **`alignas(64)` 对齐**每个变量/结构体。
+3. **C++17 `std::hardware_destructive_interference_size`**（编译期常量，比硬编码 64 更可移植）。
+4. **线程局部存储（thread_local）**：每个线程用自己的计数器，最后汇总（**最推荐**）。
+5. **批量更新**：减少写频率。
+
+**注意**：
+- **反过来也有「真共享」的好处**：同一线程访问同一行的多个变量是**缓存友好**的。
+- 填充会**浪费内存**（每个计数器占一行），要在内存和性能间权衡。
+
+**一句话总结**：**伪共享是「无关变量共享缓存行、被不同核写导致缓存行反复失效」的隐形性能杀手；避免靠 `alignas(64)` / 填充 / `hardware_destructive_interference_size` 隔离变量，或用 thread_local 各自计数 —— 它是无锁/高并发代码调优时必须检查的一项。**', 1),
+
+('操作系统', '线程池,并发', 2,
+ '线程池的核心参数有哪些？为什么用线程池而不是每次新建线程？',
+ '**为什么用线程池**：
+- **创建/销毁线程有开销**（内核态、栈分配 ~ 几微秒到毫秒）。
+- **复用线程**避免频繁创建。
+- **控制并发度**（防止线程数爆炸拖垮系统）。
+- **统一管理**（监控、排队、拒绝策略）。
+
+**核心参数（以 Java `ThreadPoolExecutor` 为参照）**：
+| 参数 | 含义 |
+|---|---|
+| **corePoolSize** | 核心线程数（常驻） |
+| **maxPoolSize** | 最大线程数 |
+| **keepAliveTime** | 超出核心的线程空闲存活时间 |
+| **workQueue** | 任务队列（有界/无界） |
+| **threadFactory** | 线程创建方式 |
+| **handler** | 拒绝策略 |
+
+**任务提交流程**：
+1. 线程数 < core → **新建核心线程**执行。
+2. 线程数 ≥ core → **入队**。
+3. 队列满 → 线程数 < max → **新建非核心线程**。
+4. 队列满 + 线程数 = max → **拒绝策略**。
+
+**关键设计点**：
+1. **队列必须有界**：无界队列（`LinkedBlockingQueue` 默认）会导致**任务无限堆积** → OOM + 线程数永远到不了 max。⭐
+2. **线程数怎么定**：
+   - **CPU 密集**：`N+1`（N 为核数）。
+   - **IO 密集**：`N × (1 + 等待时间/计算时间)`（更大）。
+   - 实际用**压测**确定。
+3. **拒绝策略**：`Abort`（抛异常）、`CallerRuns`（调用者跑，**背压**）、`Discard`、`DiscardOldest`。
+4. **优雅关闭**：停止接收新任务 + 等待已提交任务完成。
+5. **线程命名**：便于排查（`pool-1-thread-3`）。
+
+**监控**：活跃线程数、队列长度、完成任务数、拒绝数。
+
+**一句话总结**：**线程池复用线程、控制并发度；核心参数是「核心数/最大数/队列/拒绝策略」，最重要的一条是「**队列必须有界**」（无界会 OOM 且 max 失效）；线程数按「CPU 密集 N+1、IO 密集更大」估算后用压测校准。**', 1),
+
+('操作系统', 'CPU密集,IO密集', 2,
+ 'CPU 密集型和 IO 密集型任务有什么区别？对系统设计有什么影响？',
+ '**CPU 密集型（Compute-Bound）**：
+- 大部分时间在**做计算**（加密、压缩、图像处理、科学计算）。
+- **CPU 利用率高**，很少等待。
+- **瓶颈是 CPU 核数**。
+
+**IO 密集型（IO-Bound）**：
+- 大部分时间在**等待 IO**（网络、磁盘、数据库）。
+- **CPU 利用率低**（大量时间阻塞）。
+- **瓶颈是 IO 带宽/延迟**。
+
+**对系统设计的影响**：
+
+| 维度 | CPU 密集 | IO 密集 |
+|---|---|---|
+| **线程数** | ≈ 核数（N+1） | 远大于核数（N× 倍数） |
+| **并发模型** | 多进程/多线程**并行计算** | **异步 IO / 协程 / 事件驱动** |
+| **语言选择** | C++/Rust/Go | 任意（IO 等待时语言无所谓） |
+| **优化方向** | **算法、SIMD、多核、缓存** | **减少等待：批量、缓存、异步、连接池** |
+| **扩缩容** | 加 CPU 核 | 加并发/带宽 |
+| **典型** | 视频转码、加解密 | Web 服务、爬虫、DB 访问 |
+
+**判断方法**：
+- **看 CPU 利用率**：接近 100% → CPU 密集；低 → IO 密集。
+- **看火焰图**：时间花在计算还是等 IO。
+- **看 `vmstat`**：`us/sy` 高是 CPU，`wa`（IO 等待）高是 IO。
+
+**混合型**：
+- 真实服务往往**混合**（如 Web：解析 JSON 是 CPU，查库是 IO）。
+- **分离**：把 CPU 密集任务拆到独立线程池/服务，避免阻塞 IO 线程。
+
+**实践**：
+- **CPU 密集**：多进程（避 GIL）、绑核、向量化、减少分支。
+- **IO 密集**：epoll/async、连接池、批处理、缓存、CDN。
+
+**一句话总结**：**CPU 密集瓶颈在算力（线程数≈核数，靠算法/SIMD/多核优化），IO 密集瓶颈在等待（线程数远超核数，靠异步/批量/缓存/池化优化）；设计时先判断类型，再选并发模型和扩容方向 —— 混在一起会互相拖累，最好隔离。**', 1),
+
+('操作系统', '信号,进程通信', 2,
+ '信号（Signal）机制是怎样的？常见的信号有哪些？',
+ '**信号是异步的事件通知**，进程收到后按「默认动作」或「自定义处理函数」响应。
+
+**常见信号**：
+| 信号 | 编号 | 含义 | 默认动作 |
+|---|---|---|---|
+| `SIGHUP` | 1 | 终端挂断 / 重载配置 | 终止 |
+| `SIGINT` | 2 | Ctrl+C | 终止 |
+| `SIGQUIT` | 3 | Ctrl+\\ | 终止+core |
+| `SIGKILL` | 9 | **强制杀死** | 终止（**不可捕获/忽略**） |
+| `SIGSEGV` | 11 | 段错误 | 终止+core |
+| `SIGPIPE` | 13 | 向断开的管道写 | 终止 |
+| `SIGALRM` | 14 | 定时器到期 | 终止 |
+| `SIGTERM` | 15 | **优雅终止**（可捕获） | 终止 |
+| `SIGCHLD` | 17 | 子进程状态变化 | 忽略 |
+| `SIGSTOP`/`SIGTSTP` | 19/20 | 停止（不可捕获/可捕获） | 停止 |
+| `SIGUSR1/2` | 10/12 | 用户自定义 | 终止 |
+
+**响应方式**：
+1. **默认动作**（终止、忽略、停止、core）。
+2. **忽略**（`SIG_IGN`）。
+3. **自定义处理函数**（`signal`/`sigaction` 注册）。
+- **`SIGKILL`/`SIGSTOP` 不能捕获或忽略**（保证内核能强制控制）。
+
+**关键注意**：
+1. **处理函数要「信号安全」（async-signal-safe）**：只能调**可重入**函数（`write`、`_exit`），**不能 `printf`/`malloc`/加锁**（可能死锁）。
+2. **信号可能丢失**：同类信号不排队（多个 `SIGINT` 只算一次）。
+3. **推荐 `sigaction`** 而非 `signal`（可指定屏蔽、行为明确）。
+4. **竞态**：信号可能在任意指令间到达 → 常配合**自管道技巧（self-pipe trick）**或 `signalfd` 转成事件。
+5. **优雅退出**：捕获 `SIGTERM`，清理资源后退出；`SIGKILL` 无法响应。
+
+**实践**：
+- **服务优雅停机**：捕获 `SIGTERM`，停止接新请求，处理完在途请求再退出。
+- **`SIGHUP` 重载配置**（Nginx）。
+- **`SIGCHLD` 回收子进程**（防僵尸）。
+- **`SIGPIPE`**：网络编程常 `SIG_IGN` 或设 `MSG_NOSIGNAL`，避免写断连 socket 被杀死。
+
+**一句话总结**：**信号是异步事件通知，`SIGTERM`（可捕获）用于优雅退出、`SIGKILL`（不可捕获）用于强杀、`SIGHUP` 常作重载；处理函数必须 async-signal-safe（不能 `printf`/`malloc`），且信号可能丢失 —— 服务要捕获 `SIGTERM` 做优雅停机，忽略 `SIGPIPE` 防误杀。**', 1),
+
+('操作系统', '守护进程,daemon', 2,
+ '守护进程（daemon）怎么创建？systemd 时代还需要手动 daemon 化吗？',
+ '**守护进程**：**脱离终端、在后台长期运行**的进程（如 `sshd`、`nginx`）。
+
+**传统创建步骤（双 fork）**：
+1. **fork** 一次，父进程退出 → 子进程**变成孤儿**被 init 收养（**脱离原会话**）。
+2. **`setsid()`** 创建新会话 → **成为会话组长**，**脱离控制终端**。
+3. **再 fork** 一次，父（会话组长）退出 → 确保**不是会话组长**（**无法再获得控制终端**）。
+4. **`chdir("/")`**：避免占用可卸载目录。
+5. **`umask(0)`**：清除继承的掩码。
+6. **重定向标准 IO** 到 `/dev/null`（避免与终端关联）。
+7. 写 **PID 文件**（`/var/run/xxx.pid`）便于管理。
+8. 处理信号、开始工作。
+
+**为什么两次 fork**：
+- 第一次 fork + `setsid` 脱离终端。
+- 第二次 fork **防止**后续 `open` 终端设备时**重新获得控制终端**（会话组长才有这个能力）。
+
+**systemd 时代**：
+- **不再需要手动 daemon 化** ⭐。
+- 写一个 **`.service`** unit，设 `Type=simple`（或 `forking`）。
+- **systemd 负责**：
+  - 后台化、脱离终端。
+  - **进程管理/监控**（崩溃自动重启 `Restart=always`）。
+  - **日志**（`journalctl`，不用自己写日志文件）。
+  - **依赖与启动顺序**。
+  - **资源限制**（`LimitNOFILE`、`MemoryMax`）。
+- **推荐 `Type=simple` 且程序前台运行**（不要自己 fork），这样 systemd 能准确追踪主进程。
+
+**本项目例子**：`blog.service` 直接前台跑 `task_server`，systemd 管进程、日志（`journalctl -u blog`）、开机自启 —— **不需要自己 daemon 化**。
+
+**一句话总结**：**传统 daemon 靠「两次 fork + setsid + 重定向 IO」脱离终端，但现在有 systemd —— 直接把程序写成前台（`Type=simple`）交给 systemd 就行，它能管进程、日志、重启、依赖和资源限制，比手写 daemon 更可靠。**', 1),
+
+('操作系统', '分布式,CAP', 3,
+ 'CAP 定理是什么？为什么说「三选二」其实是个误解？',
+ '**CAP 定理**：分布式系统**最多同时满足三者中的两个**：
+- **C（Consistency，一致性）**：所有节点**同一时刻看到相同数据**（线性一致）。
+- **A（Availability，可用性）**：每个请求都能**在有限时间内得到响应**（不保证最新）。
+- **P（Partition tolerance，分区容错）**：**网络分区**（节点间通信中断）时系统仍能工作。
+
+**为什么是「误解」**：
+- **网络分区在分布式系统中不可避免**（网线、交换机、跨机房都会断）→ **P 必须选**。
+- 所以真实选择是 **「分区发生时，选 C 还是选 A」**：
+  - **CP**：分区时**拒绝服务保一致**（如 **ZooKeeper、etcd、HBase**）。
+  - **AP**：分区时**继续服务但可能读到旧数据**（如 **Cassandra、DynamoDB、Eureka**）。
+- **「CA」只在单机/无分区时成立**（分布式里没意义）。
+
+**换句话说**：**不是「三选二」，而是「P 必选，然后在 C 和 A 之间取舍」**。
+
+**PACELC 扩展**：
+- **即使没有分区（E，Else）**，也要在**延迟（L）和一致性（C）**间取舍。
+- `PA/EL`、`PC/EC` 等描述系统倾向。
+
+**BASE 理论**（对 ACID 的补充，AP 系统常用）：
+- **Basically Available**（基本可用）。
+- **Soft state**（软状态，中间态）。
+- **Eventually consistent**（**最终一致**）。
+
+**实践**：
+- **金融交易**：偏 **CP**（一致性优先，宁可短暂不可用）。
+- **社交/商品浏览**：偏 **AP**（可用性优先，最终一致，短暂旧数据可接受）。
+- **中间方案**：**Quorum**（`R+W>N` 保证读写有交集）、**CRDT**。
+
+**一句话总结**：**CAP 说一致、可用、分区容错不可兼得；但**网络分区不可避免，P 必选**，所以真正的取舍是「分区时保一致（CP）还是保可用（AP）」，而非「三选二」；PACELC 进一步指出**无分区时也要在延迟与一致性间权衡。**', 1),
+
+('操作系统', '分布式,一致性', 3,
+ '2PC、3PC 和 Paxos/Raft 分别解决什么问题？',
+ '**分布式一致性协议分两类**：**分布式事务**（原子提交）和**共识**（复制日志）。
+
+**1. 2PC（两阶段提交）**：
+- **阶段一（准备）**：协调者问所有参与者「能否提交？」参与者执行但**不提交**，锁定资源，回 yes/no。
+- **阶段二（提交/回滚）**：全 yes → 通知 commit；有 no → 通知 rollback。
+- **问题**：
+  - **同步阻塞**（参与者持锁等待）。
+  - **协调者单点**：协调者挂了，参与者**一直阻塞**（不知该提交还是回滚）。
+  - **数据不一致**：部分收到 commit、部分没收到。
+- 用于：**XA 事务、跨库事务**（MySQL XA）。
+
+**2. 3PC（三阶段提交）**：
+- 在 2PC 前加 **CanCommit** 阶段，并引入**超时**（参与者超时后默认提交/中断）。
+- **减少阻塞**、降低协调者单点影响，但**仍有问题**（网络分区下仍可能不一致）。
+- 实际用得少。
+
+**3. Paxos / Raft（共识算法）**：
+- 目标：**多个副本对某个值达成一致**（复制状态机），**容忍少数节点故障**。
+- **Paxos**：
+  - 角色：Proposer、Acceptor、Learner。
+  - 两阶段：**Prepare（承诺）→ Accept（接受）**。
+  - 理论优雅但**难实现/难理解**（Multi-Paxos 更工程化）。
+  - 代表：Chubby、Spanner。
+- **Raft**（**更易理解/实现**）⭐：
+  - **Leader 选举**（任期 + 心跳，多数派投票）。
+  - **日志复制**（Leader 收请求 → 追加日志 → 复制到多数派 → 提交）。
+  - **安全性**（选举限制保证已提交日志不丢）。
+  - **多数派（> N/2）**保证容错：**N 个节点容忍 (N-1)/2 个故障**。
+  - 代表：**etcd、Consul、TiKV、Kafka KRaft**。
+
+**对比**：
+| 协议 | 目标 | 容错 | 特点 |
+|---|---|---|---|
+| 2PC | 原子提交 | 不容错（阻塞） | 简单但脆弱 |
+| 3PC | 原子提交 | 稍好 | 仍不完善 |
+| Paxos | 共识 | 多数派 | 难实现 |
+| **Raft** | 共识 | 多数派 | **易实现，主流** |
+
+**关键区别**：**2PC/3PC 解决「事务原子性」（要么全提交要么全回滚），Paxos/Raft 解决「多副本一致」（选一个值并复制）** —— 前者是「协调」，后者是「共识」。
+
+**一句话总结**：**2PC/3PC 是分布式事务的原子提交协议（协调者+参与者，2PC 阻塞且怕单点，3PC 改进有限），Paxos/Raft 是共识算法（多副本就某值达成一致，多数派容错）；Raft 因易实现成为工程主流（etcd/Consul），而跨库事务仍常用 2PC 的 XA —— 二者解决的问题不同。**', 1),
+
+('操作系统', '限流,令牌桶,漏桶', 2,
+ '常见的限流算法有哪些？令牌桶和漏桶有什么区别？',
+ '**限流目标**：**保护系统不被突发流量打垮**。
+
+**1. 计数器（固定窗口）**：
+- 每个时间窗口计数，超阈值拒绝。
+- **问题**：**临界问题**（窗口边界两侧各打满 → 实际 2 倍流量）。
+
+**2. 滑动窗口**：
+- 把窗口细分（如 1 秒分 10 个 100ms 格），滑动统计。
+- **缓解**临界问题，更平滑。
+
+**3. 漏桶（Leaky Bucket）**：
+- 请求先进桶，**以固定速率漏出**（处理）。
+- 桶满则拒绝。
+- **特点**：**输出速率绝对恒定**（平滑），**不允许突发** ⭐。
+- 即：**强制匀速**。
+
+**4. 令牌桶（Token Bucket）** ⭐：
+- **以固定速率往桶里放令牌**，桶有容量上限。
+- 请求要**取一个令牌**才能通过；无令牌则拒绝/等待。
+- **特点**：**允许一定突发**（桶里攒了令牌可一次用掉），**平均速率受限**。
+- 即：**限制平均速率，允许突发**。
+
+**对比**：
+| 维度 | 漏桶 | 令牌桶 |
+|---|---|---|
+| 形状 | 出水恒定 | 允许突发 |
+| 速率 | **绝对匀速** | 平均受限 |
+| 突发 | ❌ 不允许 | ✅ 允许 |
+| 用途 | 平滑流量 | **通用限流** |
+
+**分布式限流**：
+- **Redis + Lua**（原子 `INCR` + 过期，或令牌桶脚本）。
+- **网关层限流**（Nginx `limit_req`、云网关、Sentinel）。
+- **单机限流**（`RateLimiter`、信号量）。
+
+**限流 vs 熔断 vs 降级**：
+- **限流**：控制**入口流量**（防过载）。
+- **熔断**：下游故障时**快速失败**（防雪崩）。
+- **降级**：资源不足时**牺牲非核心**（保核心）。
+
+**一句话总结**：**计数器/滑动窗口最简单但难平滑，漏桶「匀速出水」不允许突发，令牌桶「按速发令牌」允许突发；通用限流首选**令牌桶**，需要严格匀速用漏桶，分布式用 Redis+Lua 或网关限流 —— 限流是保护系统的第一道闸。**', 1),
+
+('操作系统', '熔断,降级,雪崩', 2,
+ '什么是服务雪崩？熔断、降级、隔离怎么防止雪崩？',
+ '**服务雪崩**：
+- 某个下游服务变慢/挂了 → 上游**线程/连接被占满等待** → 上游也挂 → **级联失败**，整个系统崩溃。
+- 典型：A 调 B，B 调 C，C 卡住 → B 的线程全卡在等 C → B 也卡 → A 卡 → 全站不可用。
+
+**三道防线**：
+
+**1. 熔断（Circuit Breaker）**：
+- 类比**保险丝**：下游**错误率/超时率超阈值** → **断开**，后续请求**快速失败**（不再调用下游）。
+- 状态：**关闭**（正常）→ **打开**（熔断，直接失败）→ **半开**（试探放少量请求）。
+- **目的**：**防止持续调用故障服务**，给下游**恢复时间**。
+- 代表：Hystrix、Sentinel、Resilience4j。
+
+**2. 降级（Fallback）**：
+- 出问题时**返回兜底结果**（默认值、缓存、简化逻辑）。
+- 例：推荐服务挂了 → 返回热门榜单；支付失败 → 提示稍后重试。
+- **目的**：**保核心功能可用**，牺牲非核心。
+
+**3. 隔离（Bulkhead，舱壁）**：
+- **资源隔离**：不同下游用**独立线程池/连接池/信号量**。
+- 一个下游拖垮时，**不波及其他下游**。
+- 例：查用户用 10 线程池，查订单用另一个 10 线程池 —— 订单慢不影响用户查询。
+- 类比**船的分舱**（一舱进水不沉船）。
+
+**其他措施**：
+- **超时**（必须设，防止无限等待）⭐。
+- **重试**（配退避 + 抖动，**注意重试风暴**）。
+- **限流**（保护自身）。
+- **快速失败**（Fail-fast）。
+
+**防雪崩的完整思路**：
+```
+限流（入口） → 隔离（资源） → 超时（止损） → 熔断（断开） → 降级（兜底）
+```
+
+**一句话总结**：**服务雪崩是「下游卡住 → 上游线程耗尽 → 级联崩溃」；熔断（快速失败，给下游恢复时间）、降级（返回兜底，保核心）、隔离（舱壁，防跨服务拖累）三道防线，配合超时和限流才能防止 —— 核心是「别让一个坏下游拖死整条链路」。**', 1),
+
+('操作系统', '消息队列,异步', 2,
+ '消息队列解决什么问题？又会引入什么问题？',
+ '**消息队列（MQ）** 是**生产者与消费者之间的异步缓冲**。
+
+**解决的问题**：
+1. **解耦**：生产者不用知道消费者是谁，只发消息。
+2. **异步**：生产者发完即走，不用等消费者处理（**提升响应速度**）。
+3. **削峰填谷**：突发流量先进队列，消费者**按能力消费**（**保护下游**）⭐。
+4. **广播**：一条消息多个消费者（发布订阅）。
+5. **最终一致性**：跨服务通过消息做分布式事务（本地消息表、事务消息）。
+
+**引入的问题**：
+1. **系统复杂度上升**（多了中间件、要运维）。
+2. **消息丢失**：生产/存储/消费任一环节可能丢 → 需**确认机制 + 持久化 + 重试**。
+3. **重复消费**：网络重试导致重复 → 需**幂等**（消费端去重/唯一键）。
+4. **顺序性**：多分区/多消费者下**难以保证全局有序** → 需**分区内有序**（Kafka 同一 key 到同一分区）。
+5. **消息积压**：消费能力不足 → 堆积（要监控 + 扩容 + 死信队列）。
+6. **一致性**：最终一致意味着**短暂不一致**（要业务容忍）。
+7. **延迟**：异步带来延迟（不适合强实时）。
+
+**常见 MQ**：
+| MQ | 特点 |
+|---|---|
+| **Kafka** | 高吞吐、日志流、持久化、分区有序 |
+| **RabbitMQ** | 路由灵活、低延迟、AMQP |
+| **RocketMQ** | 事务消息、顺序消息、阿里出品 |
+| **Redis Stream/Pub-Sub** | 轻量，但不适合可靠交付 |
+
+**关键机制**：
+- **持久化**（消息落盘）。
+- **ACK 确认**（消费成功才删）。
+- **重试 + 死信队列**（处理失败消息）。
+- **幂等消费**（防重复）。
+
+**一句话总结**：**MQ 用「异步 + 缓冲」解决解耦、削峰、异步、广播；代价是复杂度、消息丢失、重复消费、顺序性、积压和最终一致；用好它必须配「持久化 + ACK + 重试/死信 + 幂等消费 + 积压监控」—— 它把同步调用的问题变成了异步可靠性问题。**', 1),
+
+('操作系统', '分布式锁', 3,
+ '分布式锁怎么实现？Redis 和 ZooKeeper 方案各有什么问题？',
+ '**分布式锁**：多个**不同机器/进程**争抢同一资源时，需要一个**全局唯一的锁**。
+
+**必须满足**：
+1. **互斥**：同一时刻只有一个持有者。
+2. **防死锁**：持有者崩溃要能自动释放（**过期时间**）。
+3. **防误删**：只能删除自己的锁（**唯一 value**）。
+4. **可重入**（可选）。
+
+**方案一：Redis**
+- **加锁**：`SET key value NX PX 30000`（原子，NX 互斥，PX 过期）。
+- **解锁**：**Lua 脚本**比较 value 再删（防误删）。
+- **续期（看门狗）**：业务超时前自动延长（Redisson 的 watchdog）。
+- **问题**：
+  - **主从切换丢锁** ⚠️：主节点加锁成功但**未同步到从**就宕机 → 从升主 → 别人又能加锁 → **两个持有者**。
+  - **解决**：**RedLock**（多数派加锁）—— 但 RedLock 也有争议（Martin Kleppmann 质疑其时钟依赖和 GC 停顿）。
+- **适用**：**性能优先、能容忍极小概率问题**的场景。
+
+**方案二：ZooKeeper / etcd**
+- **临时顺序节点**：创建 `lock-000001` 等，**最小序号的获得锁**。
+- 监听前一个节点释放 → **公平排队**。
+- **优势**：
+  - **强一致**（ZAB/Raft 共识，多数派写入）。
+  - **会话断开自动释放**（临时节点）。
+  - **天然防死锁**。
+- **问题**：性能低于 Redis、依赖 ZK 集群可用性。
+- **适用**：**正确性优先**的场景（选主、配置、强一致锁）。
+
+**对比**：
+| 维度 | Redis | ZooKeeper/etcd |
+|---|---|---|
+| 一致性 | 弱（主从异步） | **强（共识）** |
+| 性能 | **高** | 中 |
+| 防死锁 | 靠过期 | **会话+临时节点** |
+| 公平性 | 非公平 | **公平（排队）** |
+| 复杂度 | 低 | 中 |
+
+**实践**：
+- **对正确性要求极高** → ZK/etcd 或 Redlock + fencing token。
+- **Fencing Token**：锁服务发**递增编号**，资源端**拒绝旧编号**的操作（**根治主从丢锁**）⭐。
+- **能不用锁就不用**（幂等、乐观锁、唯一约束往往更好）。
+
+**一句话总结**：**分布式锁要满足互斥、防死锁、防误删；Redis 用 `SET NX PX` + Lua 解锁 + 看门狗（性能高但主从切换可能丢锁，需 fencing token 或 RedLock），ZK/etcd 用临时顺序节点（强一致、公平、会话自动释放，但慢）；正确性优先选 ZK/etcd，性能优先选 Redis 并加 fencing token 兜底。**', 1),
+
+('操作系统', '一致性哈希', 3,
+ '一致性哈希是什么？为什么需要虚拟节点？',
+ '**问题背景**：把数据分到 N 个节点，**普通哈希 `hash(key) % N`** 在**节点增减**时会导致**几乎所有 key 重新映射**（缓存大规模失效、数据大迁移）。
+
+**一致性哈希**：
+- 把**哈希值空间组织成一个环**（`0 ~ 2^32-1`）。
+- **节点**通过哈希映射到环上。
+- **数据**哈希后，**顺时针找到的第一个节点**即归属。
+- **优点**：**增删节点只影响相邻区间**（其余 key 不受影响）⭐。
+  - 加一个节点 → 只影响它**逆时针相邻**的那部分数据。
+  - 删一个节点 → 它的数据交给**下一个节点**。
+
+**数据倾斜问题**：
+- 节点少时，**哈希分布不均** → 有的节点扛很多、有的很少。
+- **解决：虚拟节点（Virtual Nodes）** ⭐：
+  - **每个物理节点映射成多个虚拟节点**（如 150 个）散布在环上。
+  - 数据先命中虚拟节点，再对应到物理节点。
+  - **效果**：分布更均匀，负载更均衡。
+  - **代价**：环上节点数变多，查找/维护开销略增。
+
+**典型应用**：
+- **分布式缓存**（Redis Cluster 用 16384 个槽，本质是哈希分片）。
+- **负载均衡**（同一会话路由到同一后端）。
+- **CDN 调度**。
+- **分库分表**。
+- **有状态服务**（把「同一用户」路由到「同一实例」）。
+
+**与普通取模对比**：
+| 维度 | 取模 | 一致性哈希 |
+|---|---|---|
+| 增删节点 | **全量重映射** | **只影响相邻** |
+| 均衡性 | 好 | 需虚拟节点 |
+| 实现 | 简单 | 稍复杂 |
+
+**一句话总结**：**一致性哈希把节点和数据映射到哈希环，数据顺时针归属最近节点，使「增删节点只影响相邻区间」；但节点少时会倾斜，需**虚拟节点**打散分布 —— 它是分布式缓存、负载均衡、分库分表里「扩容不雪崩」的核心技术。**', 1),
+
+('操作系统', '缓存,穿透,雪崩', 2,
+ '缓存穿透、击穿、雪崩分别是什么？怎么解决？',
+ '三者都是**缓存与数据库配合**时的典型故障。
+
+**1. 缓存穿透（Penetration）**：
+- **请求的数据既不在缓存，也不在数据库**（如查不存在的 id）。
+- 每次请求都**打到数据库**，缓存形同虚设。
+- **危害**：恶意请求可压垮数据库。
+- **解决**：
+  - **缓存空值**（key 对应 null 也缓存，设短 TTL）。
+  - **布隆过滤器（Bloom Filter）**：**前置拦截**不存在的 key ⭐。
+  - **参数校验**（拦截非法 id）。
+
+**2. 缓存击穿（Breakdown / Hotspot Invalid）**：
+- **某个热点 key 过期瞬间**，大量并发请求**同时打到数据库**。
+- **危害**：单点热点把 DB 打爆。
+- **解决**：
+  - **互斥锁 / 单飞（singleflight）**：只让一个线程去查 DB 并回填，其余等待 ⭐。
+  - **热点数据永不过期**（逻辑过期，后台更新）。
+  - **提前预热**。
+
+**3. 缓存雪崩（Avalanche）**：
+- **大量 key 同时过期**，或**缓存服务宕机**，请求全压到 DB。
+- **危害**：DB 瞬间被打垮。
+- **解决**：
+  - **过期时间加随机抖动**（避免同时过期）⭐。
+  - **缓存高可用**（集群、哨兵，防单点宕机）。
+  - **多级缓存**（本地 + Redis + DB）。
+  - **限流降级**（保护 DB）。
+  - **预热 + 定时刷新**。
+
+**对比**：
+| 问题 | 场景 | 核心解法 |
+|---|---|---|
+| 穿透 | 数据**不存在** | 空值缓存 / 布隆过滤器 |
+| 击穿 | **单个热点**过期 | 互斥锁 / 永不过期 |
+| 雪崩 | **大批 key** 过期或宕机 | 随机 TTL / 高可用 / 多级 |
+
+**一句话总结**：**穿透是「查不存在的数据」（空值缓存 + 布隆过滤器），击穿是「热点 key 过期瞬间并发打 DB」（互斥锁/单飞 + 永不过期），雪崩是「大批 key 同时过期或缓存宕机」（随机 TTL + 高可用 + 多级缓存 + 限流）—— 三者都靠「别让请求直接砸到 DB」。**', 1),
+
+('操作系统', '负载均衡,算法', 2,
+ '常见的负载均衡算法有哪些？各适用什么场景？',
+ '**1. 轮询（Round Robin）**：
+- 依次分发给每个后端。
+- **简单均匀**，适合**后端配置相同**、**无状态**服务。
+
+**2. 加权轮询（Weighted RR）**：
+- 按权重分配（配置高的多分）。
+- 适合**后端性能不一致**。
+
+**3. 随机（Random）**：
+- 随机选一个。
+- 简单，量大时趋近均匀；**加权随机**同理。
+
+**4. 最少连接（Least Connections）**：
+- 选**当前连接数最少**的后端。
+- 适合**请求耗时差异大**、长连接场景 ⭐。
+
+**5. 加权最少连接**：
+- 结合权重和连接数。
+
+**6. 一致性哈希（Consistent Hashing）**：
+- 同一 key 固定路由到同一后端。
+- 适合**有状态/缓存亲和**（会话保持）。
+
+**7. IP Hash**：
+- 按源 IP 哈希，**同一客户端固定后端**。
+- 适合**会话保持**（简单）。
+
+**8. 最短响应时间（Least Response Time）**：
+- 选**响应最快**的后端（动态探测）。
+- 适合**性能动态变化**。
+
+**对比**：
+| 算法 | 特点 | 场景 |
+|---|---|---|
+| 轮询 | 均匀简单 | 无状态、同构 |
+| 加权轮询 | 按能力分配 | 异构集群 |
+| 最少连接 | 动态均衡 | 长连接、耗时不均 |
+| 一致性哈希 | 亲和 | 缓存/会话 |
+| IP Hash | 会话保持 | 简单亲和 |
+| 最短响应 | 自适应 | 性能波动 |
+
+**健康检查**：
+- **主动**：定期探测（TCP/HTTP）。
+- **被动**：根据实际请求失败率剔除。
+
+**会话保持的取舍**：
+- **粘性会话**（IP Hash/一致性哈希）：简单，但**不均衡**、**故障影响大**。
+- **无状态 + 共享存储**（Redis 存 session）：**更推荐**（易扩展）。
+
+**一句话总结**：**轮询/随机简单均匀（同构无状态），加权按能力分（异构），最少连接动态均衡（长连接/耗时不均），一致性哈希/IP Hash 做会话亲和；生产优先「无状态 + 共享存储」而非粘性会话，并务必配健康检查。**', 1),
+
+('操作系统', '批处理,一次性', 2,
+ '批处理（batching）为什么能提升性能？批量大小怎么权衡？',
+ '**批处理**：把多个小操作**攒成一批**一次性提交，**摊销固定开销**。
+
+**为什么快**（以数据库插入为例）：
+- **单条插入**：每条都要 **网络往返（RTT）+ SQL 解析 + 事务提交（fsync）**。
+- **批量插入**：**一次网络往返 + 一次解析 + 一次 fsync** 提交多条。
+- 收益来自：
+  1. **减少网络往返**（RTT 是最贵的）。
+  2. **减少系统调用 / 上下文切换**。
+  3. **减少磁盘同步（fsync）次数**（对持久化影响巨大）。
+  4. **摊销解析/计划开销**。
+
+**例子**：
+- `INSERT` 1000 条：逐条 vs 批量的差距可达 **几十~上百倍**。
+- Redis **pipeline**：减少 RTT。
+- Kafka **批量发送**：提高吞吐。
+- `writev`/`sendfile`：减少系统调用。
+
+**权衡（批量大小）**：
+| 批量太小 | 批量太大 |
+|---|---|
+| 摊销不足，收益低 | **内存占用高** |
+| 调用次数多 | **延迟高**（要等攒够） |
+| — | **失败重试代价大**（整批重来） |
+| — | 可能**超时/超限** |
+
+**关键原则**：
+- **按「延迟容忍」定批量**：实时性要求高的用**小批量 + 短超时**；离线高吞吐用**大批量**。
+- **限制最大延迟**：攒够 N 条**或**等待 T 毫秒就发（**`min(batch, timeout)`**）⭐。
+- **失败处理**：整批失败要考虑**部分成功**、**幂等重试**。
+- **监控**：批量大小分布、提交延迟、失败率。
+
+**数据库经验值**：
+- MySQL 批量插入常见 **500~1000 条/批**（受 `max_allowed_packet` 限制）。
+- 太大反而因为包大小/锁/undo 日志变慢。
+
+**一句话总结**：**批处理靠「一次往返/一次 fsync 干多件事」摊销固定开销，能把吞吐提升数十倍；代价是内存和延迟 —— 用「攒够 N 条或等 T 毫秒」控制，配合幂等重试和监控，按实时性需求选批量大小。**', 1),
+
+('操作系统', '可靠性,可用性', 2,
+ '可用性的几个 9 是什么意思？如何提升系统可用性？',
+ '**可用性（Availability）** = **正常运行时间 / 总时间**，用「几个 9」表示。
+
+| 可用性 | 年停机时间 | 说明 |
+|---|---|---|
+| 90%（1 个 9） | 36.5 天 | 低 |
+| 99%（2 个 9） | 3.65 天 | 一般 |
+| 99.9%（3 个 9） | 8.76 小时 | 常见目标 |
+| 99.99%（4 个 9） | 52.6 分钟 | 高可用 |
+| 99.999%（5 个 9） | 5.26 分钟 | 极高（电信级） |
+
+**提升可用性的手段**：
+
+1. **冗余（Redundancy）**：
+   - **多副本**（主从、多活）。
+   - **消除单点**（SPOF）—— 每个组件都有备份。
+
+2. **故障转移（Failover）**：
+   - **自动**检测故障并切换（Keepalived/VRRP、K8s、Sentinel）。
+   - **手动**切换（更慢但可控）。
+
+3. **负载均衡 + 健康检查**：
+   - 剔除故障节点，流量转发到健康节点。
+
+4. **限流 / 熔断 / 降级**：
+   - 防止**局部故障扩散**成全局（防雪崩）。
+
+5. **隔离**：
+   - **机房隔离 / 资源隔离**（舱壁）—— 故障限制在局部。
+
+6. **灰度发布 / 蓝绿部署**：
+   - 新版本先小流量验证，出问题**快速回滚**。
+
+7. **监控告警**：
+   - **可观测性**（指标、日志、追踪）—— **故障发现越快，恢复越快**。
+   - 告警 + on-call。
+
+8. **容量规划与压测**：
+   - 知道系统上限，避免过载。
+
+9. **混沌工程**：
+   - **主动注入故障**验证恢复能力（Netflix Chaos Monkey）。
+
+10. **数据可靠性**：
+    - **备份 + 恢复演练**（备份不可恢复 = 没备份）。
+    - 多副本 + 一致性协议（Raft）。
+
+**关键认知**：
+- **可用性 = MTBF / (MTBF + MTTR)**：**降低 MTTR（恢复时间）往往比提高 MTBF 更划算** ⭐。
+- **没有 100% 可用**：要**接受故障**，重点在**快速恢复**和**优雅降级**。
+
+**一句话总结**：**几个 9 是可用性量化（3 个 9 ≈ 年停 8.76 小时，4 个 9 ≈ 52 分钟）；提升靠冗余、自动故障转移、负载均衡+健康检查、限流熔断降级、隔离、灰度发布、监控告警、压测和备份演练 —— 核心公式是「可用性 = MTBF/(MTBF+MTTR)」，**缩短恢复时间**通常比追求永不故障更实际。**', 1),
+
+('算法', '复杂度,分析', 1,
+ '时间复杂度的大 O 表示法是什么？常见复杂度有哪些？',
+ '**大 O 表示法**：描述算法运行时间随**输入规模 n** 增长的**渐进上界**，忽略常数和低阶项。
+
+**常见复杂度（从快到慢）**：
+| 复杂度 | 名称 | 例子 |
+|---|---|---|
+| O(1) | 常数 | 数组随机访问、哈希查找 |
+| O(log n) | 对数 | 二分查找、平衡树查找 |
+| O(n) | 线性 | 遍历数组 |
+| O(n log n) | 线性对数 | 快排/归并/堆排 |
+| O(n²) | 平方 | 冒泡/插入/选择排序、双重循环 |
+| O(2ⁿ) | 指数 | 暴力子集枚举 |
+| O(n!) | 阶乘 | 全排列、TSP 暴力 |
+
+**分析方法**：
+- 看**循环层数**（嵌套相乘，顺序相加）。
+- 看**递归**（用主定理 / 递归树）：如归并 `T(n) = 2T(n/2) + O(n) = O(n log n)`。
+- 只保留**最高阶项**、**去掉系数**。
+
+**空间复杂度**：
+- 额外使用的内存随 n 的增长关系。
+- **原地算法**：O(1) 额外空间。
+- 递归要算**栈深度**。
+
+**注意**：
+- 大 O 是**上界**（还有 Ω 下界、Θ 紧确界）。
+- 大 O 关注**趋势**，小规模时常数因子可能更重要（如 n<10 插入排序比快排快）。
+- **平均复杂度 vs 最坏复杂度**（快排平均 O(n log n)，最坏 O(n²)）。
+
+**一句话总结**：**大 O 描述运行时间随 n 增长的渐进上界；常见从 O(1)/O(log n)/O(n)/O(n log n)/O(n²) 到 O(2ⁿ)/O(n!)，分析看「循环嵌套、递归、主定理」，只留最高阶去系数 —— 它是算法性能对比的统一语言。**', 1),
+
+('算法', '排序,对比', 2,
+ '常见排序算法有哪些？各自的时间/空间复杂度和稳定性如何？',
+ '**排序算法对比**：
+
+| 算法 | 平均 | 最坏 | 空间 | 稳定 | 特点 |
+|---|---|---|---|---|---|
+| 冒泡 | O(n²) | O(n²) | O(1) | ✅ | 简单，教学用 |
+| 插入 | O(n²) | O(n²) | O(1) | ✅ | **小数组/近乎有序快** |
+| 选择 | O(n²) | O(n²) | O(1) | ❌ | 交换次数少 |
+| **快排** | O(n log n) | **O(n²)** | O(log n) | ❌ | **实际最快**，缓存友好 |
+| **归并** | O(n log n) | O(n log n) | **O(n)** | ✅ | **稳定**，外排序 |
+| **堆排** | O(n log n) | O(n log n) | O(1) | ❌ | 原地，适合 TopK |
+| 计数 | O(n+k) | O(n+k) | O(k) | ✅ | **整数、范围小** |
+| 基数 | O(d(n+k)) | 同 | O(n+k) | ✅ | 定长整数/字符串 |
+| 桶排序 | O(n+k) | O(n²) | O(n) | ✅ | 分布均匀 |
+
+**稳定性**：相等元素排序后**相对顺序不变**。
+- 稳定：冒泡、插入、归并、计数、基数。
+- 不稳定：快排、选择、堆排。
+
+**为什么快排最常用**：
+- 平均 O(n log n)，**常数因子小**。
+- **原地**（空间 O(log n) 栈）。
+- **缓存友好**（顺序访问）。
+
+**快排优化**：
+1. **三数取中**选 pivot（防有序数组退化）。
+2. **随机化** pivot。
+3. **小区间用插入排序**（如 <16）。
+4. **三路划分**（处理大量重复元素）。
+5. **尾递归优化**。
+
+**为什么快排最坏 O(n²)**：每次选到**极值 pivot**（如已排序 + 取首元素）→ 划分极不均。
+
+**工程选择**：
+- **通用**：`std::sort`（introsort：快排 + 堆排 + 插入，**防最坏**）。
+- **要稳定**：`std::stable_sort`（归并）。
+- **整数小范围**：计数/基数排序。
+- **只要 TopK**：部分排序 / 堆。
+
+**一句话总结**：**比较排序下界 O(n log n)；快排平均最快且原地但不稳定、最坏 O(n²)（靠三数取中/随机化规避），归并稳定但需 O(n) 空间，堆排原地适合 TopK，计数/基数在整数小范围可达线性；`std::sort` 用 introsort 兼顾速度与最坏保障。**', 1),
+
+('算法', '快排,partition', 2,
+ '快速排序的原理是什么？如何手写一个 partition？',
+ '**快排思想（分治）**：
+1. **选基准（pivot）**。
+2. **划分（partition）**：小于 pivot 的放左边，大于的放右边，pivot 归位。
+3. **递归**处理左右两部分。
+
+**核心是 partition**，三种常见写法：
+
+**1. Lomuto 划分（单指针，好理解）**：
+```cpp
+int partition(int a[], int lo, int hi) {
+    int pivot = a[hi];          // 取末尾为基准
+    int i = lo;                 // i 指向"小于区"的下一个位置
+    for (int j = lo; j < hi; ++j) {
+        if (a[j] < pivot) {
+            std::swap(a[i], a[j]);
+            ++i;
+        }
+    }
+    std::swap(a[i], a[hi]);     // pivot 归位
+    return i;
+}
+```
+
+**2. Hoare 划分（双指针，交换次数少）**：
+```cpp
+int partition(int a[], int lo, int hi) {
+    int pivot = a[lo + (hi - lo) / 2];
+    int i = lo - 1, j = hi + 1;
+    while (true) {
+        do { ++i; } while (a[i] < pivot);
+        do { --j; } while (a[j] > pivot);
+        if (i >= j) return j;
+        std::swap(a[i], a[j]);
+    }
+}
+```
+
+**3. 三路划分（处理大量重复）**：
+- 分成 `< pivot`、`== pivot`、`> pivot` 三段，**重复元素不参与递归**。
+- 适合**大量重复 key**。
+
+**完整快排**：
+```cpp
+void quickSort(int a[], int lo, int hi) {
+    if (lo >= hi) return;
+    int p = partition(a, lo, hi);
+    quickSort(a, lo, p - 1);
+    quickSort(a, p + 1, hi);
+}
+```
+
+**优化**：
+- **三数取中 / 随机 pivot**（防最坏 O(n²)）。
+- **小区间切插入排序**（`hi - lo < 16`）。
+- **尾递归优化**（递归较大的一半用循环）。
+
+**注意**：
+- Lomuto 在**大量重复元素**时退化为 O(n²)（每次只排除一个）。
+- Hoare 划分返回的是**分界点**（不一定是 pivot 位置）。
+
+**一句话总结**：**快排 = 选 pivot + partition 划分 + 递归；Lomuto 单指针好懂但重复元素会退化，Hoare 双指针交换少，三路划分处理重复最优；务必加「三数取中/随机化 + 小数组插排」防最坏情况。**', 1),
+
+('算法', '二分查找,边界', 2,
+ '二分查找怎么写？如何避免死循环和边界错误？',
+ '**二分查找前提**：数组**有序**（或具有单调性）。
+
+**标准写法（左闭右闭 `[lo, hi]`）**：
+```cpp
+int binarySearch(int a[], int n, int target) {
+    int lo = 0, hi = n - 1;
+    while (lo <= hi) {                 // 注意 <=
+        int mid = lo + (hi - lo) / 2;  // 防溢出
+        if (a[mid] == target) return mid;
+        else if (a[mid] < target) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    return -1;
+}
+```
+
+**边界要点**：
+1. **区间定义决定一切**：
+   - 左闭右闭 `[lo, hi]`：`lo = 0, hi = n-1`，循环条件 `lo <= hi`，更新 `lo=mid+1 / hi=mid-1`。
+   - 左闭右开 `[lo, hi)`：`lo = 0, hi = n`，循环条件 `lo < hi`，更新 `lo=mid+1 / hi=mid`。
+   - **混用就会死循环或漏元素** ⭐。
+2. **`mid` 防溢出**：用 `lo + (hi - lo) / 2`，别用 `(lo + hi) / 2`（大数溢出）。
+3. **不要在循环里 `lo = mid`**（当 `mid == lo` 时死循环），必须 `mid + 1` 或 `mid - 1`。
+
+**查找左右边界（lower_bound / upper_bound）**：
+```cpp
+// 第一个 >= target 的位置（左边界）
+int lowerBound(int a[], int n, int target) {
+    int lo = 0, hi = n;
+    while (lo < hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (a[mid] < target) lo = mid + 1;
+        else hi = mid;
+    }
+    return lo;
+}
+// 第一个 > target 的位置（右边界）：把 < 改成 <=
+```
+- 常用于「查找第一个满足条件的位置」。
+
+**二分答案**：
+- 当**判断某个答案是否可行**比**直接求解**容易时，二分枚举答案。
+- 例：分割数组最大值最小化、求平方根、最大化最小值。
+
+**复杂度**：O(log n)，每次区间减半。
+
+**一句话总结**：**二分的核心是「先定义区间开闭，再让循环条件和边界更新与之一致」；`mid` 用 `lo+(hi-lo)/2` 防溢出，更新必须 `mid±1`（否则死循环）；查左右边界用 `lo<hi + hi=mid` 的模板，二分答案适合「可行性易判、最优解难求」的问题。**', 1),
+
+('算法', 'DP,背包', 3,
+ '动态规划的本质是什么？0-1 背包问题怎么解？',
+ '**动态规划（DP）**：把问题分解为**重叠子问题**，用**状态 + 转移方程**避免重复计算。
+
+**适用条件**：
+1. **最优子结构**：最优解包含子问题的最优解。
+2. **重叠子问题**：子问题被重复求解（**DP 的价值所在**）。
+3. **无后效性**：当前状态确定后，后续只依赖当前状态。
+
+**解题四步**：
+1. **定义状态**：`dp[i]` 表示什么？
+2. **找转移方程**：`dp[i]` 怎么从之前的状态推出来？
+3. **确定边界/初值**。
+4. **确定遍历顺序**（保证用到的状态已算好）。
+
+**0-1 背包**：
+- 有 n 件物品，每件**重量 w[i]、价值 v[i]**，背包容量 W，每件**最多选一次**，求最大价值。
+
+**状态**：`dp[j]` = 容量 j 时能装的最大价值。
+
+**转移**：
+```
+dp[j] = max(dp[j], dp[j - w[i]] + v[i])   // 对每件物品
+```
+
+**关键：倒序遍历容量**（j 从 W 到 w[i]）—— 保证每件物品只用一次 ⭐。
+
+```cpp
+int knapsack(vector<int>& w, vector<int>& v, int W) {
+    vector<int> dp(W + 1, 0);
+    for (int i = 0; i < w.size(); ++i)
+        for (int j = W; j >= w[i]; --j)      // 倒序！0-1 背包
+            dp[j] = max(dp[j], dp[j - w[i]] + v[i]);
+    return dp[W];
+}
+```
+
+**完全背包**（每件可选无限次）：**正序遍历**容量（`j` 从 w[i] 到 W），这样同一物品可重复选。
+
+**对比**：
+| 背包 | 遍历顺序 | 含义 |
+|---|---|---|
+| 0-1 背包 | **倒序** | 每件最多一次 |
+| 完全背包 | **正序** | 每件无限次 |
+
+**为什么倒序**：
+- 正序时 `dp[j-w]` 可能是**本轮已更新**的值（已选过当前物品）→ 变成无限次。
+- 倒序时 `dp[j-w]` 是**上一轮**的值（没选当前物品）→ 保证只用一次。
+
+**其他经典 DP**：
+- **LIS**（最长递增子序列）：O(n²) 或 O(n log n)。
+- **LCS**（最长公共子序列）：二维 DP。
+- **编辑距离**。
+- **硬币找零**。
+
+**一句话总结**：**DP = 「状态 + 转移 + 边界 + 遍历顺序」，适用最优子结构 + 重叠子问题；0-1 背包用一维 `dp[j]=max(dp[j], dp[j-w]+v)` 且**容量倒序**（保证每件一次），完全背包改**正序** —— 遍历方向是两种背包的唯一区别，也是最容易错的点。**', 1),
+
+('算法', 'DP,LIS', 3,
+ '最长递增子序列（LIS）有哪两种解法？复杂度分别是多少？',
+ '**问题**：求数组中最长的**严格递增子序列**长度（子序列可不连续）。
+
+**解法一：动态规划 O(n²)**：
+- **状态**：`dp[i]` = **以 a[i] 结尾**的 LIS 长度。
+- **转移**：`dp[i] = max(dp[j]) + 1`，对所有 `j < i` 且 `a[j] < a[i]`。
+- **答案**：`max(dp[i])`。
+
+```cpp
+int LIS(vector<int>& a) {
+    int n = a.size(), ans = 0;
+    vector<int> dp(n, 1);
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < i; ++j)
+            if (a[j] < a[i]) dp[i] = max(dp[i], dp[j] + 1);
+        ans = max(ans, dp[i]);
+    }
+    return ans;
+}
+```
+
+**解法二：贪心 + 二分 O(n log n)** ⭐：
+- 维护一个数组 `tails`，`tails[k]` = **长度为 k+1 的递增子序列的最小结尾**。
+- 遍历每个数，**二分找到第一个 ≥ 当前数的位置**替换（用 `lower_bound`）。
+- 若当前数比所有 `tails` 都大，**追加**（长度 +1）。
+- 答案 = `tails` 的长度。
+
+```cpp
+int LIS(vector<int>& a) {
+    vector<int> tails;                       // tails 是递增的
+    for (int x : a) {
+        auto it = lower_bound(tails.begin(), tails.end(), x);
+        if (it == tails.end()) tails.push_back(x);
+        else *it = x;                        // 替换成更小的结尾
+    }
+    return tails.size();
+}
+```
+
+**为什么贪心正确**：
+- **结尾越小**，后面越容易接上更长的序列。
+- 用「最小结尾」维护每个长度的**最优前缀**。
+
+**严格 vs 非严格**：
+- **严格递增**：用 `lower_bound`（找 ≥ x 的位置）。
+- **非严格（允许相等）**：用 `upper_bound`（找 > x 的位置）。
+
+**记录路径**：
+- 贪心 + 二分法**丢失了具体序列**；要还原用 DP + 前驱数组。
+
+**一句话总结**：**LIS 有两种解法：DP O(n²)（`dp[i]` 为以 i 结尾的长度，好理解好还原路径）和贪心+二分 O(n log n)（维护「各长度的最小结尾」tails，严格用 lower_bound、非严格用 upper_bound）；大规模用后者、需要具体序列用前者。**', 1),
+
+('算法', '堆,TopK', 2,
+ '海量数据里找 TopK 怎么做？堆和快排怎么选？',
+ '**问题**：从 N 个元素中找**最大（或最小）的 K 个**。
+
+**方法一：排序**：
+- 全排序 O(N log N)，取前 K。
+- **N 很小时可用**，N 大时浪费。
+
+**方法二：小根堆（求最大 K 个）** ⭐：
+- 维护一个**大小为 K 的堆**。
+- 遍历元素：堆未满则入堆；满了且当前元素 > 堆顶 → **弹出堆顶，压入当前元素**。
+- 最后堆里就是**最大的 K 个**。
+- **复杂度 O(N log K)**，**空间 O(K)**。
+
+> 口诀：**求最大 K 个用小根堆（堆顶是最小的，容易被淘汰）；求最小 K 个用大根堆。**
+
+```cpp
+// 求最大的 K 个 → 小根堆
+priority_queue<int, vector<int>, greater<int>> pq;   // 小根堆
+for (int x : data) {
+    pq.push(x);
+    if (pq.size() > K) pq.pop();   // 弹出最小的
+}
+// pq 中即最大的 K 个
+```
+
+**方法三：快速选择（QuickSelect）**：
+- 基于快排 partition，**只递归包含第 K 个元素的那一侧**。
+- **平均 O(N)**，最坏 O(N²)。
+- **原地**，但要**全部数据在内存**（且会打乱数组）。
+
+**方法四：分治 / 外部排序（海量数据）**：
+- 数据**放不下内存**时：
+  1. **分块**读入内存，每块求 TopK。
+  2. **归并**各块的 TopK（堆归并）。
+- 或用 **MapReduce** 思想。
+
+**选择**：
+| 场景 | 方案 |
+|---|---|
+| 数据全在内存，K 小 | **小根堆 O(N log K)** ⭐ |
+| 要平均线性 | 快速选择 O(N) |
+| 数据流/海量 | **堆**（流式，空间 O(K)） |
+| 数据放不下 | 分块 + 归并 |
+
+**变体**：
+- **TopK 频率**：哈希统计 + 堆。
+- **数据流中位数**：双堆（大根堆 + 小根堆）。
+- **第 K 大**：快速选择或堆。
+
+**一句话总结**：**TopK 首选**大小为 K 的堆**（求最大 K 个小根堆，求最小 K 个大根堆），O(N log K) + O(K) 空间，天然适合流式数据；数据全在内存且要更快可用**快速选择 O(N)**（最坏 O(N²)）；海量放不下就分块求 TopK 再归并。**', 1),
+
+('算法', '哈希,冲突', 2,
+ '哈希表是怎么实现的？哈希冲突怎么解决？',
+ '**哈希表**：通过**哈希函数**把 key 映射到数组下标，实现**平均 O(1)** 的增删查。
+
+**哈希函数**：
+- 要求：**均匀分布**、**计算快**、**雪崩效应**（小变化大不同）。
+- 常见：除留余数法、乘法散列、**MurmurHash**、**FNV**、SipHash。
+
+**哈希冲突**（不同 key 映射到同一下标）的解决：
+
+**1. 链地址法（Separate Chaining）** ⭐：
+- 每个槽挂一个**链表**（或红黑树）。
+- **JDK HashMap**：链表长度 > 8 转**红黑树**（防退化）；< 6 转回链表。
+- **优点**：简单、负载因子可 > 1、删除方便。
+- **缺点**：链表节点额外空间、缓存不友好。
+
+**2. 开放寻址法（Open Addressing）**：
+- 冲突时按**探测序列**找下一个空槽。
+- **线性探测**（+1, +2...，易**聚集**）、**二次探测**（±1², ±2²...）、**双重哈希**（用第二个哈希定步长）⭐。
+- **优点**：**缓存友好**（连续）、无额外指针。
+- **缺点**：**删除麻烦**（需墓碑标记）、负载因子高时性能骤降。
+- **代表**：**Go map、Python dict、Rust HashMap**。
+
+**3. 再哈希 / 公共溢出区**：冲突时用另一个哈希函数，或存到公共溢出区。
+
+**负载因子（Load Factor）**：
+- `元素数 / 槽数`。
+- 太高 → 冲突多、性能差；太低 → 浪费空间。
+- **扩容**：链地址法常见阈值 **0.75**，超过就**扩容 2 倍 + rehash**。
+- 开放寻址法阈值更低（0.5~0.7）。
+
+**扩容的代价**：
+- 要**重新计算所有元素的位置**（rehash），O(n)。
+- **渐进式 rehash**（Redis）：分批迁移，避免一次性卡顿 ⭐。
+
+**有序 vs 无序**：
+- 无序哈希：O(1) 均摊，但**不支持范围查询**。
+- 有序结构（**跳表、红黑树**）：O(log n) 但支持范围/顺序。
+
+**一句话总结**：**哈希表用哈希函数 + 冲突解决实现平均 O(1)；链地址法（链表/红黑树，JDK）简单通用，开放寻址法（线性/二次/双重探测，Go/Python）缓存友好但删除麻烦；负载因子超阈值要扩容 rehash（Redis 用渐进式 rehash 避免卡顿），需要范围查询则用跳表/树。**', 1),
+
+('算法', '二叉树,遍历', 2,
+ '二叉树的遍历方式有哪些？如何非递归实现？',
+ '**四种遍历**：
+- **前序**：根 → 左 → 右。
+- **中序**：左 → 根 → 右（**BST 中序 = 有序序列**）。
+- **后序**：左 → 右 → 根。
+- **层序**：逐层（BFS，用队列）。
+
+**递归实现**（以中序为例）：
+```cpp
+void inorder(TreeNode* root, vector<int>& out) {
+    if (!root) return;
+    inorder(root->left, out);
+    out.push_back(root->val);
+    inorder(root->right, out);
+}
+```
+
+**非递归通用模板（用栈）**：
+
+**前序**（根左右）：
+```cpp
+vector<int> preorder(TreeNode* root) {
+    vector<int> res;
+    stack<TreeNode*> st;
+    if (root) st.push(root);
+    while (!st.empty()) {
+        TreeNode* p = st.top(); st.pop();
+        res.push_back(p->val);                 // 访问根
+        if (p->right) st.push(p->right);       // 先压右
+        if (p->left)  st.push(p->left);        // 后压左（先出）
+    }
+    return res;
+}
+```
+
+**中序**（左根右，一路向左压栈）：
+```cpp
+vector<int> inorder(TreeNode* root) {
+    vector<int> res;
+    stack<TreeNode*> st;
+    TreeNode* cur = root;
+    while (cur || !st.empty()) {
+        while (cur) { st.push(cur); cur = cur->left; }  // 走到最左
+        cur = st.top(); st.pop();
+        res.push_back(cur->val);                        // 访问
+        cur = cur->right;                               // 转向右
+    }
+    return res;
+}
+```
+
+**后序**（左右根）：
+- 法一：前序变体 —— 按「根右左」遍历再**反转** → 得「左右根」。
+- 法二：双栈法。
+
+**层序（BFS）**：
+```cpp
+vector<vector<int>> levelOrder(TreeNode* root) {
+    vector<vector<int>> res;
+    if (!root) return res;
+    queue<TreeNode*> q; q.push(root);
+    while (!q.empty()) {
+        int sz = q.size();                     // 记录本层节点数
+        vector<int> level;
+        while (sz--) {
+            TreeNode* p = q.front(); q.pop();
+            level.push_back(p->val);
+            if (p->left)  q.push(p->left);
+            if (p->right) q.push(p->right);
+        }
+        res.push_back(level);
+    }
+    return res;
+}
+```
+
+**Morris 遍历**：**O(1) 空间**（利用叶子节点的空右指针做线索），但会临时改树。
+
+**复杂度**：时间 O(n)，空间 O(h)（h 为树高，栈深度）。
+
+**一句话总结**：**遍历分前/中/后/层序，中序对 BST 输出有序；递归简单，非递归用栈（前序「根→压右→压左」，中序「一路向左压栈再右转」，后序可「根右左再反转」），层序用队列逐层 BFS —— 空间都是 O(树高)。**', 1),
+
+('算法', '链表,快慢指针', 2,
+ '如何判断链表有环？如何找环的入口？',
+ '**判断有环：快慢指针（Floyd 判圈算法）** ⭐
+
+```cpp
+bool hasCycle(ListNode* head) {
+    ListNode *slow = head, *fast = head;
+    while (fast && fast->next) {
+        slow = slow->next;          // 一次走 1 步
+        fast = fast->next->next;    // 一次走 2 步
+        if (slow == fast) return true;   // 相遇即有环
+    }
+    return false;
+}
+```
+
+**原理**：
+- 若有环，快指针先进入环，慢指针后进入。
+- 在环内，快指针每单位时间**多走 1 步**，**相对速度 1** → **必然会追上慢指针**。
+- 若无环，快指针先到 `nullptr`。
+
+**找环入口（关键推导）**：
+- 设**头到入口**距离 `a`，**入口到相遇点**距离 `b`，**环长** `L`。
+- 相遇时：慢走了 `a + b`，快走了 `a + b + nL`。
+- 快速度是慢的 2 倍：`2(a + b) = a + b + nL` → **`a + b = nL`** → `a = nL - b`。
+- 即：**从头到入口的距离 a == 从相遇点继续走到入口的距离（`nL - b`）**。
+- **做法**：相遇后，**一个指针回头，两指针同速前进，再次相遇处即入口** ⭐。
+
+```cpp
+ListNode* detectCycle(ListNode* head) {
+    ListNode *slow = head, *fast = head;
+    while (fast && fast->next) {
+        slow = slow->next;
+        fast = fast->next->next;
+        if (slow == fast) {                 // 相遇
+            slow = head;                    // 一个回头
+            while (slow != fast) {          // 同速前进
+                slow = slow->next;
+                fast = fast->next;
+            }
+            return slow;                    // 入口
+        }
+    }
+    return nullptr;
+}
+```
+
+**其他链表技巧**：
+- **找中点**：快慢指针，快到头时慢在中点。
+- **找倒数第 K 个**：快指针先走 K 步，然后一起走。
+- **判断回文**：找中点 + 反转后半 + 比较。
+- **合并两个有序链表**：双指针。
+
+**复杂度**：判断有环 O(n)、O(1) 空间；找入口 O(n)、O(1) 空间。
+
+**一句话总结**：**快慢指针（快 2 步、慢 1 步）相遇即有环；由 `2(a+b)=a+b+nL` 推出 `a=nL-b`，故「相遇后一个指针回头、两者同速再遇处即入口」—— 这套 O(1) 空间的判圈+找入口是链表面试的必考题。**', 1),
+
+('算法', 'LRU,缓存淘汰', 3,
+ '如何设计一个 O(1) 的 LRU 缓存？',
+ '**LRU（Least Recently Used）**：淘汰**最久未使用**的数据。
+
+**要求**：获取（`get`）和插入（`put`）都 **O(1)**。
+
+**核心结构**：
+- **哈希表**：`key → 链表节点`，实现 O(1) 定位。
+- **双向链表**：维护**使用顺序**，头部最新、尾部最旧。
+  - **为什么双向**：删除节点需**访问前驱**，双向链表才能 O(1) 删除。
+
+**操作逻辑**：
+- **get(key)**：
+  - 不存在 → 返回 -1。
+  - 存在 → **移到头部**（标记为最新），返回 value。
+- **put(key, value)**：
+  - 已存在 → 更新 value，**移到头部**。
+  - 不存在：
+    - **容量未满** → 新建节点插入头部。
+    - **容量已满** → **删除尾部节点**（最旧的）+ 从哈希表删除，再插入新节点到头部。
+
+**C++ 实现（用 `list` + `unordered_map`）**：
+```cpp
+class LRUCache {
+    int cap;
+    std::list<std::pair<int,int>> lst;                       // (k,v)，front 最新
+    std::unordered_map<int, std::list<std::pair<int,int>>::iterator> mp;
+public:
+    LRUCache(int c) : cap(c) {}
+    int get(int key) {
+        auto it = mp.find(key);
+        if (it == mp.end()) return -1;
+        lst.splice(lst.begin(), lst, it->second);            // 移到头部 O(1)
+        return it->second->second;
+    }
+    void put(int key, int value) {
+        auto it = mp.find(key);
+        if (it != mp.end()) {
+            it->second->second = value;
+            lst.splice(lst.begin(), lst, it->second);
+            return;
+        }
+        if ((int)lst.size() == cap) {
+            mp.erase(lst.back().first);                      // 删哈希
+            lst.pop_back();                                  // 删最旧
+        }
+        lst.emplace_front(key, value);
+        mp[key] = lst.begin();
+    }
+};
+```
+- **`splice`** 是关键：**O(1) 把节点移到头部**，不用手动摘链/接链。
+
+**复杂度**：get / put 均 **O(1)**，空间 O(容量)。
+
+**变体**：
+- **LFU（最不经常使用）**：按**访问频次**淘汰；需**频次桶**（`freq → 双向链表`）+ 记录最小频次，也是 O(1)。
+- **FIFO**：只按插入顺序（简单队列）。
+- **LRU-K**：考虑最近 K 次访问。
+- **Redis 近似 LRU**：**采样**若干 key 淘汰最久未用的（**省内存**，不是精确 LRU）。
+
+**一句话总结**：**O(1) LRU = 哈希表（O(1) 定位）+ 双向链表（O(1) 移动/删除，头部最新尾部最旧）；`get`/`put` 命中就移到头部，满了删尾部并用 `splice` O(1) 维护顺序 —— LFU 则是「频次桶 + 最小频次」，两者都是高频手写题。**', 1),
+
+('算法', '并查集,图', 2,
+ '并查集是什么？如何用路径压缩和按秩合并优化？',
+ '**并查集（Union-Find）**：维护**不相交集合**，支持两种操作：
+- **find(x)**：找 x 所在集合的**代表元（根）**。
+- **union(x, y)**：合并两个集合。
+
+**应用**：连通性判断、Kruskal 最小生成树、朋友圈、冗余连接、动态连通性。
+
+**基础实现**（用父指针数组）：
+```cpp
+int parent[N];
+int find(int x) { return parent[x] == x ? x : find(parent[x]); }
+void unite(int a, int b) { parent[find(a)] = find(b); }
+```
+- **问题**：可能退化成**链**，find 变 O(n)。
+
+**优化一：路径压缩（Path Compression）** ⭐：
+- **find 时把路径上所有节点直接指向根**。
+```cpp
+int find(int x) {
+    return parent[x] == x ? x : (parent[x] = find(parent[x]));
+}
+```
+- 效果：树变**极扁平**，后续 find 接近 O(1)。
+
+**优化二：按秩合并（Union by Rank）/ 按大小合并**：
+- 合并时**把矮树挂到高树下**（或小集合挂到大集合）。
+- 记录 `rank`（树高上界）或 `size`。
+```cpp
+vector<int> parent, rnk;
+int find(int x) { return parent[x] == x ? x : (parent[x] = find(parent[x])); }
+void unite(int a, int b) {
+    a = find(a); b = find(b);
+    if (a == b) return;
+    if (rnk[a] < rnk[b]) swap(a, b);
+    parent[b] = a;                 // b 挂到 a 下
+    if (rnk[a] == rnk[b]) rnk[a]++;
+}
+```
+
+**复杂度**：
+- 单独路径压缩：均摊 O(log n)。
+- **两者结合**：均摊 **O(α(n))**（反阿克曼函数，实际 ≤ 4，**近似 O(1)**）⭐。
+
+**为什么快**：
+- 路径压缩让树扁平，按秩合并让树矮 → 两者互补。
+
+**一句话总结**：**并查集用父指针数组维护集合，find 找根、union 合并；**路径压缩**（find 时直接挂到根）+ **按秩/按大小合并**（矮树挂高树）结合后，均摊复杂度降为 O(α(n))≈O(1) —— 是连通性/Kruskal/朋友圈类问题的标准工具。**', 1),
+
+('算法', '图,最短路', 3,
+ 'Dijkstra 和 Bellman-Ford 有什么区别？负权边怎么办？',
+ '**最短路问题分类**：
+- **单源最短路**：Dijkstra、Bellman-Ford、SPFA。
+- **多源最短路**：Floyd。
+
+**Dijkstra（迪杰斯特拉）**：
+- **只能处理非负权边** ⭐。
+- **贪心**：每次选**当前距离最小的未访问节点**，松弛其邻居。
+- **实现**：
+  - 朴素：O(V²)。
+  - **优先队列（堆）**：O((V+E) log V) ⭐。
+- **不能有负权**：贪心假设「已确定的最短路径不会再被更新」，负权会破坏这个前提。
+
+```cpp
+// 堆优化 Dijkstra
+vector<long long> dijkstra(int src, vector<vector<pair<int,int>>>& g) {
+    int n = g.size();
+    vector<long long> dist(n, LLONG_MAX);
+    priority_queue<pair<long long,int>, vector<pair<long long,int>>,
+                   greater<>> pq;                 // 小根堆 (距离, 节点)
+    dist[src] = 0; pq.push({0, src});
+    while (!pq.empty()) {
+        auto [d, u] = pq.top(); pq.pop();
+        if (d > dist[u]) continue;               // 过期条目跳过
+        for (auto [v, w] : g[u])
+            if (dist[u] + w < dist[v]) {
+                dist[v] = dist[u] + w;
+                pq.push({dist[v], v});
+            }
+    }
+    return dist;
+}
+```
+
+**Bellman-Ford（贝尔曼-福特）**：
+- **支持负权边**，还能**检测负环** ⭐。
+- **对所有边做 V-1 轮松弛**。
+- 复杂度 **O(V·E)**（慢）。
+- **判断负环**：第 V 轮还能松弛 → 存在负环。
+- **SPFA**：Bellman-Ford 的队列优化，平均快但最坏仍是 O(V·E)（易被卡）。
+
+**Floyd（弗洛伊德）**：
+- **多源最短路**，**支持负权**（不能有负环）。
+- **DP**：`d[i][j] = min(d[i][j], d[i][k] + d[k][j])`，枚举中转点 k。
+- 复杂度 **O(V³)**，适合小图/稠密图。
+
+**对比**：
+| 算法 | 单/多源 | 负权 | 负环 | 复杂度 |
+|---|---|---|---|---|
+| **Dijkstra** | 单源 | ❌ | — | O(E log V) |
+| Bellman-Ford | 单源 | ✅ | **可检测** | O(V·E) |
+| SPFA | 单源 | ✅ | 可检测 | 平均快 |
+| Floyd | **多源** | ✅ | 可检测 | O(V³) |
+
+**负权边怎么办**：
+- 没有负环 → **Bellman-Ford / SPFA / Floyd**。
+- 有负环 → 最短路径**无意义**（可无限小）。
+
+**选择**：
+- **非负权、单源、稀疏图**：**Dijkstra（堆）**。
+- **有负权**：Bellman-Ford / SPFA。
+- **多源、稠密、小图**：Floyd。
+
+**一句话总结**：**Dijkstra 贪心、必须非负权、堆优化 O(E log V)（最常用）；Bellman-Ford 支持负权并能检测负环但 O(V·E)，SPFA 是其队列优化；Floyd 多源 O(V³) 也支持负权 —— 按「有无负权、单源还是多源、图稠密程度」选算法。**', 1),
+
+('算法', '字符串,KMP', 3,
+ 'KMP 算法的原理是什么？next 数组怎么求？',
+ '**KMP 解决「字符串匹配」**：在文本 T 中找模式串 P，**利用已匹配信息避免回溯**。
+
+**朴素匹配的问题**：
+- 每次失配，**文本指针回退**，O(n·m)。
+- 浪费了「已经比较过的字符」这一信息。
+
+**KMP 的核心：next 数组（部分匹配表 / 前缀函数）**：
+- `next[i]` = **P[0..i] 的最长「相等真前缀与真后缀」的长度**。
+- 失配时，模式串**跳到 `next[j-1]`** 继续，**文本指针不回退**。
+
+**为什么能跳**：
+- 若 `P[0..j-1]` 已匹配，且它有长度为 k 的相等前后缀，则失配后**前缀那 k 个字符已经等于文本对应位置**，直接从 k 处继续比较。
+
+**求解 next 数组（自己匹配自己）**：
+```cpp
+vector<int> buildNext(const string& p) {
+    int m = p.size();
+    vector<int> next(m, 0);
+    int len = 0;                       // 当前最长相等前后缀长度
+    for (int i = 1; i < m; ) {
+        if (p[i] == p[len]) {
+            next[i++] = ++len;         // 匹配，长度+1
+        } else if (len > 0) {
+            len = next[len - 1];       // 回退到更短的前缀
+        } else {
+            next[i++] = 0;             // 无法匹配，置 0
+        }
+    }
+    return next;
+}
+```
+
+**KMP 匹配**：
+```cpp
+int kmp(const string& t, const string& p) {
+    auto next = buildNext(p);
+    int n = t.size(), m = p.size(), j = 0;
+    for (int i = 0; i < n; ) {
+        if (t[i] == p[j]) { ++i; ++j; }
+        if (j == m) return i - j;              // 匹配成功
+        else if (i < n && t[i] != p[j]) {
+            j = (j > 0) ? next[j - 1] : 0;     // 失配跳转
+            if (j == 0 && t[i] != p[j]) ++i;
+        }
+    }
+    return -1;
+}
+```
+
+**复杂度**：预处理 O(m)，匹配 O(n)，**总 O(n + m)**，空间 O(m)。
+
+**直观理解**：
+- next 数组告诉 KMP：**「已经匹配了这么多，失配时最长还有多长的前缀可以复用」**。
+- 本质是**用模式串自身的重复结构**省掉无谓比较。
+
+**相关算法**：
+- **Z 函数**、**Manacher**（回文）、**AC 自动机**（多模式匹配）、**BM / Sunday**（实际文本搜索常用）。
+
+**一句话总结**：**KMP 用 next 数组（最长相等前后缀）在失配时跳过已知匹配的前缀、文本指针不回退，把匹配降到 O(n+m)；next 的求法是「模式串自己匹配自己」，遇不同则回退到 next[len-1] —— 关键是「利用已匹配信息，不做无用回溯」。**', 1),
+
+('算法', '单调栈', 3,
+ '单调栈是什么？解决「下一个更大元素」类问题怎么用？',
+ '**单调栈**：栈内元素**保持单调**（递增或递减），用于找**「下一个更大/更小元素」**、**柱状图最大矩形**等问题。
+
+**核心思想**：
+- 遍历元素时，**弹出所有破坏单调性的栈顶**，被弹出的元素**在这里找到了它的答案**。
+- 每个元素**最多进栈出栈各一次** → **O(n)**。
+
+**例：下一个更大元素**
+- 给数组，对每个元素找右边第一个比它大的值。
+- 用**单调递减栈**（栈内存「还没找到答案」的下标）：
+```cpp
+vector<int> nextGreater(vector<int>& a) {
+    int n = a.size();
+    vector<int> res(n, -1);
+    stack<int> st;                       // 存下标，栈内值递减
+    for (int i = 0; i < n; ++i) {
+        while (!st.empty() && a[i] > a[st.top()]) {
+            res[st.top()] = a[i];        // a[i] 是 st.top() 的下一个更大元素
+            st.pop();
+        }
+        st.push(i);
+    }
+    return res;
+}
+```
+
+**口诀**：
+- **求「下一个更大」→ 单调递减栈**（遇到更大的就弹出）。
+- **求「下一个更小」→ 单调递增栈**（遇到更小的就弹出）。
+
+**循环数组**：把数组**复制一遍**（遍历 `2n` 次，下标 `i % n`）即可处理环形。
+
+**经典应用**：
+1. **下一个更大/更小元素**。
+2. **每日温度**（距下一个更高温度几天）。
+3. **柱状图中最大矩形**（**单调栈求左右第一个更矮的柱子**）⭐。
+4. **接雨水**（单调栈 / 双指针 / DP）。
+5. **移除 K 位数字使剩余最小**（单调栈 + 贪心）。
+6. **股票价格跨度**。
+
+**为什么是 O(n)**：
+- 每个元素**入栈一次、出栈至多一次**，均摊 O(1)。
+
+**对比**：
+| 问题 | 栈类型 | 弹出的时机 |
+|---|---|---|
+| 下一个更大 | 递减栈 | 当前 > 栈顶 |
+| 下一个更小 | 递增栈 | 当前 < 栈顶 |
+
+**一句话总结**：**单调栈让栈内元素保持单调，遍历时「弹出破坏单调性的栈顶，并在此刻确定它的答案」，每个元素均摊 O(1)，总 O(n)；求下一个更大用递减栈、更小用递增栈，是「每日温度/最大矩形/接雨水」一类题的通法。**', 1),
+
+('算法', '滑动窗口,双指针', 2,
+ '滑动窗口和双指针分别适合什么问题？',
+ '**滑动窗口**：维护一个**窗口 `[left, right]`**，右指针扩张、左指针收缩，**O(n)** 解决**子数组/子串**问题。
+
+**适用条件**：**单调性**——窗口扩大/缩小对目标的影响是单调的（如「越长越容易满足」）。
+
+**模板**：
+```cpp
+int left = 0;
+for (int right = 0; right < n; ++right) {
+    // 1. 窗口加入 a[right]
+    while (/* 窗口不满足条件 */) {
+        // 2. 窗口移除 a[left]
+        ++left;
+    }
+    // 3. 更新答案
+}
+```
+
+**典型题**：
+- **最长无重复字符子串**（哈希记位置）。
+- **最小覆盖子串**（哈希计数 + 收缩）。
+- **长度最小的子数组**（和 ≥ target）。
+- **滑动窗口最大值**（单调队列）。
+- **字符串的排列/异位词**（固定窗口 + 计数）。
+
+**双指针**：
+- **左右指针（对撞）**：有序数组两数之和、反转数组、三数之和、盛最多水。
+- **快慢指针（同向）**：链表判环、找中点、**原地删除/去重**（快指针找有效元素，慢指针写入位置）。
+- **前后指针**：合并两个有序数组。
+
+**对比**：
+| 技术 | 结构 | 适用 |
+|---|---|---|
+| 滑动窗口 | 可变/固定窗口 | **连续子数组/子串** |
+| 对撞双指针 | 左右逼近 | **有序数组、两数之和** |
+| 快慢双指针 | 同向 | **链表、原地修改** |
+
+**为什么 O(n)**：
+- 每个元素最多被**左右指针各访问一次**，均摊线性。
+
+**滑动窗口最大值（单调队列）**：
+- 用**双端队列**维护**递减**的候选下标。
+- 队首是当前窗口最大值；新元素入队前**弹出所有比它小的**；**队首过期则从队首移除**。
+- 均摊 O(n)。
+
+**一句话总结**：**滑动窗口用「右扩左缩」处理连续子数组/子串（要求单调性），双指针分「左右对撞」（有序数组/两数之和）和「快慢同向」（链表/原地去重）；两者都靠「每个元素只被访问常数次」做到 O(n)，滑动窗口最大值则用单调队列。**', 1),
+
+('算法', '回溯,DFS', 2,
+ '回溯算法的框架是什么？如何剪枝优化？',
+ '**回溯**：**系统地枚举所有候选解**，走不通就**撤销选择、回退**（DFS 的一种）。
+
+**核心框架**：
+```cpp
+void backtrack(路径, 选择列表) {
+    if (满足结束条件) {
+        记录结果;
+        return;
+    }
+    for (选择 : 选择列表) {
+        做选择;                 // 修改状态
+        backtrack(路径, 新的选择列表);
+        撤销选择;               // 恢复状态（关键！）
+    }
+}
+```
+
+**关键点**：
+1. **做选择 → 递归 → 撤销选择**（对称，保证状态回退）。
+2. **结束条件**（到底部记录结果）。
+3. **选择列表**可能要**跳过已用的**（排列）或**从当前位置往后**（组合）。
+
+**经典问题**：
+- **全排列**（用 `used` 标记）。
+- **子集 / 幂集**。
+- **组合总和**（可重复/不可重复）。
+- **N 皇后**（每行放一个 + 列/对角线冲突检查）。
+- **数独**。
+- **括号生成**。
+- **单词搜索（棋盘 DFS）**。
+
+**排列 vs 组合**：
+- **排列**：顺序有关，`[1,2]` 和 `[2,1]` 不同 → 用 `used` 数组。
+- **组合**：顺序无关 → 递归时**从 start 往后选**，避免重复。
+
+**剪枝（优化）** ⭐：
+1. **排序 + 提前终止**：和超过目标就 break。
+2. **跳过重复元素**：`if (i > start && a[i] == a[i-1]) continue;`（去重）。
+3. **可行性剪枝**：剩余元素不够/必定超限时提前返回。
+4. **最优性剪枝**：已不优于当前最优解就剪。
+5. **记忆化**：子问题重复时转 DP。
+
+**复杂度**：
+- 排列 O(n!)。
+- 子集 O(2ⁿ)。
+- 回溯本质是**指数级**，剪枝是控制实际规模的关键。
+
+**一句话总结**：**回溯 = 「做选择 → 递归 → 撤销选择」的 DFS 枚举，结束条件时记录结果；排列用 used、组合用 start 防重复，剪枝靠「排序+提前终止、跳过重复、可行性/最优性剪枝」—— 它是指数复杂度，剪枝决定能不能过。**', 1),
+
+('算法', '贪心,分治', 2,
+ '贪心算法和分治法有什么区别？各举一个例子。',
+ '**贪心（Greedy）**：
+- 每步都选**当前看起来最优**的，**不回头**。
+- **适用条件**：
+  1. **贪心选择性质**：局部最优能推出全局最优。
+  2. **最优子结构**。
+- **优点**：简单高效（常 O(n) 或 O(n log n)）。
+- **缺点**：**不保证全局最优**（很多问题贪心会错）。
+
+**贪心例子**：
+- **活动选择**（按结束时间排序，选不冲突的最多活动）。
+- **霍夫曼编码**（每次合并频率最小的两个）。
+- **找零钱**（面额规范时）。
+- **区间调度**。
+- **最小生成树（Kruskal/Prim）**。
+- **跳跃游戏**。
+
+**分治（Divide & Conquer）**：
+- 把问题**分成子问题**，**递归求解**，再**合并**结果。
+- **三步**：**分（Divide）→ 治（Conquer）→ 合（Combine）**。
+- **适用**：子问题**独立**、**可合并**。
+- **优点**：可并行、可分析复杂度。
+- **缺点**：递归开销、合并成本。
+
+**分治例子**：
+- **归并排序**、**快排**。
+- **二分查找**。
+- **大整数乘法**（Karatsuba）。
+- **最近点对**。
+- **最大子数组和**（分治版）。
+
+**对比**：
+| 维度 | 贪心 | 分治 |
+|---|---|---|
+| 策略 | 每步选局部最优 | 分解 + 递归 + 合并 |
+| 子问题 | 不重叠（一路往前） | **独立且更小** |
+| 是否回退 | ❌ | ❌（但会合并） |
+| 保证最优 | **需证明** | 通常可证 |
+| 例子 | 活动选择、霍夫曼 | 归并、快排 |
+
+**贪心 vs DP**：
+- **DP** 考虑所有子问题（**全局最优**），**贪心**只看当前（快但需证明正确）。
+- 有些问题两者都能解（如找零），有些只能 DP（贪心错）。
+
+**一句话总结**：**贪心「每步取局部最优、不回头」（快但需证明局部最优能推全局最优，如活动选择/霍夫曼），分治「分→治→合」（子问题独立可合并，如归并/快排）；贪心像 DP 的「单路径特例」，能用贪心就用贪心（更快），不能就退回 DP。**', 1),
+
+('算法', '位运算,技巧', 2,
+ '常见位运算技巧有哪些？如何用位运算解决实际问题？',
+ '**基础操作**：
+| 操作 | 表达式 | 说明 |
+|---|---|---|
+| 取第 k 位 | `(x >> k) & 1` | 判第 k 位 |
+| 置第 k 位 | `x \\| (1 << k)` | 设为 1 |
+| 清第 k 位 | `x & ~(1 << k)` | 设为 0 |
+| 翻转第 k 位 | `x ^ (1 << k)` | 取反 |
+| 最低位 1 | `x & (-x)` | lowbit |
+| 清除最低位 1 | `x & (x - 1)` | 消掉最低位 1 |
+| 判断 2 的幂 | `x > 0 && (x & (x-1)) == 0` | 只有一个 1 |
+| 取反 | `~x` | 按位取反 |
+
+**经典技巧**：
+1. **`x & (x - 1)`**：消掉最低位的 1。
+   - **统计 1 的个数**（Brian Kernighan）：`while (x) { x &= x-1; ++cnt; }`。
+   - **判断 2 的幂**：`x & (x-1) == 0`。
+2. **`x & (-x)`（lowbit）**：取最低位的 1，用于**树状数组**。
+3. **异或（^）的性质**：
+   - `a ^ a = 0`、`a ^ 0 = a`、**交换律/结合律**。
+   - **找出只出现一次的数**（其余都出现两次）：全部异或 ⭐。
+   - **不用临时变量交换**：`a ^= b; b ^= a; a ^= b;`。
+4. **掩码（mask）**：用位表示**集合**，`1 << i` 表示选第 i 个。
+   - **状态压缩 DP**（如 TSP、棋盘覆盖）：`dp[mask][i]`。
+   - **枚举子集**：`for (int s = mask; s; s = (s-1) & mask)`。
+5. **移位代替乘除 2 的幂**：`x << 1`（×2）、`x >> 1`（÷2）—— 现代编译器会自动优化，**可读性优先**。
+6. **判断奇偶**：`x & 1`。
+
+**常见题目**：
+- **只出现一次的数字**（异或）。
+- **只出现一次的两个数字**（异或后按某位分组）。
+- **汉明距离/权重**。
+- **位图去重/排序**（海量整数）。
+- **N 皇后 / 数独的位优化**。
+
+**注意**：
+- **有符号右移**：C++ 对负数右移是**实现定义**（通常算术右移，补符号位）；用**无符号**更安全。
+- **移位超过位宽是 UB**（如 32 位 `1 << 32`）。
+- **`1 << 31`** 对有符号 int 是 UB/溢出，用 `1u << 31`。
+
+**一句话总结**：**位运算的利器是「`x&(x-1)` 消最低位 1、`x&-x` 取 lowbit、异或找唯一出现、掩码做状态压缩」；能大幅简化「计数、去重、状态枚举、集合操作」类问题，但要注意有符号右移和移位越界是 UB。**', 1),
+
+('算法', 'Trie,前缀树', 2,
+ 'Trie（前缀树）是什么？如何实现？',
+ '**Trie（字典树/前缀树）**：**按字符逐层组织的树**，用于**字符串的快速插入/查询/前缀匹配**。
+
+**结构**：
+- 根为空。
+- **每条边代表一个字符**。
+- 从根到某节点的路径 = 一个**前缀**。
+- 节点可标记 `isEnd` 表示某个单词结束。
+- 每个节点有**子节点数组/哈希表**（26 个字母用数组，字符集大用哈希）。
+
+**实现**：
+```cpp
+struct TrieNode {
+    TrieNode* child[26] = {};   // 26 个小写字母
+    bool isEnd = false;
+};
+
+class Trie {
+    TrieNode* root = new TrieNode();
+public:
+    void insert(const string& w) {
+        TrieNode* p = root;
+        for (char c : w) {
+            int i = c - ''a'';
+            if (!p->child[i]) p->child[i] = new TrieNode();
+            p = p->child[i];
+        }
+        p->isEnd = true;
+    }
+    bool search(const string& w) {
+        TrieNode* p = root;
+        for (char c : w) {
+            int i = c - ''a'';
+            if (!p->child[i]) return false;
+            p = p->child[i];
+        }
+        return p->isEnd;                 // 必须是完整单词
+    }
+    bool startsWith(const string& pre) {
+        TrieNode* p = root;
+        for (char c : pre) {
+            int i = c - ''a'';
+            if (!p->child[i]) return false;
+            p = p->child[i];
+        }
+        return true;                     // 只要前缀存在即可
+    }
+};
+```
+
+**复杂度**：
+- 插入/查询 **O(L)**（L 为字符串长度），**与词典大小无关** ⭐。
+- 空间：**共享公共前缀**，但节点数组可能稀疏浪费。
+
+**优点 vs 哈希表**：
+| 维度 | Trie | 哈希表 |
+|---|---|---|
+| 查询 | O(L) | O(L) 均摊 |
+| **前缀查找** | ✅ **天然支持** | ❌ |
+| 有序遍历 | ✅ | ❌ |
+| 空间 | 可能大（稀疏） | 紧凑 |
+
+**应用**：
+1. **自动补全 / 搜索提示**（前缀匹配）。
+2. **拼写检查**。
+3. **IP 路由（最长前缀匹配）**。
+4. **敏感词过滤**。
+5. **字符串去重/统计**。
+6. **最大异或对**（01 Trie）⭐。
+
+**优化**：
+- **压缩 Trie（Radix Tree / Patricia Tree）**：把单链路径压缩，省空间。
+- **双数组 Trie（Double-Array）**：极致空间+速度（用于分词库）。
+
+**一句话总结**：**Trie 按字符逐层建树，插入/查询 O(L) 且天然支持前缀匹配与有序遍历（哈希表做不到）；用「节点数组 + isEnd 标记」实现，适合自动补全、IP 最长前缀匹配、敏感词过滤，空间敏感时用压缩 Trie 或双数组 Trie。**', 1),
+
+('算法', '布隆过滤器,位图', 3,
+ '布隆过滤器的原理是什么？为什么会有误判？',
+ '**布隆过滤器（Bloom Filter）**：用**很小的空间**判断「元素**可能存在**或**一定不存在**」。
+
+**结构**：
+- 一个**位数组**（bit array，m 位）。
+- **k 个独立的哈希函数**。
+
+**操作**：
+- **插入 x**：用 k 个哈希算出 k 个位置，全部**置 1**。
+- **查询 y**：用 k 个哈希算位置，**只要有 1 个是 0 → 一定不存在**；**全是 1 → 可能存在**。
+
+**为什么会有误判（假阳性）**：
+- **哈希冲突**：多个元素的不同哈希可能落在同一位置，位被别的元素置 1。
+- 查询一个**未插入**的元素时，它的 k 个位置**恰好都被其他元素置 1** → **误判为存在**。
+- **假阳性（False Positive）**：说「存在」但实际不存在。
+- **没有假阴性** ⭐：说不存在就一定不存在（因为插入时会把位置置 1，不会漏）。
+
+**关键点**：
+- **不能删除元素**（把位清 0 会影响其他元素的判定）。
+- **变体**：**计数布隆过滤器**（每位置用计数器）支持删除。
+
+**参数影响**：
+- 位数组**越大**、哈希函数**越合适**，误判率**越低**。
+- **元素越多**，位被填满，误判率**越高**。
+- 误判率公式（给定 m、n、k）：`p ≈ (1 - e^(-kn/m))^k`。
+- 最优 k：`k = (m/n) ln 2`。
+
+**应用**：
+1. **缓存穿透防护**（先问布隆，不存在直接返回）⭐。
+2. **爬虫 URL 去重**。
+3. **垃圾邮件/黑名单过滤**。
+4. **数据库避免磁盘查找**（LSM-Tree 的 SSTable 用布隆过滤器快速判断 key 是否在该文件）。
+5. **推荐系统去重**。
+
+**对比位图（Bitmap）**：
+| 维度 | 位图 | 布隆过滤器 |
+|---|---|---|
+| 存什么 | 整数集合 | 元素集合（任意类型） |
+| 误判 | **无**（精确） | **有假阳性** |
+| 空间 | 与值域成正比 | 与元素数成正比 |
+| 删除 | 支持 | 不支持 |
+
+**位图（Bitmap）**：用 bit 表示整数是否出现（值域 N 只需 N 位）。适合**海量整数去重/排序/存在性判断**（40 亿整数用 512MB，若值域小则更省）。
+
+**一句话总结**：**布隆过滤器用「位数组 + k 个哈希」实现「可能存在 / 一定不存在」，空间极小但不支持删除且有**假阳性**（哈希冲突导致误判，元素越多越严重）；它靠「无假阴性」做快速预筛（缓存穿透防护、URL 去重、LSM 查询），值域有限的整数集合则用更精确的位图。**', 1),
+
+('算法', '哈希,海量数据', 3,
+ '海量数据（几百亿）如何在有限内存里去重/找重复？',
+ '**核心矛盾**：数据量 > 内存，无法一次装入。
+
+**方法一：哈希分治（分而治之）** ⭐：
+1. **按哈希分桶**：对每个元素算哈希，取模 N → **写到第 i 个文件**。
+   - **相同的元素一定进同一个文件**（哈希一致）⭐。
+2. **逐桶处理**：每个小文件可装入内存，用哈希表/排序去重。
+3. **合并结果**。
+
+```
+大文件 → hash(x) % N → file_0, file_1, ..., file_{N-1}
+每个 file_i 独立去重/统计 → 汇总
+```
+
+**方法二：位图（Bitmap）**：
+- 若数据是**范围内的整数**，用**位图**标记是否出现。
+- 例：40 亿个 uint32 用 2³² bit = **512 MB**。
+- **更省**：若值域小，位图更小。
+- **布隆过滤器**：只判存在性，空间极小（有误判）。
+
+**方法三：排序 + 归并（外部排序）**：
+- 把大文件**分块排序**写回磁盘。
+- **多路归并**（用最小堆）合并成有序大文件。
+- 有序后**相邻重复即重复**，去重/找重复很简单。
+- 适合**既要排序又要去重**的场景。
+
+**方法四：哈希表 + 分批**：
+- 内存足够装**部分**时，分批处理（但要注意同一元素不能跨批）。
+
+**找 TopK 频率**：
+1. **哈希分治**把相同元素聚到一起。
+2. 每桶统计频率。
+3. 各桶 TopK 归并（小根堆）。
+4. 或直接哈希统计 + 堆。
+
+**去重的几种场景**：
+| 场景 | 方案 |
+|---|---|
+| 整数、值域有限 | **位图** |
+| 任意元素、只判存在 | **布隆过滤器** |
+| 要精确去重 | **哈希分治** 或**外部排序** |
+| 内存够一部分 | 哈希分治 + 内存哈希表 |
+
+**注意**：
+- 哈希分桶要**均匀**（否则某个桶过大仍装不下）→ 用好哈希函数。
+- **哈希取模的分桶数**要足够多，保证每桶可入内存。
+
+**一句话总结**：**海量数据去重的通用解法是「哈希分治」—— 按哈希分桶保证相同元素进同桶，再逐桶在内存里去重；整数用位图（精确）、只判存在用布隆过滤器（省空间）、要排序用外部排序+多路归并；核心思想是「把大问题切成能放进内存的小问题」。**', 1),
+
+('算法', 'BST,树操作', 2,
+ '二叉搜索树（BST）有什么性质？如何验证和删除节点？',
+ '**BST 性质**：
+- **左子树所有节点 < 根 < 右子树所有节点**（**递归成立**）。
+- **中序遍历 = 升序序列** ⭐。
+- 查找/插入/删除平均 **O(log n)**，最坏 **O(n)**（退化成链表）。
+
+**验证 BST**：
+- ❌ 错误写法：只比较 `root->val` 与直接左右子节点（**不够**，孙辈可能违反）。
+- ✅ 正确做法一：**传上下界**。
+```cpp
+bool isValid(TreeNode* r, long lo = LONG_MIN, long hi = LONG_MAX) {
+    if (!r) return true;
+    if (r->val <= lo || r->val >= hi) return false;
+    return isValid(r->left, lo, r->val) && isValid(r->right, r->val, hi);
+}
+```
+- ✅ 正确做法二：**中序遍历，检查是否严格递增**。
+
+**查找**：
+```cpp
+TreeNode* search(TreeNode* r, int v) {
+    while (r) {
+        if (v == r->val) return r;
+        r = v < r->val ? r->left : r->right;
+    }
+    return nullptr;
+}
+```
+
+**插入**：
+```cpp
+TreeNode* insert(TreeNode* r, int v) {
+    if (!r) return new TreeNode(v);
+    if (v < r->val) r->left = insert(r->left, v);
+    else r->right = insert(r->right, v);
+    return r;
+}
+```
+
+**删除（三种情况）** ⭐：
+1. **叶子节点** → 直接删除。
+2. **只有一个子节点** → 用子节点替换。
+3. **有两个子节点** → 用**中序后继**（右子树最小值）或中序前驱（左子树最大值）替换，**再删除那个后继**。
+```cpp
+TreeNode* remove(TreeNode* r, int v) {
+    if (!r) return nullptr;
+    if (v < r->val) r->left = remove(r->left, v);
+    else if (v > r->val) r->right = remove(r->right, v);
+    else {
+        if (!r->left) return r->right;          // 情况 1/2
+        if (!r->right) return r->left;
+        TreeNode* mn = r->right;                // 找中序后继
+        while (mn->left) mn = mn->left;
+        r->val = mn->val;
+        r->right = remove(r->right, mn->val);   // 删除后继
+    }
+    return r;
+}
+```
+
+**BST 的问题**：**不平衡时退化成链表** → 需要**平衡树**：
+- **AVL**：严格平衡（左右子树高差 ≤ 1），查找快，**旋转多**。
+- **红黑树**：近似平衡，**插入删除旋转少**，工程常用（`std::map`、JDK TreeMap）。
+
+**一句话总结**：**BST 左小右大、中序有序，平均 O(log n)；验证要传上下界（或中序检查递增），删除分「叶子/单子/双子」三种（双子用中序后继替换）；但 BST 可能退化，实际用 AVL/红黑树保证平衡 —— `std::map` 底层就是红黑树。**', 1),
+
+('算法', '图,遍历', 2,
+ '图的 BFS 和 DFS 有什么区别？各适合什么场景？',
+ '**图存储**：
+- **邻接矩阵** `g[u][v]`：O(V²) 空间，适合**稠密图**，判断边 O(1)。
+- **邻接表** `g[u] = {v,...}`：O(V+E) 空间，适合**稀疏图**，遍历邻居高效。
+
+**BFS（广度优先，队列）**：
+```cpp
+void bfs(int s) {
+    vector<bool> vis(n, false);
+    queue<int> q; q.push(s); vis[s] = true;
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+        for (int v : g[u]) if (!vis[v]) { vis[v] = true; q.push(v); }
+    }
+}
+```
+- **逐层扩展**，用**队列**。
+- **适合**：
+  - **无权图最短路径** ⭐（层数即距离）。
+  - 层序遍历、最近的邻居。
+  - 社交网络的「几度人脉」。
+
+**DFS（深度优先，栈/递归）**：
+```cpp
+void dfs(int u, vector<bool>& vis) {
+    vis[u] = true;
+    for (int v : g[u]) if (!vis[v]) dfs(v, vis);
+}
+```
+- **一路走到底再回退**，用**栈/递归**。
+- **适合**：
+  - **连通性/环检测**。
+  - **拓扑排序**、**强连通分量**（Tarjan/Kosaraju）。
+  - **路径搜索**、回溯、迷宫。
+  - **割点/桥**。
+
+**对比**：
+| 维度 | BFS | DFS |
+|---|---|---|
+| 结构 | **队列** | **栈/递归** |
+| 顺序 | 逐层 | 一路到底 |
+| 空间 | O(宽度) 可能大 | O(深度) |
+| 无权最短路 | ✅ | ❌（除非全搜） |
+| 环检测/拓扑 | 可以 | **更常见** |
+| 回溯问题 | 不擅长 | **擅长** |
+
+**关键区别**：
+- **BFS 找无权最短路**（第一次到达即最短）。
+- **DFS 适合「走到底 + 回溯」**的问题。
+
+**复杂度**：邻接表 O(V + E)，邻接矩阵 O(V²)。
+
+**注意**：
+- **要标记访问**（防重复/死循环）。
+- **有向图 vs 无向图**（加边方式）。
+- **递归 DFS 可能栈溢出**（深图）→ 改迭代。
+
+**一句话总结**：**BFS 用队列逐层扩展，适合**无权最短路**和层级关系；DFS 用栈/递归一路到底，适合**连通性、环检测、拓扑排序、回溯**；邻接表 O(V+E)、邻接矩阵 O(V²)，按图的稀疏度选存储 —— 「要最短路径用 BFS，要走到底/回溯用 DFS」。**', 1),
+
+('算法', '拓扑排序,MST', 3,
+ '拓扑排序和最小生成树分别解决什么问题？',
+ '**拓扑排序**：给**有向无环图（DAG）**的节点排一个**线性顺序**，使所有边 `u→v` 中 **u 都在 v 前面**。
+
+**适用**：依赖关系排序（编译顺序、任务调度、课程安排、包依赖）。
+
+**方法一：Kahn 算法（BFS）** ⭐：
+1. 统计每个点的**入度**。
+2. 入度为 0 的点入队。
+3. 出队一个点，输出它，**其邻居入度 -1**，入度变 0 则入队。
+4. 重复直到队空。
+- **若输出节点数 < 总数 → 有环**（无法拓扑排序）⭐。
+
+**方法二：DFS**：
+- 后序遍历，**反转**结果即拓扑序。
+- 用**三色标记**（白/灰/黑）检测环（灰 = 在当前递归栈中）。
+
+**最小生成树（MST）**：给**带权无向连通图**，找一棵**连接所有点、边权和最小**的树（V-1 条边）。
+
+**Kruskal 算法** ⭐：
+1. **所有边按权值升序排序**。
+2. 依次取边，若两端**不在同一集合**（用**并查集**判断）则加入。
+3. 直到选了 V-1 条边。
+- **O(E log E)**，适合**稀疏图**。
+
+**Prim 算法**：
+1. 从一个点开始，维护「已选集合」。
+2. 每次选**连接已选集合与未选集合的最小边**（用**优先队列**）。
+3. 直到所有点入选。
+- **O(E log V)**，适合**稠密图**。
+
+**对比**：
+| 算法 | 思路 | 适合 |
+|---|---|---|
+| Kruskal | 按边贪心 + 并查集 | **稀疏图** |
+| Prim | 按点扩展 + 堆 | 稠密图 |
+
+**两者都是贪心**，都能求 MST（MST 不唯一，但权值和唯一）。
+
+**对比拓扑排序 vs MST**：
+- **拓扑排序**：**有向无环图**的**顺序**问题（依赖）。
+- **MST**：**无向带权图**的**最小连接代价**问题。
+
+**一句话总结**：**拓扑排序给 DAG 排依赖顺序（Kahn 用入度 BFS，输出数 < 总数即有环；或 DFS 后序反转），用于编译/调度/课程表；MST 求连通所有点的最小代价（Kruskal 按边+并查集适合稀疏图，Prim 按点+堆适合稠密图）—— 前者是「顺序」，后者是「最小连接」。**', 1),
+
+('算法', '动态规划,经典', 2,
+ '什么是「编辑距离」？它体现了 DP 的什么思想？',
+ '**编辑距离（Levenshtein Distance）**：把字符串 A 变成 B 所需的**最少操作次数**。
+- 操作：**插入、删除、替换**（各算 1 次）。
+
+**状态定义**：
+- `dp[i][j]` = **A 前 i 个字符**变成 **B 前 j 个字符**的最小操作数。
+
+**转移方程**：
+```
+若 A[i-1] == B[j-1]:  dp[i][j] = dp[i-1][j-1]           // 字符相同，不用操作
+否则:                 dp[i][j] = 1 + min(
+                        dp[i-1][j],      // 删除 A[i-1]
+                        dp[i][j-1],      // 插入 B[j-1]
+                        dp[i-1][j-1]     // 替换
+                      )
+```
+
+**边界**：
+- `dp[0][j] = j`（空串变 B 前 j 个字符，插入 j 次）。
+- `dp[i][0] = i`（A 前 i 个字符变空串，删除 i 次）。
+
+**实现**：
+```cpp
+int editDistance(const string& a, const string& b) {
+    int n = a.size(), m = b.size();
+    vector<vector<int>> dp(n + 1, vector<int>(m + 1));
+    for (int i = 0; i <= n; ++i) dp[i][0] = i;
+    for (int j = 0; j <= m; ++j) dp[0][j] = j;
+    for (int i = 1; i <= n; ++i)
+        for (int j = 1; j <= m; ++j)
+            if (a[i-1] == b[j-1]) dp[i][j] = dp[i-1][j-1];
+            else dp[i][j] = 1 + min({dp[i-1][j], dp[i][j-1], dp[i-1][j-1]});
+    return dp[n][m];
+}
+```
+
+**复杂度**：时间 O(n·m)，空间 O(n·m)（可优化为一维 O(m)）。
+
+**体现的 DP 思想**：
+1. **二维状态**（两个字符串的「进度」）。
+2. **状态由更小的前缀推出**（无后效性）。
+3. **分类讨论**（相同/不同 → 不同转移）。
+4. **边界初始化**（空串的情况）。
+
+**应用**：
+- **拼写纠错**（找最相似的词）。
+- **DNA 序列比对**。
+- **diff 工具**（最长公共子序列相关）。
+- **模糊匹配 / 搜索建议**。
+
+**相关**：
+- **最长公共子序列（LCS）**：类似二维 DP。
+- **最长公共子串**：连续，`dp[i][j]` 表示以 i、j 结尾的公共子串长。
+- **正则匹配（带 * 和 ?）**：也是二维 DP。
+
+**一句话总结**：**编辑距离用 `dp[i][j]` 表示「A 前 i 个字符变成 B 前 j 个字符的最小操作数」，字符相同则继承斜对角、不同则取「删/插/换」三种的最小值 +1，边界是空串；它是二维 DP 的典范，思想是「把大问题拆成前缀子问题、分类讨论转移」—— 广泛用于拼写纠错和序列比对。**', 1),
+
+('算法', 'DP,最大子数组', 2,
+ '最大子数组和（Kadane 算法）怎么求？它能扩展成什么？',
+ '**问题**：给定整数数组，找**和最大**的**连续子数组**。
+
+**Kadane 算法（线性 DP）**：
+- **状态**：`dp[i]` = **以 a[i] 结尾**的最大子数组和。
+- **转移**：`dp[i] = max(a[i], dp[i-1] + a[i])`。
+  - 要么**另起炉灶**（`a[i]`），要么**接到前面**（`dp[i-1] + a[i]`）。
+- **答案**：`max(dp[i])`。
+- **空间优化**：只需 `cur`（当前和）和 `best`（全局最大）。
+
+```cpp
+int maxSubArray(vector<int>& a) {
+    int cur = a[0], best = a[0];
+    for (int i = 1; i < a.size(); ++i) {
+        cur = max(a[i], cur + a[i]);   // 接 or 重开
+        best = max(best, cur);
+    }
+    return best;
+}
+```
+
+**核心思想**：
+- **负的前缀和只会拖累** → 一旦 `dp[i-1] < 0`，不如从当前元素重新开始。
+- `cur = max(a[i], cur + a[i])` 就是这个决策。
+
+**复杂度**：时间 O(n)，空间 O(1)。
+
+**扩展问题**：
+1. **记录起止下标**：维护 `start`、`tmpStart`。
+2. **环形数组最大子数组和**：= `max(普通最大子数组和, 总和 - 最小子数组和)`（但要处理全负数）。
+3. **最大子数组积**：需同时维护**最大和最小**（负数相乘变正）。
+4. **长度至少为 K 的子数组最大和**：前缀和 + 单调队列。
+5. **最大子矩阵和**：枚举行上下界 + 列 Kadane（O(n³)）。
+6. **股票买卖（单次交易最大利润）**：等价的「最小前缀 + 当前差」。
+
+**一句话总结**：**Kadane 用 `dp[i]=max(a[i], dp[i-1]+a[i])` 求以 i 结尾的最大子数组和，取全局最大，O(n)/O(1)；核心是「负前缀不如重新开始」—— 可扩展为环形数组、最大子矩阵、最大乘积（需维护 min）、至少 K 长度等。**', 1),
+
+('算法', '双指针,两数之和', 1,
+ '两数之和、三数之和分别怎么做？',
+ '**两数之和（无序数组）**：
+- **哈希表**：遍历时查 `target - a[i]` 是否出现过。**O(n)**，空间 O(n)。
+```cpp
+vector<int> twoSum(vector<int>& a, int t) {
+    unordered_map<int,int> pos;              // 值 → 下标
+    for (int i = 0; i < a.size(); ++i) {
+        auto it = pos.find(t - a[i]);
+        if (it != pos.end()) return {it->second, i};
+        pos[a[i]] = i;
+    }
+    return {};
+}
+```
+
+**两数之和（有序数组）**：
+- **对撞双指针**：左小右大，和小了左移、大了右移。**O(n)**，空间 O(1) ⭐。
+```cpp
+vector<int> twoSumSorted(vector<int>& a, int t) {
+    int l = 0, r = a.size() - 1;
+    while (l < r) {
+        int s = a[l] + a[r];
+        if (s == t) return {l, r};
+        else if (s < t) ++l;
+        else --r;
+    }
+    return {};
+}
+```
+
+**三数之和（和为 0 的不重复三元组）** ⭐：
+1. **排序**。
+2. **固定第一个数** `a[i]`，对后面部分做**两数之和（对撞双指针）**。
+3. **去重**：
+   - 外层：`if (i > 0 && a[i] == a[i-1]) continue;`（跳过重复的第一个数）。
+   - 内层：`while (l < r && a[l] == a[l+1]) ++l;` 等（跳过重复的第二/第三个数）。
+```cpp
+vector<vector<int>> threeSum(vector<int>& a) {
+    sort(a.begin(), a.end());
+    vector<vector<int>> res;
+    int n = a.size();
+    for (int i = 0; i < n - 2; ++i) {
+        if (a[i] > 0) break;                          // 最小的都 > 0，无解
+        if (i > 0 && a[i] == a[i-1]) continue;        // 去重
+        int l = i + 1, r = n - 1;
+        while (l < r) {
+            int s = a[i] + a[l] + a[r];
+            if (s == 0) {
+                res.push_back({a[i], a[l], a[r]});
+                while (l < r && a[l] == a[l+1]) ++l;  // 去重
+                while (l < r && a[r] == a[r-1]) --r;
+                ++l; --r;
+            } else if (s < 0) ++l;
+            else --r;
+        }
+    }
+    return res;
+}
+```
+
+**复杂度**：三数之和 **O(n²)**（外层 n × 内层双指针 n），空间 O(1)（不含结果）。
+
+**四数之和**：再套一层循环，O(n³)。
+
+**关键**：
+- **排序 + 双指针**是「k 数之和」的通用套路。
+- **双指针成立的前提是有序**（可利用大小关系收缩）。
+- **去重**是易错点（外层和内层都要去重）。
+
+**一句话总结**：**两数之和用哈希 O(n)（无序）或对撞双指针 O(1) 空间（有序）；三数之和是「排序 + 固定一个数 + 双指针求两数」，O(n²)，难点在**去重**（外层跳重复的首数、内层跳重复的二三数）；k 数之和就是不断套一层——「排序+双指针」是这类题的通法。**', 1),
+
+('算法', '区间,排序', 2,
+ '合并区间问题怎么做？',
+ '**问题**：给一组区间 `[start, end]`，**合并所有重叠**的区间。
+
+**解法：排序 + 遍历** ⭐：
+1. **按起点升序排序**。
+2. 遍历，维护当前合并区间 `cur`：
+   - 若下一个区间的**起点 ≤ cur 的终点** → **有重叠，合并**（`cur.end = max(cur.end, next.end)`）。
+   - 否则 → `cur` 已完成，推入结果，`cur = next`。
+3. 最后推入 `cur`。
+
+```cpp
+vector<vector<int>> merge(vector<vector<int>>& intervals) {
+    if (intervals.empty()) return {};
+    sort(intervals.begin(), intervals.end());        // 按起点排序
+    vector<vector<int>> res;
+    res.push_back(intervals[0]);
+    for (int i = 1; i < intervals.size(); ++i) {
+        if (intervals[i][0] <= res.back()[1])        // 与上一个重叠
+            res.back()[1] = max(res.back()[1], intervals[i][1]);
+        else
+            res.push_back(intervals[i]);
+    }
+    return res;
+}
+```
+
+**复杂度**：排序 O(n log n) 主导，遍历 O(n)。
+
+**关键点**：
+- **按起点排序**后，重叠必然是连续的。
+- 合并时终点取 **max**（因为可能被完全包含，如 `[1,10]` 和 `[2,3]`）。
+
+**相关变体**：
+1. **插入区间**：把新区间加入后合并（可用「找插入位置 + 合并」或直接加入再排序）。
+2. **区间覆盖 / 最少箭引爆气球**：**按终点排序**（贪心，用最少的点覆盖所有区间）。
+3. **无重叠区间（最多保留几个不重叠）**：**按终点贪心**（活动选择）。
+4. **会议室安排（最少会议室数）**：**扫描线**（开始 +1、结束 -1，峰值即答案）或**最小堆**。
+5. **区间交集**：双指针。
+
+**扫描线思想**：
+- 把「区间」转成「事件点」（start 加 1、end 减 1），排序后扫描累计值。
+- 用于「最大重叠数」「会议室数」「时间轴问题」。
+
+**一句话总结**：**合并区间 = 「按起点排序 + 遍历时判断是否与上一个重叠（起点 ≤ 上个终点）合并、终点取 max」；排序是关键，因为重叠在有序后必然连续；同类变体（插入区间/最少箭/无重叠/会议室）多用「按终点贪心」或「扫描线」。**', 1),
+
+('算法', '矩阵,模拟', 2,
+ '螺旋矩阵怎么遍历？矩阵旋转和转置怎么做？',
+ '**螺旋矩阵遍历**（从外到内顺时针）：
+
+**方法：维护四条边界** `top, bottom, left, right`：
+```cpp
+vector<int> spiralOrder(vector<vector<int>>& m) {
+    vector<int> res;
+    int top = 0, bottom = m.size() - 1;
+    int left = 0, right = m[0].size() - 1;
+    while (top <= bottom && left <= right) {
+        for (int j = left; j <= right; ++j) res.push_back(m[top][j]);      // 上：左→右
+        ++top;
+        for (int i = top; i <= bottom; ++i) res.push_back(m[i][right]);    // 右：上→下
+        --right;
+        if (top <= bottom)
+            for (int j = right; j >= left; --j) res.push_back(m[bottom][j]); // 下：右→左
+        --bottom;
+        if (left <= right)
+            for (int i = bottom; i >= top; --i) res.push_back(m[i][left]);   // 左：下→上
+        ++left;
+    }
+    return res;
+}
+```
+**注意**：下和左两步要**再次检查边界**（因为行/列可能只剩一行/一列时不应重复遍历）。
+
+**矩阵转置**（行列互换）：
+```
+转置：result[j][i] = m[i][j]
+```
+- **原地转置**（方阵）：沿主对角线交换 `m[i][j] ↔ m[j][i]`（`j > i`）。
+
+**矩阵顺时针旋转 90°**（方阵，原地）：
+```
+先转置，再左右翻转
+m[i][j] ↔ m[j][i]      （转置）
+然后每行反转           （左右翻转）
+```
+```cpp
+void rotate90(vector<vector<int>>& m) {
+    int n = m.size();
+    for (int i = 0; i < n; ++i)
+        for (int j = i + 1; j < n; ++j)
+            swap(m[i][j], m[j][i]);                 // 转置
+    for (int i = 0; i < n; ++i)
+        reverse(m[i].begin(), m[i].end());          // 每行反转
+}
+```
+- **逆时针 90°**：转置 + 上下翻转。
+
+**相关题目**：
+- **螺旋矩阵 II**（生成 1~n²）。
+- **按对角线遍历**。
+- **矩阵置零**（用首行首列做标记）。
+- **搜索二维矩阵**（从右上角出发）。
+
+**一句话总结**：**螺旋矩阵靠「四个边界收缩」模拟，注意下/左两段要复查边界；矩阵顺转 90° = 「转置 + 每行反转」，逆转 90° = 「转置 + 上下翻转」，转置 = 沿主对角线交换 —— 矩阵题多靠「找下标规律 + 边界控制」。**', 1),
+
+('算法', '随机,洗牌', 2,
+ '如何公平地洗牌？蓄水池抽样解决什么问题？',
+ '**Fisher-Yates 洗牌（公平随机）** ⭐：
+- 从后往前遍历，对位置 i **随机选一个 `j ∈ [0, i]`**，与 i 交换。
+```cpp
+void shuffle(vector<int>& a) {
+    for (int i = a.size() - 1; i > 0; --i) {
+        int j = rand() % (i + 1);        // [0, i]
+        swap(a[i], a[j]);
+    }
+}
+```
+- **为什么公平**：每个元素出现在每个位置的概率都是 `1/n`。
+- 复杂度 O(n)。
+
+**错误写法**：
+- `for i: swap(a[i], a[rand() % n])` —— **不均匀**（有些排列概率不同），是常见面试陷阱。
+
+**蓄水池抽样（Reservoir Sampling）**：
+- **问题**：从**长度未知/极大的数据流**中**等概率**抽取 k 个样本。
+- **算法**（k=1）：
+  1. 前 k 个元素直接放入蓄水池。
+  2. 从第 k+1 个起，对第 i 个元素，以 **k/i 的概率**替换蓄水池中随机一个。
+```cpp
+// k = 1 的情形
+int reservoirSample(istream& in) {
+    int res, x, i = 0;
+    while (in >> x) {
+        ++i;
+        if (i == 1) res = x;
+        else if (rand() % i == 0) res = x;   // 以 1/i 概率替换
+    }
+    return res;
+}
+```
+- **为什么均匀**：每个元素被选中的概率都是 `1/n`（数学归纳可证）。
+- **优点**：**一趟扫描、O(k) 空间**，不需要知道 n。
+
+**应用**：
+- **随机推荐**（从大列表等概率抽）。
+- **抽样统计**（海量日志抽样）。
+- **随机数测试**。
+
+**相关**：
+- **随机数生成**：`rand7()` 生成 `rand10()`（拒绝采样）。
+- **概率题**：生日悖论、随机点。
+- **采样**：**加权抽样**（按权重选）。
+
+**一句话总结**：**公平洗牌用 Fisher-Yates（从后往前，第 i 位与 `[0,i]` 中随机一位交换，`O(n)` 且每位置等概率），别用「每位随机换任意位」的错误写法；蓄水池抽样在「流式、未知长度」下等概率取 k 个样本（第 i 个以 `k/i` 概率替换），一趟扫描 O(k) 空间 —— 两者都是「随机公平性」的经典考法。**', 1),
+
+('算法', '数学,快速幂', 3,
+ '快速幂是怎么实现的？为什么是 O(log n)？',
+ '**问题**：计算 `a^n`（n 可为大整数），朴素需 O(n) 次乘法。
+
+**快速幂（二分幂）**：
+- 利用 **`a^n = (a^(n/2))²`** 的递归关系。
+- **指数每次减半** → O(log n) 次乘法。
+
+**递归版**：
+```cpp
+long long power(long long a, long long n) {
+    if (n == 0) return 1;
+    long long half = power(a, n / 2);
+    return (n % 2 == 0) ? half * half : half * half * a;
+}
+```
+
+**迭代版（位运算，更常用）** ⭐：
+```cpp
+long long power(long long a, long long n) {
+    long long res = 1;
+    while (n > 0) {
+        if (n & 1) res *= a;      // 当前二进制位为 1，乘上 a
+        a *= a;                   // a 平方
+        n >>= 1;                  // 指数右移
+    }
+    return res;
+}
+```
+- **原理**：把 n 看成二进制，`a^n = a^(b0 + 2b1 + 4b2 + ...) = a^b0 · (a²)^b1 · (a⁴)^b2 · ...`。
+
+**复杂度**：**O(log n)** 次乘法（n 的二进制位数）。
+
+**取模快速幂**（防止溢出）：
+```cpp
+long long powerMod(long long a, long long n, long long mod) {
+    long long res = 1;
+    a %= mod;
+    while (n > 0) {
+        if (n & 1) res = res * a % mod;
+        a = a * a % mod;
+        n >>= 1;
+    }
+    return res;
+}
+```
+- 常用于 **RSA、哈希、组合数（费马小定理求逆元）**。
+- **注意**：`res * a` 可能溢出 `long long`（若 mod ~1e18）→ 需用 **`__int128`** 或龟速乘。
+
+**应用**：
+- **RSA 加密**（模幂）。
+- **矩阵快速幂**（递推加速，如斐波那契 O(log n)）。
+- **组合数求逆元**（费马小定理 `a^(p-2) mod p`）。
+- **大数幂取模**。
+
+**一句话总结**：**快速幂利用「指数每次减半/按二进制分解」，迭代版用 `if (n&1) res*=a; a*=a; n>>=1;`，把朴素 O(n) 降到 **O(log n)**；取模版用于 RSA 和组合数逆元，注意大数乘法溢出（用 `__int128`）—— 它是「用二进制加速幂运算」的经典技巧。**', 1),
+
+('算法', '数学,数论', 2,
+ '如何求最大公约数？如何筛出质数？',
+ '**最大公约数（GCD）—— 欧几里得算法（辗转相除）**：
+```cpp
+int gcd(int a, int b) {
+    return b == 0 ? a : gcd(b, a % b);
+}
+```
+- **原理**：`gcd(a, b) = gcd(b, a % b)`（因为 `a = qb + r`，a 和 b 的公约数也是 r 的公约数）。
+- **复杂度**：O(log min(a, b))。
+- **收敛速度快**（Lame 定理：步数 ≤ 斐波那契位数）。
+
+**最小公倍数（LCM）**：`lcm(a, b) = a / gcd(a, b) * b`。
+- **先除后乘防溢出**。
+
+**扩展欧几里得**：
+- 求 `ax + by = gcd(a, b)` 的一组解。
+- 用途：**求模逆元**、解线性同余方程。
+
+**质数筛法 —— 埃拉托斯特尼筛（埃氏筛）**：
+```cpp
+vector<bool> sieve(int n) {          // 筛出 [0, n] 的质数
+    vector<bool> isPrime(n + 1, true);
+    isPrime[0] = isPrime[1] = false;
+    for (int i = 2; (long long)i * i <= n; ++i)
+        if (isPrime[i])
+            for (int j = i * i; j <= n; j += i)   // 从 i*i 开始
+                isPrime[j] = false;
+    return isPrime;
+}
+```
+- **复杂度 O(n log log n)**，接近线性。
+- **从 `i*i` 开始标记**（小于 `i*i` 的合数已被更小的质数标记过）。
+- **只需筛到 √n**。
+
+**线性筛（欧拉筛）**：
+- 每个合数**只被其最小质因子筛一次** → **O(n)** ⭐。
+```cpp
+vector<int> primes;
+vector<bool> notPrime(n + 1, false);
+for (int i = 2; i <= n; ++i) {
+    if (!notPrime[i]) primes.push_back(i);
+    for (int p : primes) {
+        if ((long long)i * p > n) break;
+        notPrime[i * p] = true;
+        if (i % p == 0) break;       // 保证每个数只被最小质因子筛
+    }
+}
+```
+
+**质数判定**：
+- 试除法 O(√n)。
+- **Miller-Rabin**（大数概率素性测试）⭐。
+
+**相关**：
+- **唯一分解定理**（质因数分解）。
+- **约数个数/约数和**。
+- **欧拉函数 φ(n)**。
+
+**一句话总结**：**GCD 用欧几里得算法 `gcd(a,b)=gcd(b,a%b)`（O(log n)），LCM 先除后乘防溢出；质数筛用埃氏筛 O(n log log n)（从 i*i 开始标记，只筛到 √n）或线性筛 O(n)（每数只被最小质因子筛一次）；大数素性测试用 Miller-Rabin —— 都是数论题的基础工具。**', 1),
+
+('算法', '跳表,有序结构', 3,
+ '跳表（Skip List）是什么？为什么 Redis 用它？',
+ '**跳表**：**多层有序链表**，通过**随机提升**建立索引层，实现 **O(log n)** 的查找/插入/删除。
+
+**结构**：
+- **最底层**是完整的有序链表（含所有元素）。
+- 上层是下层的**「稀疏索引」**（随机抽取部分节点）。
+- 每层都是有序链表，**上层是下层的子集**。
+- **查找**：从**最高层的头节点**出发，**能往右就往右，不能就下一层** → 类似「二分」。
+
+**查找过程**：
+```
+最高层 ──→ 前进直到下一个 > target ──↓
+下一层 ──→ 继续前进 ──↓
+... 到底层找到或确定不存在
+```
+
+**插入**：
+1. 找到插入位置（记录每层的**前驱**）。
+2. **随机决定**新节点的**层数**（如抛硬币：50% 升一层，连续升高）。
+3. 在各层插入。
+
+**删除**：找到并断开各层的指针。
+
+**复杂度**：
+- 查找/插入/删除**期望 O(log n)**（随机化保证）。
+- 空间**期望 O(n)**（每层的元素数按概率递减）。
+
+**为什么 Redis 用跳表（而不是红黑树）** ⭐：
+1. **实现简单**：比平衡树（旋转）好写、好维护、好调试。
+2. **范围查询友好**：底层是有序链表，**范围遍历天然高效**（`ZRANGE`）。
+3. **并发友好**：局部修改，锁粒度小（易做无锁/乐观并发）。
+4. **内存可控**：可用参数调层数和概率。
+5. 性能与红黑树**同数量级**（期望 O(log n)）。
+
+**用途**：Redis **有序集合（ZSet）**、LevelDB/RocksDB 的 **MemTable**。
+
+**对比平衡树**：
+| 维度 | 跳表 | 红黑树 |
+|---|---|---|
+| 查找 | 期望 O(log n) | O(log n) |
+| 实现 | **简单** | 复杂（旋转） |
+| 范围查询 | **更友好** | 需中序 |
+| 确定性 | 随机化 | 确定 |
+| 并发 | **易** | 难 |
+
+**一句话总结**：**跳表用「多层随机索引链表」把有序链表的查找从 O(n) 降到期望 O(log n)，实现比平衡树简单、范围查询和并发更友好；Redis 选它做 ZSet 正因「简单 + 范围高效 + 并发易」而性能与红黑树同级 —— 是「用随机化换实现复杂度」的经典设计。**', 1),
+
+('算法', '堆,堆化', 3,
+ '堆是怎么实现的？如何建堆和堆排序？',
+ '**堆（Heap）**：**完全二叉树**，满足**堆序性质**：
+- **大根堆**：父 ≥ 子（堆顶最大）。
+- **小根堆**：父 ≤ 子（堆顶最小）。
+
+**数组表示**（不用指针）：
+- 节点 i：**左子 `2i+1`、右子 `2i+2`、父 `(i-1)/2`**（0-based）。
+- **完全二叉树**用数组紧凑存储，**无空洞**。
+
+**两个核心操作**：
+
+**1. 上浮（sift-up / heapify-up）**：用于**插入**。
+- 新元素放末尾，**与父比较**，比父「更优」就交换，直到满足堆序。
+- **O(log n)**。
+
+**2. 下沉（sift-down / heapify-down）**：用于**删除堆顶**、**建堆**。
+- 堆顶被替换后，与**较优的子节点**交换，往下调整。
+- **O(log n)**。
+
+```cpp
+// 大根堆下沉
+void siftDown(vector<int>& h, int i, int n) {
+    while (true) {
+        int l = 2*i + 1, r = 2*i + 2, largest = i;
+        if (l < n && h[l] > h[largest]) largest = l;
+        if (r < n && h[r] > h[largest]) largest = r;
+        if (largest == i) break;
+        swap(h[i], h[largest]);
+        i = largest;
+    }
+}
+```
+
+**建堆（heapify）**：
+- **从最后一个非叶节点开始**（`n/2 - 1`），**逐个向前下沉**。
+- **复杂度 O(n)** ⭐（不是 O(n log n)！因为大部分节点在底层，下沉距离短，求和是 O(n)）。
+
+**插入**：末尾加 + **上浮**，O(log n)。
+**取堆顶**：返回根，**末尾元素移到根 + 下沉**，O(log n)。
+
+**堆排序**：
+1. **建大根堆** O(n)。
+2. **反复**：把堆顶（最大）与末尾交换，堆大小 -1，**对新堆顶下沉**。
+3. 最终数组升序。
+- **总 O(n log n)**，**原地** O(1)，**不稳定**。
+
+```cpp
+void heapSort(vector<int>& a) {
+    int n = a.size();
+    for (int i = n/2 - 1; i >= 0; --i) siftDown(a, i, n);   // 建堆
+    for (int i = n - 1; i > 0; --i) {
+        swap(a[0], a[i]);                                    // 最大移到末尾
+        siftDown(a, 0, i);                                   // 修复堆
+    }
+}
+```
+
+**应用**：**优先队列**、**TopK**、**堆排序**、**Dijkstra**、**定时器（最小堆）**、**中位数（双堆）**。
+
+**一句话总结**：**堆是完全二叉树，用数组存（`2i+1/2i+2/(i-1)/2`），核心是「上浮（插入）」和「下沉（删除/建堆）」；建堆从 `n/2-1` 倒着下沉，**O(n)**；堆排 = 建堆 + 反复「交换堆顶到末尾 + 下沉」O(n log n) 且原地不稳定 —— 它是优先队列和 TopK 的底层结构。**', 1),
+
+('算法', '红黑树,平衡树', 3,
+ '红黑树和 AVL 树有什么区别？为什么工程上更常用红黑树？',
+ '**平衡二叉搜索树**：防止 BST 退化成链表，保证 O(log n)。
+
+**AVL 树**：
+- **严格平衡**：任意节点**左右子树高度差 ≤ 1**。
+- **查找快**（树更矮），但**插入/删除后可能频繁旋转**（维持严格平衡）。
+- **适合查找多、修改少**的场景。
+
+**红黑树**：
+- **近似平衡**，靠**5 条性质**：
+  1. 节点是**红或黑**。
+  2. **根是黑**。
+  3. **红节点的子节点必须是黑**（不能有连续红）。
+  4. 从任一节点到其叶子，**黑节点数量相同**（黑高相同）。
+  5. **叶子（NIL）是黑**。
+- **最长路径 ≤ 2 × 最短路径** → **树高 O(log n)**，近似平衡。
+- **插入/删除旋转更少**（比 AVL 少），**修改效率更高**。
+
+**对比**：
+| 维度 | AVL | 红黑树 |
+|---|---|---|
+| 平衡度 | **严格**（高差≤1） | 近似（≤2×） |
+| 树高 | **更矮**（查找更快） | 略高 |
+| 旋转次数 | 多 | **少** |
+| 插入/删除 | 慢 | **快** |
+| 查找 | **快** | 略慢 |
+| 实现 | 简单 | 复杂 |
+| 适合 | **读多写少** | **读写均衡/写多** |
+
+**为什么工程用红黑树** ⭐：
+- 真实场景**插入删除频繁**，红黑树**旋转少、综合性能好**。
+- 查找差距不大（都是 O(log n)，常数差异小）。
+- **代表**：**`std::map`/`std::set`、JDK `TreeMap`、Linux 内核（CFS 调度、epoll 的红黑树）、Nginx**。
+
+**平衡树家族**：
+- **AVL**：严格平衡。
+- **红黑树**：近似平衡，工程首选。
+- **B 树 / B+ 树**：多路，**数据库/文件系统**（减少磁盘 IO）。
+- **Splay 树 / Treap / 替罪羊树**：各有特色。
+
+**一句话总结**：**AVL 严格平衡（树更矮、查找快、但增删旋转多），红黑树近似平衡（树略高、查找稍慢、但增删旋转少）；由于实际场景增删频繁，红黑树的综合性能更好，所以 `std::map`/`set`、Linux 内核、JDK 都选它 —— **读多写少用 AVL，读写均衡用红黑树，磁盘场景用 B+ 树**。**', 1),
+
+('算法', '排序,自定义', 2,
+ '如何自定义排序规则？排序不稳定的问题怎么解决？',
+ '**自定义排序**（C++）：
+```cpp
+// 按「绝对值升序，绝对值相同按原值降序」
+sort(a.begin(), a.end(), [](int x, int y) {
+    if (abs(x) != abs(y)) return abs(x) < abs(y);
+    return x > y;
+});
+
+// 结构体按多字段
+struct P { int x, y; };
+sort(v.begin(), v.end(), [](const P& a, const P& b) {
+    if (a.x != b.x) return a.x < b.x;   // 主键升序
+    return a.y > b.y;                    // 次键降序
+});
+```
+
+**注意**：
+- 比较函数必须**严格弱序**：**不能返回 `<=` 或 `>=`**（要 `a == b` 时返回 `false`）⭐。
+  - ❌ `return a.x <= b.x;` → **未定义行为**（可能崩溃/乱序）。
+- 必须满足**传递性、反对称性**。
+
+**排序稳定性**：
+- **稳定**：相等元素**保持原有相对顺序**。
+- 需求场景：**先按 A 排序，再按 B 排序**（若第二次稳定，则 A 相同者保持 A 的顺序）→ **多级排序**。
+
+**用不稳定排序模拟稳定排序**：
+- **方法一：加「原始下标」作为最后比较键**。
+```cpp
+struct Item { int key; int idx; };
+// 只按 key 排序，等价时用 idx 保证稳定
+sort(items.begin(), items.end(), [](const Item& a, const Item& b) {
+    return a.key != b.key ? a.key < b.key : a.idx < b.idx;
+});
+```
+- **方法二：直接用稳定排序** `std::stable_sort`（归并，稳定但需额外空间）。
+
+**多级排序的技巧**：
+- **从最低优先级字段开始，逐级稳定排序**（LSD 思想）。
+- 或**在比较函数里一次性比较所有字段**（更清晰）。
+
+**一句话总结**：**自定义排序用比较函数/lambda，多字段按优先级依次比较；**必须严格弱序**（相等返回 false，不能写 `<=`，否则 UB）；需要稳定就用 `stable_sort` 或「加原始下标作最后比较键」—— 排序稳定性是多级排序和「保持原始顺序」的关键。**', 1),
+
+('算法', '回文,Manacher', 3,
+ '最长回文子串怎么求？中心扩展和 Manacher 哪个好？',
+ '**问题**：找字符串中**最长回文子串**。
+
+**方法一：中心扩展 O(n²)**：
+- 回文有**2n-1 个中心**（n 个字符中心 + n-1 个间隙中心）。
+- 从每个中心**向两边扩展**，直到不匹配。
+```cpp
+string longestPalindrome(const string& s) {
+    int n = s.size(), start = 0, maxLen = 1;
+    for (int c = 0; c < n; ++c) {
+        for (int k = 0; k < 2; ++k) {           // k=0 奇回文，k=1 偶回文
+            int l = c, r = c + k;
+            while (l >= 0 && r < n && s[l] == s[r]) { --l; ++r; }
+            if (r - l - 1 > maxLen) { maxLen = r - l - 1; start = l + 1; }
+        }
+    }
+    return s.substr(start, maxLen);
+}
+```
+- **简单、常数小**，实际很常用。
+
+**方法二：动态规划 O(n²)**：
+- `dp[i][j]` = `s[i..j]` 是否回文。
+- `dp[i][j] = (s[i]==s[j]) && (j-i<=2 || dp[i+1][j-1])`。
+- 需 O(n²) 空间（可优化）。
+
+**方法三：Manacher O(n)** ⭐（最长回文**子串**的最优解）：
+- **预处理**：在字符间插入**分隔符**（如 `#`），把奇偶回文**统一成奇回文**。
+  - `"aba"` → `"#a#b#a#"`（长度 2n+1）。
+- **维护 `rad[i]`**（以 i 为中心的回文半径）和**当前最右回文右边界及中心**。
+- **利用对称性**复用已算的 `rad` 值，**避免重复扩展** → **O(n)**。
+
+**核心**：
+```
+若 i 在当前最右回文内：
+    rad[i] = min(rad[2*center - i], right - i)   // 镜像复用
+再尝试向两边扩展
+更新最右边界和中心
+```
+
+**性质**：`原串最长回文长度 = max(rad) - 1`。
+
+**对比**：
+| 方法 | 复杂度 | 实现 |
+|---|---|---|
+| 中心扩展 | O(n²) | **简单** |
+| DP | O(n²) | 一般 |
+| **Manacher** | **O(n)** | 较难 |
+
+**相关**：
+- **回文子串数量**、**最长回文子序列**（DP，非连续）。
+- **判断回文**（双指针）。
+- **回文分区**（DP + 回溯）。
+
+**一句话总结**：**最长回文子串可用**中心扩展 O(n²)**（2n-1 个中心向两边扩，简单实用）或**Manacher O(n)**（插入分隔符统一奇偶 + 利用回文对称性复用半径）；DP 也是 O(n²)。面试写中心扩展够用，追求最优答 Manacher；注意区分「回文子串（连续）」和「回文子序列（可不连续，用 DP）」。**', 1),
+
+('算法', '随机,概率', 3,
+ '已知 rand7() 如何生成 rand10()？拒绝采样是什么？',
+ '**问题**：只有 `rand7()`（等概率返回 1~7），实现 `rand10()`（等概率返回 1~10）。
+
+**思路：拒绝采样（Rejection Sampling）**：
+1. 用 `rand7()` 组合出**更大且均匀**的范围。
+   - `(rand7() - 1) * 7 + rand7()` → 等概率生成 **1~49** ⭐。
+2. 利用 1~49 **拒绝掉 40 以上的数**：
+   - `x = (rand7()-1)*7 + rand7()`（1~49）。
+   - 若 `x <= 40` → 返回 `(x - 1) % 10 + 1`（1~10，每个数出现 4 次）。
+   - 否则**重新采样**。
+
+```cpp
+int rand10() {
+    while (true) {
+        int x = (rand7() - 1) * 7 + rand7();   // 1..49
+        if (x <= 40) return (x - 1) % 10 + 1;  // 1..10
+    }
+}
+```
+
+**为什么均匀**：
+- 1~49 每个数等概率（1/49）。
+- 1~40 映射到 1~10，每个数恰好对应 4 个数（1,11,21,31 → 1 等）→ **等概率 1/10**。
+
+**为什么用拒绝**：
+- `49 = 7×7`，不是 10 的倍数，**无法整除**，只能**丢弃部分**保证均匀。
+- 丢弃 9 个数（41~49），**期望采样次数 = 49/40 ≈ 1.225**。
+
+**优化**（减少浪费）：
+- 拒绝后**不丢弃**，用剩余值再组合（如 `x-40` 是 1~9，再 `*7+rand7()` 得 1~63... 继续）→ **接近 1 次采样**。
+- 或直接用「1~49 中取 1~40 有效部分」的通用拒绝采样框架。
+
+**通用结论**：
+- 用小范围等概率生成大范围 → **组合扩大 + 拒绝**。
+- **范围是倍数的直接映射**；**非倍数则拒绝**。
+- **期望次数有上界**（1 / 有效比例）。
+
+**相关**：
+- **rand5 生成 rand3**（`while (x > 3)` 拒绝）。
+- **不等概率 → 等概率**（拒绝采样）。
+- **大范围 → 小范围**（直接取模或拒绝）。
+- **水塘抽样**、**洗牌**。
+
+**一句话总结**：**用 `rand7()` 造 `rand10()` 的通用套路是「先组合扩大范围（`(rand7()-1)*7+rand7()` 得 1~49），再拒绝掉不能整除的部分（>40 丢弃），最后映射到目标范围」—— 核心是**拒绝采样**：当范围不是目标倍数时，丢弃多余部分以保证均匀，代价是期望多采几次。**', 1),
+
+('算法', '位运算,状态压缩', 3,
+ '状态压缩 DP 是什么？什么时候用？',
+ '**状态压缩 DP**：用**一个整数的二进制位**表示**集合状态**，把「集合」塞进 DP 的维度里。
+
+**适用条件**：
+- 问题的**状态是「某些元素选/没选」**（集合）。
+- **元素数量较小**（通常 **≤ 20**）→ 状态数 `2ⁿ` 可接受。
+
+**核心技巧**：
+| 操作 | 表达式 |
+|---|---|
+| 判断第 i 位 | `(mask >> i) & 1` |
+| 置第 i 位 | `mask \\| (1 << i)` |
+| 清第 i 位 | `mask & ~(1 << i)` |
+| 翻转第 i 位 | `mask ^ (1 << i)` |
+| 枚举 mask 的所有子集 | `for (int s = mask; s; s = (s-1) & mask)` |
+| 判断是否包含 | `(mask & sub) == sub` |
+
+**经典问题：TSP（旅行商）**：
+- `dp[mask][i]` = 已访问集合为 `mask`、当前在 i 的**最小路径长度**。
+- 状态数 `2ⁿ × n`，转移枚举下一个城市 → **O(2ⁿ × n²)**。
+```cpp
+// dp[mask][i]，mask 表示已访问城市集合
+for (int mask = 1; mask < (1 << n); ++mask)
+    for (int i = 0; i < n; ++i)
+        if ((mask >> i) & 1)
+            for (int j = 0; j < n; ++j)
+                if (!((mask >> j) & 1))
+                    dp[mask | (1 << j)][j] =
+                        min(dp[mask|(1<<j)][j], dp[mask][i] + dist[i][j]);
+```
+
+**其他经典题**：
+- **N 皇后**（位运算版，行列对角线用 mask）。
+- **棋盘覆盖 / 插头 DP**。
+- **集合划分 / 子集和**。
+- **最短哈密顿路径**。
+- **信号覆盖 / 任务分配**。
+
+**为什么叫「压缩」**：
+- 一个集合（可能 2ⁿ 个）本来要开数组/哈希，**用一个 int 的位**表示，省空间且**位运算极快**。
+
+**代价**：
+- 状态数**指数增长**（2ⁿ），只能用于 **n 小**的情况（n ≤ 20 左右，2²⁰ ≈ 100 万）。
+
+**一句话总结**：**状态压缩 DP 用整数的二进制位表示「集合选没选」，把集合塞进 DP 维度；适用于**元素数 ≤ 20** 的「子集/排列」型问题（TSP、棋盘、任务分配），复杂度 `O(2ⁿ × n)` 级别；核心是位运算（判位/置位/枚举子集）—— 它是「指数问题在小规模下的精确解法」。**', 1),
+
+('算法', 'DP,记忆化', 2,
+ '记忆化搜索和递推（填表）有什么区别？各有优劣？',
+ '两者都是 DP 的实现方式，**本质相同**（都是「状态 + 转移」），但**方向不同**。
+
+**记忆化搜索（自顶向下，Top-Down）**：
+- **从原问题出发递归**，遇到子问题先查备忘录（缓存），没算过才算并记录。
+```cpp
+unordered_map<int,int> memo;
+int fib(int n) {
+    if (n <= 1) return n;
+    if (memo.count(n)) return memo[n];      // 查缓存
+    return memo[n] = fib(n-1) + fib(n-2);   // 算并记
+}
+```
+
+**递推（自底向上，Bottom-Up）**：
+- **从小规模子问题算起**，用循环填表，大问题用已算好的小问题。
+```cpp
+int fib(int n) {
+    if (n <= 1) return n;
+    int a = 0, b = 1;
+    for (int i = 2; i <= n; ++i) { int c = a + b; a = b; b = c; }
+    return b;
+}
+```
+
+**对比**：
+| 维度 | 记忆化搜索 | 递推 |
+|---|---|---|
+| 方向 | **自顶向下** | **自底向上** |
+| 实现 | 递归 + 缓存 | 循环 + 数组 |
+| 计算范围 | **只算用得到的子问题** | 通常**全部状态**都要算 |
+| 递归深度 | 可能**栈溢出** | 无 |
+| 遍历顺序 | **不用管**（递归自然保证） | **要保证依赖先算** |
+| 常数/速度 | 递归+哈希略慢 | **通常更快**（数组连续） |
+| 空间优化 | 不易（缓存散） | **易滚动数组** |
+| 适合 | **状态转移复杂、有剪枝空间** | **状态规整、依赖清晰** |
+
+**记忆化的优势**：
+- **只计算真正需要的状态**（如带大量不可达状态的 DP，能**剪枝**）⭐。
+- **转移逻辑写成递归更自然**（不必操心遍历顺序）。
+
+**递推的优势**：
+- **无递归开销**、**更快**、**无栈溢出风险**。
+- **便于空间优化**（滚动数组、一维化）。
+
+**选择建议**：
+- **状态转移依赖顺序难理清** → 先写记忆化搜索（**更易写对**），再考虑改递推优化。
+- **状态规整、要极致性能** → 递推。
+- **状态稀疏/大量剪枝** → 记忆化。
+- **递归会爆栈**（如 n 很大）→ 递推或改迭代。
+
+**一句话总结**：**记忆化搜索（自顶向下递归+缓存）写起来贴近问题本身、只算需要的状态、便于剪枝但可能有栈溢出和哈希开销；递推（自底向上填表）更快、可滚动数组、无栈溢出但通常要算全部状态且要理清遍历顺序 —— 面试可先写记忆化保证正确，再按需改递推优化。**', 1),
+
+('算法', 'DP,区间DP', 3,
+ '区间 DP 是什么？解决什么类型的问题？',
+ '**区间 DP**：**以「区间长度」为阶段的 DP**，状态 `dp[l][r]` 表示**区间 `[l, r]`** 上的最优解。
+
+**核心特征**：
+- 状态是**一个区间**（两个端点）。
+- **由小区间推大区间**：按区间**长度从小到大**枚举。
+- 转移通常是**「枚举分割点 k」**：`dp[l][r] = best(dp[l][k] + dp[k+1][r] + 合并代价)`。
+
+**通用框架**：
+```cpp
+for (int len = 2; len <= n; ++len)              // 区间长度
+    for (int l = 0; l + len - 1 < n; ++l) {     // 左端点
+        int r = l + len - 1;                    // 右端点
+        for (int k = l; k < r; ++k)             // 枚举分割点
+            dp[l][r] = best(dp[l][r], dp[l][k] + dp[k+1][r] + cost);
+    }
+```
+- **复杂度** O(n³)（长度 × 左端点 × 分割点）。
+
+**经典问题**：
+
+1. **石子合并**：
+   - 一排石子，每次合并相邻两堆，代价为两堆之和，求最小总代价。
+   - `dp[l][r] = min(dp[l][k] + dp[k+1][r]) + sum(l, r)`。
+   - **环形**石子合并：**断环成链**（复制一倍）后跑区间 DP。
+
+2. **最长回文子序列**：
+   - `dp[l][r]`，`s[l]==s[r]` 时 `dp[l+1][r-1]+2`，否则 `max(dp[l+1][r], dp[l][r-1])`。
+
+3. **矩阵链乘法**：
+   - 决定括号化顺序使乘法次数最少。
+
+4. **括号匹配 / 移除盒子**。
+
+5. **戳气球**（反向思考：最后戳破的气球）。
+
+**关键技巧**：
+- **按长度枚举**（保证大区间依赖的较小区间已算）。
+- **断环成链**（处理环形）。
+- **记忆化搜索**也可以实现区间 DP（递归 + 缓存）。
+- **四边形不等式优化**（把 O(n³) 降到 O(n²)，进阶）。
+
+**与线性 DP 的区别**：
+- 线性 DP：`dp[i]` 一个端点。
+- 区间 DP：`dp[l][r]` 两个端点，**枚举分割**。
+
+**一句话总结**：**区间 DP 以「区间长度」为阶段、`dp[l][r]` 表示区间最优解，通过「枚举分割点合并两个子区间」转移，O(n³)；典型如石子合并、最长回文子序列、矩阵链乘法，处理环形时「断环成链」—— 它适合「大区间由小区间合并而来 + 需要枚举分割」的问题。**', 1),
+
+('Redis', '数据结构,基础', 1,
+ 'Redis 有哪些基本数据类型？各自的应用场景是什么？',
+ '**Redis 五大基本类型**：
+
+| 类型 | 底层结构 | 典型场景 |
+|---|---|---|
+| **String** | SDS（动态字符串） | 缓存对象、计数器（`INCR`）、分布式锁、Session |
+| **List** | quicklist（双向链表 + listpack） | 消息队列、最新列表、时间线 |
+| **Hash** | listpack / hashtable | 存对象字段（用户信息）、购物车 |
+| **Set** | intset / hashtable | 去重、标签、共同好友（交集）、抽奖 |
+| **ZSet** | listpack / **跳表 + 哈希** | 排行榜、延迟队列、带权重的集合 |
+
+**扩展类型**：
+| 类型 | 用途 |
+|---|---|
+| **Bitmap** | 位操作，签到打卡、活跃统计、布隆过滤器 |
+| **HyperLogLog** | **基数估算**（UV 去重，误差 0.81%，固定 12KB） |
+| **GEO** | 地理位置（附近的人） |
+| **Stream** | 消息队列（支持消费组、持久化） |
+
+**String 常用**：`SET/GET/INCR/DECR/APPEND/SETNX/SETEX`。
+**Hash 常用**：`HSET/HGET/HGETALL/HINCRBY`。
+**List 常用**：`LPUSH/RPUSH/LPOP/RPOP/LRANGE`。
+
+**选型**：
+- **计数** → String（`INCR`）。
+- **存对象** → Hash（可单独改字段）或 String（整体序列化）。
+- **去重/集合运算** → Set。
+- **排序/排名** → ZSet。
+- **队列** → List 或 Stream。
+- **UV 统计** → HyperLogLog。
+
+**一句话总结**：**Redis 五基础类型是 String（缓存/计数）、List（队列/时间线）、Hash（对象字段）、Set（去重/交并）、ZSet（排行榜/延迟队列），扩展有 Bitmap（签到）、HyperLogLog（UV 估算）、GEO（位置）、Stream（消息队列）—— 按「要不要排序、要不要去重、要不要字段级更新」选类型。**', 1),
+
+('Redis', '单线程,为什么快', 2,
+ 'Redis 为什么这么快？单线程模型是怎么回事？',
+ '**核心原因**：
+
+1. **基于内存**：数据在内存里，读写是纳秒级（比磁盘快数万倍）。
+2. **单线程 + IO 多路复用**：
+   - **避免多线程的锁竞争和上下文切换**。
+   - 用 **epoll** 处理大量连接（网络 IO 不阻塞）。
+   - **命令执行是单线程**，天然**原子**（无并发安全问题）。
+3. **高效的数据结构**：
+   - SDS（预分配、二进制安全、O(1) 取长度）。
+   - 跳表、listpack、quicklist、intset（省内存 + 快）。
+4. **简洁的协议（RESP）**：解析快。
+5. **避免磁盘 IO**（持久化是异步/后台）。
+
+**单线程模型**：
+- **网络 IO + 命令执行 + 响应**在一个线程里**串行**完成。
+- 所以**一个慢命令会阻塞所有请求** ⚠️（禁用 `KEYS`、`FLUSHALL`、大 `ZRANGE`）。
+- **不是完全单线程**：**持久化（bgsave/aof rewrite）用 fork 子进程**，**Redis 6.0 起网络 IO 可用多线程**。
+
+**瓶颈在哪**：
+- **CPU 不是瓶颈**（命令本身快），**瓶颈是网络 IO 和内存**。
+- 单线程**用不满多核** → 需要**多实例分片**。
+
+**Redis 6.0 多线程 IO**：
+- **网络读写**用多线程（分摊 IO 压力）。
+- **命令执行仍是单线程**（保持简单和原子）。
+- 需在配置开启（`io-threads`）。
+
+**其他优化**：
+- **Pipeline**（批量发送，减少 RTT）。
+- **Lua 脚本**（服务端原子执行多条）。
+- **合理的数据结构**（避免大 key）。
+
+**一句话总结**：**Redis 快在「纯内存 + epoll 单线程（无锁无切换）+ 高效数据结构 + RESP 协议」；单线程让命令天然原子，但**慢命令会阻塞全体**（禁用 KEYS 等）；瓶颈在 IO 和内存而非 CPU，所以靠**多实例分片**扩展，Redis 6.0 起网络 IO 可多线程而命令执行仍单线程。**', 1),
+
+('Redis', '持久化,RDB,AOF', 3,
+ 'RDB 和 AOF 有什么区别？该怎么选？',
+ '**RDB（快照）**：
+- **某一时刻的完整数据快照**（二进制文件）。
+- **触发**：`SAVE`（阻塞）、`BGSAVE`（fork 子进程，**不阻塞**）、配置 `save 900 1`。
+- **优点**：文件**紧凑**、**恢复快**、适合**备份/主从同步**。
+- **缺点**：**可能丢数据**（两次快照间的写会丢）、fork 时有开销。
+
+**AOF（追加日志）**：
+- **记录每条写命令**（类似 redo log）。
+- **刷盘策略**（`appendfsync`）：
+  - `always`：每条都 fsync（**最安全，最慢**）。
+  - `everysec`：每秒 fsync（**默认，最多丢 1 秒**）⭐。
+  - `no`：交给操作系统（快，可能丢多）。
+- **AOF 重写**：`BGREWRITEAOF` 压缩日志（去掉冗余命令，如多次 `INCR` 合成一条）。
+- **优点**：**丢数据少**、**可读**（文本）。
+- **缺点**：**文件大**、**恢复慢**（要重放所有命令）。
+
+**对比**：
+| 维度 | RDB | AOF |
+|---|---|---|
+| 内容 | 数据快照 | 写命令日志 |
+| 文件大小 | **小** | 大 |
+| 恢复速度 | **快** | 慢 |
+| 数据安全 | 丢得多 | **丢得少** |
+| 性能影响 | fork 抖动 | 刷盘开销 |
+| 适用 | 备份、从库同步 | 高数据安全 |
+
+**混合持久化（Redis 4.0+）** ⭐：
+- **AOF 重写时**，把当前数据以 **RDB 格式**写入 AOF 文件**开头**，后续增量写命令用 AOF 格式。
+- **兼具**：RDB 的**快速恢复** + AOF 的**低丢失**。
+- 配置：`aof-use-rdb-preamble yes`。
+- **推荐生产使用**。
+
+**选型**：
+- **能容忍丢几分钟** → RDB（性能好、恢复快）。
+- **不能丢数据** → AOF `everysec` + 混合持久化。
+- **主从复制** → 首次全量用 RDB。
+- **实践**：**混合持久化 + 主从 + 定期 RDB 备份到远程**。
+
+**一句话总结**：**RDB 是「定期全量快照」（文件小、恢复快但可能丢数据），AOF 是「追加写命令」（丢得少但文件大、恢复慢，`everysec` 折中）；生产推荐**混合持久化**（AOF 里嵌 RDB 头）兼得两者，再配主从和远程备份 —— 持久化 = 数据安全，主从 = 高可用，两者都要。**', 1),
+
+('Redis', '过期,淘汰', 3,
+ 'Redis 的过期删除和内存淘汰策略分别是什么？',
+ '**过期删除（expire）**：给 key 设了 TTL，到时间怎么删？
+
+**两种策略结合** ⭐：
+1. **惰性删除**：**访问 key 时**才检查是否过期，过期则删除。
+   - **优点**：不浪费 CPU。
+   - **缺点**：**过期但没被访问的 key 一直占内存**。
+2. **定期删除**：**每隔一段时间**（默认每秒 10 次）**随机抽查**一些 key，删除过期的。
+   - 采样删除，**不遍历全部**（防卡顿）。
+   - **限制执行时间**（不阻塞太久）。
+
+**两者结合**：定期删除兜底 + 惰性删除保证不返回过期数据。
+
+**内存淘汰策略（maxmemory-policy）**：内存达到 `maxmemory` 时，删哪些 key？
+
+| 策略 | 含义 |
+|---|---|
+| `noeviction` | **不淘汰，写报错**（默认） |
+| `allkeys-lru` | 所有 key 中，淘汰**最久未使用** |
+| `allkeys-lfu` | 所有 key 中，淘汰**最不经常使用**（4.0+） |
+| `allkeys-random` | 所有 key 中**随机**淘汰 |
+| `volatile-lru` | **设置了过期时间**的 key 中 LRU |
+| `volatile-lfu` | 设置了过期时间的 key 中 LFU |
+| `volatile-random` | 设置了过期时间的 key 中随机 |
+| `volatile-ttl` | 设置了过期时间的 key 中**优先淘汰 TTL 小的** |
+
+**LRU vs LFU**：
+- **LRU**：淘汰**最久未访问**的（看**最近**）。
+- **LFU**：淘汰**访问频率最低**的（看**热度**）。
+- Redis 的 LRU/LFU 是**近似实现**（**采样**若干 key 选最优），**不是精确**。
+
+**选型**：
+- **缓存场景** → `allkeys-lru` 或 `allkeys-lfu`（常用）。
+- **有明确冷热数据** → LFU。
+- **混合持久数据** → `volatile-lru`（只淘汰设了 TTL 的）。
+- **绝不能丢数据** → `noeviction`（但会写失败）。
+
+**注意**：
+- **从库不主动淘汰**（等主库的 DEL 同步）—— 主从淘汰行为差异。
+- **`maxmemory` 要留余量**（给持久化 fork、复制缓冲）。
+
+**一句话总结**：**过期删除 = 「惰性删除（访问时查）+ 定期删除（采样扫描）」结合；内存淘汰用 `maxmemory-policy`（LRU/LFU/random/TTL × allkeys/volatile），缓存场景常用 `allkeys-lru`；LRU/LFU 都是**采样近似**，从库不主动淘汰 —— 这两套机制共同保证「内存可控、不返回过期数据」。**', 1),
+
+('Redis', '主从复制', 2,
+ 'Redis 主从复制是怎么工作的？',
+ '**主从复制**：**主节点（master）**写，**从节点（replica）**复制数据，用于**读扩展 + 高可用基础**。
+
+**建立流程**：
+1. **从库发起 `PSYNC`**（Redis 2.8+，支持**部分重同步**）。
+2. **首次同步（全量）**：
+   - 主库 `BGSAVE` 生成 **RDB 快照**，发给从库。
+   - 从库**加载 RDB**。
+   - 主库把 RDB 生成期间的新写命令**缓存在 repl buffer**，RDB 传完后**发送给从库**。
+3. **增量同步**：
+   - 之后主库**持续把写命令**（传播）发给从库。
+   - 从库执行命令保持一致。
+
+**部分重同步（断线重连）**：
+- 主库维护 **`repl_backlog`（环形缓冲）** 和 **`master_replid` + `offset`**。
+- 从库重连时带上 `offset`，**若数据还在 backlog 里 → 只补发缺失部分**（无需全量）⭐。
+- 否则**全量同步**。
+
+**关键机制**：
+- **`replid`**：复制流标识（主库重启/角色切换会变）。
+- **`offset`**：复制偏移量（判断数据是否一致）。
+- **`runid`**：节点唯一 ID。
+
+**复制方式**：
+- **异步复制**（默认）：主库不等从库确认，**可能丢数据**。
+- **`WAIT` 命令**：等待 N 个从库确认（**半同步**的近似）。
+- **Redis 不支持强同步**（不像 MySQL 半同步）。
+
+**注意**：
+- **从库只读**（`replica-read-only yes`，默认）。
+- **从库过期 key**：**不主动删，等主库的 `DEL` 同步**（保证主从一致）。
+- **主库写压力大** → 复制积压缓冲可能溢出 → 从库**全量重同步**。
+- **链式复制**（从库的从库）减轻主库压力。
+- **复制风暴**：多个从库同时请求全量 → 主库多次 fork。**解决**：先让一个从库同步好，再让其他从它同步。
+
+**主从的问题**：
+- **主库挂了不会自动切换** → 需要**哨兵**。
+
+**一句话总结**：**Redis 主从复制 = 「首次全量（RDB + 缓冲命令）+ 之后增量（传播命令）」，断线靠 `offset` + `repl_backlog` 做部分重同步；它是异步的（可能丢数据，可用 WAIT 近似半同步），从库只读、不主动淘汰过期 key；主从解决读扩展和数据冗余，但**不解决自动故障转移**（那要靠哨兵）。**', 1),
+
+('Redis', '哨兵,高可用', 3,
+ 'Redis Sentinel 哨兵是做什么的？故障转移流程是怎样的？',
+ '**Sentinel（哨兵）**：**监控 + 通知 + 自动故障转移**，解决「主库挂了怎么办」。
+
+**功能**：
+1. **监控**：定期 `PING` 主库、从库、其他哨兵。
+2. **通知**：异常时告警。
+3. **自动故障转移（failover）**：主库挂了 → **选一个从库升为主**。
+4. **配置中心**：客户端从哨兵获取当前主库地址。
+
+**故障转移流程**：
+1. **主观下线（SDOWN）**：某个哨兵发现主库超时无响应。
+2. **客观下线（ODOWN）**：**多个哨兵（≥ quorum）都认为主库挂了** → 判定客观下线。
+3. **选举 Leader 哨兵**：哨兵之间用 **Raft 类似协议**选出一个**执行故障转移的 Leader**。
+4. **选新主库**：从从库中按优先级选：
+   - **优先级**（`replica-priority`，越小越优先）。
+   - **复制偏移量最大**（数据最新）⭐。
+   - **runid 最小**。
+5. **切换**：让新主库 `SLAVEOF NO ONE`，其他从库 `SLAVEOF` 新主库。
+6. **通知客户端**：客户端订阅哨兵的 `+switch-master` 事件。
+
+**部署**：
+- **至少 3 个哨兵**（奇数，**多数派**才能投票）。
+- 哨兵本身**也是分布式**（避免单点）。
+- `quorum` 参数控制「几个哨兵认为挂了才算客观下线」。
+
+**脑裂问题**：
+- 网络分区时，**旧主库可能还以为自己是主**，继续接受写。
+- 分区恢复后，**旧主的写会丢失**（被新主覆盖）。
+- **缓解**：
+  - `min-replicas-to-write N`：**至少 N 个从库连接才允许写**。
+  - `min-replicas-max-lag S`：从库延迟不超过 S 秒。
+
+**Sentinel 的局限**：
+- **不解决数据分片**（那是 Cluster 的活）。
+- 故障转移期间**有短暂不可用**。
+- **不能保证数据零丢失**（异步复制）。
+
+**一句话总结**：**哨兵负责监控、通知和自动故障转移：多哨兵投票判定「客观下线」→ 选 Leader 哨兵 → 按「优先级 + 复制偏移量 + runid」选新主 → 切换并通知客户端；至少 3 个哨兵保证多数派，用 `min-replicas-to-write` 缓解脑裂 —— 哨兵解决高可用，但**不解决分片**（分片靠 Cluster）。**', 1),
+
+('Redis', 'Cluster,分片', 3,
+ 'Redis Cluster 是怎么分片的？哈希槽有什么用？',
+ '**Redis Cluster**：**分布式分片 + 高可用**方案，把数据分到多个主节点。
+
+**哈希槽（Hash Slot）** ⭐：
+- 总共 **16384 个槽**（0~16383）。
+- **`slot = CRC16(key) % 16384`**。
+- 每个主节点负责**一部分槽**（如 3 主：0-5460、5461-10922、10923-16383）。
+- **加/减节点时只迁移槽**（不重算全部哈希）—— 类似一致性哈希的思路。
+
+**为什么是 16384**：
+- **心跳包要带槽位图**（16384 bit = 2KB，太大浪费带宽）。
+- 节点数一般不超过 1000，16384 够细分。
+- CRC16 输出 16 bit = 65536，取 16384 是权衡。
+
+**数据路由**：
+- 客户端连任意节点，若 key 不在该节点：
+  - **`MOVED`**：槽**永久**迁移到别的节点（客户端更新路由表）。
+  - **`ASK`**：槽**正在迁移**（临时重定向，客户端只本次转过去，**不更新**路由表）。
+
+**`MOVED` vs `ASK`**：
+| 类型 | 含义 | 客户端 |
+|---|---|---|
+| MOVED | 槽归属**已变更** | **更新**本地路由 |
+| ASK | 槽**迁移中** | 本次重定向，**不更新** |
+
+**多键操作限制**：
+- 多键命令（`MGET`、`MSET`、事务、Lua）要求 key **在同一槽**。
+- **`{}` 哈希标签（hash tag）** ：`user:{1000}:name` 和 `user:{1000}:age` 只有 `{1000}` 参与哈希 → **强制同槽** ⭐。
+
+**集群架构**：
+- **至少 3 主 3 从**（每个主至少 1 从，否则故障无法转移）。
+- 主节点故障 → 从节点**自动升主**（类似哨兵，但由集群内部完成）。
+- 节点间用 **Gossip 协议** 交换状态。
+
+**集群的限制**：
+- **不支持多数据库**（只有 db 0）。
+- **不支持跨槽的多键操作**（除非 hash tag）。
+- **批量操作受限**（`mget` 跨槽会失败）。
+- **客户端要支持集群协议**（或走代理，如 Codis、Twemproxy）。
+
+**脑裂**：
+- 网络分区导致出现两个主 → 用 **`cluster-require-full-coverage`** 和多数派投票缓解。
+
+**Cluster vs 哨兵**：
+| 维度 | 哨兵 | Cluster |
+|---|---|---|
+| 分片 | ❌ | ✅ |
+| 高可用 | ✅ | ✅ |
+| 规模 | 单主 | 多主 |
+| 复杂度 | 低 | 高 |
+
+**一句话总结**：**Cluster 把数据按 `CRC16(key) % 16384` 分到 16384 个**哈希槽**，每个主节点负责一部分槽，增减节点时迁移槽；客户端遇 `MOVED`（归属变更）更新路由、`ASK`（迁移中）临时重定向；多键操作用 `{}` hash tag 强制同槽；集群至少 3 主 3 从、Gossip 通信、从库自动升主 —— 它同时解决分片和高可用。**', 1),
+
+('Redis', '事务,Lua', 2,
+ 'Redis 事务是怎么实现的？和 Lua 脚本有什么区别？',
+ '**Redis 事务（MULTI/EXEC）**：
+```
+MULTI          # 开启事务
+SET k1 v1      # 命令入队
+INCR k2        # 命令入队
+EXEC           # 执行所有命令
+```
+- `MULTI` 后命令**入队**（不立即执行），`EXEC` 时**一次性、顺序执行**。
+- **`DISCARD`** 放弃事务。
+- **`WATCH key`**：乐观锁，若 `EXEC` 前该 key 被改过，**事务放弃**（**CAS 语义**）。
+
+**Redis 事务的特点**：
+1. **不保证原子性（回滚）** ⚠️：
+   - **语法错误**（命令不存在）→ **整个事务不执行**（入队时报错）。
+   - **运行时错误**（如对 String 执行 `INCR`）→ **该命令失败，其他命令继续执行**（**不回滚**）。
+   - 所以 Redis 事务**没有回滚**，不像数据库。
+2. **隔离性**：单线程执行，**中间不会插入其他命令**（天然隔离）。
+3. **`WATCH` 实现乐观锁**：`EXEC` 返回 nil 表示被改过。
+
+**Lua 脚本**：
+- **`EVAL script numkeys key... arg...`** 或 `EVALSHA`。
+- 整个脚本**原子执行**（单线程，中间不执行其他命令）。
+- **可写复杂逻辑**（条件判断、循环），**减少网络往返**。
+- **适合**：**原子复合操作**（如「判断 + 设置」）、**限流**、**分布式锁**。
+
+**事务 vs Lua**：
+| 维度 | 事务 | Lua |
+|---|---|---|
+| 原子执行 | ✅（顺序执行） | ✅（整体原子） |
+| 回滚 | ❌ | ❌（但逻辑可控） |
+| 复杂逻辑 | ❌（无分支） | ✅ |
+| 条件依赖 | 需 WATCH | **脚本内判断** |
+| 网络往返 | 多命令一次 | 一次 |
+| 调试 | 简单 | 稍难 |
+
+**关键区别**：
+- **事务无法「根据前一条命令的结果决定下一条」**（命令在 `EXEC` 前就定死了）。
+- **Lua 可以**（脚本里读结果、做判断）→ 所以**复杂原子操作优先用 Lua** ⭐。
+
+**注意**：
+- **Lua 脚本要短**（**阻塞**整个 Redis）。
+- Redis 7.0 起 `EVAL` 的 key 必须在**同一槽**（集群）。
+- **Functions（7.0）**：更现代的脚本方案，可持久化。
+
+**一句话总结**：**Redis 事务 = `MULTI/EXEC` 批量顺序执行 + `WATCH` 乐观锁，但**不做回滚**（运行时错误其余命令照跑），且无法根据中间结果分支；Lua 脚本整体原子、可写逻辑分支、一次往返，所以「需要条件判断的原子操作」用 **Lua**（如限流、分布式锁），简单批量则用事务/Pipeline。**', 1),
+
+('Redis', 'Pipeline,批量', 2,
+ 'Pipeline（管道）有什么用？和事务有什么区别？',
+ '**Pipeline（管道）**：**一次性发送多条命令**，不等每条响应就继续发，**最后统一读响应**。
+
+**解决的问题**：
+- **网络往返（RTT）是 Redis 的主要瓶颈之一**。
+- 100 条命令逐条发 → 100 次 RTT；**Pipeline 一次 RTT** ⭐。
+- **大幅提升吞吐**（尤其跨机房/高延迟）。
+
+**示例**：
+```
+普通：SET a 1 → 等响应 → SET b 2 → 等响应 ...（N 次 RTT）
+Pipeline：SET a 1; SET b 2; ... 一起发 → 一起收（1 次 RTT）
+```
+
+**特点**：
+- **非原子**：命令**顺序到达、顺序执行**，但**中间可能插入其他客户端的命令**。
+- **不保证原子性**（不像事务）。
+- **提升吞吐，不降低单命令延迟**。
+- **要注意批量大小**（太大占内存/阻塞）。
+
+**Pipeline vs 事务**：
+| 维度 | Pipeline | 事务（MULTI/EXEC） |
+|---|---|---|
+| 目的 | **减少 RTT** | 原子执行一组命令 |
+| 原子性 | ❌（可被插入） | ✅（顺序执行，中间不插） |
+| 是否必须一起发 | ✅ | 不一定 |
+| 典型用法 | 批量读写 | 原子复合操作 |
+
+**Pipeline + 事务**：可以组合（`MULTI` ... `EXEC` 一起发），既减少 RTT 又原子。
+
+**Pipeline vs Lua**：
+- Pipeline：客户端批量，**非原子**。
+- Lua：服务端原子，**可逻辑分支**。
+
+**注意事项**：
+- **Pipeline 不是越大越好**：一次发太多命令会**占内存**（客户端和服务端缓冲），且**若中途出错，处理麻烦**。
+- **命令间无依赖**才能用 Pipeline（否则要先知道前一个结果）。
+
+**实践**：
+- **批量导入/导出**、**批量更新**用 Pipeline。
+- 常见批量大小 **几百到几千** 条。
+- 需原子 → 加事务或改 Lua。
+
+**一句话总结**：**Pipeline 把多条命令一次发出、最后统一收响应，核心收益是**省掉 N 次网络 RTT**、大幅提升吞吐；它**不保证原子性**（中间可插其他命令），与「事务（原子）」和「Lua（原子+逻辑）」不同；适合无依赖的批量操作，注意别一次发太多。**', 1),
+
+('Redis', '缓存一致性', 3,
+ '缓存和数据库如何保证一致性？',
+ '**核心矛盾**：缓存和数据库**双写**，如何尽量一致？**强一致很难**（分布式），通常追求**最终一致**。
+
+**常见方案与问题**：
+
+**1. 先更新数据库，再更新缓存** ❌：
+- **并发问题**：两个请求的「更新 DB」和「更新缓存」交错 → **缓存脏数据**。
+- 一般**不推荐**。
+
+**2. 先删缓存，再更新数据库** ❌：
+- 请求 A 删缓存 → 请求 B 读 DB 旧值并**回填缓存** → A 更新 DB → **缓存是旧值**（脏）。
+- **并发下有窗口**。
+
+**3. 先更新数据库，再删缓存（Cache Aside）** ⭐：
+- **最常用**。
+- 即使有并发，**二次读会回填新值**，脏窗口小。
+- **仍非绝对一致**（极端并发/删除失败）。
+
+**4. 延迟双删**：
+- 更新 DB 前删一次缓存 → 更新 DB → **延迟一会儿再删一次**（清掉并发回填的旧值）。
+- **延迟时间**要 > 一次「读+回填」的时间。
+- **治标**，降低脏窗口。
+
+**5. 订阅 binlog 异步删缓存（Canal）** ⭐⭐：
+- DB 变更 → **binlog** → Canal 订阅 → **异步删/更新缓存**。
+- **解耦**、**可靠性高**（binlog 是事务性的）、**最终一致**。
+- 代价：**有延迟**、需维护 Canal。
+
+**6. 分布式锁 / 串行化**：
+- 强一致场景，用锁保证「读改写」串行（性能差）。
+
+**7. 读写都加锁 / 队列串行**：
+- 极端情况用（如库存扣减）。
+
+**为什么是「删缓存」而不是「更新缓存」**：
+- **删除**更简单，且**下次读时懒加载**（避免无效更新/并发覆盖）。
+- 更新缓存可能写入**计算复杂**或**并发覆盖**的值。
+
+**最终一致的保障**：
+- **删除失败要重试**（消息队列/补偿）。
+- **设置 TTL 兜底**（即使脏了也会过期）。
+- **binlog 订阅**是最可靠的解耦方案。
+
+**一句话总结**：**缓存一致性首选 **Cache Aside（先更新 DB 再删缓存）**，配合 TTL 兜底；延迟双删能减小并发脏窗口，**最强的是订阅 binlog（Canal）异步删缓存**（最终一致、解耦、可靠）；追求强一致要用锁/串行（牺牲性能）—— 分布式下「强一致」代价高，工程上多要「最终一致」。**', 1),
+
+('Redis', '分布式锁,Redlock', 3,
+ '用 Redis 实现分布式锁要注意什么？Redlock 有什么争议？',
+ '**基础实现**：
+```bash
+SET lock_key <unique_value> NX PX 30000    # 加锁：原子，NX 互斥，PX 过期
+# 释放：Lua 比较 value 再删（防误删他人的锁）
+```
+```lua
+if redis.call(''get'', KEYS[1]) == ARGV[1] then
+    return redis.call(''del'', KEYS[1])
+else
+    return 0
+end
+```
+
+**必须注意的点** ⭐：
+1. **`SET key value NX PX` 一条命令**（别用 `SETNX` + `EXPIRE` 两条，非原子）。
+2. **value 用唯一标识**（如 UUID），**释放时校验**，防**误删别人的锁**。
+3. **过期时间要合理**：太短 → 业务没做完锁就过期（别人拿到锁）；太长 → 死锁恢复慢。
+4. **自动续期（看门狗）**：业务执行超过锁时间时**自动延长**（Redisson 实现）。
+5. **不可重入**（基础实现）；重入需额外计数。
+6. **锁释放要在 finally**（防异常导致锁不释放）。
+
+**单点 Redis 的问题**：
+- **主从加锁丢失**：主库加锁成功但**未同步到从**就宕机 → 从升主 → **别人又能加锁** → **两个持有者** ⚠️。
+
+**Redlock（红锁）**：
+- 向 **N 个独立 Redis 节点**（通常 5 个）加锁，**超过半数（N/2+1）成功**且**总耗时 < 锁有效期**才算加锁成功。
+- **目的**：不依赖单点，提高可靠性。
+
+**Redlock 的争议**（Martin Kleppmann vs antirez）：
+- **Kleppmann 批评**：
+  - **依赖时钟**（各节点时钟漂移 → 锁提前失效）。
+  - **GC/网络停顿**：进程停顿后锁可能已过期，但以为自己还持锁 → **并发写**。
+  - **不能提供「一致性保证」**（不适合需要 fencing 的场景）。
+  - 建议：**资源端用 fencing token**（递增编号，资源拒绝旧编号）。
+- **antirez 反驳**：Redlock 面向「效率」而非「正确性」的场景。
+- **结论**：**对正确性要求极高的场景，Redlock 也不够**，需要 **fencing token** 或**改用 ZooKeeper/etcd**。
+
+**Fencing Token** ⭐：
+- 锁服务每次发锁给一个**递增编号**。
+- 资源端记录**已见过的最大编号**，**拒绝更小的编号**。
+- 即使两个进程都以为持锁，**旧编号的操作会被资源拒绝** → **根治**。
+
+**方案对比**：
+| 方案 | 一致性 | 性能 | 场景 |
+|---|---|---|---|
+| Redis 单点 | 弱 | 高 | 效率型 |
+| Redlock | 中 | 中 | 效率型 |
+| **ZooKeeper/etcd** | **强** | 中 | **正确性型** |
+| Redis + fencing token | **强** | 高 | 推荐 |
+
+**一句话总结**：**Redis 分布式锁正确姿势是「`SET NX PX` 原子加锁 + 唯一 value + Lua 校验释放 + 看门狗续期」；单点主从切换可能丢锁，Redlock 多节点也因**时钟依赖和 GC 停顿**被质疑；需要强正确性时用 **ZooKeeper/etcd** 或**给锁加 fencing token**（资源端拒绝旧编号）——「能不用分布式锁就不用」。**', 1),
+
+('Redis', 'SDS,字符串', 2,
+ 'Redis 的字符串（SDS）和 C 字符串有什么区别？',
+ '**SDS（Simple Dynamic String）** 是 Redis 自己实现的字符串，替代 C 字符串。
+
+**C 字符串的问题**：
+1. **获取长度要 O(n)**（遍历到 `\\0`）。
+2. **非二进制安全**（中间有 `\\0` 会被截断）。
+3. **拼接可能缓冲区溢出**（不检查容量）。
+4. 修改要**重新分配内存**（无预分配）。
+
+**SDS 的结构**：
+```c
+struct sdshdr {
+    int len;      // 已用长度
+    int alloc;    // 分配的总长度（不含头和 \\0）
+    char flags;   // 类型（sdshdr5/8/16/32/64，省内存）
+    char buf[];   // 实际数据（以 \\0 结尾，兼容 C 函数）
+};
+```
+
+**SDS 的优势** ⭐：
+1. **O(1) 取长度**（读 `len` 字段）。
+2. **二进制安全**（用 `len` 而非 `\\0` 判断结尾，可存二进制/图片）。
+3. **杜绝缓冲区溢出**（追加前检查 `alloc`，不够就扩容）。
+4. **内存预分配**（减少频繁 realloc）：
+   - 修改后长度 < 1MB → **多分配一倍**（`alloc = 2 * len`）。
+   - ≥ 1MB → **多分配 1MB**。
+5. **惰性释放**：缩短字符串**不立即缩容**（保留空间备用），有 `sdsRemoveFreeSpace` 主动释放。
+6. **兼容 C 字符串**（末尾仍放 `\\0`，可复用 `<string.h>` 函数）。
+
+**应用**：
+- Redis 的**所有 key 都是 SDS**。
+- String 类型的值、AOF 缓冲、客户端输入缓冲都是 SDS。
+
+**一句话总结**：**SDS 用「len + alloc + buf」的结构解决了 C 字符串「取长度 O(n)、非二进制安全、易溢出、无预分配」四大问题，做到 O(1) 取长度、二进制安全、防溢出、预分配（<1MB 翻倍、≥1MB 加 1MB）且兼容 C 函数 —— 它是 Redis 所有 key 和 String 值的底层。**', 1),
+
+('Redis', '底层结构,ziplist', 3,
+ 'ziplist、listpack、quicklist 分别是什么？为什么 Redis 要设计这些？',
+ '都是**为省内存/提高局部性**设计的紧凑结构。
+
+**ziplist（压缩列表）**：
+- **连续内存**块，存多个元素（用于小 List、小 Hash、小 ZSet）。
+- 每个 entry：**前一项长度 + 编码 + 数据**。
+- **优点**：**内存紧凑**（无指针开销）、**缓存友好**。
+- **缺点**：
+  - **连锁更新（cascade update）** ⚠️：某个 entry 变长可能导致后续 entry 的「前项长度」字段也变长，**级联修改**（最坏 O(n²)）。
+  - 查找 O(n)（要遍历）。
+
+**listpack（紧凑列表）**：
+- **Redis 5.0 引入**，替代 ziplist（解决连锁更新）。
+- entry：**编码 + 数据 + 自身长度**（**记录自身长度而非前项长度**）。
+- **不记录前项长度** → **不会连锁更新** ⭐。
+- 用于小 Hash、小 ZSet、Stream 的底层。
+
+**quicklist（快速列表）**：
+- **Redis 3.2+ 的 List 底层**。
+- **双向链表 + 每个节点是一个 ziplist/listpack**（混合结构）。
+- **优点**：
+  - 双向链表：**两端插入删除 O(1)**。
+  - 每个节点用 ziplist：**省内存 + 缓存友好**。
+  - 可配置每个 ziplist 的大小（`list-max-listpack-size`）。
+- **平衡了「内存」和「性能」**。
+
+**演进**：
+```
+List：双向链表 → ziplist → quicklist（链表 + listpack）
+Hash/ZSet 小数据：ziplist → listpack
+```
+
+**为什么要这些**：
+- **指针开销大**：普通链表每个节点 8 字节指针 + 内存分配器开销。
+- **缓存不友好**：指针跳转导致缓存未命中。
+- **紧凑结构**：连续内存 + 变长编码 → **省内存 + 局部性好**。
+
+**编码转换**：
+- 元素少且小 → **紧凑编码**（listpack/ziplist）。
+- 元素多或大 → **转换为 hashtable / skiplist**。
+- 阈值可配（`hash-max-listpack-entries`、`zset-max-listpack-entries`）。
+
+**一句话总结**：**ziplist 是连续内存紧凑列表（省内存但连锁更新最坏 O(n²)），listpack 记录自身长度避免连锁更新（Redis 5.0+ 替代 ziplist 用于小 Hash/ZSet），quicklist 是「双向链表 + 每节点 listpack」（List 底层，兼顾 O(1) 两端操作与内存）；它们都是为「消除指针开销、提升缓存局部性、节省内存」而设计，小数据用紧凑编码、变大自动转 hashtable/skiplist。**', 1),
+
+('Redis', '对比,Memcached', 1,
+ 'Redis 和 Memcached 有什么区别？',
+ '**Memcached**：
+- **纯内存 KV 缓存**，只支持 **String**（value 是字节串）。
+- **多线程**（利用多核）。
+- **不支持持久化**（重启即丢）。
+- **不支持主从/集群**（靠客户端一致性哈希分片）。
+- **简单、内存利用率高**（slab 分配）。
+
+**Redis**：
+- **丰富的数据结构**（String/List/Hash/Set/ZSet/Bitmap/HyperLogLog/GEO/Stream）。
+- **单线程命令执行**（+ IO 多线程）。
+- **支持持久化**（RDB/AOF）。
+- **支持主从、哨兵、Cluster**（高可用 + 分片）。
+- **支持事务、Lua、发布订阅、过期、多种淘汰策略**。
+
+**对比**：
+| 维度 | Memcached | Redis |
+|---|---|---|
+| 数据结构 | 仅 String | **丰富** |
+| 线程 | **多线程** | 单线程（+IO 多线程） |
+| 持久化 | ❌ | **RDB/AOF** |
+| 高可用 | ❌ | **主从/哨兵/Cluster** |
+| 事务 | ❌ | ✅ |
+| 脚本 | ❌ | **Lua/Functions** |
+| 发布订阅 | ❌ | ✅ |
+| 内存效率 | **更高**（纯缓存） | 略低 |
+| 多核利用 | **好** | 需多实例 |
+| 场景 | **纯缓存** | **缓存 + 数据结构服务** |
+
+**怎么选**：
+- **纯缓存、只要 KV、追求多核/内存效率** → Memcached（现在少见）。
+- **需要数据结构、持久化、高可用** → **Redis**（**事实标准**）。
+- **现状**：Redis 几乎全面胜出，Memcached 只在极简纯缓存场景有微弱优势。
+
+**一句话总结**：**Memcached 是「纯内存 KV 缓存、多线程、无持久化/无集群」，Redis 是「多数据结构 + 持久化 + 主从/哨兵/Cluster + 事务/Lua」的瑞士军刀；除「极简纯缓存」外，**Redis 基本全面胜出**，也是当下事实标准。**', 1),
+
+('Redis', '大key,热key', 3,
+ '什么是大 key 和热 key？怎么发现和处理？',
+ '**大 key**：**单个 key 的 value 过大**（如 String > 10KB，集合元素 > 5000）。
+
+**危害**：
+- **阻塞**：操作大 key 耗时长（**单线程阻塞全体**）。
+- **网络拥塞**：一次传输大量数据。
+- **内存不均**（Cluster 中倾斜）。
+- **删除耗时**（`DEL` 大 key 阻塞）→ 用 **`UNLINK`** 异步删。
+
+**发现**：
+- `redis-cli --bigkeys`（扫描）。
+- `MEMORY USAGE key`（单 key 内存）。
+- 慢查询日志。
+- **扫描工具**（`rdb-tools` 分析 RDB）。
+
+**处理**：
+- **拆分**：大 Hash 拆成多个小 Hash（分片）。
+- **压缩**：序列化后压缩。
+- **`UNLINK` 异步删除**。
+- **设计时避免**（限制单个集合大小）。
+
+**热 key**：**某个 key 被高频访问**（如秒杀商品、热门微博）。
+
+**危害**：
+- **单节点压力大**（Cluster 中某个节点被打爆）。
+- **成为瓶颈**。
+
+**发现**：
+- `redis-cli --hotkeys`（需 `maxmemory-policy` 为 LFU）。
+- **`MONITOR`**（不推荐生产，开销大）。
+- 客户端**埋点统计**。
+- **代理层统计**。
+
+**处理**：
+1. **多级缓存**（本地缓存 + Redis）→ 减少打到 Redis。
+2. **key 打散**：`hotkey` 复制成 `hotkey:1`、`hotkey:2`...，客户端随机选一个读（写时要同步多个）。
+3. **读写分离**：多个从库分担读。
+4. **限流/降级**。
+
+**一句话总结**：**大 key 是「单 key value 过大」（阻塞、网络、内存倾斜、删除慢），用 `--bigkeys`/`MEMORY USAGE` 发现，靠「拆分 + 压缩 + `UNLINK` 异步删」处理；热 key 是「单 key 高频访问」（单节点被打爆），用 `--hotkeys` 发现，靠「本地缓存 + key 打散 + 读写分离 + 限流」处理 —— 两者都是 Redis 生产必须监控的问题。**', 1),
+
+('Redis', 'SCAN,遍历', 2,
+ '为什么生产环境禁用 KEYS 命令？SCAN 是怎么工作的？',
+ '**`KEYS pattern` 的问题**：
+- **遍历所有 key**，**O(n)** 复杂度。
+- Redis **单线程** → **阻塞所有其他请求** ⚠️。
+- key 多时（几百万）**可能阻塞数秒** → **服务不可用**。
+- **生产禁用**（`rename-command KEYS ""`）。
+
+**`SCAN` 渐进式遍历**：
+```
+SCAN cursor [MATCH pattern] [COUNT count] [TYPE type]
+```
+- **每次返回一批** + **新的 cursor**，客户端**循环直到 cursor 为 0**。
+- **不阻塞**（每次只扫一点）。
+- **适合生产**遍历 key。
+- 同理：`HSCAN`、`SSCAN`、`ZSCAN` 遍历大集合。
+
+**SCAN 的特点（要理解）**：
+1. **不保证完整**：遍历期间 key 的增删可能**漏掉或重复**（**只保证「一直在的 key 一定被返回」**）。
+2. **可能返回重复元素**（客户端要**去重**）。
+3. **COUNT 是提示**（不是精确数量，默认 10）。
+4. **cursor 不是下标**（是**反向二进制迭代**的游标）。
+5. **保证「所有遍历期间一直存在的 key」会被返回**（虽然可能重复）。
+
+**为什么 SCAN 用「反向二进制迭代」**：
+- 解决**哈希表 rehash 期间**遍历的**重复和遗漏**问题。
+- 支持**渐进式 rehash**（避免一次性 rehash 卡顿）⭐。
+
+**对比**：
+| 命令 | 复杂度 | 阻塞 | 保证 |
+|---|---|---|---|
+| KEYS | O(n) | **阻塞** | 完整 |
+| SCAN | 每次 O(1) | **不阻塞** | **可能不完整/重复** |
+
+**一句话总结**：**`KEYS` 是 O(n) 全量遍历、单线程下会**阻塞整个 Redis**（生产禁用，用 `rename-command` 屏蔽）；`SCAN` 用游标渐进遍历、每次只扫一小批不阻塞，但**不保证完整、可能重复**（客户端需去重），其游标是「反向二进制迭代」以兼容渐进式 rehash —— 遍历大 key 空间一律用 SCAN。**', 1),
+
+('Redis', '内存,优化', 2,
+ 'Redis 内存怎么优化？内存碎片怎么处理？',
+ '**内存组成**：
+- **数据本身**（各种结构）。
+- **对象开销**（`redisObject` 头 16 字节）。
+- **过期字典、引用计数**。
+- **复制缓冲、客户端缓冲、AOF 缓冲**。
+- **内存碎片**。
+
+**优化手段**：
+
+1. **选对数据结构**：
+   - 小 Hash/ZSet 用**紧凑编码**（listpack）。
+   - 用 **Hash 存对象**而不是多个 String（省 key 开销）。
+   - **用整数**（`int` 编码）而非字符串。
+
+2. **合理设置 `maxmemory`**：
+   - 别设太大（超物理内存会 swap/OOM）。
+   - 留余量给 fork（COW）、复制缓冲。
+
+3. **过期与淘汰**：
+   - 设 **TTL** 让数据自动清理。
+   - 选对淘汰策略（`allkeys-lru`）。
+
+4. **减少 key 数量与长度**：
+   - **key 精简**（`user:1000:name` → `u:1000:n`）。
+   - **合并小 key**。
+
+5. **压缩**：
+   - 大 value **序列化后压缩**（但 CPU 换内存）。
+   - **避免大 key**。
+
+6. **内存碎片**：
+   - **原因**：频繁增删、不同大小分配 → 内存不连续。
+   - **查看**：`INFO memory` 的 **`mem_fragmentation_ratio`**（碎片率）。
+     - **1~1.5 正常**。
+     - **> 1.5** 碎片较多；**< 1** 说明用了 swap（危险）。
+   - **解决**：
+     - **重启**（简单粗暴）。
+     - **`activedefrag yes`**（**主动碎片整理**，4.0+，运行时整理）⭐。
+     - **jemalloc**（Redis 默认分配器，已比 glibc 好）。
+
+7. **`MEMORY USAGE key` / `MEMORY DOCTOR`** 诊断。
+
+**注意**：
+- **`maxmemory` 不含** fork 的 COW 内存、复制缓冲 → 可能**实际占用 > 限制** → OOM。
+- **`used_memory_rss`**（操作系统视角）vs **`used_memory`**（Redis 视角）。
+
+**一句话总结**：**Redis 内存优化靠「选对紧凑数据结构、精简 key、设 TTL、选淘汰策略、避免大 key、必要时压缩」；碎片用 `mem_fragmentation_ratio` 判断（1~1.5 正常，>1.5 偏高），解决靠重启或开启 `activedefrag` 主动整理；注意 `maxmemory` 不含 fork/复制缓冲，实际占用可能超限 —— 内存要留余量防 OOM。**', 1),
+
+('Redis', '发布订阅,Stream', 2,
+ 'Redis 的发布订阅和 Stream 有什么区别？能当消息队列用吗？',
+ '**发布订阅（Pub/Sub）**：
+- `SUBSCRIBE channel` 订阅，`PUBLISH channel msg` 发布。
+- **广播**：**所有订阅者都收到**。
+- **不持久化** ⚠️：**离线（未订阅时）的消息直接丢失**。
+- **不保证送达**。
+- 适用：**实时通知**（聊天室、配置变更广播），**不能当可靠 MQ**。
+
+**Stream（Redis 5.0+）**：
+- **持久化的日志型消息队列**。
+- **`XADD`** 追加消息（带自增 ID）。
+- **消费组（Consumer Group）**：`XGROUP` + `XREADGROUP`，**支持多消费者分摊**。
+- **ACK 机制**：`XACK` 确认，**未确认的可重投**（`XPENDING` + `XCLAIM`）⭐。
+- **持久化**（存在内存，可配 RDB/AOF）。
+- **支持阻塞读**（`XREAD BLOCK`）。
+
+**对比**：
+| 维度 | Pub/Sub | Stream |
+|---|---|---|
+| 持久化 | ❌ | ✅ |
+| 离线消息 | **丢失** | **保留** |
+| 消费组 | ❌ | ✅ |
+| ACK/重投 | ❌ | ✅ |
+| 回溯 | ❌ | ✅（按 ID） |
+| 可靠性 | 低 | **较高** |
+
+**Redis 当 MQ 的优劣**：
+- **优点**：轻量、快、无需额外中间件、部署简单。
+- **缺点**：
+  - **不保证不丢**（即使 Stream，AOF `everysec` 也可能丢）。
+  - **内存有限**（消息堆积会占内存/OOM）。
+  - **无完善的重试/死信/顺序保证**（不如 Kafka/RocketMQ）。
+  - **不适合海量堆积**。
+- **结论**：
+  - **轻量异步 + 可容忍少量丢失** → 可用 Stream。
+  - **高可靠、海量、需完善 MQ 语义** → **用专业 MQ（Kafka/RocketMQ/RabbitMQ）**。
+
+**一句话总结**：**Pub/Sub 是「广播、不持久、离线即丢」，只适合实时通知；Stream 是「持久化日志 + 消费组 + ACK 重投 + 可回溯」，可靠性高得多，可做轻量 MQ；但 Redis 内存有限、AOF `everysec` 仍可能丢、缺完善 MQ 语义 —— 轻量异步用 Stream，海量高可靠请用专业 MQ。**', 1),
+
+('Redis', '延迟队列,数据结构应用', 2,
+ '如何用 Redis 实现延迟队列？',
+ '**延迟队列**：任务在**指定时间之后**才被执行。
+
+**方案一：ZSet（最常用）** ⭐：
+- **score 存「执行时间戳」**，member 存任务。
+- **生产者**：`ZADD delay_queue <execute_ts> <task>`。
+- **消费者**：**轮询** `ZRANGEBYSCORE delay_queue 0 <now> LIMIT 0 N`，取到期的：
+  ```
+  ZRANGEBYSCORE delay_queue 0 <now> WITHSCORES
+  # 原子取出并删除：用 Lua 保证原子
+  ```
+- **原子出队 Lua**：
+  ```lua
+  local jobs = redis.call(''ZRANGEBYSCORE'', KEYS[1], 0, ARGV[1], ''LIMIT'', 0, 10)
+  if #jobs > 0 then
+      redis.call(''ZREM'', KEYS[1], unpack(jobs))
+  end
+  return jobs
+  ```
+- **优点**：精确（按时间戳）、实现简单。
+- **缺点**：**轮询有延迟/空转**（可用 `BLPOP` 辅助或缩短轮询间隔）。
+
+**方案二：Stream + 定时触发**。
+**方案三：键空间通知（keyspace notification）** + 过期事件：
+- 设 key 的 TTL，到期时**监听 `__keyevent@0__:expired`** 事件。
+- **缺点**：**过期事件不保证及时/可靠**，不适合精确延迟。
+
+**方案四：Redis 6 的 `EXPIRE` + 客户端**。
+
+**推荐**：
+- **精确延迟** → **ZSet + 轮询 + Lua 原子取**。
+- **降低空转** → 轮询间隔自适应（下一个任务的到期时间）。
+- **提高可靠性** → 出队后**放入处理中队列**，处理完 ACK 删除（防丢）。
+
+**应用**：
+- **订单超时取消**（30 分钟未支付）。
+- **定时提醒/推送**。
+- **任务重试调度**（延迟重试）。
+- **限流窗口**。
+
+**与专业方案对比**：
+- **RocketMQ 延迟消息**、**RabbitMQ 死信队列 + TTL**。
+- Redis 方案**轻量但需自己保证可靠性**（重试、持久化）。
+
+**一句话总结**：**Redis 延迟队列首选 **ZSet**：score 存执行时间戳，`ZRANGEBYSCORE 0 now` 取到期任务，用 **Lua 脚本原子取出+删除**，轮询消费；键空间过期事件**不保证及时**故不适合精确延迟；生产上出队后放入处理中队列并在完成后 ACK 以防丢 —— 适合订单超时、定时重试等轻量场景。**', 1),
+
+('Redis', 'Bitmap,HyperLogLog', 2,
+ 'Redis 的 Bitmap 和 HyperLogLog 分别怎么用？',
+ '**Bitmap（位图）**：
+- **String 的位操作**，`SETBIT/GETBIT/BITCOUNT/BITOP`。
+- **极省空间**：1 亿用户签到只需 **12.5 MB**（1 亿 bit）。
+- **常用**：
+  ```bash
+  SETBIT sign:20261010 <user_id> 1     # 用户签到
+  BITCOUNT sign:20261010               # 当天签到人数
+  BITOP AND dest key1 key2             # 集合运算（如连续签到）
+  BITPOS key 0                         # 第一个 0 位
+  ```
+- **场景**：**签到打卡、活跃用户统计、用户标签、布隆过滤器**。
+- **限制**：**只能表示 0/1**，**稀疏时浪费**（user_id 大的话要分配到位）。
+
+**HyperLogLog（基数估算）** ⭐：
+- **估算集合的基数（去重后的数量）**，**不存原始数据**。
+- **固定 12 KB**（无论多少元素），**误差 0.81%**。
+- 命令：
+  ```bash
+  PFADD uv:page user1 user2           # 添加
+  PFCOUNT uv:page                      # 估算基数
+  PFMERGE dest src1 src2               # 合并
+  ```
+- **原理**：基于**哈希值的「前导零个数」**估计（伯努利实验），**概率估算**。
+- **优点**：**极省内存**（12KB 统计任意多元素）。
+- **缺点**：**不精确**（约 0.81% 误差）、**不能取元素**（只能计数）。
+- **场景**：**UV（独立访客）统计、去重计数**。
+
+**对比**：
+| 维度 | Bitmap | HyperLogLog |
+|---|---|---|
+| 用途 | 位标记/集合运算 | **基数估算** |
+| 精确度 | **精确** | 估算（0.81%） |
+| 空间 | 与**值域**成正比 | **固定 12KB** |
+| 场景 | 签到、活跃位统计 | **UV 去重计数** |
+
+**数字类型优势**：
+- **Bitmap**：值域有限（如用户 ID 连续）时最省。
+- **HyperLogLog**：值域巨大（如 IP、UUID）时依然 12KB。
+
+**一句话总结**：**Bitmap 用位标记实现精确集合/统计（签到、活跃、BITOP 运算），空间与值域成正比；HyperLogLog 基于哈希前导零做**基数估算**（UV 去重计数），固定 12KB、误差 0.81%、不可取元素 —— 值域有界用 Bitmap，海量去重计数用 HLL。**', 1),
+
+('Redis', 'GEO,地理位置', 1,
+ 'Redis 的 GEO 怎么用？原理是什么？',
+ '**GEO（地理位置）**：存储经纬度并做**距离计算、范围查询**。
+
+**命令**：
+```bash
+GEOADD cafes 116.40 39.90 "cafe1"          # 添加（经度 纬度 名称）
+GEODIST cafes "cafe1" "cafe2" km           # 两点距离
+GEOPOS cafes "cafe1"                        # 取坐标
+GEOHASH cafes "cafe1"                       # 11 位 Geohash
+GEOSEARCH cafes FROMLONLAT 116.40 39.90 BYRADIUS 1 km ASC
+                                            # 半径内搜索（Redis 6.2+）
+GEORADIUS cafes 116.40 39.90 1 km           # 旧命令
+```
+
+**原理：Geohash**：
+- 把**经纬度编码成一维整数**（**Z 阶曲线 / 空间填充曲线**）：
+  - 经度、纬度**交替取位**，交错编码成整数。
+  - 相近地理位置的 Geohash **前缀相似**（但边界处可能不相似）。
+- **GEO 底层用 ZSet**：**Geohash 值作为 score**。
+- **范围查询**：计算目标点的 Geohash 范围，**用 ZSet 的范围查询**找出附近的点，再**精确计算距离过滤**。
+
+**为什么能用 ZSet**：
+- Geohash 把「二维位置」映射到「一维整数」→ **一维有序** → ZSet 范围查询高效。
+
+**精度**：
+- Redis 用 **52 位**存储（精度约 **0.6 米**），比标准 Geohash 的 64 位略低（省空间）。
+
+**应用**：
+- **附近的人/店**。
+- **打车派单**（找附近的司机）。
+- **地理位置围栏**。
+
+**注意**：
+- **边界问题**：Geohash **相邻但分属不同格**的点不一定前缀相同 → 查询时要考虑**周围 8 个格子**。
+- **大范围查询**性能下降。
+
+**一句话总结**：**Redis GEO 用 Geohash 把经纬度编码成 52 位整数并存在 ZSet 的 score 里，实现 `GEOADD/GEODIST/GEOSEARCH` 等操作；范围查询靠「Geohash 范围 → ZSet 范围扫描 → 精确距离过滤」，注意 Geohash 边界需检查相邻格子 —— 广泛用于「附近的人/店、打车派单」。**', 1),
+
+('Redis', '慢查询,排查', 2,
+ 'Redis 变慢了怎么排查？常见的阻塞原因有哪些？',
+ '**排查思路（先定位是 Redis 问题还是外部问题）**：
+
+**1. 先看是不是 Redis 本身**
+- **`SLOWLOG GET`**（慢查询日志）：`slowlog-log-slower-than` 阈值（默认 10000 微秒）。
+- **`INFO`**：`latency`、`commandstats`、`keyspace_hits/misses`。
+- **`LATENCY DOCTOR` / `LATENCY HISTORY`**：延迟事件。
+- **`redis-cli --latency` / `--intrinsic-latency`**：测延迟（含本机因素）。
+
+**2. 常见阻塞原因**：
+| 原因 | 说明 | 解决 |
+|---|---|---|
+| **大 key 操作** | `DEL`/`HGETALL`/`ZRANGE` 大 key | 拆分、`UNLINK` |
+| **`KEYS`/`FLUSHALL`/`FLUSHDB`** | O(n) 阻塞 | 禁用/用 SCAN |
+| **大量 key 同时过期** | 定期删除压力 | TTL 加随机抖动 |
+| **AOF 刷盘**（`always`） | 每条 fsync | 改 `everysec` |
+| **RDB fork 卡顿** | 大内存 fork 耗时 | 控制实例大小 |
+| **AOF 重写 / RDB 保存** | fork + 写盘 | 错峰、监控 |
+| **内存不足触发 swap** | 性能骤降 | 加内存、设 maxmemory |
+| **内存淘汰频繁** | 反复淘汰 | 扩容/调策略 |
+| **CPU 饱和** | 大量命令/协议解析 | 多实例分片 |
+| **网络/带宽** | 大 key 传输 | 拆分、压缩 |
+| **客户端连接数过多** | 缓冲/上下文开销 | 连接池、`maxclients` |
+| **Lua 脚本太长** | 阻塞 | 拆分脚本 |
+| **集群迁移槽** | 迁移占资源 | 错峰迁移 |
+
+**3. 排除外部因素**：
+- **网络延迟**（跨机房、带宽）。
+- **客户端慢**（连接池不足、序列化慢）。
+- **DNS/连接建立**。
+
+**4. 监控与工具**：
+- **`INFO all`**、**`redis-cli --stat`**。
+- **监控平台**（Prometheus + redis_exporter）。
+- **`MONITOR`**（仅调试，**开销大，别在生产久开**）。
+
+**实践建议**：
+- **禁用危险命令**（`KEYS`、`FLUSHALL`）→ `rename-command`。
+- **监控慢查询 + 大 key + 内存**。
+- **大 key 提前拆分**。
+- **持久化错峰**。
+
+**一句话总结**：**Redis 变慢先看 `SLOWLOG`/`LATENCY DOCTOR`/`INFO` 定位；最常见阻塞是「大 key 操作、`KEYS`/`FLUSHALL`、大量 key 同时过期、AOF `always` 刷盘、RDB fork、内存不足 swap、频繁淘汰」；治理靠「禁止危险命令、拆分大 key、TTL 抖动、持久化错峰、多实例分片、连接池」—— 单线程模型下「一个慢命令阻塞全体」是根本特征。**', 1),
+
+('Redis', '集群,扩展', 3,
+ 'Redis 单机性能瓶颈在哪里？如何水平扩展？',
+ '**单机的瓶颈**：
+1. **CPU**：单线程命令执行，**用不满多核**（Redis 6 IO 多线程可缓解网络部分）。
+2. **内存**：单机内存有限（几十~几百 GB），**数据集不能超**。
+3. **网络带宽/IO**：大流量、大 key 传输。
+4. **命令阻塞**：慢命令阻塞全体。
+
+**水平扩展方案**：
+
+**1. 客户端分片**：
+- 客户端自己算 key 该去哪个实例（一致性哈希/取模）。
+- **优点**：无中间层。
+- **缺点**：客户端要维护路由、扩缩容复杂、多键操作难。
+- 工具：**ShardedJedis**、**Twemproxy**（代理）。
+
+**2. 代理分片**：
+- **Codis**、**Twemproxy**、**Redis Cluster Proxy**。
+- 客户端连代理，代理转发到后端。
+- **优点**：客户端简单。
+- **缺点**：多一跳延迟、代理需高可用。
+
+**3. Redis Cluster（官方）** ⭐：
+- **16384 哈希槽**，多主多从。
+- **去中心化**（Gossip），客户端直连。
+- **支持自动故障转移**。
+- **推荐**。
+
+**4. 读写分离**：
+- 主库写、从库读 → **提升读吞吐**。
+- **注意复制延迟**（读从库可能读到旧数据）。
+
+**5. 多级缓存**：
+- **本地缓存（进程内）** + Redis + DB。
+- 减少 Redis 压力（热 key）。
+
+**扩展时要考虑**：
+- **数据分片键设计**（避免倾斜、避免跨槽多键）。
+- **扩缩容时的槽迁移**（平滑）。
+- **一致性**（分片后不能用跨槽多键命令）。
+- **多 key 操作的 hash tag**。
+
+**容量规划**：
+- **单实例控制在合理大小**（如 10~20 GB），便于 fork/迁移/故障恢复。
+- **实例数 = 总数据 / 单实例容量**，留余量。
+
+**一句话总结**：**Redis 单机的瓶颈是「单线程用不满多核 + 内存有限 + 慢命令阻塞」；水平扩展首选**官方 Cluster**（16384 槽 + 多主多从 + Gossip，客户端直连、自动故障转移），或用代理（Codis/Twemproxy）；再配合**读写分离**和**多级缓存**；分片要设计好分片键、用 hash tag 支持多键操作，单实例别太大（便于 fork 与迁移）。**', 1),
+
+('Redis', '连接池,客户端', 1,
+ 'Redis 客户端连接池的作用是什么？配置要注意什么？',
+ '**连接池**：**复用 TCP 连接**，避免每次操作都**建立/关闭连接**。
+
+**为什么需要**：
+- **建立连接开销大**：TCP 三次握手 + 认证（`AUTH`）+ 可选 `SELECT`。
+- **高并发下频繁建连会耗尽资源**（FD、Redis 的 `maxclients`）。
+- 连接池**预热一批连接**，用的时候直接取。
+
+**核心参数**：
+| 参数 | 说明 |
+|---|---|
+| **maxTotal / maxActive** | 最大连接数 |
+| **maxIdle** | 最大空闲连接 |
+| **minIdle** | 最小空闲连接（保活） |
+| **maxWaitMillis** | 获取连接的最长等待（超时报错） |
+| **testOnBorrow** | 取连接时是否验证有效性（`PING`） |
+| **timeout** | 命令超时 |
+
+**注意事项**：
+1. **池大小要合理**：
+   - 太小 → 高并发拿不到连接（等待/超时）。
+   - 太大 → 浪费资源，可能超 Redis `maxclients`（默认 10000）。
+   - **结合 Redis 单线程特性**：**不是连接越多越好**（单线程处理不了那么多并发）。
+2. **必须设超时**（获取连接 + 命令执行），**防雪崩**。
+3. **`testOnBorrow`/`testWhileIdle`**：检测**死连接**（网络中断后连接不可用）。
+4. **连接泄漏**：用完**必须归还**（try-finally），否则池耗尽。
+5. **`maxIdle` 与 `minIdle`**：保活连接减少冷启动。
+6. **多实例/集群**：连接池要**按节点管理**。
+
+**常见坑**：
+- **池配置过大反而慢**（Redis 单线程 + 上下文切换）。
+- **忘记归还连接** → 泄漏。
+- **长连接被中间设备断开** → 需要 `testOnBorrow` 或 `PING` 保活。
+- **超时未设** → 故障时线程全部挂死。
+
+**一句话总结**：**连接池复用 TCP 连接、避免频繁握手+认证、限制并发数；配置要「设合理的池大小（结合 Redis 单线程，不是越大越好）、设获取和命令超时、开启连接有效性检测、确保用完归还（防泄漏）、配置 minIdle 保活」—— 它既是性能优化，也是**防止连接泄漏/雪崩**的重要保护。**', 1),
+
+('Redis', '缓存,预热降级', 2,
+ '缓存预热、缓存降级、缓存更新分别怎么做？',
+ '**缓存预热**：
+- **系统上线/重启前**，**提前把热点数据加载到缓存**。
+- **目的**：避免上线瞬间大量请求**穿透到 DB**（冷启动雪崩）。
+- **做法**：
+  - 上线脚本**批量写缓存**。
+  - **定时任务**刷新热点。
+  - 启动时**异步加载**（不阻塞）。
+  - 数据量大时**分批 + 限速**。
+
+**缓存降级**：
+- **缓存失效/不可用时**，**降级**到兜底策略，**保核心功能**。
+- **策略**：
+  - **返回默认值/静态数据**。
+  - **只读核心数据**（非核心直接不返回）。
+  - **限流**保护 DB。
+  - **本地缓存兜底**。
+- **目的**：**防止缓存垮了拖垮 DB 和整个系统**。
+
+**缓存更新策略**：
+1. **Cache Aside（旁路缓存）** ⭐：
+   - **读**：先查缓存，命中返回；未命中查 DB 并**回填缓存**。
+   - **写**：**先更新 DB，再删缓存**。
+   - 最常用。
+2. **Read/Write Through**：
+   - 缓存层封装 DB 读写，应用只操作缓存。
+3. **Write Behind（回写）**：
+   - 写只写缓存，**异步批量写回 DB**。
+   - 性能高，但**可能丢数据**（缓存挂了还没回写）。
+
+**对比**：
+| 策略 | 一致性 | 性能 | 复杂度 |
+|---|---|---|---|
+| Cache Aside | 中（最终一致） | 高 | 低 |
+| Write Through | 较高 | 中 | 中 |
+| Write Behind | 低（可能丢） | **高** | 高 |
+
+**缓存有效期**：
+- **设 TTL 兜底**（即使不一致，过期后也会刷新）。
+- **热点数据长 TTL + 主动更新**。
+
+**监控**：
+- **命中率**（`keyspace_hits / (hits + misses)`）。
+- **未命中率异常** → 可能大批 key 失效/穿透。
+
+**一句话总结**：**缓存预热 = 上线前把热点数据提前灌入缓存（防冷启动雪崩）；缓存降级 = 缓存不可用时返回兜底/限流保核心；缓存更新首选 **Cache Aside**（读先查缓存回填、写先更 DB 再删缓存）配 TTL 兜底 —— 三者共同保证「缓存挂了也不拖垮数据库」。**', 1),
+
+('Redis', 'ID生成,计数', 1,
+ '如何用 Redis 生成分布式 ID 或做计数限流？',
+ '**分布式 ID 生成**：
+
+**1. `INCR` / `INCRBY`**：
+- **原子自增**，全局唯一。
+- **问题**：**单点**（单实例）、**Redis 挂了 ID 断档**、**暴露业务量**。
+- **改进**：
+  - **按天分 key**（`id:20261010`），每天从 1 开始。
+  - **多实例分片**（不同实例用不同起始值/步长，如 `INCRBY 3`）。
+
+**2. 雪花算法（Snowflake）**：
+- 时间戳 + 机器 ID + 序列号 → **趋势递增的 64 位 ID**。
+- **不依赖 Redis**，性能高。
+- Redis 只用来**分配机器 ID** 或**兜底**。
+
+**3. Redis + 号段模式**：
+- 一次取一段（如 `INCRBY` 1000），**本地分配**，用完再取。
+- **减少 Redis 访问**（批量）。
+
+**计数限流**：
+
+**1. 固定窗口计数**：
+```bash
+INCR rate:user:1000
+EXPIRE rate:user:1000 60     # 60 秒窗口
+# code 判断 > N 则限流
+```
+- **问题**：临界问题（窗口边界）。
+- **要原子**：`INCR` + `EXPIRE` 用 **Lua** 或 `SET ... EX NX` + `INCR`。
+
+**2. 滑动窗口（ZSet）**：
+- ZSet 存请求时间戳，`ZREMRANGEBYSCORE` 清旧、`ZCARD` 统计、`ZADD` 加新。
+- **精确滑动窗口**，但**占内存**。
+
+**3. 令牌桶**：
+- **Lua 脚本**实现（记录上次补充时间 + 令牌数）。
+
+**4. Redis 4.0 的 `CL.THROTTLE`（RedisCell 模块）**。
+
+**原子性注意**：
+- **`INCR` + `EXPIRE` 分两条** → 可能只执行了 `INCR` 而没设过期 → **key 永不过期** ⚠️。
+- **解决**：**Lua 脚本**或 `SET k 0 EX 60 NX` 先建再 `INCR`。
+
+**一句话总结**：**分布式 ID 用 `INCR`/`INCRBY`（原子但单点，可多实例分片/号段模式）或雪花算法（不依赖 Redis）；计数限流用 `INCR` + `EXPIRE`（固定窗口，注意原子性用 Lua）、ZSet（滑动窗口，精确但费内存）或 Lua 令牌桶；核心是「保证原子」并处理「窗口临界」问题。**', 1),
+
+('Redis', 'ZSet,底层', 3,
+ 'ZSet 的底层结构是怎样的？为什么用跳表而不用平衡树？',
+ '**ZSet（有序集合）**：成员唯一，按 **score 排序**。
+
+**底层编码**：
+1. **listpack**（元素少且小时）：紧凑、省内存。
+2. **跳表（skiplist）+ 哈希表（dict）**（元素多/大时）⭐：
+   - **dict**：`member → score`，O(1) 查 score。
+   - **skiplist**：按 `score` 排序，支持**范围查询/排名**。
+
+**两者配合**：
+- **按 member 查** → 哈希表 O(1)。
+- **按 score 范围/排名查** → 跳表 O(log n)。
+
+**跳表结构**：
+- **多层有序链表**（每层是下层的稀疏索引）。
+- 节点带 **`level[]` 数组**（每层的 forward 指针）。
+- **随机层数**（`level = 1 + 连续随机 < 0.25 的次数`）。
+- **`span`**：跨度（用于**计算排名 `ZRANK`**）。
+
+**为什么用跳表而不是红黑树/平衡树** ⭐：
+1. **实现简单**：比平衡树的旋转好写、好调试、好维护。
+2. **范围查询高效**：底层是有序链表，`ZRANGEBYSCORE` 只要找到起点顺序遍历（红黑树需中序遍历）。
+3. **并发友好**：局部修改，锁粒度小。
+4. **性能同级**：期望 O(log n)，与平衡树同数量级。
+5. **内存可控**：可调层数和提升概率。
+
+**常见命令的复杂度**：
+| 命令 | 复杂度 | 用到的结构 |
+|---|---|---|
+| `ZADD` | O(log n) | 跳表 + 哈希 |
+| `ZSCORE` | O(1) | 哈希 |
+| `ZRANK` | O(log n) | 跳表（span） |
+| `ZRANGEBYSCORE` | O(log n + m) | 跳表 |
+| `ZRANGE` | O(log n + m) | 跳表 |
+
+**应用**：**排行榜、延迟队列、带权重的集合、限流滑动窗口**。
+
+**一句话总结**：**ZSet 底层是「dict（member→score，O(1) 查分）+ skiplist（按 score 有序，支持范围/排名 O(log n)）」，元素少时用 listpack；选跳表是因为「实现简单、范围查询友好、并发易、性能与平衡树同级」—— 常见操作 `ZADD` O(log n)、`ZSCORE` O(1)、`ZRANGEBYSCORE` O(log n + m)。**', 1),
+
+('Redis', '键空间通知', 2,
+ 'Redis 的键空间通知（keyspace notification）是什么？',
+ '**键空间通知**：Redis 可以在**key 发生变化时发布事件**，客户端订阅这些事件。
+
+**开关**（默认关闭，因为**有开销**）：
+```bash
+# 开启键空间事件（K=keyspace, E=keyevent, 后面的字母代表事件类型）
+notify-keyspace-events "Ex"     # 只监听过期事件
+# 或运行时
+CONFIG SET notify-keyspace-events "KEA"
+```
+
+**事件类型**：
+- `K`：keyspace 事件（`__keyspace@<db>__:<key>`）。
+- `E`：keyevent 事件（`__keyevent@<db>__:<event>`）。
+- 类型字母：`g`(generic: del/expire)、`$`(string)、`l`(list)、`s`(set)、`h`(hash)、`z`(zset)、`x`(expired)、`e`(evicted)、`A`(全部)。
+
+**使用**：
+```bash
+# 订阅所有过期事件
+PSUBSCRIBE "__keyevent@0__:expired"
+
+# 订阅某个 key 的所有事件
+PSUBSCRIBE "__keyspace@0__:mykey"
+```
+
+**典型应用**：
+1. **延迟任务**（key 过期触发）。
+2. **缓存失效联动**（key 过期时通知其他系统）。
+3. **实时监控 key 变化**。
+
+**重要注意** ⚠️：
+- **过期事件「不保证及时」**：
+  - 只有 key 被**惰性删除或定期删除**时才发事件。
+  - 若 key 一直没被访问，**可能很久后才触发**。
+  - **不保证送达**（Pub/Sub 不持久化）。
+- **不能用作可靠的延迟队列**（要精确延迟用 ZSet）⭐。
+- **有性能开销**（事件发布、订阅者处理）。
+
+**一句话总结**：**键空间通知让客户端订阅「key 的变更/过期/淘汰」事件（靠 `notify-keyspace-events` 开启，`PSUBSCRIBE __keyevent@0__:expired` 监听），可用于缓存失效联动、监控；但**过期事件不保证及时和可靠**（依赖惰性/定期删除触发、Pub/Sub 不持久化），所以**不能当精确延迟队列**，且开启有开销。**', 1),
+
+('Redis', '版本,新特性', 2,
+ 'Redis 6 和 7 有哪些重要新特性？',
+ '**Redis 6.0**：
+1. **多线程 IO**：**网络读写多线程**（命令执行仍单线程）→ 提升高并发吞吐。
+   - 配置 `io-threads 4`。
+2. **ACL（访问控制列表）**：细粒度权限（用户、命令、key 模式）。
+   - `ACL SETUSER`、`ACL LIST`。
+3. **RESP3 协议**：更丰富的数据类型（map、set 返回）。
+4. **客户端缓存（Tracking）**：客户端可缓存 + 服务端**主动失效通知**。
+5. **SSL/TLS** 支持。
+6. **`STRALGO`**（字符串算法，如 LCS）。
+
+**Redis 7.0**：
+1. **Redis Functions**：**服务端可持久化的脚本**（替代/补充 Lua），`FUNCTION LOAD`。
+2. **Sharded Pub/Sub**：**分片发布订阅**（Cluster 下按槽分片，扩展性更好）。
+3. **ACL v2**：更细的权限（按 key 前缀、选择器）。
+4. **多部分 AOF（Multi-Part AOF）**：`appendonlydir`，base + incr 文件。
+5. **`CLIENT NO-EVICT`**、**`CLIENT NO-TOUCH`**：客户端内存控制。
+6. **AOF 时间戳注解**、**集群改进**（如 `CLUSTER SHARDS`）。
+
+**主要演进方向**：
+- **多核利用**（多线程 IO、分片 Pub/Sub）。
+- **安全**（ACL、TLS）。
+- **脚本持久化**（Functions）。
+- **客户端缓存**（Tracking）。
+- **协议现代化**（RESP3）。
+
+**一句话总结**：**Redis 6 引入「多线程 IO（网络多线程、命令仍单线程）+ ACL + RESP3 + 客户端缓存 + TLS」；Redis 7 带来「可持久化的 Functions 脚本 + 分片 Pub/Sub + ACL v2 + 多部分 AOF」；整体方向是**多核利用、安全增强、脚本持久化、协议现代化** —— 命令执行的单线程模型始终未变。**', 1),
+
+('Redis', '集群,脑裂', 3,
+ 'Redis Cluster 会发生脑裂吗？怎么防止数据丢失？',
+ '**脑裂**：网络分区导致**出现两个（或多个）主节点**，各自接受写，**恢复后一个分支的数据被丢弃**。
+
+**Cluster 中的脑裂场景**：
+- 主节点 M 与集群**大多数节点网络隔离**。
+- 多数派认为 M 挂了 → **选 M 的从库 S 为新主**。
+- 但 **M 仍以为自己是主，继续接受客户端写**。
+- 分区恢复后，**M 降级为从库**，**M 期间的写丢失** ⚠️。
+
+**为什么可能丢**：
+- Redis 复制是**异步**的 → 新主可能没同步到 M 的最新写。
+- M 在分区期间接受的写**无人知晓**。
+
+**缓解措施**：
+
+**1. `min-replicas-to-write` / `min-replicas-max-lag`**（主从/哨兵常用）：
+- 主节点**至少有 N 个从库连接**且**延迟 ≤ S 秒**才允许写。
+- 隔离的主节点**失去从库** → **拒绝写** → 减少脑裂写。
+- ⚠️ **Cluster 中这些参数的作用有限**（Cluster 有自己的选举）。
+
+**2. Cluster 的**：
+- **`cluster-node-timeout`**：判定节点下线的超时（太短易误判，太长故障恢复慢）。
+- **多数派投票**：从库升主需**获得多数主节点投票**。
+- **`cluster-require-full-coverage`**：有槽不可用时是否停止服务。
+
+**3. Fencing / 客户端**：
+- 客户端**写前确认路由**（但仍有窗口）。
+
+**4. 业务侧兜底**：
+- **关键数据强一致**别只依赖 Redis（用 DB 事务/ZooKeeper）。
+- **WAIT 命令**（等待 N 个副本确认，近似半同步）。
+
+**根本认知**：
+- **Redis 是 AP 系统**（优先可用性）→ **异步复制下无法完全避免数据丢失**。
+- **脑裂的窗口内，旧主的写必然可能丢**。
+- 要强一致 → **别用 Redis 做唯一存储**。
+
+**一句话总结**：**Redis Cluster 会脑裂：与多数派隔离的旧主继续接写，多数派选出新主，恢复后旧主的写丢失（异步复制的必然）；缓解靠 `min-replicas-to-write`（哨兵/主从更有效）、合理 `cluster-node-timeout`、多数派投票，或 `WAIT` 近似半同步 —— 但**Redis 是 AP 系统，异步复制下无法完全避免丢数据**，强一致数据别只存 Redis。**', 1),
+
+('Redis', '主从,复制问题', 3,
+ '什么是复制风暴？主从复制有哪些常见问题？',
+ '**复制风暴**：**大量从库同时对主库发起全量同步** → 主库**多次 fork + 传输 RDB** → **主库压力骤增**。
+
+**触发场景**：
+- 主库重启 / 网络抖动导致多个从库同时重连。
+- 一次性扩容大量从库。
+- 从库 `repl_backlog` 不足 → 只能全量。
+
+**解决**：
+1. **链式复制**：从库 A 同步好后，其他从库**从 A 同步**（分担主库压力）。
+2. **错峰**：分批重启/扩容。
+3. **增大 `repl-backlog-size`**：减少全量重同步。
+4. **限制从库数量**：单主从库别太多。
+
+**主从复制的常见问题**：
+
+| 问题 | 原因 | 解决 |
+|---|---|---|
+| **全量同步频繁** | backlog 不足、replid 变化 | 增大 backlog |
+| **复制延迟** | 从库处理慢、网络差、大 key | 监控 `master_repl_offset` 差值 |
+| **数据不一致** | 异步复制、主库大量写 | 接受最终一致/WAIⅣ |
+| **从库内存暴涨** | 复制缓冲积压 | 增大 `client-output-buffer-limit replica` |
+| **从库只读** | 默认 `replica-read-only yes` | 保持只读（防不一致） |
+| **过期 key 行为** | 从库等主库 DEL | 正常（保证一致） |
+| **主库 fork 抖动** | RDB 生成 | 控制实例大小 |
+
+**复制延迟监控**：
+- `INFO replication` 的 `master_repl_offset`（主）与从库的 `slave_repl_offset` 差值。
+- 差值持续增大 → 复制跟不上。
+
+**复制缓冲超限**（重要）：
+- 主库为每个从库维护输出缓冲。
+- 从库消费慢 → 缓冲堆积 → 超 `client-output-buffer-limit` → **主库断开从库** → 从库重连可能**全量同步**。
+- **必须合理配置**（否则恶性循环）。
+
+**一句话总结**：**复制风暴是「大量从库同时全量同步压垮主库」，靠链式复制、错峰、增大 backlog、限制从库数解决；主从常见问题是「全量同步频繁、复制延迟、数据不一致（异步）、复制缓冲超限（会触发断连→全量）」—— 核心监控指标是主从 `offset` 差值和复制输出缓冲，配置好 `repl-backlog-size` 和 `client-output-buffer-limit` 是关键。**', 1),
+
+('Redis', '复制延迟,读一致', 2,
+ '主从复制有延迟时，读从库会读到旧数据吗？怎么办？',
+ '**会**。Redis 复制是**异步**的 → **从库可能落后于主库** → 读从库可能读到**旧数据**。
+
+**典型场景**：
+- 用户**刚写入**（走主库）→ 立刻**读取**（走从库）→ **读不到刚写的**。
+- 这就是**「写后读」一致性问题**。
+
+**解决方案**：
+
+1. **关键读走主库**：
+   - 写完立即要读的数据 → **强制走主库**。
+   - 牺牲一点读扩展性换一致性。
+
+2. **`WAIT` 命令**（近似半同步）：
+   - 写完后 `WAIT numreplicas timeout` → **等待 N 个从库确认收到**。
+   - 再读从库就大概率一致。
+   - **代价**：增加写延迟；**不保证强一致**（只是等待）。
+
+3. **会话粘滞 / 客户端标记**：
+   - 同一用户短时间内**固定走主库**（写入后一段时间）。
+
+4. **监控复制延迟，超阈值拒绝从库读**：
+   - 差值 > 阈值 → 该从库**不提供读**。
+
+5. **业务容忍**：
+   - 大量场景（如资讯、商品列表）**能接受最终一致**。
+
+6. **强一致场景不用从库读** 或 **不用 Redis 复制**。
+
+**为什么会延迟**：
+- **网络 RTT**。
+- **从库单线程处理慢**（大量写、慢命令）。
+- **大 key 传输**。
+- **主库写入过快**（从库跟不上）。
+
+**监控**：
+- `INFO replication`：主从 `offset` 差值。
+- **差值持续增长** → 从库追不上（要扩容/优化）。
+
+**一句话总结**：**主从异步复制 → 从库可能落后 → 读从库会读到旧数据（写后读不一致）；解决靠「关键读走主库、`WAIT` 近似半同步、会话粘滞、按延迟阈值拒绝从库读、业务接受最终一致」；根本原因是网络 + 从库单线程 + 主库写过快 —— **能容忍最终一致的读从库，强一致的读主库**。**', 1),
+
+('Redis', '对象编码', 3,
+ 'Redis 的对象编码（encoding）是怎么回事？什么时候会转换？',
+ '**Redis 为每种类型提供多种**底层编码**，在「省内存」和「高性能」之间权衡。
+
+**各类型的编码**：
+
+| 类型 | 编码 | 条件 |
+|---|---|---|
+| **String** | `int` | 值是整数 |
+| | `embstr` | 短字符串（≤ 44 字节） |
+| | `raw` | 长字符串 |
+| **List** | `listpack` | 小列表 |
+| | `quicklist` | 大列表 |
+| **Hash** | `listpack` | 元素少且小 |
+| | `hashtable` | 元素多或大 |
+| **Set** | `intset` | 全是整数且少 |
+| | `listpack` | 元素少且非整数 |
+| | `hashtable` | 元素多 |
+| **ZSet** | `listpack` | 元素少且小 |
+| | `skiplist` | 元素多或大 |
+
+**查看**：`OBJECT ENCODING key`。
+
+**转换阈值**（可配置）：
+- `hash-max-listpack-entries`（默认 128）。
+- `hash-max-listpack-value`（默认 64 字节）。
+- `list-max-listpack-size`。
+- `set-max-intset-entries`。
+- `zset-max-listpack-entries` / `-value`。
+
+**转换特性**：
+- **只能「小→大」单向转换**（listpack → hashtable），**不会回退** ⭐。
+  - 即使你把元素删到很少，编码仍是 hashtable。
+- **转换是耗时的**（要重建结构）→ 可能造成**延迟抖动**。
+
+**为什么设计多种编码**：
+- **小数据**：紧凑编码省内存 + 缓存友好。
+- **大数据**：高效结构保证 O(1)/O(log n) 性能。
+- **自动切换**：对用户透明。
+
+**String 的三种编码**：
+- `int`：`SET n 123` → 直接存整数（省空间，`INCR` 快）。
+- `embstr`：短字符串，**一次内存分配**（头和内容连续）。
+- `raw`：长字符串，**两次分配**（可独立扩容）。
+
+**一句话总结**：**Redis 每种类型有多种底层编码（String: int/embstr/raw；Hash/Set/ZSet: 紧凑编码 ↔ hashtable/skiplist），按「元素数量 + 值大小」阈值自动选择，目标是「小数据省内存、大数据保性能」；转换是**单向的（小→大不可逆）**且**耗时可能引起抖动**，用 `OBJECT ENCODING` 查看、用 `*-max-*` 参数调节 —— 了解编码能帮助你诊断内存和性能问题。**', 1),
+
+('Redis', '内存淘汰,触发', 2,
+ 'Redis 什么时候触发内存淘汰？淘汰和过期有什么区别？',
+ '**过期（expire）** vs **淘汰（eviction）** 是**两回事**：
+
+| | 过期 | 淘汰 |
+|---|---|---|
+| 触发 | **key 到期**（TTL） | **内存达到 `maxmemory`** |
+| 对象 | **设了 TTL 的 key** | 策略决定 |
+| 目的 | 数据时效 | **腾内存** |
+| 策略 | 惰性 + 定期删除 | `maxmemory-policy` |
+
+**内存淘汰触发**：
+- 当**已用内存 > `maxmemory`** 时，**执行命令前**检查并淘汰。
+- 按 `maxmemory-policy` 选**被淘汰的 key**。
+- **淘汰后**才执行新命令。
+
+**重要细节**：
+1. **淘汰发生在「写命令」时**（读命令一般不淘汰，除非……实际上 Redis 在命令执行前检查内存）。
+2. **`noeviction`**：不淘汰，**写命令直接报错**（`OOM command not allowed`）—— 读还能用。
+3. **淘汰会发布事件**（`__keyevent@0__:evicted`）。
+4. **从库不主动淘汰**（等主库的 DEL 同步）。
+
+**过期删除**：
+- **惰性删除**：访问时检查。
+- **定期删除**：每秒多次采样扫描。
+- **两者都可能不及时**（过期 key 可能短暂残留）。
+
+**两者的交互**：
+- 若 `maxmemory-policy` 是 `volatile-*`，**只淘汰「设了 TTL 的」key**。
+- 若这类 key 都删完了内存还不够 → **报错**（类似 noeviction）⚠️。
+- **`allkeys-*`** 则淘汰任意 key（包括没 TTL 的）。
+
+**监控**：
+- `INFO stats` 的 `evicted_keys`（淘汰数）、`expired_keys`（过期数）。
+- `INFO memory` 的 `used_memory` / `maxmemory`。
+
+**实践**：
+- **缓存场景**：设 `maxmemory` + `allkeys-lru`（或 lfu）+ TTL。
+- **`maxmemory` 留余量**（fork、复制缓冲）。
+- **别用 `noeviction`**（除非不能丢数据且已规划容量）。
+
+**一句话总结**：**过期是「key 到 TTL 被删」（惰性 + 定期），淘汰是「内存达 `maxmemory` 时按策略腾空间」；淘汰在内存超限的写命令前触发，`noeviction` 会报错、`volatile-*` 只淘汰带 TTL 的 key（删完还超就报错）、从库不主动淘汰；用 `evicted_keys`/`expired_keys` 监控 —— 缓存场景配 `allkeys-lru` + TTL + 留余量最稳。**', 1),
+
+('Redis', '应用,排行榜', 1,
+ '如何用 Redis 实现排行榜？',
+ '**用 ZSet**（**最佳选择**）：
+- **member = 用户/条目，score = 分数**。
+- ZSet 自动按 score 排序。
+
+**常用操作**：
+```bash
+ZADD rank 100 "user1" 200 "user2"     # 添加/更新分数
+ZINCRBY rank 10 "user1"               # 分数 +10
+ZREVRANGE rank 0 9 WITHSCORES         # 前 10 名（降序，排行榜）
+ZRANK rank "user1"                    # 升序排名
+ZREVRANK rank "user1"                 # 降序排名（第几名）
+ZSCORE rank "user1"                   # 查分数
+ZRANGEBYSCORE rank 100 200            # 按分数范围
+ZCARD rank                            # 总人数
+ZREM rank "user1"                     # 移除
+```
+
+**核心命令**：
+- **`ZREVRANGE`**（降序取前 N）→ 榜单。
+- **`ZREVRANK`**（某人排名）→ 「我的排名」。
+- **`ZINCRBY`**（原子加分）→ 点赞/投票/积分。
+
+**设计要点**：
+1. **按时间维度分 key**：`rank:20261010`（日榜）、`rank:week:41`（周榜）。
+2. **数据量大时**：
+   - **只保留 TopN**（`ZREMRANGEBYRANK` 删掉尾部）。
+   - **分页 + 缓存**。
+3. **分数相同时**：ZSet 按 member **字典序**排列（可加时间戳到 score 低位保证稳定）。
+4. **多维度榜**：不同 key（日/周/月/总榜）。
+
+**复杂场景**：
+- **海量用户榜单** → 分片 ZSet + 归并，或**分层榜**（Top100 精排 + 其余粗排）。
+- **实时更新 + 高性能** → 定时批量写 Redis。
+- **权重复杂** → 在应用层算好 score 再 `ZADD`。
+
+**其他**：
+- **点赞/关注**：Set（去重）+ ZSet（计数排序）。
+- **热榜（时间衰减）**：score = 热度 × 时间衰减函数，定时重算。
+
+**一句话总结**：**排行榜用 ZSet：`ZADD`/`ZINCRBY` 写分数、`ZREVRANGE` 取前 N、`ZREVRANK` 查排名、`ZSCORE` 查分，全部 O(log n)；按日/周/月分 key、只留 TopN、分数相同用 member 字典序兜底 —— ZSet 是排行榜的「量身定做」结构。**', 1),
+
+('Redis', '应用,秒杀', 3,
+ '如何用 Redis 实现秒杀（库存扣减）？',
+ '**秒杀核心挑战**：**高并发、超卖、少库存、限流**。
+
+**Redis 的作用**：
+1. **库存预热**：把库存加载到 Redis。
+2. **原子扣减**（防超卖）。
+3. **限流/去重**（防刷、防超买）。
+
+**关键操作**：
+
+**1. 库存扣减（原子）**：
+```bash
+# 方案一：DECR，返回 < 0 说明超卖，回滚
+DECR stock:item1001
+# 若返回 < 0 → INCR 回滚 + 返回失败
+
+# 方案二：Lua 脚本（判断 + 扣减 原子）
+```
+```lua
+if tonumber(redis.call(''get'', KEYS[1])) > 0 then
+    redis.call(''decr'', KEYS[1])
+    return 1        -- 成功
+else
+    return 0        -- 售罄
+end
+```
+- **Lua 保证判断和扣减原子化** ⭐。
+
+**2. 防超买（一人一单）**：
+```bash
+SADD bought:item1001 user123     # 返回 1 表示首次，0 表示已买过
+```
+- 用 **Set 去重**。
+
+**3. 限流**：
+- `INCR` + `EXPIRE`（固定窗口）或令牌桶（Lua）。
+- 限制单用户/单 IP 的请求频率。
+
+**完整流程**：
+```
+1. 秒杀前：库存预热到 Redis，商品信息缓存
+2. 请求：
+   a. 限流（单用户频率）
+   b. 去重（Set 判是否已抢）
+   c. 原子扣减库存（Lua）
+   d. 扣减成功 → 发送到消息队列（异步创建订单）
+   e. 返回「排队中」
+3. 异步：消费者从队列取，创建订单、扣 DB 库存
+4. 前端：轮询/推送查询结果
+```
+
+**为什么用队列**：
+- **削峰**：Redis 挡住瞬时流量，**订单异步创建**保护 DB。
+- **解耦**：Redis 快速响应，DB 慢慢处理。
+
+**最终一致**：
+- Redis 扣减成功 + 队列 + DB 落库 → **最终一致**。
+- **失败回滚**：DB 扣减失败要**回滚 Redis 库存**（补偿）。
+- **幂等**：订单创建要幂等（防重复）。
+
+**注意**：
+- **Redis 与 DB 库存一致**：Redis 是「预扣」，DB 是「准」，**对账/补偿**。
+- **防止 Redis 单点**（Cluster/主从）。
+- **大流量下要水平扩展**。
+
+**一句话总结**：**秒杀用 Redis 做「预扣库存」：库存预热 + **Lua 原子扣减**（判断+DECR，防超卖）+ **Set 去重**（一人一单）+ **限流**（防刷），扣减成功后**发消息队列异步创建订单**（削峰保护 DB），DB 侧幂等落库、失败回滚 Redis —— 核心是「Redis 挡流量、Lua 保原子、队列做削峰」。**', 1),
+
+('Redis', '应用,场景', 1,
+ 'Redis 的典型应用场景有哪些？',
+ '**1. 缓存（最主要）**：
+- **页面缓存、数据缓存、会话缓存（Session）**。
+- 减轻 DB 压力，提升响应。
+- 配 Cache Aside + TTL。
+
+**2. 分布式锁**：
+- `SET NX PX` + Lua 释放。
+- 幂等、防重复提交。
+
+**3. 计数器 / 限流**：
+- `INCR`（点赞数、访问量、库存）。
+- 限流（令牌桶/滑动窗口）。
+
+**4. 排行榜**：
+- ZSet（`ZREVRANGE`）。
+
+**5. 消息队列**：
+- List（简单队列）、Stream（可靠队列）、Pub/Sub（广播）。
+
+**6. 会话共享**：
+- 多台服务器共享 Session（`spring-session-data-redis`）。
+
+**7. 分布式 ID**：
+- `INCR` / 号段模式。
+
+**8. 社交关系**：
+- Set（关注、粉丝、共同好友）、ZSet（关注时间线）。
+
+**9. 去重 / 统计**：
+- Set（去重）、Bitmap（签到、活跃）、HyperLogLog（UV）。
+
+**10. 地理位置**：
+- GEO（附近的人/店）。
+
+**11. 延迟队列**：
+- ZSet（score 存时间戳）。
+
+**12. 缓存预热/热点数据**。
+
+**13. 分布式协调**：
+- Redlock、分布式信号量、防止重复任务。
+
+**14. 实时排行/热搜**：
+- ZSet + 时间衰减。
+
+**为什么 Redis 能承担这么多**：
+- **数据结构的丰富性**（远超一般 KV）。
+- **原子操作**。
+- **高性能**（内存）。
+- **持久化 + 高可用**。
+
+**注意**：
+- **别把 Redis 当唯一数据库**（内存贵、可能丢）。
+- **按场景选合适结构**。
+- **关注大 key、热 key、内存**。
+
+**一句话总结**：**Redis 的典型场景是「缓存、分布式锁、计数器/限流、排行榜、消息队列、Session 共享、分布式 ID、社交关系、去重统计（Bitmap/HLL）、地理位置、延迟队列」—— 它能承担这么多是因为**数据结构的丰富性 + 原子操作 + 内存高性能 + 持久化高可用**；但内存贵、可能丢，**不能当唯一数据库**。**', 1),
+
+('Redis', '数据倾斜,分片', 3,
+ 'Redis 集群会出现数据倾斜吗？怎么解决？',
+ '**数据倾斜**：**某些节点承载的数据/流量远多于其他节点**。
+
+**原因**：
+1. **热点 key**：某个 key 被高频访问（秒杀、热门商品）→ 它所在的节点被打爆。
+2. **大 key**：某个 key 的 value 极大 → 该节点内存倾斜。
+3. **key 分布不均**：哈希函数或 key 设计导致分布不均。
+4. **哈希标签（hash tag）滥用**：`{user}` 让所有相关 key 落到同一槽/节点。
+
+**表现形式**：
+- **内存倾斜**：节点内存使用差异大。
+- **流量倾斜（热 key）**：某节点 QPS 远高于其他。
+- **CPU/网络倾斜**。
+
+**解决方案**：
+
+**针对热 key**：
+1. **本地缓存**（进程内）→ 减少打到 Redis。
+2. **key 打散**：`hot:1` ~ `hot:N`，**随机读其中一个**（写要写多个）⭐。
+3. **读写分离**：从库分担读。
+4. **限流/降级**。
+
+**针对大 key**：
+1. **拆分**（大 Hash 拆成多个）。
+2. **压缩**。
+
+**针对分布不均**：
+1. **合理设计分片键**（避免固定前缀）。
+2. **慎用 hash tag**（只在真需要多键原子操作时用）。
+3. **虚拟节点**（一致性哈希）。
+
+**Cluster 层面**：
+- **槽迁移**（`CLUSTER SETSLOT` / `reshard`）平衡槽分布。
+- **监控**：`CLUSTER NODES`、各节点内存/CPU。
+
+**一句话总结**：**Redis 集群会数据倾斜：**热 key**（单节点被打爆）和**大 key**（单节点内存大）是主因，还有分片键设计/哈希标签滥用；解决靠「热 key 用本地缓存 + key 打散 + 读写分离，大 key 拆分/压缩，合理设计分片键、慎用 hash tag，必要时迁移槽」—— 倾斜的根因往往是「某几个 key 过于集中」。**', 1),
+
+('Redis', '架构,与MySQL', 2,
+ 'Redis 和 MySQL 在架构中如何配合？',
+ '**典型架构**：
+```
+客户端 → Nginx → 应用服务 → { Redis（缓存）, MySQL（持久化） }
+```
+
+**分工**：
+- **MySQL**：**持久化、事务、强一致、复杂查询**（唯一数据源）。
+- **Redis**：**缓存、高速读写、计数、排行、锁**（加速层）。
+
+**读写流程（Cache Aside）**：
+- **读**：查 Redis 命中 → 返回；未命中 → 查 MySQL → **回填 Redis** → 返回。
+- **写**：更新 MySQL → **删除 Redis 缓存**。
+
+**为什么不是「更新缓存」**：
+- 删除更简单，**下次读时懒加载**。
+- 避免并发写导致的缓存脏数据。
+
+**缓存的作用**：
+- **挡住 90%+ 读请求**（热点数据）。
+- 减轻 MySQL 压力（QPS 提升一个数量级）。
+- 降低延迟（内存 vs 磁盘）。
+
+**一致性问题**（见缓存一致性）：
+- **最终一致**为主。
+- **延迟双删 / binlog 订阅（Canal）** 提升可靠性。
+
+**分场景**：
+
+| 数据 | 存哪 |
+|---|---|
+| 热点读、可容忍短暂旧 | Redis |
+| 强一致、需事务 | MySQL |
+| 计数/排行 | Redis（定期落库） |
+| Session | Redis |
+| 库存 | **Redis 预扣 + MySQL 准** |
+
+**注意**：
+- **别把 MySQL 当纯 Redis**（或反之）。
+- **Redis 挂了要有降级**（限流 + 直接查 DB 兜底，但要保护 DB）。
+- **缓存穿透/击穿/雪崩**要防。
+- **数据量**：Redis 内存有限，只存**热点**。
+
+**本项目（layzcatBlog）**：
+- **MySQL** 存文章/评论/题库（持久）。
+- **Redis**（可选）做热点文章缓存、访问计数、限流。
+
+**一句话总结**：**Redis 和 MySQL 的分工是「Redis 做缓存/计数/排行/锁（加速），MySQL 做持久化/事务/强一致（真源）」；读写走 Cache Aside（读：缓存→DB 回填；写：更 DB 删缓存），一致性问题用延迟双删/Canal 缓解；热点放 Redis、强一致放 MySQL，并做降级保护 —— 两者互补而非替代。**', 1),
+
+('Redis', '持久化,fork,COW', 3,
+ 'Redis 的 fork 和写时复制（COW）在持久化中起什么作用？',
+ '**BGSAVE / BGREWRITEAOF 都依赖 fork**：
+- 主进程 **`fork()` 出一个子进程**，**子进程负责生成 RDB / 重写 AOF**。
+- 主进程**继续处理请求**（不阻塞）。
+- **`fork` 本身会短暂阻塞主进程**（复制页表）⚠️。
+
+**写时复制（COW）**：
+- `fork` 后，**父子进程共享所有内存页**（**只读**）。
+- 主进程**继续写**时，触发**写保护缺页** → **内核复制该页**给主进程。
+- 子进程看到的是 **fork 那一刻的稳定快照**（数据一致）。
+
+**为什么用 COW**：
+- **不真正复制整个内存**（否则 fork 要大内存 + 长时间）。
+- fork 快、内存省（只复制被写过的页）。
+
+**代价与风险**：
+1. **fork 阻塞**：内存越大，页表越大，**fork 复制页表越慢**（GB 级可能阻塞几十~几百毫秒）⚠️。
+2. **COW 内存膨胀**：
+   - 若持久化期间**主进程写入量大** → 大量页被复制 → **内存可能翻倍** → **OOM 风险**。
+   - 所以 `maxmemory` 要**留足余量**（约 1 倍写入量）。
+3. **THP（透明大页）**：可能放大 COW 开销 → 建议 **关闭 THP**。
+
+**监控**：
+- `INFO persistence`：`rdb_bgsave_in_progress`、`rdb_last_bgsave_status`。
+- `INFO stats`：`latest_fork_usec`（**最近 fork 耗时**）⭐。
+- `INFO memory`：`used_memory`、`used_memory_rss`（看 COW 膨胀）。
+
+**优化**：
+- **控制实例内存大小**（如 ≤ 10~16 GB），fork 更快。
+- **降低写入频率**（持久化期间）。
+- **关闭 THP**。
+- **避开高峰**做 RDB/AOF 重写。
+- **`no-appendfsync-on-rewrite yes`**（重写时不同步 AOF，减少阻塞）。
+
+**一句话总结**：**BGSAVE/AOF 重写靠 `fork` 子进程 + **COW** 实现「不阻塞主进程的快照」，fork 后父子共享只读页、主进程写时按页复制；代价是 **fork 页表复制会短暂阻塞**（内存越大越久）、**COW 可能使内存膨胀一倍**（写入多时）；所以要控制实例大小、留内存余量、关 THP、错峰持久化，并用 `latest_fork_usec` 监控。**', 1),
+
+('其他数据库', '数据库分类', 1,
+ '数据库有哪些分类？关系型和非关系型（NoSQL）有什么区别？',
+ '**按数据模型分类**：
+
+**1. 关系型数据库（SQL / RDBMS）**：
+- **二维表** + **严格 schema** + **SQL** + **ACID 事务**。
+- 代表：**MySQL、PostgreSQL、Oracle、SQL Server**。
+- 适合：**结构化数据、强一致、复杂关联查询**（金融、ERP）。
+
+**2. 键值数据库（KV）**：
+- 简单 `key → value`，极快。
+- 代表：**Redis、Memcached、RocksDB**。
+- 适合：**缓存、会话、计数器**。
+
+**3. 文档数据库（Document）**：
+- **JSON/BSON 文档**，schema 灵活。
+- 代表：**MongoDB、CouchDB**。
+- 适合：**半结构化、字段多变**（内容管理、日志）。
+
+**4. 列式数据库（Wide Column / Column Family）**：
+- 按**列族**存储，适合海量稀疏数据。
+- 代表：**HBase、Cassandra、ClickHouse**（参数分析）。
+- 适合：**海量写入、按列扫描、时序**。
+
+**5. 图数据库（Graph）**：
+- **节点 + 边**，擅长多层关系遍历。
+- 代表：**Neo4j**。
+- 适合：**社交网络、推荐、知识图谱、反欺诈**。
+
+**6. 搜索引擎**：
+- **倒排索引**，全文检索。
+- 代表：**Elasticsearch、Solr**。
+
+**7. 时序数据库（TSDB）**：
+- 按时间存储，高写入。
+- 代表：**InfluxDB、Prometheus、TimescaleDB**。
+
+**关系型 vs NoSQL**：
+| 维度 | 关系型 | NoSQL |
+|---|---|---|
+| 模型 | 表 | KV/文档/列/图 |
+| Schema | **严格** | 灵活 |
+| 事务 | **强 ACID** | 常为 BASE |
+| 扩展 | 垂直为主 | **水平（分片）** |
+| 查询 | **SQL 强大** | 各有限制 |
+| 一致性 | 强 | 最终一致（多） |
+| 场景 | 结构化、强一致 | 海量、灵活、高并发 |
+
+**一句话总结**：**数据库分关系型（表 + ACID + SQL）和 NoSQL（KV/文档/列/图/搜索/时序）；关系型强一致、SQL 强大、适合结构化，NoSQL 灵活、可水平扩展、适合海量和半结构化/特定场景 —— 选型看「数据结构是否规整、是否要强事务、是否要海量扩展」。**', 1),
+
+('其他数据库', 'ACID', 2,
+ '数据库事务的 ACID 分别是什么？',
+ '**ACID**：事务的四个基本特性。
+
+**1. A - 原子性（Atomicity）**：
+- 事务内的操作**要么全成功，要么全失败回滚**。
+- **实现**：**undo log**（回滚日志，记录如何撤销）。
+
+**2. C - 一致性（Consistency）**：
+- 事务前后**数据库从一个一致状态变到另一个一致状态**。
+- 例：转账前后总金额不变。
+- **由 A、I、D 共同保证**（应用正确性 + 数据库机制）。
+
+**3. I - 隔离性（Isolation）**：
+- **并发事务互不干扰**，像串行一样。
+- **实现**：**锁 + MVCC**。
+- **隔离级别**决定强度（见隔离级别题）。
+
+**4. D - 持久性（Durability）**：
+- 事务提交后，**数据永久保存**（即使宕机）。
+- **实现**：**redo log + WAL**（预写日志，先写日志再写数据）。
+
+**实现机制对应**：
+| 特性 | 机制 |
+|---|---|
+| 原子性 | **undo log** |
+| 持久性 | **redo log** |
+| 隔离性 | **锁 + MVCC** |
+| 一致性 | 前三者 + 业务约束 |
+
+**WAL（Write-Ahead Logging）**：
+- **先写日志，再写数据**。
+- 宕机时**用日志恢复**。
+- 是大多数数据库持久性的基础。
+
+**一句话总结**：**ACID = 原子性（全成或全败，靠 undo log）+ 一致性（状态合法，由其他三者共同保证）+ 隔离性（并发不干扰，靠锁+MVCC）+ 持久性（提交不丢，靠 redo log/WAL）；核心实现是「undo 管回滚、redo 管持久、锁+MVCC 管隔离」。**', 1),
+
+('其他数据库', '隔离级别,并发问题', 3,
+ '事务的隔离级别有哪些？各自解决什么并发问题？',
+ '**并发事务的三大问题**：
+1. **脏读（Dirty Read）**：读到**别的事务未提交**的修改（对方可能回滚）。
+2. **不可重复读（Non-Repeatable Read）**：同一事务内**两次读同一行结果不同**（别人改了并提交）。
+3. **幻读（Phantom Read）**：同一事务内**两次范围查询，结果集行数变了**（别人插入/删除了）。
+
+**四级隔离（从低到高）**：
+| 级别 | 脏读 | 不可重复读 | 幻读 |
+|---|---|---|---|
+| **读未提交**（Read Uncommitted） | ✅ 会 | ✅ 会 | ✅ 会 |
+| **读已提交**（Read Committed, RC） | ❌ | ✅ 会 | ✅ 会 |
+| **可重复读**（Repeatable Read, RR） | ❌ | ❌ | ⚠️ InnoDB 基本解决 |
+| **串行化**（Serializable） | ❌ | ❌ | ❌ |
+
+**各级别实现**：
+- **RU**：不加读锁，最脏。
+- **RC**：读时加读锁，读完释放（快照读）。
+- **RR**：事务内读保持一致快照（MVCC 一致性读）→ 可重复读。
+- **Serializable**：读写都加锁，强制串行。
+
+**幻读的解决**：
+- **MySQL InnoDB 在 RR 下**用 **Next-Key Lock（间隙锁 + 行锁）** 防幻读 ⭐（**快照读靠 MVCC，当前读靠间隙锁**）。
+- **标准 RR 理论上不能防幻读**（InnoDB 做了增强）。
+- **Serializable** 彻底解决。
+
+**MySQL 默认**：**RR**（可重复读）。
+**Oracle / PostgreSQL / SQL Server 默认**：**RC**（读已提交）。
+
+**为什么不同默认**：
+- MySQL RR 便于**主从复制一致**（statement 格式）。
+- PG 认为 RC 更符合直觉、有 MVCC 支持。
+
+**一句话总结**：**隔离级别从低到高是 RU（啥都防不住）、RC（防脏读）、RR（防不可重复读）、Serializable（全防）；对应问题脏读/不可重复读/幻读；MySQL 默认 RR（用 Next-Key Lock 额外防幻读），Oracle/PG 默认 RC —— 「隔离越强，并发越弱」。**', 1),
+
+('其他数据库', 'MVCC', 3,
+ 'MVCC 是什么？它是怎么实现「读写不阻塞」的？',
+ '**MVCC（多版本并发控制）**：**每个事务看到数据的某个「快照版本」**，**读不阻塞写、写不阻塞读**。
+
+**核心思想**：
+- **每行数据保留多个版本**（不同事务修改产生的历史版本）。
+- **读操作读「快照」**（不读最新、不加锁）。
+- **写操作创建新版本**。
+- **靠版本链 + 可见性判断**决定读哪个版本。
+
+**实现要素**（以 InnoDB 为例）：
+1. **隐藏字段**：
+   - `DB_TRX_ID`（最后修改该行的事务 ID）。
+   - `DB_ROLL_PTR`（回滚指针，指向 undo log 中的旧版本）。
+2. **undo log 版本链**：每次修改把旧版本记入 undo，形成**链**。
+3. **Read View（读视图）**：事务开始时**记录当前活跃事务 ID 列表**，用于**判断某个版本是否可见**。
+
+**可见性判断**（简化）：
+- 版本的事务 ID **< 当前事务** 且**不在活跃列表** → **可见**（已提交的旧版本）。
+- 否则**沿版本链找更旧的版本**。
+
+**RC 与 RR 的区别（关键）**：
+- **RC（读已提交）**：**每次 `SELECT` 都生成新的 Read View** → 能读到别人新提交的（不可重复读）。
+- **RR（可重复读）**：**只在第一次 `SELECT` 时生成 Read View**，整个事务复用 → **可重复读** ⭐。
+
+**快照读 vs 当前读**：
+- **快照读（普通 SELECT）**：走 MVCC，读快照。
+- **当前读（`SELECT ... FOR UPDATE`、`UPDATE`、`DELETE`、`INSERT`）**：**读最新版本 + 加锁**。
+
+**MVCC 的好处**：
+- **读写不互相阻塞**（读快照，无需加读锁）。
+- 提升并发性能。
+- 实现一致性读。
+
+**代价**：
+- **undo log 膨胀**（旧版本要保留，直到没人用）。
+- **需要 purge 清理**。
+- 实现复杂。
+
+**一句话总结**：**MVCC 用「隐藏字段（trx_id/roll_ptr）+ undo 版本链 + Read View」让读操作读快照、不加锁，从而实现「读写不阻塞」；RC 每次 SELECT 新建 Read View（可读到新提交），RR 事务内复用 Read View（可重复读）—— 它是现代数据库高并发的核心机制，代价是 undo 膨胀需清理。**', 1),
+
+('其他数据库', '范式,设计', 2,
+ '数据库范式是什么？什么时候要反范式？',
+ '**范式（Normal Form）**：**减少数据冗余、避免更新异常的规范化规则**。
+
+**1NF（第一范式）**：
+- **字段原子性**：每列不可再分。
+- ❌ `地址 = "北京 朝阳区"`（可拆）→ ✅ 拆成省、市、区。
+
+**2NF（第二范式）**：
+- 在 1NF 基础上，**非主键列完全依赖主键**（消除**部分依赖**）。
+- ❌ 联合主键 `(订单ID, 商品ID)`，但 `商品名称` 只依赖 `商品ID` → 拆表。
+
+**3NF（第三范式）**：
+- 在 2NF 基础上，**非主键列不依赖其他非主键列**（消除**传递依赖**）。
+- ❌ `订单表` 里存了 `客户ID` 和 `客户电话`（电话依赖客户 ID）→ 拆出客户表。
+
+**BCNF**：更强的 3NF（每个决定因素都是候选键）。
+
+**范式的目的**：
+- **减少冗余**。
+- **避免插入/更新/删除异常**。
+
+**范式的问题**：
+- **表拆得太多** → **JOIN 变多** → **查询性能下降**。
+
+**反范式（Denormalization）**：
+- **故意冗余**，减少 JOIN，**换查询性能**。
+- 例：订单表冗余「商品名称」「用户名」（避免每次 JOIN）。
+- **代价**：**冗余数据要维护一致性**（更新时多处改）。
+
+**什么时候反范式**：
+- **读多写少**（冗余读快）。
+- **JOIN 性能瓶颈**。
+- **数据仓库/报表**（宽表）。
+- **明细需快照**（订单存下单时的价格，不能变）。
+
+**权衡**：
+| | 范式化 | 反范式 |
+|---|---|---|
+| 冗余 | 少 | 多 |
+| JOIN | 多 | 少 |
+| 写 | **快/一致** | 需维护 |
+| 读 | 慢（多 JOIN） | **快** |
+| 适合 | OLTP 写入 | 读密集型/报表 |
+
+**实践**：
+- **OLTP 系统**：**3NF 为主**，热点查询适当冗余。
+- **数据仓库/OLAP**：**反范式（宽表/星型模型）**。
+- **高并发读服务**：冗余 + 异步维护。
+
+**一句话总结**：**范式（1NF 原子性、2NF 消部分依赖、3NF 消传递依赖）通过拆表减少冗余和更新异常，但 JOIN 变多影响读性能；反范式故意冗余换查询速度，代价是维护一致性 —— OLTP 以 3NF 为主、热点冗余，OLAP/高并发读用反范式宽表。**', 1),
+
+('其他数据库', '索引,B+树', 3,
+ '为什么数据库索引用 B+ 树而不用二叉树或哈希？',
+ '**索引的目标**：**减少磁盘 IO**（磁盘访问比内存慢几个数量级）。
+
+**为什么不用二叉树（BST/AVL/红黑树）**：
+- 树高 **O(log₂ n)**，n=100 万时**高 20** → **20 次磁盘 IO**。
+- 磁盘 IO 是瓶颈 → 树太高太慢。
+
+**B+ 树的优势** ⭐：
+1. **多路（m 叉）**：一个节点存**多个 key**（对应**一个磁盘页**，如 16KB）。
+   - 同样 100 万数据，**3~4 层**就能存下 → **3~4 次 IO**。
+2. **矮胖**：**树高低**是核心优势（减少 IO）。
+3. **节点大小 = 磁盘页**：**一次 IO 读一个节点**，利用率高。
+4. **所有数据在叶子节点 + 叶子用链表相连**：
+   - **范围查询高效**（顺着链表扫描）⭐。
+   - 查找稳定（每次都要到叶子，路径等长）。
+
+**B 树 vs B+ 树**：
+| 维度 | B 树 | B+ 树 |
+|---|---|---|
+| 数据位置 | 所有节点都存数据 | **只在叶子** |
+| 内部节点 | 存数据 + 指针 | **只存索引（key+指针）** |
+| 范围查询 | 麻烦（要回溯） | **叶子链表，高效** |
+| 树高 | 较高 | **更矮**（内部节点能放更多 key） |
+| 查找 | 可能提前命中 | 总到叶子 |
+
+**为什么 B+ 树更适合数据库**：
+- 内部节点不存数据 → **能放更多 key** → **树更矮**。
+- 叶子链表 → **范围查询/排序高效**。
+
+**哈希索引**：
+- **O(1) 等值查询**，但**不支持范围查询、不支持排序**。
+- 有**哈希冲突**、**不支持最左前缀**。
+- **适用**：等值查询为主（如内存表 `MEMORY` 引擎、某些自适应哈希）。
+- **不适用**：范围查询、排序（所以主流的 InnoDB 主索引是 B+ 树）。
+
+**为什么不用跳表**：
+- 跳表是**内存结构**（Redis 用），**节点多、随机层**，磁盘上**局部性差**。
+- B+ 树**节点对齐磁盘页**、**树矮**，更适合磁盘。
+
+**一句话总结**：**索引用 B+ 树是因为「多路 + 矮胖 + 节点对齐磁盘页 + 叶子链表」——把树高降到 3~4 层，磁盘 IO 极少，且范围查询高效；二叉树太高、哈希不支持范围和排序、跳表适合内存不适合磁盘 —— B+ 树是「为磁盘 IO 优化」的最优选择。**', 1),
+
+('其他数据库', '索引,聚簇', 3,
+ '聚簇索引和非聚簇索引有什么区别？回表是什么？',
+ '**聚簇索引（Clustered Index）**：
+- **索引和数据存在一起**（**叶子节点就是数据行**）。
+- 一个表**只能有一个**聚簇索引（数据只能按一种顺序物理组织）。
+- **InnoDB 的主键索引就是聚簇索引**：**按主键组织数据**。
+
+**非聚簇索引（Secondary Index / 二级索引）**：
+- **索引和数据分开**，叶子节点存**索引列 + 主键值**（不是整行）。
+- 一个表**可以有多个**。
+
+**回表（Lookup）** ⭐：
+- 用**二级索引**查到**主键**后，**还需回聚簇索引查完整行** → **多一次查找**。
+- 例：`SELECT * FROM users WHERE name = ''tom''`（name 有索引）：
+  1. 在 name 索引找到主键 id。
+  2. **回表**到主键索引找整行。
+
+**覆盖索引（Covering Index）**：
+- 查询的列**都在索引里** → **不用回表** ⭐。
+- 例：`SELECT name FROM users WHERE name=''tom''`（name 索引已含 name）。
+- **优化手段**：把查询列加入联合索引，**避免回表**。
+
+**InnoDB vs MyISAM 的索引**：
+| | InnoDB | MyISAM |
+|---|---|---|
+| 主索引 | **聚簇**（数据即索引） | 非聚簇（数据、索引分离） |
+| 二级索引 | 叶子存**主键** | 叶子存**行地址** |
+| 事务 | ✅ | ❌ |
+
+**为什么 InnoDB 二级索引存主键**：
+- 行移动时不用更新二级索引（主键不变）。
+- 主键**尽量小**（主键小 → 二级索引也小）→ **推荐自增 int 主键** ⭐。
+- **主键过长**（如 UUID 字符串）→ 二级索引膨胀、插入随机（页分裂）。
+
+**索引下推（Index Condition Pushdown, ICP）**：
+- 把 WHERE 条件中**能在索引里判断的部分**下推到**存储引擎层**过滤，**减少回表**。
+
+**一句话总结**：**聚簇索引「索引即数据」（InnoDB 主键索引，叶子是整行，一个表只一个），非聚簇索引「索引与数据分离」（叶子存主键，可多个）；用二级索引查到主键后要回聚簇索引取整行叫**回表**，把查询列放进索引避免回表就是**覆盖索引** —— 所以「主键要小、查询尽量覆盖、用 ICP 减少回表」。**', 1),
+
+('其他数据库', 'OLTP,OLAP', 2,
+ 'OLTP 和 OLAP 有什么区别？列式存储为什么适合分析？',
+ '**OLTP（联机事务处理）**：
+- **面向业务交易**（增删改查）。
+- 特点：**事务多、单次数据量小、高并发、强一致**。
+- 查询：**按行访问**（查一条订单）。
+- 代表：**MySQL、PostgreSQL**。
+- 优化：**行存 + B+ 树索引 + 事务**。
+
+**OLAP（联机分析处理）**：
+- **面向数据分析**（统计、报表、聚合）。
+- 特点：**查询复杂、扫描大量数据、聚合多、并发低**。
+- 查询：**按列访问**（算所有订单的总额）。
+- 代表：**ClickHouse、Doris、Hive、Spark**。
+- 优化：**列存 + 向量化 + 压缩**。
+
+**对比**：
+| 维度 | OLTP | OLAP |
+|---|---|---|
+| 目的 | 交易 | 分析 |
+| 操作 | 增删改查 | 大量读 + 聚合 |
+| 数据量 | 单条 | 海量 |
+| 并发 | **高** | 低 |
+| 列/行 | **行存** | **列存** |
+| 索引 | B+ 树 | 稀疏索引 |
+| 一致 | 强 | 最终/离线 |
+| 代表 | MySQL | ClickHouse |
+
+**列式存储为什么适合分析** ⭐：
+1. **只读需要的列**：分析常只查几列（如「总和」），列存**只读那几列**，行存要读整行 → **IO 少**。
+2. **压缩率高**：**同一列数据类型相同**（如全是数字/日期）→ **压缩比高**（可达 10 倍+）。
+3. **向量化执行**：按列批量处理，**CPU 缓存友好 + SIMD**。
+4. **适合聚合**：`SUM/AVG/COUNT` 直接对一列算。
+
+**行存的优势**：
+- **按行读取快**（一次取出整行）。
+- **适合点查/事务**（增删改一行）。
+
+**为什么 OLTP 不列存**：
+- **单行写入**要拆到多列 → 写放大。
+- 事务/更新不便。
+
+**HTAP**：混合事务分析（TiDB、OceanBase 等，试图同时支持）。
+
+**一句话总结**：**OLTP 面向交易（高并发、单行读写、强一致，用行存 + B+ 树，如 MySQL），OLAP 面向分析（海量扫描、聚合、低并发，用列存 + 压缩 + 向量化，如 ClickHouse）；列存只读需要的列 + 同列类型一致高压缩 + 向量化执行，所以扫列聚合一类查询极快 —— 两者负载特性相反，选型看场景。**', 1),
+
+('其他数据库', 'PostgreSQL', 2,
+ 'PostgreSQL 和 MySQL 有什么区别？PostgreSQL 有哪些优势？',
+ '**PostgreSQL（PG）**：**功能最强大的开源关系型数据库**，被誉为「最先进的开源数据库」。
+
+**PG 的优势**：
+1. **数据类型丰富**：
+   - **JSONB**（二进制 JSON，可索引、可查询）⭐。
+   - **数组、范围、几何、网络地址、UUID**。
+   - **自定义类型**。
+2. **强大的索引**：
+   - **GIN**（全文/JSONB/数组）、**GiST**（地理/范围）、**BRIN**（大表有序数据）、**HASH**、部分索引、表达式索引。
+3. **扩展性强**：
+   - **PostGIS**（地理空间，业界最强）。
+   - **pg_stat_statements**、**TimescaleDB**（时序）、**Citus**（分布式）。
+4. **MVCC 更完善**：**没有幻读**（标准 RR 就能防）。
+5. **支持更多 SQL 标准**：窗口函数、CTE、`RETURNING`、`LATERAL`。
+6. **并发**：多进程模型（非线程）。
+
+**MySQL 的优势**：
+1. **生态/普及度高**：人才多、资料多、云厂商支持好。
+2. **简单易用**：上手快、运维成熟。
+3. **性能**：简单查询/高并发读写场景表现好。
+4. **主从复制成熟**（binlog + 各种复制拓扑）。
+5. **云服务完善**（RDS、Aurora、PolarDB）。
+
+**对比**：
+| 维度 | PostgreSQL | MySQL |
+|---|---|---|
+| 类型 | **更丰富（JSONB/数组/范围）** | 相对简单 |
+| 索引 | **种类多（GIN/GiST/BRIN）** | B+ 树为主 |
+| SQL 标准 | **更完整** | 部分 |
+| 地理空间 | **PostGIS 最强** | 一般 |
+| 并发模型 | 多进程 | 多线程 |
+| 复制 | 流复制/逻辑复制 | binlog 主从 |
+| 上手 | 稍复杂 | **简单** |
+| 生态 | 好 | **更好** |
+| 默认隔离 | RC | RR |
+
+**怎么选**：
+- **需要 JSONB、GIS、复杂查询、丰富索引** → **PostgreSQL**。
+- **Web 应用、高并发读写、生态/运维便利** → **MySQL**。
+- **互联网公司**：MySQL 更常见；**复杂业务/地理/分析**：PG 更受欢迎。
+
+**一句话总结**：**PostgreSQL 强在「类型丰富（JSONB/数组/范围）、索引多（GIN/GiST/BRIN）、SQL 标准完整、PostGIS 地理最强、无幻读」，MySQL 强在「生态普及、上手简单、高并发读写成熟、云支持好」；要复杂类型/GIS/分析选 PG，要 Web 高并发/运维便利选 MySQL。**', 1),
+
+('其他数据库', 'MongoDB,文档', 2,
+ 'MongoDB 有什么特点？适合什么场景？',
+ '**MongoDB**：**文档型 NoSQL**，数据以 **BSON（类 JSON）文档**存储。
+
+**特点**：
+1. **Schema-less（灵活模式）**：文档结构可不同，**字段可动态增删**。
+2. **文档模型**：**嵌套文档 + 数组**，**减少 JOIN**（把关联数据嵌入一个文档）。
+3. **丰富的查询**：支持条件、范围、正则、聚合管道（Aggregation Pipeline）。
+4. **索引**：单字段、复合、**多键（数组）**、**全文、地理空间（2dsphere）**。
+5. **水平扩展**：
+   - **副本集（Replica Set）**：高可用（主 + 从 + 仲裁）。
+   - **分片（Sharding）**：水平分片（shard key）。
+6. **BSON 类型**：支持 `ObjectId`、日期、二进制等。
+7. **弱事务**：4.0 起支持副本集多文档事务，4.2 起分片事务（但性能一般）。
+
+**适合场景**：
+- **内容管理（CMS）**：文章结构多变。
+- **日志/事件**：半结构化、高写入。
+- **物联网（IoT）**：设备数据。
+- **商品目录**：属性差异大（不同品类字段不同）。
+- **用户画像/画像标签**：文档灵活。
+- **快速原型**：schema 不用先定。
+
+**不适合**：
+- **强事务/强一致**（金融核心）。
+- **复杂多表 JOIN**（虽然支持 `$lookup`，但性能不如关系型）。
+- **高度规范化的数据**。
+
+**对比关系型**：
+| 维度 | MongoDB | MySQL |
+|---|---|---|
+| 模型 | **文档（JSON）** | 表 |
+| Schema | **灵活** | 严格 |
+| 关联 | 内嵌/引用 | JOIN |
+| 事务 | 支持但较弱 | **强** |
+| 扩展 | **原生分片** | 分库分表 |
+| 查询 | 聚合管道 | SQL |
+
+**注意**：
+- **文档不要无限增长**（16MB 上限）。
+- **分片键选好**（避免热点）。
+- **索引设计**很关键（否则全表扫描）。
+
+**一句话总结**：**MongoDB 是文档型 NoSQL：JSON 文档 + 灵活 schema + 丰富查询 + 原生分片/副本集，适合「结构多变、半结构化、高写入、少 JOIN」的场景（CMS、日志、IoT、商品目录）；不适合强事务和复杂多表关联 —— 它的优势是「灵活 + 可水平扩展」，代价是事务和数据一致性较弱。**', 1),
+
+('其他数据库', 'Elasticsearch,倒排索引', 3,
+ 'Elasticsearch 是什么？倒排索引的原理是什么？',
+ '**Elasticsearch（ES）**：**分布式搜索引擎**，基于 **Lucene**，用于**全文检索 + 日志分析 + 聚合分析**。
+
+**核心概念**：
+- **Index**（索引，类比数据库）→ **Type**（已废弃）→ **Document**（文档，类比行）。
+- **Mapping**（字段定义）。
+- **Shard（分片）**：索引水平拆分，**每个分片是一个 Lucene 实例**。
+- **Replica（副本）**：分片的备份（高可用 + 读扩展）。
+
+**倒排索引（Inverted Index）** ⭐：
+- **正排**：文档 → 包含的词（`doc1 → [cat, dog]`）。
+- **倒排**：词 → 包含它的文档列表（`cat → [doc1, doc3]`）。
+- **本质**：**词项到文档的映射**，用于**快速定位包含某词的文档**。
+
+**倒排索引的结构**：
+```
+词项（Term） → 倒排列表（Posting List）
+"快速" → [doc1(位置2), doc5(位置7), ...]
+```
+- **Posting List**：文档 ID 列表（可带**词频、位置**）。
+- **词项字典（Term Dictionary）**：所有词项，**排序**存储（可用二分/FST）。
+
+**构建流程**：
+1. **分词（Analysis）**：把文本切成词（分词器 + 大小写归一 + 停用词）。
+2. **建立映射**：词 → 文档列表。
+3. **压缩存储**（FST、跳表、Delta 编码）。
+
+**为什么快**：
+- **不需要扫描所有文档**（对比全文扫描）。
+- **词项字典有序** → 快速定位。
+- **Posting List 可做交集/并集**（多词查询）。
+
+**ES 的特点**：
+- **近实时（NRT）**：写入后**默认 1 秒**可搜索（refresh 间隔）。
+- **相关性打分**：**TF-IDF / BM25**。
+- **聚合（Aggregation）**：类似 `GROUP BY` + 统计。
+- **分词器可配**（中文需 IK 分词器等）。
+
+**应用**：
+- **全文搜索**（商品、站内搜索）。
+- **日志分析（ELK）**。
+- **聚合统计**。
+
+**注意**：
+- **不是数据库**（不适合做**唯一数据源**，一致性/事务弱）。
+- **分片数要提前规划**（改分片难）。
+- **中文分词要装插件**。
+- **深分页问题**（`from + size` 有上限，用 `search_after`）。
+
+**一句话总结**：**ES 是分布式搜索引擎，核心是**倒排索引**（词 → 文档列表），靠分词 + 词项字典 + Posting List 实现快速全文检索和相关性打分；它近实时、支持聚合、可水平分片，适合搜索和日志分析，但**事务/一致性弱、不适合当唯一数据库**，中文要配分词器、分片要提前规划。**', 1),
+
+('其他数据库', '分库分表', 3,
+ '为什么分库分表？分片后带来哪些新问题？',
+ '**分库分表**：单表/单库数据量大、并发高时，**水平拆分**到多个库/表。
+
+**为什么分**：
+- **单表数据量过大**（如 1 亿行）→ 索引变大、查询变慢、DDL 困难。
+- **单库并发瓶颈**（连接数、IO、CPU）。
+- **单机容量有限**。
+
+**拆分方式**：
+1. **垂直拆分**：
+   - **垂直分库**：按业务拆（用户库、订单库）。
+   - **垂直分表**：把宽表拆成「常用列 + 不常用列」。
+2. **水平拆分**：
+   - **水平分表**：同一表按规则拆成 `order_0`、`order_1`...
+   - **水平分库**：拆到多个库。
+
+**分片键（Sharding Key）**：
+- **哈希分片**：`hash(user_id) % N`（分布均匀，范围查询难）。
+- **范围分片**：按时间/ID 范围（范围查询好，易热点）。
+- **一致性哈希**：便于扩容。
+
+**分片后的新问题** ⚠️：
+1. **跨库 JOIN** → **难**（要应用层组装/冗余/宽表）。
+2. **跨库事务** → **难**（用分布式事务/最终一致）。
+3. **跨库分页/排序** → **难**（各库取 N 条再归并）。
+4. **全局唯一 ID** → 需**雪花算法/号段**。
+5. **扩容（rehash）** → 数据迁移（一致性哈希缓解）。
+6. **分布式主键、全局聚合**。
+7. **运维复杂**（多库管理、监控）。
+8. **SQL 受限**（不能用跨库 JOIN、子查询）。
+
+**中间件**：
+- **ShardingSphere**（Apache，功能全）。
+- **MyCat**。
+- **Vitess**（YouTube）。
+- **自研**。
+
+**替代方案**：
+- **分布式数据库**（**TiDB、OceanBase**）：**自动分片、透明扩缩**，应用无感 ⭐。
+- **读写分离 + 索引优化**（先穷尽单库优化）。
+- **分区表**（MySQL Partition，同库内）。
+
+**分不分的原则**：
+- **先优化**（索引、SQL、缓存、读写分离）。
+- **再考虑分区表**。
+- **最后才分库分表**（成本高）。
+- **能上分布式数据库就上**（省去中间件复杂度）。
+
+**一句话总结**：**分库分表是为解决「单表过大、单库瓶颈」的水平拆分（垂直拆业务/列，水平按分片键拆），代价是**跨库 JOIN、分布式事务、跨库分页、全局 ID、扩容迁移、SQL 受限**；替代方案是分布式数据库（TiDB/OceanBase，自动分片）；原则是「先优化、再分区、最后才分库分表」。**', 1),
+
+('其他数据库', 'HBase,列式', 3,
+ 'HBase 有什么特点？适合什么场景？',
+ '**HBase**：**分布式列式 KV 数据库**，基于 **HDFS + Google BigTable** 思想，属于 Hadoop 生态。
+
+**数据模型**：
+- **表 → 行（RowKey）→ 列族（Column Family）→ 列（Column）+ 时间戳（Version）**。
+- **RowKey 唯一且排序**（按**字典序**）。
+- **列族**要在建表时定义（列可动态加）。
+- **单元格多版本**（按时间戳保存多份）。
+
+**架构**：
+- **HMaster**：管理 Region 分配、负载均衡。
+- **RegionServer**：实际存储、读写数据。
+- **Region**：表按 **RowKey 范围**切分（水平分片）的单元。
+- **依赖 ZooKeeper**（协调）和 **HDFS**（存储）。
+
+**特点**：
+1. **海量存储**：可存 **PB 级**（靠 HDFS 横向扩展）。
+2. **稀疏**：列可以很稀疏（不同行可有不同列）。
+3. **高写入吞吐**：LSM 树 + 顺序写。
+4. **强一致（单行）**：单行读写强一致。
+5. **按 RowKey 高效查询**（点查、范围扫描快）。
+6. **不适合复杂查询**：**无 SQL（原生）、无 JOIN、无二级索引**（除非 Phoenix/自建）。
+
+**适合场景**：
+- **海量数据存储**（日志、监控、用户行为）。
+- **按 RowKey 随机读写 + 范围扫描**。
+- **稀疏数据**（很多列为空）。
+- **时序/写多读少**。
+
+**不适合**：
+- **复杂查询/多表关联**（需 Hive/Spark/Phoenix 辅助）。
+- **小数据量**（杀鸡用牛刀）。
+- **需二级索引的查询**。
+
+**RowKey 设计要点** ⭐：
+- **避免热点**：RowKey 单调递增会**写热点**（都打到最后一个 Region）→ **加盐（散列前缀）/哈希**打散。
+- **长度尽量短**。
+- **设计好查询模式**（HBase 只能按 RowKey 高效查）。
+
+**对比 MySQL/Hive**：
+| 维度 | HBase | MySQL |
+|---|---|---|
+| 模型 | 列族 KV | 关系表 |
+| 规模 | **PB** | GB~TB |
+| 查询 | RowKey 为主 | SQL 强大 |
+| 事务 | 单行 | 强 |
+| 场景 | 海量稀疏 | 业务交易 |
+
+**一句话总结**：**HBase 是「分布式列式 KV，基于 HDFS + Region 分片，RowKey 排序」，强项是**PB 级海量存储 + 高写入 + 按 RowKey 随机/范围读写**，弱项是**无 SQL/JOIN/二级索引、不适合复杂查询**；RowKey 设计（防热点、短、贴合查询）是 HBase 使用成败的关键 —— 它是「海量稀疏数据」的重武器。**', 1),
+
+('其他数据库', '时序数据库', 2,
+ '时序数据库（TSDB）是什么？和普通数据库有什么区别？',
+ '**时序数据库（Time-Series Database）**：**专为「时间 + 指标」数据**优化的数据库。
+
+**数据特点**：
+- **时间戳 + 标签（tags）+ 值（value）**。
+- **写多读少、按时间顺序追加**。
+- **高写入、高压缩、按时间范围查询、聚合**。
+- 数据**过期删除**（只关心近期）。
+
+**代表**：**Prometheus、InfluxDB、TimescaleDB（基于 PG）、OpenTSDB、TDengine**。
+
+**为什么不用普通数据库**：
+| 维度 | 普通 DB | TSDB |
+|---|---|---|
+| 写入 | 随机 | **顺序追加（快）** |
+| 压缩 | 一般 | **列存 + 时间戳差分，压缩极高** |
+| 时间查询 | 一般 | **专门优化** |
+| 保留策略 | 手动 | **自动 TTL/降采样** |
+| 聚合 | 手动 | **内置时间窗口聚合** |
+| 规模 | 有限 | **海量** |
+
+**核心优化**：
+1. **列式存储 + 高压缩**（时间戳、值差分压缩）。
+2. **按时间分区**（TSDB 常按时间分 chunk）。
+3. **密集写入优化**（LSM / 批量）。
+4. **降采样（Downsampling）**：老数据按粗粒度聚合存储，省空间。
+5. **保留策略（Retention）**：自动删除过期数据。
+
+**应用**：
+- **监控指标**（CPU、内存、QPS）→ **Prometheus**。
+- **IoT 传感器数据**。
+- **金融行情**。
+- **APM/应用性能**。
+
+**Prometheus 特点**：
+- **拉模式（Pull）**采集。
+- **PromQL** 查询。
+- **本地 TSDB** 存储。
+- 与 **Grafana** 配合可视化。
+
+**一句话总结**：**TSDB 为「时间戳 + 标签 + 值」的指标数据优化，靠**列存 + 差分压缩 + 时间分区 + 降采样 + 保留策略**实现海量写入、高压缩和快速时间范围聚合；代表是 Prometheus/InfluxDB/TimescaleDB/TDengine —— 监控、IoT、行情这类「写多读少、按时间查」的场景用它远优于通用数据库。**', 1),
+
+('其他数据库', '图数据库', 2,
+ '图数据库解决什么问题？和关系型数据库比有什么优势？',
+ '**图数据库**：以**节点（Node）+ 边（Edge）+ 属性（Property）**建模，擅长**深层关系遍历**。
+
+**代表**：**Neo4j、JanusGraph、NebulaGraph、Dgraph、TigerGraph**。
+
+**和关系型对比（社交「朋友的朋友的朋友」）**：
+
+**关系型（JOIN）**：
+```sql
+SELECT ...
+FROM users u1
+JOIN friend f1 ON u1.id = f1.uid
+JOIN users u2 ON f1.fid = u2.id
+JOIN friend f2 ON u2.id = f2.uid
+...  -- 每多一层就多一次 JOIN
+```
+- **多层 JOIN 性能急剧下降**（每层都是大表关联）。
+- **关系越深越慢**。
+
+**图数据库**：
+```cypher
+MATCH (me:User {name:''tom''})-[:FRIEND*3]-(fof)
+RETURN fof          -- 3 跳朋友
+```
+- **沿着边直接遍历**（**指针跳转**），**与总数据量无关**，只与**子图大小**有关 ⭐。
+
+**核心优势**：
+1. **关系遍历快**：**索引-free 邻接**（节点直连邻居），深度遍历性能稳定。
+2. **建模自然**：关系和实体同等建模（边有方向和属性）。
+3. **灵活**：加关系/类型容易。
+4. **算法内置**：最短路径、PageRank、社区发现。
+
+**对比**：
+| 维度 | 关系型 | 图数据库 |
+|---|---|---|
+| 关系表示 | 外键 + JOIN | **边** |
+| 深遍历 | **慢**（多次 JOIN） | **快**（沿边） |
+| 建模 | 表 | 节点 + 边 |
+| 灵活 | schema 变更难 | 灵活 |
+| 事务 | **强** | 视产品 |
+
+**适用场景**：
+- **社交网络**（好友推荐、共同好友）。
+- **推荐系统**（基于关系的推荐）。
+- **知识图谱**。
+- **反欺诈**（资金/关系网络）。
+- **权限/依赖关系**。
+- **路径规划**。
+
+**不适用**：
+- **大量聚合统计**（图库不擅长）。
+- **简单 CRUD**（杀鸡用牛刀）。
+- **深遍历不是重点**时。
+
+**一句话总结**：**图数据库用「节点 + 边」建模，靠「沿边直接遍历」实现**深层关系查询与数据总量无关**（关系型多层 JOIN 会急剧变慢）；适合社交推荐、知识图谱、反欺诈、路径规划等「关系密集、深遍历」场景，但不擅长海量聚合和简单 CRUD —— 它的强项是「关系」，不是「规模」。**', 1),
+
+('其他数据库', 'ClickHouse,OLAP', 3,
+ 'ClickHouse 为什么这么快？适合什么场景？',
+ '**ClickHouse**：**列式 OLAP 数据库**（俄罗斯 Yandex 开源），**极快的分析查询**。
+
+**为什么快**：
+1. **列式存储**：只读查询涉及的列，**IO 大幅减少**。
+2. **数据压缩**：同列类型一致，**压缩比 10 倍+**（减少 IO）。
+3. **向量化执行**：按**列批处理**（SIMD + CPU 缓存友好）。
+4. **稀疏索引**：**主键排序 + 稀疏主键索引**，**每秒可扫数亿行**。
+5. **MergeTree 引擎**：**LSM 式**、**后台合并**、**分区 + 排序键**。
+6. **多线程 + 分布式**：充分利用多核、多机并行。
+7. **预聚合**（物化视图、AggregatingMergeTree）。
+
+**特点**：
+- **极致读性能**（亿级数据聚合秒级）。
+- **高写入吞吐**（**批量写入**，不适合单条）。
+- **不支持完整事务**（无行级更新，更新/删除是异步 mutation）。
+- **JOIN 弱**（大表 JOIN 慎用，尽量用宽表）。
+- **不适合高并发点查**（不是为 OLTP 设计）。
+
+**适合场景**：
+- **OLAP 分析**：报表、BI、大屏。
+- **日志分析**（替代部分 ELK 场景）。
+- **用户行为分析**。
+- **实时数仓**。
+- **指标聚合**。
+
+**不适合**：
+- **OLTP 事务**（高频单行增删改）。
+- **强一致事务**。
+- **高并发点查**（用 MySQL/KV）。
+- **频繁更新单行**。
+
+**写入注意**：
+- **批量写**（每次几万行，避免小批）。
+- **分区键按时间**（便于 TTL 和查询裁剪）。
+- **排序键贴合查询**。
+
+**一句话总结**：**ClickHouse 快在「列存（少读列）+ 高压缩 + 向量化执行 + 稀疏索引 + MergeTree + 多线程并行」，能做到亿级数据聚合秒级；适合**OLAP/日志/实时数仓/BI**，不适合**OLTP 事务、高并发点查、频繁单行更新**（它无完整事务、JOIN 弱、要批量写）—— 是分析场景的重武器，不是全能数据库。**', 1),
+
+('其他数据库', 'NewSQL,分布式', 3,
+ 'TiDB / OceanBase 这类 NewSQL 数据库解决了什么问题？',
+ '**NewSQL**：**既有 NoSQL 的水平扩展，又有传统数据库的 ACID 和 SQL**。
+
+**代表**：**TiDB**（PingCAP）、**OceanBase**（蚂蚁）、**CockroachDB**、**Google Spanner**。
+
+**解决的问题**：
+- 传统 MySQL **单机瓶颈**（分库分表麻烦）。
+- NoSQL **无 SQL/事务**。
+- **需要「分布式 + 强一致 + SQL」三合一**。
+
+**TiDB 架构**：
+1. **TiDB Server**：**SQL 层**（无状态，兼容 MySQL 协议）。
+2. **TiKV**：**存储层**（分布式 KV，**Raft 保证一致性**，按 Region 分片）。
+3. **PD（Placement Driver）**：**调度层**（元数据、负载均衡、Region 调度）。
+4. **TiFlash**：**列存副本**（HTAP，加速分析）。
+
+**核心能力**：
+- **水平扩展**：加节点即扩容量/性能（**自动分片**）。
+- **强一致**：**Raft 多数派**（金融级）。
+- **高可用**：自动故障转移。
+- **兼容 MySQL 协议**（应用少改）。
+- **HTAP**：TiKV 行存（OLTP）+ TiFlash 列存（OLAP）。
+
+**OceanBase**：
+- 蚂蚁自研，**金融级**（双十一验证）。
+- **Paxos 多副本**。
+- **HTAP**、高压缩。
+
+**与分库分表对比**：
+| 维度 | 分库分表 + MySQL | TiDB |
+|---|---|---|
+| 扩展 | 手动分片 | **自动** |
+| 事务 | 分布式事务难 | **原生分布式事务** |
+| SQL | 受限（跨库 JOIN 难） | **完整 SQL** |
+| 运维 | 复杂 | 相对简单 |
+| 兼容 | MySQL | MySQL 协议 |
+
+**代价**：
+- **性能**：单机简单查询**可能不如** MySQL（分布式有开销）。
+- **延迟**：跨 Region 事务有延迟（网络）。
+- **复杂度**：组件多、运维有学习成本。
+- **成本**：多副本存储。
+
+**选型**：
+- **数据量/并发增长快、要弹性扩展、要强一致** → NewSQL。
+- **单机够用、简单** → MySQL。
+- **不必为了「酷」上分布式**（单机优化往往够）。
+
+**一句话总结**：**NewSQL（TiDB/OceanBase）旨在同时提供「水平扩展 + 强一致 ACID + 完整 SQL」，用 Raft/Paxos 多副本 + 自动分片解决传统 MySQL 的扩展瓶颈和 NoSQL 的事务/SQL 缺失；代价是分布式开销（简单查询可能不如单机 MySQL）和运维复杂度 —— 「数据增长快、要弹性 + 强一致」时值得上，否则先优化单机。**', 1),
+
+('其他数据库', '锁,并发', 3,
+ '数据库的锁有哪些类型？意向锁是做什么的？',
+ '**按粒度**：
+- **表锁**：锁整表（开销小、并发低）。
+- **页锁**：锁一页（介于两者）。
+- **行锁**：锁一行（开销大、并发高，**InnoDB 支持**）。
+
+**按模式**：
+- **共享锁（S 锁，读锁）**：可多个事务同时持有（都读）。
+- **排他锁（X 锁，写锁）**：独占，互斥。
+- **S 与 X 互斥**，S 与 S 兼容。
+
+**意向锁（Intention Lock）** ⭐：
+- **表级锁**，表示「**某个事务想在表中某些行上加锁**」。
+- **意向共享锁（IS）**：准备加行级 S 锁。
+- **意向排他锁（IX）**：准备加行级 X 锁。
+- **作用**：**快速判断表里有没有行锁**。
+  - 事务 A 想加**表级 X 锁** → 只需检查是否有 IS/IX（**不用逐行检查**）→ **高效**。
+  - 意向锁之间**互相兼容**（IS 与 IX 不冲突）。
+
+**兼容矩阵**：
+| | S | X | IS | IX |
+|---|---|---|---|---|
+| **S** | ✅ | ❌ | ✅ | ❌ |
+| **X** | ❌ | ❌ | ❌ | ❌ |
+| **IS** | ✅ | ❌ | ✅ | ✅ |
+| **IX** | ❌ | ❌ | ✅ | ✅ |
+
+**InnoDB 的锁**：
+- **记录锁（Record Lock）**：锁索引记录。
+- **间隙锁（Gap Lock）**：锁索引记录之间的**间隙**（防插入 → 防幻读）。
+- **临键锁（Next-Key Lock）**：**记录锁 + 间隙锁**（RR 下默认，防幻读）⭐。
+- **插入意向锁**：插入时的特殊间隙锁。
+
+**其他锁概念**：
+- **乐观锁**：版本号/CAS。
+- **悲观锁**：`FOR UPDATE`。
+- **自旋锁**、**MDL（元数据锁）**（DDL 时）。
+
+**一句话总结**：**数据库锁按粒度分表/页/行，按模式分共享（S）与排他（X）；**意向锁**是表级锁，用来「快速判断表中有无行锁」（IS/IX 之间兼容，避免逐行检查，提升表锁判断效率）；InnoDB 在 RR 下用**临键锁（记录+间隙）**防幻读 —— 理解锁类型是分析并发与死锁的基础。**', 1),
+
+('其他数据库', '死锁,数据库', 3,
+ '数据库死锁是怎么产生的？怎么排查和避免？',
+ '**数据库死锁**：两个（或多个）事务**互相持有对方需要的锁并等待** → 循环等待。
+
+**经典场景**：
+```
+事务 A: 锁行 1 → 请求行 2
+事务 B: 锁行 2 → 请求行 1
+→ 死锁
+```
+- 常见于**不同事务按不同顺序更新同一批行**。
+
+**InnoDB 的处理**：
+- **自动死锁检测**（`innodb_deadlock_detect`）。
+- 检测到死锁 → **回滚「代价小」的那个事务**（牺牲一个，保住另一个）⭐。
+- 被回滚的事务收到错误 `Deadlock found`。
+
+**查看死锁**：
+```sql
+SHOW ENGINE INNODB STATUS;         -- LATEST DETECTED DEADLOCK 段
+-- 或配置 innodb_print_all_deadlocks=ON 打印到错误日志
+```
+- 会显示两个事务的**SQL、持有的锁、等待的锁**。
+
+**产生原因**：
+1. **加锁顺序不一致**（A 先锁 1 再 2，B 先锁 2 再 1）。
+2. **间隙锁/临键锁**（范围锁导致意外互斥）。
+3. **大事务**（持锁时间长，冲突概率高）。
+4. **无索引/索引不当** → **锁的范围扩大**（锁全表/大量行）。
+5. **并发更新同批次数据**。
+
+**避免**：
+1. **统一加锁顺序**（按固定顺序更新，如按主键排序后更新）⭐。
+2. **减小事务粒度**（快进快出，缩短持锁时间）。
+3. **走索引**（避免锁范围扩大）。
+4. **`SELECT ... FOR UPDATE` 时用索引/主键**。
+5. **降低隔离级别**（RC 减少间隙锁；但要权衡）。
+6. **`tryLock` + 超时**（`innodb_lock_wait_timeout`，超时放弃重试）。
+7. **拆分大事务**。
+8. **热点行用队列/串行化**（如库存扣减用 Redis）。
+
+**注意**：
+- **`innodb_lock_wait_timeout`**：等锁超时（默认 50s）→ 报 `Lock wait timeout`（**不是死锁**，是等待超时）。
+- **死锁是正常现象**（数据库会处理），关键是**别频繁出现**和**别长时间持锁**。
+
+**一句话总结**：**数据库死锁来自「循环等待锁」（常因加锁顺序不一致、间隙锁、大事务、锁范围过大）；InnoDB 会自动检测并回滚代价小的事务，用 `SHOW ENGINE INNODB STATUS` 查看；避免靠「统一加锁顺序、减小事务、走索引、降低隔离级别、设等锁超时、热点串行化」—— 死锁不可怕，频繁死锁和长事务才是问题。**', 1),
+
+('其他数据库', '主从复制,读写分离', 2,
+ '数据库读写分离是什么？会带来什么问题？',
+ '**读写分离**：**主库写、从库读**，用主从复制同步数据。
+
+**目的**：
+- **分担读压力**（读通常远多于写）。
+- **提升整体吞吐**。
+- **高可用基础**（从库可升主）。
+
+**实现**：
+- **主从复制**（MySQL binlog → 从库重放）。
+- **中间件/代理**路由读写（如 ShardingSphere、ProxySQL、MyCat）。
+- 或应用层配置**多数据源**（写走主、读走从）。
+
+**带来的问题** ⚠️：
+
+1. **主从延迟 → 读写不一致**：
+   - 刚写到主库，立刻读从库**读不到**（从库还没同步）。
+   - **解决**：
+     - **写后读走主库**（关键路径）。
+     - **强制走主库**（`/* master */` 提示）。
+     - 半同步复制（等从库确认）。
+     - 按延迟阈值拒绝从库读。
+
+2. **从库过多 → 主库复制压力**（复制风暴）。
+
+3. **路由复杂**（事务内读也要走主库，否则可能读到不一致）。
+
+4. **故障切换**（主库挂了要升从，需哨兵/MHA/Orchestrator）。
+
+**主从延迟的原因**：
+- 网络 RTT。
+- 从库**单线程重放**（并行复制可缓解）。
+- 主库写入过快。
+- 大事务。
+
+**MySQL 复制方式**：
+- **异步复制**（默认，可能丢）。
+- **半同步复制**（等至少一个从库 ACK）。
+- **组复制（MGR）**（Paxos 多数派，强一致）。
+
+**一句话总结**：**读写分离用「主写从读 + 主从复制」分担读压力、提升吞吐并支撑高可用；带来的核心问题是**主从延迟导致的读写不一致**（解决：写后读主、半同步、按延迟阈值）、复制压力、路由复杂和故障切换 —— 关键是接受「从库读是最终一致」，关键路径走主库。**', 1),
+
+('其他数据库', '连接池,数据库', 2,
+ '数据库连接池有什么用？配置要注意什么？',
+ '**连接池**：**预先建立并复用数据库连接**，避免频繁建连。
+
+**为什么需要**：
+- **建立连接开销大**：TCP 握手 + 认证 + 权限检查。
+- **连接是稀缺资源**（数据库 `max_connections` 有限）。
+- 连接池**复用 + 限流 + 管理**。
+
+**核心参数**：
+| 参数 | 说明 |
+|---|---|
+| **最小连接数**（minIdle） | 保活连接 |
+| **最大连接数**（maxPoolSize） | 池上限 |
+| **连接超时** | 获取连接的最长等待 |
+| **空闲超时**（idleTimeout） | 空闲连接回收 |
+| **最大生命周期**（maxLifetime） | 连接最大存活（防过期） |
+| **连接测试** | 借出/空闲时验证（`SELECT 1`） |
+
+**配置要点**：
+
+1. **池大小怎么定**：
+   - **不是越大越好**（每连接占 DB 内存/线程）。
+   - 公式（经验）：`连接数 ≈ CPU 核数 × 2 + 磁盘数`（对 DB 端）。
+   - **压测确定**。
+   - **应用总连接数 ≤ DB `max_connections`**（多实例要算总账）⭐。
+
+2. **`maxLifetime` 要小于**数据库/中间件的连接超时（防用到已断连接）。
+
+3. **连接泄漏**：**用完必须归还**（try-with-resources），否则池耗尽。
+
+4. **`SELECT 1` 保活** 或 **validationQuery**（检测死连接）。
+
+5. **连接超时 + 命令超时**（防故障时线程挂死）。
+
+**常见问题**：
+- **池太小** → 高并发拿不到连接（等待/超时）。
+- **池太大** → 超 DB 连接上限、DB 压力大。
+- **忘记归还** → 泄漏。
+- **`maxLifetime` 太长** → 用到 DB 已断的连接。
+- **网络中断后连接失效** → 需保活/重连。
+
+**连接池实现**：
+- Java：**HikariCP**（快）、Druid、C3P0、DBCP。
+- 各语言都有对应实现。
+
+**一句话总结**：**连接池复用连接、限制并发连接数、管理连接生命周期，避免频繁建连的开销；配置要点是「池大小结合 DB 端 CPU/磁盘压测确定且总连接数不超 DB 上限、`maxLifetime` 小于连接超时、保活检测死连接、必须归还防泄漏、设超时防挂死」—— 它既是性能优化，也是保护数据库不被打爆的闸门。**', 1),
+
+('其他数据库', '慢查询,优化', 2,
+ '数据库慢查询怎么优化？通用思路是什么？',
+ '**通用优化思路（从易到难）**：
+
+**1. 定位问题**：
+- **慢查询日志**（MySQL `slow_query_log`、PG `pg_stat_statements`）。
+- **`EXPLAIN` / `EXPLAIN ANALYZE`** 看执行计划（是否全表扫描、是否走索引、扫描行数、是否临时表/文件排序）⭐。
+- **监控**（QPS、慢查询数、锁等待）。
+
+**2. SQL 层面**：
+- **走索引**：WHERE/JOIN/ORDER BY 的列建索引。
+- **避免索引失效**：
+  - **不在索引列上做函数/运算**（`WHERE YEAR(create_time)=2026` → 改成范围）。
+  - **避免隐式类型转换**（字符串列传数字）。
+  - **避免 `LIKE ''%xxx''` 前导通配**。
+  - **注意 `OR`**（可能导致不走索引）。
+- **只查需要的列**（避免 `SELECT *`，利于覆盖索引）。
+- **减少回表**（覆盖索引）。
+- **优化 JOIN**（小表驱动大表、关联列有索引）。
+- **避免大事务**。
+- **分页优化**：`LIMIT 1000000, 20` 深分页慢 → **游标/延迟关联**。
+
+**3. 索引层面**：
+- **联合索引遵循最左前缀**。
+- **覆盖索引**。
+- **索引选择性**（区分度高的列优先）。
+- **避免冗余索引**。
+
+**4. 表结构层面**：
+- **合适的字段类型**（小、够用）。
+- **范式 vs 反范式**（热点冗余）。
+- **分区表**（大表按时间分区）。
+
+**5. 架构层面**：
+- **缓存**（Redis 挡热点读）。
+- **读写分离**。
+- **分库分表**。
+- **搜索用 ES**。
+
+**6. 硬件/参数**：
+- **内存**（缓冲池）。
+- **SSD**。
+- **参数调优**（连接数、缓冲池大小）。
+
+**深分页优化**（经典）：
+```sql
+-- 慢：扫描 100 万行
+SELECT * FROM t ORDER BY id LIMIT 1000000, 20;
+-- 快：游标（记住上次 id）
+SELECT * FROM t WHERE id > 1000000 ORDER BY id LIMIT 20;
+-- 或延迟关联
+SELECT * FROM t JOIN (SELECT id FROM t ORDER BY id LIMIT 1000000, 20) x USING(id);
+```
+
+**一句话总结**：**慢查询优化「先定位（慢日志 + EXPLAIN），再优化 SQL（走索引、避免失效、覆盖索引、优化 JOIN/分页），再改索引/表结构，最后上架构（缓存/读写分离/分库分表）」；最常见的坑是「索引失效」（函数、隐式转换、前导通配、OR）和「深分页」—— `EXPLAIN` 是优化前的必修课。**', 1),
+
+('其他数据库', '索引优化,最左前缀', 3,
+ '联合索引的最左前缀原则是什么？索引下推又是什么？',
+ '**联合索引（复合索引）**：`KEY idx (a, b, c)`。
+
+**最左前缀原则** ⭐：
+- 查询**必须从索引的最左列开始**，**依次匹配**，才能用上索引。
+- `(a, b, c)` 能有效利用的场景：
+  - ✅ `WHERE a=?`
+  - ✅ `WHERE a=? AND b=?`
+  - ✅ `WHERE a=? AND b=? AND c=?`
+  - ✅ `WHERE a=?`（只用 a 部分）
+  - ⚠️ `WHERE a=? AND c=?`（**只能用到 a**，c 用不上索引，但**可能被索引下推优化**）
+  - ❌ `WHERE b=?`（**跳过 a，完全用不上**）
+  - ❌ `WHERE b=? AND c=?`
+
+**为什么**：索引是**按 (a, b, c) 排序**的，跳过 a 就无法定位。
+
+**范围查询会「截断」**：
+- `WHERE a=? AND b>? AND c=?` → **a、b 能用索引，c 用不上**（因为 b 是范围，c 无序）。
+- 所以**范围列放最后**（设计索引时把等值列放前面、范围列放后面）。
+
+**ORDER BY 也要遵循**：
+- `ORDER BY a, b`（配合 `WHERE a=?`）能用索引排序。
+- 顺序不一致（`ORDER BY b, a`）用不上。
+
+**索引下推（Index Condition Pushdown, ICP）** ⭐：
+- MySQL 5.6+ 优化。
+- **把 WHERE 中「能由索引列判断」的条件，下推到存储引擎层过滤** → **减少回表**。
+- 场景：`(a, b)` 索引，`WHERE a=? AND b LIKE ''%x%''`：
+  - **无 ICP**：先用 a 定位，**全部回表**再判断 b。
+  - **有 ICP**：在**索引层就用 b 过滤**，只对满足的**回表** → 回表次数减少。
+
+**索引选择性（区分度）**：
+- `选择性 = 不重复值 / 总行数`，**越高越好**（越适合建索引）。
+- 性别（只有 2 值）选择性低，不适合单独建索引。
+
+**其他原则**：
+- **等值列在前、范围列在后**。
+- **高频查询列优先**。
+- **区分度高的列优先**。
+- **覆盖索引避免回表**。
+- **避免冗余索引**（`(a)` 和 `(a,b)` 中 `(a)` 冗余）。
+
+**一句话总结**：**联合索引 `(a,b,c)` 遵循**最左前缀**——必须从最左列开始依次匹配，跳过 a 就用不上，**范围查询会截断后续列**（所以「等值列在前、范围列在后」）；**索引下推（ICP）** 把能由索引列判断的条件下推到存储引擎层过滤，**减少回表**；再配合「选择性高优先、覆盖索引、避免冗余」就是索引设计的基本功。**', 1),
+
+('其他数据库', '分布式事务', 3,
+ '分布式事务有哪些解决方案？各有什么优缺点？',
+ '**分布式事务**：跨多个服务/数据库的事务，要求**整体一致**。
+
+**1. 2PC（两阶段提交）**：
+- **准备 + 提交**两阶段，协调者统一控制。
+- **优点**：强一致（理论上）。
+- **缺点**：**同步阻塞、协调者单点、可能不一致**。
+- **代表**：XA、MySQL XA。
+
+**2. TCC（Try-Confirm-Cancel）**：
+- **业务层补偿**：
+  - **Try**：预留资源（如冻结库存）。
+  - **Confirm**：确认执行（扣减冻结）。
+  - **Cancel**：取消（解冻）。
+- **优点**：**性能好**（无长期锁）、业务可控。
+- **缺点**：**侵入性强**（每个操作写三个方法）、要实现幂等/防悬挂/空回滚。
+- **代表**：Seata TCC。
+
+**3. SAGA**：
+- **长事务拆成多个本地事务**，每个配一个**补偿操作**。
+- 失败时**反向补偿**（执行前面步骤的补偿）。
+- **优点**：简单、适合长流程。
+- **缺点**：**最终一致**（中间态可见）、补偿要幂等。
+
+**4. 本地消息表 / 事务消息** ⭐：
+- **本地事务 + 消息**：
+  1. 在本地事务里，业务操作 + **写消息表**（同一事务）。
+  2. **异步**投递消息到 MQ。
+  3. 下游消费消息（**幂等**）。
+- **优点**：简单、可靠、解耦。
+- **缺点**：最终一致、需幂等。
+- **代表**：**RocketMQ 事务消息**。
+
+**5. 最大努力通知**：
+- 失败后**定期重试通知**，直到成功或放弃。
+- 适合**通知类**（对一致性要求不高）。
+
+**对比**：
+| 方案 | 一致性 | 性能 | 侵入性 | 场景 |
+|---|---|---|---|---|
+| 2PC | **强** | 差 | 低 | 跨库强事务 |
+| TCC | 强 | **好** | **高** | 金融、库存 |
+| SAGA | 最终 | 好 | 中 | 长流程 |
+| 消息表/MQ | 最终 | **好** | 低 | 异步解耦 |
+
+**关键认知**：
+- **分布式事务尽量少用**（能拆成最终一致就别用强事务）。
+- **幂等**是所有方案的基础。
+- **最终一致**是主流选择。
+- **BASE 理论**（基本可用 + 软状态 + 最终一致）。
+
+**一句话总结**：**分布式事务方案有 2PC（强一致但阻塞、怕单点）、TCC（业务补偿、性能好但侵入强）、SAGA（长事务 + 反向补偿）、本地消息表/事务消息（本地事务 + MQ，最常用、简单可靠）、最大努力通知（通知类）；实践上「能用最终一致就别用强事务」，且所有方案都**必须实现幂等**。**', 1),
+
+('其他数据库', '备份,恢复', 2,
+ '数据库的备份方式有哪些？如何保证能恢复？',
+ '**备份类型**：
+
+**按方式**：
+1. **逻辑备份**：导出 SQL/数据（`mysqldump`、`pg_dump`）。
+   - **优点**：可读、可跨版本/跨平台、单表恢复方便。
+   - **缺点**：**慢**、文件大、恢复慢。
+2. **物理备份**：直接拷贝数据文件（`xtrabackup`、`pg_basebackup`）。
+   - **优点**：**快**、适合大库。
+   - **缺点**：依赖版本/平台、不可读。
+
+**按范围**：
+1. **全量备份**：完整副本（基准）。
+2. **增量备份**：自上次全量/增量后的变化（redo log / binlog）。
+3. **差异备份**：自上次全量的变化。
+
+**按时机**：
+- **冷备**（停库）。
+- **热备**（不停库，`xtrabackup`、`pg_basebackup`）。
+
+**恢复的组成**：
+- **全量备份** + **binlog/redo**（恢复到某个时间点，**PITR 时间点恢复**）⭐。
+
+**黄金原则**：
+1. **备份 ≠ 可恢复**：**必须定期做「恢复演练」** ⭐⭐（很多团队备份从未验证，真出事才发现恢复不了）。
+2. **异地备份**（防机房级故障）。
+3. **多份备份**（本地 + 远程 + 不同介质）。
+4. **加密 + 权限控制**（备份含敏感数据）。
+5. **监控备份任务**（失败要告警）。
+6. **保留策略**（多久、多少份）。
+7. **RPO / RTO 指标**：
+   - **RPO**（Recovery Point Objective）：能容忍丢多少数据。
+   - **RTO**（Recovery Time Objective）：能容忍停多久。
+
+**MySQL 常用工具**：
+- `mysqldump`（逻辑，小库）。
+- `mysqlpump`、`mydumper`（并发逻辑）。
+- `XtraBackup`（物理热备）。
+- **binlog**（增量/PITR）。
+
+**一句话总结**：**备份分逻辑（可读、慢、跨平台）和物理（快、大库）、全量/增量/差异、冷/热；恢复靠「全量 + binlog」做时间点恢复（PITR）；核心原则是**备份必须演练恢复**（备份≠可恢复）、异地多份、监控告警、明确 RPO/RTO —— 「没验证过的备份等于没有备份」。**', 1),
+
+('其他数据库', '高可用', 3,
+ '数据库高可用有哪些方案？',
+ '**高可用目标**：**减少停机时间**（MTTR），保证故障时能快速恢复。
+
+**MySQL 高可用方案**：
+
+1. **主从 + 手动切换**：
+   - 简单，但**切换慢**（要人干预）。
+
+2. **MHA（Master High Availability）**：
+   - 自动检测主库故障 + **自动切换**（选数据最新的从库升主）。
+   - 需 Manager + Node。
+
+3. **MGR（MySQL Group Replication）**：
+   - **官方方案**，**Paxos 多副本**（多数派写入）。
+   - 支持**多主/单主模式**。
+   - **强一致**（多数派）。
+   - 基于 InnoDB，性能有开销。
+
+4. **Orchestrator**：
+   - 拓扑管理 + 自动故障转移。
+
+5. **ProxySQL / MySQL Router**：
+   - 中间件做**读写路由 + 故障切换**。
+
+6. **云 RDS / Aurora / PolarDB**：
+   - 云厂商托管，**自动高可用**（最省心）⭐。
+
+**PostgreSQL 高可用**：
+- **流复制（Streaming Replication）** + **Patroni / repmgr**（自动切换）。
+- **逻辑复制**。
+- **Citus**（分布式）。
+
+**通用手段**：
+- **多副本**（主从/多主）。
+- **自动故障检测 + 切换**（哨兵/仲裁）。
+- **负载均衡 + 健康检查**。
+- **Consensus 协议**（MGR/Paxos）。
+
+**关键权衡**：
+| 方案 | 一致性 | 切换速度 | 复杂度 |
+|---|---|---|---|
+| 主从 + 手动 | 弱 | 慢 | 低 |
+| MHA | 弱（异步） | 快 | 中 |
+| **MGR** | **强** | 快 | 中 |
+| 云 RDS | 强/中 | **快** | **低** |
+
+**脑裂**：
+- 网络分区时可能出现两个主 → 用**多数派/仲裁**避免。
+
+**要点**：
+- **切换要能自动**（人工切换太慢）。
+- **应用要能感知新主**（中间件/DNS/客户端）。
+- **切换后要修数据**（异步复制的旧主数据可能丢失，需人工对账）。
+
+**一句话总结**：**数据库高可用方案从「主从 + 手动切换」到 MHA（自动切换）、MGR（Paxos 强一致多副本）、Orchestrator、中间件（ProxySQL/Router），再到云 RDS 托管（最省心）；核心是「多副本 + 自动故障检测切换 + 负载均衡」，并防脑裂、让应用能感知新主、切换后对账 —— 一致性越强（MGR）切换越安全，但开销也越大。**', 1),
+
+('其他数据库', '数据迁移', 3,
+ '如何做到不停机数据迁移（如换库/分库分表迁移）？',
+ '**目标**：**迁移期间业务不中断、数据不一致窗口尽量小**。
+
+**经典方案：双写 + 灰度切换** ⭐：
+
+**阶段 1：准备**
+- 新库建好（表结构、索引）。
+- **全量同步**历史数据到新库（`xtrabackup`/`mysqldump`/工具）。
+- **增量同步**（binlog/DTS/CDC）持续追平。
+
+**阶段 2：双写**
+- 应用**同时写旧库和新库**（或通过 binlog 同步反向补）。
+- **保证新库数据跟上**。
+- 需处理**双写失败**（不一致 → 对账修复）。
+
+**阶段 3：数据校验**
+- **对比新旧库数据**（行数、checksum）→ 修复差异。
+
+**阶段 4：灰度读切换**
+- **逐步把读流量切到新库**（1% → 10% → 100%）。
+- 监控错误/延迟，出问题**快速回滚**。
+
+**阶段 5：切写**
+- 确认新库稳定后，**写切到新库**（停双写）。
+- 观察一段时间，旧库只读兜底。
+
+**阶段 6：收尾**
+- 停旧库、下线。
+
+**关键要素**：
+1. **增量同步工具**：**Canal、DTS、Debezium、maxwell**（订阅 binlog/CDC）。
+2. **数据校验**：checksum、采样比对。
+3. **回滚预案**（任一步可回退）。
+4. **幂等**（双写/重放要幂等）。
+5. **一致性**：迁移期间**最终一致**，校验兜底。
+
+**分库分表迁移**：
+- **双写旧表 + 新分片表**。
+- **按分片键路由**写入。
+- 校验 + 灰度。
+
+**其他工具**：
+- **gh-ost**、**pt-online-schema-change**（在线改表/DDL）。
+- **DataX、Sqoop**（批量同步）。
+
+**一句话总结**：**不停机迁移的经典流程是「全量同步 + 增量追平（binlog/CDC）→ 双写 → 数据校验 → 灰度切读 → 切写 → 收尾」，核心是**双写保证新库跟上 + 灰度可回滚 + 校验兜底**；工具用 Canal/DTS/Debezium 做增量、checksum 做校验 —— 关键是「每一步可回退、最终一致有对账」。**', 1),
+
+('其他数据库', '选型', 2,
+ '面对一个业务，你会怎么选数据库？',
+ '**选型看「数据模型 + 访问模式 + 一致性 + 规模」**。
+
+**决策清单**：
+
+1. **数据结构是否规整**？
+   - 规整（表）→ 关系型。
+   - 半结构化/多变 → 文档（MongoDB）。
+
+2. **一致性要求**？
+   - 强事务（金融）→ 关系型 / NewSQL。
+   - 最终一致可接受 → NoSQL。
+
+3. **访问模式**？
+   - **按主键点查 + 高并发** → KV（Redis）。
+   - **复杂关联/SQL** → 关系型。
+   - **全文检索** → ES。
+   - **关系深遍历** → 图数据库。
+   - **时序指标** → TSDB。
+   - **海量列扫描/聚合** → 列存（ClickHouse）。
+   - **海量稀疏 KV** → HBase。
+
+4. **规模与扩展**？
+   - 单机够用 → MySQL/PG。
+   - 要弹性水平扩展 → NewSQL（TiDB）/分库分表。
+
+5. **写入量**？
+   - 高写入 + 时序 → TSDB / HBase / ClickHouse。
+   - 事务读写 → MySQL。
+
+**常见组合（多数据库并存）** ⭐：
+- **MySQL**（核心交易）+ **Redis**（缓存/计数）+ **ES**（搜索）+ **MongoDB**（内容/日志）+ **ClickHouse**（分析）。
+- **没有银弹** → **按场景组合**。
+
+**选型原则**：
+1. **满足需求的最简单方案**（别过度设计）。
+2. **团队熟悉度**（运维成本）。
+3. **生态/社区/云支持**。
+4. **不过早优化**（单机 MySQL 往往够）。
+5. **考虑演进**（未来要不要分布式）。
+
+**反例（常见错误）**：
+- 用 Redis 当唯一存储（会丢）。
+- 用 ES 当数据库（一致性弱）。
+- 小数据上 HBase（大炮打蚊子）。
+- 为了「新」上分布式（复杂度爆炸）。
+
+**一句话总结**：**选型看「数据模型（规整/半结构/图/时序）+ 访问模式（点查/关联/全文/遍历/聚合）+ 一致性（强/最终）+ 规模（单机/分布式）」；实践中**多库并存**（MySQL 交易 + Redis 缓存 + ES 搜索 + ClickHouse 分析），原则是「用满足需求的最简单方案、考虑团队熟悉度、别过度设计」—— 没有银弹，按场景组合。**', 1),
+
+('其他数据库', '分区表', 2,
+ '数据库分区表是什么？和分库分表有什么区别？',
+ '**分区表（Partitioning）**：**逻辑上是一张表，物理上按规则拆成多个分区文件**（**同一台机器/同一个库内**）。
+
+**分区方式**：
+1. **范围分区（RANGE）**：按范围（最常用：**按时间**）。
+   - `PARTITION BY RANGE (YEAR(create_time))`。
+2. **列表分区（LIST）**：按枚举值（地区、类型）。
+3. **哈希分区（HASH）**：按哈希（均匀分布）。
+4. **KEY 分区**：MySQL 用内部哈希。
+
+**优点**：
+1. **查询裁剪（Partition Pruning）**：WHERE 命中分区键 → **只扫相关分区**，少 IO ⭐。
+2. **便于维护**：
+   - **删老数据** → `DROP PARTITION`（**秒删**，比 `DELETE` 快）。
+   - **归档** → 迁移整个分区。
+3. **单表数据量看着大，但每分区小**。
+
+**和分库分表的区别**：
+| 维度 | 分区表 | 分库分表 |
+|---|---|---|
+| 位置 | **同一库/机器** | **多库/多机** |
+| 对应用 | **透明**（还是一张表） | 需中间件/应用改 |
+| 跨分区查询 | 支持（自动） | **麻烦**（跨库） |
+| 扩展性 | **单机上限** | **可横向扩展** |
+| 事务 | 单库事务 | 分布式事务 |
+| SQL | **无限制** | 受限 |
+
+**结论**：
+- **数据量增大但单机还能扛** → **分区表**（简单、透明）。
+- **单机扛不住** → 分库分表 / NewSQL。
+
+**注意事项**：
+- **分区键要贴合查询**（否则用不上裁剪）。
+- **分区数别太多**（管理开销）。
+- **唯一索引/主键要包含分区键**（MySQL 限制）。
+- **不是所有查询都能裁剪**。
+
+**一句话总结**：**分区表是「逻辑一张表、物理多分区」（同机同库），靠**查询裁剪**减少扫描、靠 `DROP PARTITION` 快速删老数据；和分库分表相比，它对应用**透明、支持跨分区查询和单库事务**，但**扩展性受单机限制** —— 「单机还能扛就用分区表（简单），扛不住才分库分表/NewSQL」。**', 1),
+
+('其他数据库', '字符集,排序规则', 3,
+ '数据库字符集和排序规则是什么？为什么推荐 utf8mb4？',
+ '**字符集（Character Set）**：定义**能存哪些字符**及其**编码**。
+**排序规则（Collation）**：定义**如何比较和排序**字符（大小写敏感、重音等）。
+
+**MySQL 的字符集**：
+- `latin1`（单字节，不支持中文）。
+- **`utf8`（MySQL 的坑）**：**最多 3 字节**，**存不了 4 字节字符**（如 emoji `😀`、某些生僻字）⚠️。
+  - 别用 MySQL 的 `utf8`！
+- **`utf8mb4`**：**真正的 UTF-8**，**最多 4 字节**，**支持 emoji 和全部 Unicode** ⭐。
+
+**为什么推荐 utf8mb4**：
+1. `utf8`（3 字节）**存不下 emoji 和部分字符** → 插入报错或乱码。
+2. 现在很多业务需要 emoji（聊天、评论）。
+3. 存储成本差异小。
+
+**排序规则**：
+- `utf8mb4_general_ci`：**不区分大小写**（`ci` = case insensitive），简单。
+- **`utf8mb4_unicode_ci`**：基于 Unicode 标准，**更准确**（多语言排序）。
+- `utf8mb4_0900_ai_ci`（MySQL 8.0 默认）：更现代。
+- `utf8mb4_bin`：**二进制比较**（区分大小写）。
+- `_ci` 结尾 = 不区分大小写，`_cs` = 区分。
+
+**多级设置（容易踩坑）**：
+字符集在**多个层级**都要正确：
+1. **服务器**（`character-set-server`）。
+2. **数据库**。
+3. **表**。
+4. **列**。
+5. **连接**（`SET NAMES` / 客户端字符集）⭐。
+
+**乱码根源**：
+- **写入和读取的字符集不一致**（连接 vs 表存储形态）。
+- 典型：**连接 latin1 + 数据是 utf8** → 逐字符变 `?`。
+- **本项目（layzcatBlog）就踩过**：应用连接是 latin1，老表数据是「UTF-8 字节按 latin1 解释」存的，questions 表是真 utf8mb4 → 只有 questions 显示 `?`（**1 汉字 = 1 `?`** 是 MySQL 按字符转换的特征）⭐。
+
+**诊断/修复**：
+- 判断连接字符集：`SHOW VARIABLES LIKE ''character_set%'';`。
+- 乱码指纹：**1 汉字 → 1 `?`** 是字符集转换；**1 汉字 → 3 `?`** 是程序按字节处理。
+- 修复：**先备份 → 迁移数据（`CONVERT ... USING`）→ 再统一连接**，**不要直接改连接**（老数据会乱）。
+
+**一句话总结**：**字符集定义能存哪些字符、排序规则定义怎么比较；MySQL 的 `utf8` 只支持 3 字节（存不了 emoji），必须用 **`utf8mb4`**；乱码的根源是「连接/表/列字符集不一致」，特征是**1 汉字变 1 个 `?` = 字符集转换**（本项目就因此只坏一张表）；修复要「先备份数据再迁移，最后统一连接」。**', 1),
+
+('其他数据库', '锁,乐观悲观', 2,
+ '数据库的乐观锁和悲观锁分别怎么实现？',
+ '**悲观锁（Pessimistic）**：
+- **假设会冲突，先加锁**。
+- **实现**：`SELECT ... FOR UPDATE`（排他锁）、`LOCK IN SHARE MODE`（共享锁）。
+- **SQL**：
+```sql
+BEGIN;
+SELECT * FROM account WHERE id=1 FOR UPDATE;   -- 锁住这一行
+UPDATE account SET balance = balance - 100 WHERE id=1;
+COMMIT;
+```
+- **优点**：强一致、简单。
+- **缺点**：**阻塞**（别人要等）、可能死锁、并发低。
+
+**乐观锁（Optimistic）**：
+- **假设不冲突，提交时校验**。
+- **实现**：
+  1. **版本号**：
+```sql
+-- 读时拿 version
+SELECT balance, version FROM account WHERE id=1;
+-- 更新时校验 version
+UPDATE account SET balance=?, version=version+1
+WHERE id=1 AND version=?;         -- 影响行数 0 说明被别人改过 → 重试
+```
+  2. **时间戳**（类似）。
+  3. **CAS / 条件更新**（`WHERE balance = 旧值`）。
+- **优点**：**不加锁、并发高**（读多写少场景）。
+- **缺点**：**冲突要重试**（高冲突下重试多、反而慢）。
+
+**对比**：
+| 维度 | 悲观锁 | 乐观锁 |
+|---|---|---|
+| 加锁 | ✅ | ❌ |
+| 阻塞 | **有** | 无 |
+| 并发 | 低 | **高** |
+| 冲突处理 | 等待 | **重试** |
+| 适合 | 写多/冲突多 | **读多/冲突少** |
+
+**应用场景**：
+- **乐观锁**：**读多写少**、商品更新、用户资料。
+- **悲观锁**：**库存扣减**（强一致）、转账。
+- **库存扣减最佳**：**Redis 原子扣减** + DB 乐观锁/`UPDATE ... WHERE stock > 0`。
+
+**注意**：
+- 乐观锁**必须在 UPDATE 的 WHERE 里校验**（先读后判有并发窗口）：
+```sql
+UPDATE stock SET num = num - 1 WHERE id=? AND num > 0;   -- 原子！影响行数 0 = 失败
+```
+  - 这比「先 SELECT 判断再 UPDATE」**更安全**（一条 SQL 原子判断 + 扣减）⭐。
+
+**一句话总结**：**悲观锁「先加锁再操作」（`SELECT ... FOR UPDATE`，强一致但阻塞、并发低），乐观锁「先操作后校验」（版本号/CAS，`UPDATE ... WHERE version=?`，并发高但冲突要重试）；读多写少用乐观锁、写多冲突多用悲观锁；库存扣减最安全的写法是 `UPDATE ... SET n=n-1 WHERE id=? AND n>0`（一条 SQL 原子判断+扣减）。**', 1),
+
+('其他数据库', 'DDL,大表', 3,
+ '大表加字段/改索引（DDL）怎么做到不锁表？',
+ '**问题**：大表 DDL（加列、加索引、改类型）**可能长时间锁表** → 业务不可用。
+
+**MySQL 的演进**：
+1. **5.5 及以前**：DDL **全程锁表**（复制数据、建索引耗时）。
+2. **5.6+ Online DDL**：
+   - **大部分 DDL 支持在线**（不阻塞 DML）。
+   - **原理**：**in-place**（原地改）+ **记录 DDL 期间的增量**（online log）→ 完成后应用。
+   - **加索引**：`ALTER TABLE ... ADD INDEX ... , ALGORITHM=INPLACE, LOCK=NONE`。
+   - **但仍可能短暂锁**（提交元数据时），且**占大量 IO/CPU**。
+3. **8.0**：更多在线 DDL（如 `ADD COLUMN` 秒级完成）。
+
+**Online DDL 的限制**：
+- 部分操作仍**不支持并发 DML**（如改变列类型、主键）。
+- **占用资源**（拷贝数据 + 建索引）。
+
+**工具方案（大表必备）** ⭐：
+
+**1. `pt-online-schema-change`（Percona）**：
+- **建新表**（目标结构）→ **建触发器**把原表增量同步到新表 → **改完切换**（`RENAME`）。
+- 全程**不锁原表**（读写照常）。
+- 缺点：**触发器有开销**、需主键、外键限制。
+
+**2. `gh-ost`（GitHub）**：
+- **基于 binlog**（不用触发器）同步增量 → 建新表 → 切换。
+- **优点**：无触发器开销、可暂停/限速、更安全 ⭐。
+- 缺点：依赖 binlog、需配置。
+
+**3. 云厂商 DTS/无锁变更**。
+
+**实践建议**：
+1. **优先 Online DDL**（原生、简单）。
+2. **大表 + 高并发** → **gh-ost / pt-osc**。
+3. **选低峰期**执行。
+4. **监控 IO/主从延迟**（DDL 会产生 binlog，从库重放慢）。
+5. **分批/限速**。
+6. **先在从库演练**（验证耗时和影响）。
+7. **有主从**：注意**主库 DDL 会传到从库**，从库延迟会涨。
+
+**一句话总结**：**大表 DDL 的解法：MySQL 5.6+ 的 **Online DDL**（in-place + 记录增量，加索引可 `LOCK=NONE`）能覆盖多数场景，但部分操作仍锁表且耗资源；大表/高并发用 **gh-ost（基于 binlog，无触发器，推荐）** 或 **pt-online-schema-change（触发器）** 建新表 + 切换；务必在低峰执行、限速、监控主从延迟，并先从库演练。**', 1),
+
+('其他数据库', '监控,指标', 2,
+ '数据库应该监控哪些指标？',
+ '**监控分层**：**可用性 + 性能 + 资源 + 业务**。
+
+**1. 可用性/连接**：
+- **是否存活**（ping/连接测试）。
+- **连接数**（当前/最大，接近上限要告警）⭐。
+- **连接失败数**。
+- **线程/会话状态**。
+
+**2. 性能（核心）**：
+- **QPS / TPS**。
+- **慢查询数 / 慢查询比例** ⭐。
+- **响应时间**（P50/P95/P99）。
+- **锁等待 / 死锁数**。
+- **缓冲池命中率**（`Innodb_buffer_pool_read_requests` vs 磁盘读）。
+- **表扫描比例**（全表扫描多说明索引有问题）。
+
+**3. 资源**：
+- **CPU / 内存**。
+- **磁盘 IO**（IOPS、吞吐、await）。
+- **磁盘空间**（含 **binlog 空间**）⭐。
+- **网络**。
+
+**4. 复制（有主从）**：
+- **主从延迟**（`Seconds_Behind_Master` / `master_repl_offset` 差值）⭐。
+- **复制状态**（IO/SQL 线程是否运行）。
+- **复制错误**。
+
+**5. 事务/锁**：
+- **活动事务数、长事务**（长事务是隐患）⭐。
+- **锁等待时间**。
+- **死锁次数**。
+
+**6. 业务（可选）**：
+- 关键表的行数/增长。
+- 业务指标（订单量、支付量）。
+
+**MySQL 常用**：
+- `SHOW STATUS`（`Threads_connected`、`Queries`、`Slow_queries`、`Innodb_row_lock_waits`）。
+- `SHOW ENGINE INNODB STATUS`。
+- **`performance_schema` / `sys` schema**。
+- **`Prometheus + mysqld_exporter + Grafana`** ⭐（标准组合）。
+- **慢查询日志**。
+
+**告警设计**：
+- **连接数 > 80%**。
+- **复制延迟 > 阈值**。
+- **慢查询突增**。
+- **磁盘空间 < 20%**。
+- **主从状态异常**。
+- **QPS 骤降/骤升**。
+
+**一句话总结**：**数据库监控要覆盖「可用性/连接数、性能（QPS/TPS/慢查询/响应时间/锁等待/缓存命中率）、资源（CPU/内存/IO/磁盘）、复制（延迟/状态）、事务（长事务/死锁）」五类；标准组合是 **Prometheus + mysqld_exporter + Grafana + 慢查询日志**，重点告警「连接数接近上限、主从延迟、慢查询突增、磁盘不足」—— 长事务和主从延迟是最容易被忽视的隐患。**', 1),
+
+('其他数据库', '存储引擎', 2,
+ '常见数据库存储引擎有什么区别？（InnoDB/MyISAM/Memory/RocksDB）',
+ '**存储引擎**：数据库**存取数据的底层实现**（索引方式、锁、事务、崩溃恢复）。
+
+**InnoDB（MySQL 默认）**：
+- **支持事务（ACID）**、**行级锁**、**外键**、**崩溃恢复**（redo/undo）。
+- **聚簇索引**（数据按主键组织）。
+- **MVCC**。
+- **适合**：**OLTP、高并发、需事务**（绝大多数场景）。
+
+**MyISAM（早期默认，已淘汰）**：
+- **不支持事务**、**表级锁**。
+- **非聚簇索引**（索引与数据分离）。
+- **查询可快**（无事务开销），但**写入差**（表锁）。
+- **不支持崩溃恢复**（易损坏）。
+- **适合**：几乎不用了（只读场景勉强）。
+
+**Memory（内存引擎）**：
+- **数据在内存**，**极快**。
+- **重启数据丢失**。
+- **表级锁**、**不支持事务**。
+- **适合**：**临时表、缓存表**。
+
+**对比**：
+| 维度 | InnoDB | MyISAM | Memory |
+|---|---|---|---|
+| 事务 | ✅ | ❌ | ❌ |
+| 锁 | **行锁** | 表锁 | 表锁 |
+| 崩溃恢复 | ✅ | ❌ | ❌ |
+| 外键 | ✅ | ❌ | ❌ |
+| 索引 | 聚簇 | 非聚簇 | 哈希 |
+| 场景 | **OLTP** | 只读 | 临时表 |
+
+**其他引擎**：
+- **RocksDB**：**LSM 树**（**写优化**），用于 **TiKV、MyRocks、Kafka**（日志/写密集）。
+- **TokuDB**：高压缩、写优化（已少用）。
+- **Archive**：归档（只插入，压缩）。
+
+**LSM 树 vs B+ 树**：
+| 维度 | B+ 树 | LSM 树 |
+|---|---|---|
+| 写 | 随机写（慢） | **顺序写（快）** |
+| 读 | **快**（一层） | 可能多层（需合并） |
+| 写放大 | 小 | 有（compaction） |
+| 适合 | **读多/OLTP** | **写密集**（HBase/RocksDB） |
+
+**一句话总结**：**InnoDB 支持事务/行锁/崩溃恢复/聚簇索引，是 OLTP 默认；MyISAM 无事务、表锁、已淘汰；Memory 快但重启丢；RocksDB 用 LSM 树（顺序写、写密集）；B+ 树适合读多，LSM 树适合写多 —— 选引擎看「要不要事务、读多还是写多」。**', 1),
+
+('其他数据库', '索引,失效', 2,
+ '索引为什么失效？常见场景有哪些？',
+ '**索引失效**：SQL 没能用上索引 → **全表扫描**（慢）。
+
+**常见失效场景**：
+
+1. **在索引列上做运算/函数** ⚠️：
+   - `WHERE YEAR(create_time) = 2026`（列被函数包）→ 失效。
+   - ✅ 改成 `WHERE create_time >= ''2026-01-01'' AND create_time < ''2027-01-01''`。
+   - `WHERE id + 1 = 10` → 失效 → 改成 `WHERE id = 9`。
+
+2. **隐式类型转换** ⚠️：
+   - `phone` 是**字符串**，`WHERE phone = 13800000000`（数字）→ **隐式转换 → 索引失效**。
+   - ✅ 加引号 `WHERE phone = ''13800000000''`。
+   - **规则**：字符串列传数字会失效（数字列传字符串一般不会）。
+
+3. **前导通配的 LIKE** ⚠️：
+   - `WHERE name LIKE ''%abc''`（前导 `%`）→ 失效。
+   - `WHERE name LIKE ''abc%''`（后置 `%`）→ **可用**（前缀匹配）。
+   - 全文搜索用 **ES/全文索引**。
+
+4. **`OR` 连接非索引列**：
+   - `WHERE a=1 OR b=2`（b 无索引）→ 可能失效。
+   - ✅ 改成 `UNION`。
+
+5. **不满足最左前缀**：
+   - 联合索引 `(a,b)`，`WHERE b=1` → 失效。
+
+6. **`!=` / `<>` / `NOT IN` / `NOT LIKE`**：
+   - 可能失效（优化器判断全表扫更划算）。
+
+7. **`IS NULL` / `IS NOT NULL`**：
+   - 视情况（`IS NULL` 有时能用）。
+
+8. **索引列区分度低**：
+   - 优化器认为**全表扫更快**（如 `WHERE gender = ''M''`）。
+   - 例：查 90% 的行，不如全表扫。
+
+9. **`SELECT *` 但需回表很多**：
+   - 优化器可能放弃索引直接全表扫。
+
+10. **统计信息过期**：
+    - `ANALYZE TABLE` 更新统计信息（优化器判断依据）。
+
+**如何判断是否失效**：
+- **`EXPLAIN`** 看 `type`：
+  - **`ALL`** = 全表扫描（失效）。
+  - `index` = 全索引扫描。
+  - **`range`/`ref`/`eq_ref`/`const`** = 用了索引 ⭐。
+- 看 `key`（实际用的索引）、`rows`（扫描行数）。
+
+**一句话总结**：**索引失效常见于「列上做函数/运算、隐式类型转换（字符串列传数字）、前导 `%` 的 LIKE、`OR` 混非索引列、不满足最左前缀、区分度太低、统计信息过期」；用 **`EXPLAIN` 看 `type` 是否退化到 `ALL`** 来判断，修复靠「让列保持裸值、类型匹配、前缀匹配、走最左前缀、ANALYZE 更新统计」。**', 1),
+
+('其他数据库', '事务,实现', 3,
+ '数据库事务的隔离性是怎么实现的？LBCC 和 MVCC 有什么区别？',
+ '**隔离性的两种实现思路**：
+
+**1. LBCC（基于锁的并发控制）**：
+- **读加读锁、写加写锁**，**读写互斥**。
+- 优点：**简单、强一致**。
+- 缺点：**读写互相阻塞**、并发低。
+- 代表：**串行化级别、早期数据库**。
+
+**2. MVCC（多版本并发控制）**：
+- **读读快照、写建新版本**，**读不阻塞写、写不阻塞读** ⭐。
+- 优点：**高并发**（读写不互斥）。
+- 缺点：**undo 膨胀、实现复杂、只解决读一致**（写写仍要锁）。
+- 代表：**InnoDB、PostgreSQL、Oracle**。
+
+**两者结合**（现代数据库）：
+- **读**：MVCC（快照读，不加锁）。
+- **写**：**行锁**（写写互斥）。
+- **当前读**（`FOR UPDATE`）：**加锁读最新**。
+
+**事务实现的logs**：
+| 日志 | 作用 | 支持 |
+|---|---|---|
+| **undo log** | 记录**旧版本**（回滚 + MVCC 版本链） | **原子性 + 隔离性（MVCC）** |
+| **redo log** | 记录**物理修改**（崩溃恢复） | **持久性** |
+| **binlog** | 记录**逻辑操作**（主从复制/恢复） | **复制 + PITR** |
+
+**两阶段提交（redo + binlog 一致）**：
+- **prepare**：写 redo（prepare 状态）。
+- 写 binlog。
+- **commit**：redo 置 commit。
+- 保证 redo 和 binlog **一致**（崩溃恢复时比对）。
+
+**隔离级别与实现**：
+| 级别 | 实现 |
+|---|---|
+| 读未提交 | 无特殊（脏读） |
+| 读已提交 | MVCC（每次 SELECT 新 Read View） |
+| 可重复读 | MVCC（复用 Read View）+ Next-Key Lock 防幻读 |
+| 串行化 | 全加锁（LBCC） |
+
+**一句话总结**：**隔离性有两种实现：LBCC（读写加锁、强一致但阻塞）和 MVCC（多版本、读写不阻塞、高并发），现代数据库用「MVCC 做快照读 + 行锁做写写互斥 + 加锁读最新」；undo 支持原子性和 MVCC，redo 支持持久性，binlog 支持复制，靠**两阶段提交**保证 redo/binlog 一致 —— 核心是「读用版本、写用锁」。**', 1),
+
+('其他数据库', 'SQL注入,安全', 2,
+ '数据库层面如何防止 SQL 注入？',
+ '**SQL 注入**：攻击者把**恶意 SQL 拼进输入**，改变原 SQL 语义。
+
+**例**：
+```sql
+-- 原 SQL
+SELECT * FROM users WHERE name = ''输入'' AND pwd = ''输入'';
+-- 输入 name 为  '' OR ''1''=''1
+SELECT * FROM users WHERE name = '''' OR ''1''=''1'' AND pwd = ''...'';
+-- → 绕过认证
+```
+- 更狠：`''; DROP TABLE users; --`。
+
+**防御**：
+
+1. **参数化查询（Prepared Statement）** ⭐⭐：
+   - **把 SQL 和参数分离**，参数**作为数据传入**（不参与 SQL 解析）。
+   - 例：`SELECT * FROM users WHERE name = ? AND pwd = ?`，参数单独绑定。
+   - **最有效**（根治）。
+   - **本项目用 Crow + MySQL C API** → 应用 **prepared statement**（`mysql_stmt_prepare`）或严谨转义。
+
+2. **严格转义**（次优）：
+   - `mysql_real_escape_string`（对引号、反斜杠等转义）。
+   - **易漏**（字符集不一致时可能被绕过）。
+
+3. **最小权限**：
+   - 应用连接**不给 DROP/ALTER 等高危权限**。
+   - **不同业务用不同账号**。
+
+4. **输入校验**：
+   - 类型、长度、格式白名单（辅助手段，**不能替代参数化**）。
+
+5. **ORM**：
+   - 用 ORM（自动参数化），**但注意 ORM 里的原生 SQL 拼接**。
+
+6. **WAF**：
+   - 拦截常见注入特征（**辅助**）。
+
+7. **错误信息不外泄**：
+   - 别把 SQL 报错原样返回给用户（避免泄露结构）。
+
+**其他安全**：
+- **不要拼表名/列名**（参数化只能参数值，表名列名要白名单校验）。
+- **`ORDER BY` / `LIMIT` 拼接要校验**（不能用占位符）。
+- **备份/日志脱敏**。
+
+**一句话总结**：**防 SQL 注入首选**参数化查询（Prepared Statement，SQL 与参数分离）**，次选严格转义（`mysql_real_escape_string`）；再配合**最小权限账号、输入校验、ORM、WAF、不回显错误**；特别注意**表名/列名/ORDER BY 不能用占位符**，必须白名单校验 —— 「永远不要拼接用户输入进 SQL」。**', 1),
+
+('其他数据库', '连接,排查', 2,
+ '数据库连接数暴涨/被打满怎么排查？',
+ '**现象**：`ERROR 1040: Too many connections` / 应用拿不到连接。
+
+**排查步骤**：
+
+**1. 看当前连接情况**：
+```sql
+SHOW STATUS LIKE ''Threads_connected'';      -- 当前连接数
+SHOW STATUS LIKE ''Threads_running'';        -- 正在执行的（活跃）
+SHOW VARIABLES LIKE ''max_connections'';     -- 上限
+SHOW PROCESSLIST;                          -- 每个连接在做什么 ⭐
+```
+- **`Threads_running` 高** = 很多连接在**真正执行**（CPU/慢查询问题）。
+- **`Threads_connected` 高但 `running` 低** = 大量**空闲连接**（连接池过大/泄漏）。
+
+**2. 按状态/来源分析**：
+```sql
+SELECT user, host, command, COUNT(*) 
+FROM information_schema.processlist 
+GROUP BY user, host, command;
+```
+- 看**是哪个应用/主机**打满的。
+- `Sleep` 多 = 空闲连接堆积。
+
+**3. 常见原因**：
+| 原因 | 表现 | 解决 |
+|---|---|---|
+| **连接池配置过大** | 大量 Sleep | 调小池 |
+| **连接泄漏** | 连接只增不减 | 修复代码（归还连接） |
+| **慢查询** | running 高、连接堆积 | 优化 SQL、加索引 |
+| **锁等待** | 连接卡在等锁 | 排查死锁/长事务 |
+| **应用实例数多** | 总数超上限 | 算总账、调 max_connections |
+| **DDL 阻塞** | 连接等 MDL | 用 gh-ost |
+| **突发流量** | QPS 暴涨 | 限流、扩容 |
+| **中间件/代理问题** | 连接不回 | 排查代理 |
+
+**4. 应急处理**：
+- **`KILL` 掉长时间 Sleep / 异常连接**（谨慎）。
+- **临时调大 `max_connections`**（注意内存）。
+- **限流**保护数据库。
+- **重启应用连接池**。
+
+**预防**：
+- **合理连接池**（总连接 ≤ DB 上限，留余量）。
+- **设超时**（连接 + 命令）。
+- **监控连接数**（阈值告警）。
+- **慢查询治理**。
+- **长事务治理**。
+
+**一句话总结**：**连接暴涨先 `SHOW PROCESSLIST` + `SHOW STATUS` 分清是「活跃多（慢查询/锁）」还是「空闲多（池过大/泄漏）」，再按用户/主机定位来源；原因是「池配置过大、连接泄漏、慢查询、锁等待、实例数多、DDL 阻塞、突发流量」；应急 `KILL` + 调 `max_connections` + 限流，预防靠「合理池大小 + 超时 + 监控 + 慢查询/长事务治理」。**', 1),
+
+('其他数据库', '演进,总结', 2,
+ '数据库技术的演进方向是什么？',
+ '**一条主线**：**从单机 → 分布式；从行存 → 列存；从通用 → 专用；从单一 → 多模型/HTAP**。
+
+**演进方向**：
+
+1. **单机 → 分布式**：
+   - MySQL 单机 → **分库分表** → **NewSQL（TiDB/OceanBase）**。
+   - 自动分片、弹性扩缩、强一致。
+
+2. **行存 → 列存**：
+   - OLTP 行存（B+ 树）→ OLAP 列存（ClickHouse）。
+   - **HTAP**（TiKV 行 + TiFlash 列，一套系统两用）。
+
+3. **通用 → 专用**：
+   - 关系型 → KV/文档/列/图/时序/搜索。
+   - 各场景用最合适的引擎。
+
+4. **单一 → 多模型**：
+   - PG 支持 JSONB/GIS/向量；多模数据库。
+
+5. **NewSQL**：
+   - 兼顾 **SQL + ACID + 水平扩展**（Google Spanner、TiDB）。
+
+6. **云原生数据库**：
+   - **存算分离**（Aurora、PolarDB）。
+   - **Serverless**（按需扩展）。
+   - **多租户**。
+
+7. **AI 融合**：
+   - **向量数据库**（Pinecone、Milvus、pgvector）用于 RAG/相似检索。
+   - **数据库自治**（自动调优、索引推荐）。
+   - **NL2SQL**。
+
+8. **缓存/内存**：
+   - Redis、内存数据库、持久化内存（PMEM）。
+
+**为什么演进**：
+- **数据量与并发爆炸**（单机不够）。
+- **业务多样化**（不同场景不同需求）。
+- **成本与弹性**（云、按需）。
+- **AI 时代**（向量检索、智能运维）。
+
+**不变的真理**：
+- **CAP/BASE 权衡**永远存在。
+- **ACID 强一致在分布式下代价高**。
+- **没有银弹**（多库并存）。
+- **索引、范式、事务**等基础依然关键。
+
+**一句话总结**：**数据库演进的主线是「单机→分布式（NewSQL）、行存→列存（HTAP）、通用→专用（多引擎并存）、自建→云原生（存算分离/Serverless）、并融合 AI（向量库/自治运维）」；驱动力是数据量与业务多样化，但「CAP 权衡、ACID 代价、索引/事务基础、没有银弹」这些根本规律不变 —— 理解原理比追新更重要。**', 1),
+
+('其他数据库', '视图,物化视图', 2,
+ '视图和物化视图有什么区别？各有什么用途？',
+ '**视图（View）**：
+- **虚拟表**，本质是**保存的 SQL 查询**（不存数据）。
+- 每次查询视图 → **实时执行底层 SQL**。
+- **用途**：
+  - **简化复杂查询**（封装多表 JOIN）。
+  - **权限控制**（只暴露部分列/行）。
+  - **逻辑解耦**（底层表变了，视图可不变）。
+- **缺点**：**每次查都实时算**（不加速）。
+
+**物化视图（Materialized View）**：
+- **存实际数据的表**（查询结果**物化**落盘）。
+- **查询快**（直接读物化结果，不重算）。
+- **需要刷新**（数据源变了要重建/刷新）。
+- **刷新方式**：
+  - **全量刷新**（重建）。
+  - **增量刷新**（只更新变化部分，需支持）。
+  - **定时/触发**。
+- **用途**：
+  - **加速复杂聚合查询**（报表、统计）。
+  - **数据仓库的预计算**。
+  - **分布式数据的本地副本**。
+
+**对比**：
+| 维度 | 视图 | 物化视图 |
+|---|---|---|
+| 存数据 | ❌（虚拟） | **✅（落盘）** |
+| 查询速度 | 实时（慢） | **快** |
+| 数据新鲜度 | **实时** | **可能滞后**（需刷新） |
+| 空间 | 无 | **占空间** |
+| 支持 | 广泛 | PG/Oracle 原生，MySQL **不支持**（需手动/工具模拟） |
+
+**MySQL 的情况**：
+- **不支持原生物化视图** → 用**汇总表 + 定时任务**模拟。
+- PostgreSQL 从 9.3+ 支持 `CREATE MATERIALIZED VIEW` + `REFRESH`。
+
+**相关**：
+- **`WITH`（CTE）**：临时结果集（不是视图）。
+- **临时表**：会话级。
+- **汇总表**：预聚合（类似物化视图）。
+
+**一句话总结**：**视图是「保存的查询（虚拟表）」，实时执行、不存数据、用于简化查询和权限控制；物化视图是「查询结果落盘的真实表」，查询快但**可能滞后**且占空间，需刷新，用于加速复杂聚合/报表；PostgreSQL/Oracle 原生支持物化视图，**MySQL 不支持需用汇总表模拟** —— 一个换「简便/实时」，一个换「速度」。**', 1)
 
 INSERT INTO questions (category, tags, difficulty, question, answer, status)
 SELECT s.category, s.tags, s.difficulty, s.question, s.answer, 1

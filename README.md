@@ -838,7 +838,7 @@ daily_questions 里有今天的记录吗？
 ```
 
 - **序号来源是日期差，不是行数**：`dayIndex = 今天 − daily_base_date`（基准日首次运行时写入 `settings.daily_base_date`）。这样即使某天没人访问、库里缺了那天，顺序也不会错位。
-- **分类轮转**：`category = 分类列表[dayIndex % 分类数]`，再在该分类内按 `dayIndex / 分类数` 轮转。效果是 C++ → MySQL → 网络 → 操作系统 → 算法 依次出现，而不是连着几天都是同一类。
+- **分类轮转**：`category = 分类列表[dayIndex % 分类数]`，再在该分类内按 `dayIndex / 分类数` 轮转。分类列表是**从 `questions` 表现查 `DISTINCT category` 动态得到的**（不是写死的），所以导入 500 道题后会自动按 C++ → Linux → MySQL → Redis → 其他数据库 → 网络 → 操作系统 → 算法 八类依次出现，而不是连着几天都是同一类。
 - **用 `INSERT IGNORE` 而不是「先查再插」**：`app.multithreaded()` 是多线程的，同一秒可能有多个请求同时触发生成；靠主键 `d` 让先写入的那条生效，随后统一读回，保证所有人看到同一题。
 - **题库与排期分表**：题库可以随便增删改，`daily_questions` 一旦写入就不动，历史题目不会因为改题库而跳变（被删掉的题目在历史列表里显示为空）。
 
@@ -878,7 +878,14 @@ mysql -u <用户> -p --default-character-set=utf8mb4 blogdb < tools/seed_questio
 > 建了就用 `blog`，**没建就用 `root`** —— 两者都能跑这个脚本（只用到临时表 + `INSERT`，root 权限足够）。
 > 库名要和服务端的 `MYSQL_DB` 保持一致，默认是 `blogdb`。
 
-`tools/seed_questions.sql` 含 46 道题（C++ 10 / MySQL 10 / 网络 9 / 操作系统 9 / 算法 8），覆盖语言特性、存储引擎与索引、TCP/HTTP、内存与并发、排序与设计题。脚本**可重复执行**：先导入临时表，再按「分类 + 题干」判重插入，已存在的题目不会被覆盖 —— 手动改过的题不会被脚本冲掉。
+`tools/seed_questions.sql` 含 **500 道题**（C++ 100 / Linux 90 / MySQL 70 / Redis 40 / 其他数据库 40 / 网络 55 / 操作系统 55 / 算法 50），覆盖语言特性与对象模型、Linux 系统与运维、存储引擎/索引/事务、Redis 数据结构与高可用、PostgreSQL/NoSQL/分布式数据库、TCP/HTTP 与网络安全、进程线程内存与并发、排序/查找/动态规划等。脚本**可重复执行**：先导入临时表，再按「分类 + 题干」判重插入，已存在的题目不会被覆盖 —— 手动改过的题不会被脚本冲掉。
+
+> **题库由生成器维护，不要手改 SQL。** 题面数据放在 `tools/qbank/*.py`（每类一个模块，
+> 元素为 `(category, tags, difficulty, question, answer)`），改题后重跑
+> `python tools/gen_seed.py` 重新生成 `tools/seed_questions.sql`。生成器会校验：
+> ① 每条结构合法；② **分类分布与 `EXPECTED` 完全一致**（防止漏题）；③ **`(分类, 题干)` 去重键唯一**；
+> 并统一做 SQL 转义（`\` → `\\`、`'` → `''`），避免手写 SQL 时的字面量断裂。
+> 其中 `tools/qbank/existing.py` 由 `tools/_extract_existing.py` 从旧 SQL 无损提取，请勿手改。
 
 > **脚本不依赖服务端先启动。** `questions` 表平时由服务端启动时创建（`initTable()`），
 > 而种子脚本第一步自带 `CREATE TABLE IF NOT EXISTS questions(...)`（DDL 与 `database.cpp` 保持一致，
