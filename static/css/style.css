@@ -2966,20 +2966,6 @@ body.daily-question-page {
     margin: 0 0 12px;
 }
 
-.daily-side-hint {
-    font-size: 0.76rem;
-    line-height: 1.65;
-    color: var(--text-muted);
-    margin: 12px 0 0;
-}
-
-.daily-side-hint code {
-    background: var(--accent-soft);
-    color: var(--accent-dark);
-    padding: 1px 5px;
-    border-radius: 4px;
-}
-
 /* 窄屏：侧栏回到主栏下方，取消吸顶与内部滚动 */
 @media (max-width: 1000px) {
     .daily-layout {
@@ -3268,6 +3254,7 @@ body.daily-question-page {
     justify-content: space-between;
     gap: 16px;
     flex-wrap: wrap;
+    margin-bottom: 28px;
 }
 
 /* 表单里「标签 + 行内按钮」的对齐：label 靠左、操作靠右 */

@@ -137,9 +137,8 @@ function applyEditMode(id, q) {
     questionState.id = id;
     document.title = `修改题目 #${id} · LazyCat's Blog`;
     document.getElementById('questionPageTitle').textContent = `修改题目 #${id}`;
-    document.getElementById('questionPageSubtitle').textContent = '保存后会回到每日一题页';
     document.getElementById('qSaveBtn').textContent = '保存修改';
-    document.getElementById('qFormHint').textContent = `正在编辑 #${id}`;
+    document.getElementById('qFormHint').textContent = `正在编辑 #${id} · 保存后会回到每日一题页`;
     if (q) fillForm(q);
 }
 

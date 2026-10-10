@@ -2973,20 +2973,6 @@ body.daily-question-page {
     margin: 0 0 12px;
 }
 
-.daily-side-hint {
-    font-size: 0.76rem;
-    line-height: 1.65;
-    color: var(--text-muted);
-    margin: 12px 0 0;
-}
-
-.daily-side-hint code {
-    background: var(--accent-soft);
-    color: var(--accent-dark);
-    padding: 1px 5px;
-    border-radius: 4px;
-}
-
 /* 窄屏：侧栏回到主栏下方，取消吸顶与内部滚动 */
 @media (max-width: 1000px) {
     .daily-layout {
@@ -3275,6 +3261,7 @@ body.daily-question-page {
     justify-content: space-between;
     gap: 16px;
     flex-wrap: wrap;
+    margin-bottom: 28px;
 }
 
 /* 表单里「标签 + 行内按钮」的对齐：label 靠左、操作靠右 */
@@ -3388,7 +3375,6 @@ body.daily-question-page {
 
     <main class="container container-daily">
         <h1 class="page-title">每日一题</h1>
-        <p class="page-subtitle">每天一道后端面试题 · C++ / Linux / MySQL / Redis / 网络 / 操作系统 / 算法 · 答案点开才显示</p>
 
         <div class="daily-layout">
         <div class="daily-main">
@@ -3507,10 +3493,6 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
         <section class="daily-side-card">
             <h2 class="daily-side-title">题目管理</h2>
             <a class="btn btn-primary btn-block" href="#">添加题目</a>
-            <p class="daily-side-hint">
-                答案支持 Markdown，画图用 <code>```mermaid</code>。<br>
-                也可导入 <code>tools/seed_questions.sql</code> 批量补题。
-            </p>
         </section>
         </aside>
         </div><!-- /.daily-layout -->

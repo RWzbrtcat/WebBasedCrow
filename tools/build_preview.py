@@ -583,7 +583,6 @@ daily_html = '''<!DOCTYPE html>
 
     <main class="container container-daily">
         <h1 class="page-title">每日一题</h1>
-        <p class="page-subtitle">每天一道后端面试题 · C++ / Linux / MySQL / Redis / 网络 / 操作系统 / 算法 · 答案点开才显示</p>
 
         <div class="daily-layout">
         <div class="daily-main">
@@ -702,10 +701,6 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
         <section class="daily-side-card">
             <h2 class="daily-side-title">题目管理</h2>
             <a class="btn btn-primary btn-block" href="#">添加题目</a>
-            <p class="daily-side-hint">
-                答案支持 Markdown，画图用 <code>```mermaid</code>。<br>
-                也可导入 <code>tools/seed_questions.sql</code> 批量补题。
-            </p>
         </section>
         </aside>
         </div><!-- /.daily-layout -->
@@ -788,7 +783,6 @@ question_html = '''<!DOCTYPE html>
             <h1 class="page-title">添加题目</h1>
             <a class="daily-link" href="#">← 返回每日一题</a>
         </div>
-        <p class="page-subtitle">新题目会进入题库，按「分类 + 题干」判重，重复题干不会重复入库</p>
 
         <section class="daily-card">
             <form onsubmit="return false">
