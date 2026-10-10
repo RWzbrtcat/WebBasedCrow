@@ -2918,11 +2918,87 @@ input[readonly] {
 /* ========== 每日一题 ========== */
 
 body.daily-page {
-    --header-width: 900px;
+    --header-width: 1120px;
 }
 
 .container-daily {
+    max-width: 1120px;
+}
+
+/* 出题 / 改题页（/daily/question）：单列表单，收窄更利于阅读 */
+body.daily-question-page {
+    --header-width: 900px;
+}
+
+.container-question {
     max-width: 900px;
+}
+
+/* 左右两栏：主栏放今日题目与题库，侧栏放历史题目与题目管理 */
+.daily-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 278px;
+    gap: 30px;
+    align-items: start;
+    margin-top: 28px;
+}
+
+.daily-main {
+    min-width: 0;
+}
+
+.daily-aside {
+    position: sticky;
+    top: 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    max-height: calc(100vh - 130px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.daily-side-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 16px 18px;
+}
+
+.daily-side-title {
+    font-family: var(--serif);
+    font-size: 0.98rem;
+    font-weight: 500;
+    color: var(--text);
+    margin: 0 0 12px;
+}
+
+.daily-side-hint {
+    font-size: 0.76rem;
+    line-height: 1.65;
+    color: var(--text-muted);
+    margin: 12px 0 0;
+}
+
+.daily-side-hint code {
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+/* 窄屏：侧栏回到主栏下方，取消吸顶与内部滚动 */
+@media (max-width: 1000px) {
+    .daily-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 24px;
+    }
+
+    .daily-aside {
+        position: static;
+        max-height: none;
+        overflow: visible;
+    }
 }
 
 /* 题目卡片（今日题目 / 随机一题共用） */
@@ -3144,62 +3220,83 @@ body.daily-page {
     margin-top: 14px;
 }
 
-/* 历史题目 */
+/* 历史题目：只在右侧栏出现，按窄栏排版（日期一行、题干一行、分类做小标签） */
 .daily-history {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
+    display: block;
 }
 
 .daily-history-row {
-    display: flex;
-    align-items: baseline;
-    gap: 14px;
-    padding: 12px 18px;
+    display: block;
+    padding: 11px 0;
     border-bottom: 1px solid var(--border);
+}
+
+.daily-history-row:first-child {
+    padding-top: 0;
 }
 
 .daily-history-row:last-child {
     border-bottom: none;
+    padding-bottom: 0;
 }
 
 .daily-history-date {
-    font-size: 0.78rem;
+    display: block;
+    font-size: 0.75rem;
     color: var(--text-muted);
-    min-width: 84px;
+    margin-bottom: 4px;
 }
 
 .daily-history-q {
-    flex: 1;
-    min-width: 0;
-    font-size: 0.9rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: 0.86rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
 }
 
 .daily-history-cat {
-    font-size: 0.75rem;
+    display: inline-block;
+    margin-top: 7px;
+    font-size: 0.72rem;
     color: var(--accent-dark);
-}
-
-/* 站长：题库管理 */
-.daily-bank-admin {
-    margin-top: 36px;
-}
-
-.bank-hint {
-    font-size: 0.82rem;
-    color: var(--text-muted);
-    margin: 12px 0 16px;
-}
-
-.bank-hint code {
     background: var(--accent-soft);
-    color: var(--accent-dark);
-    padding: 1px 5px;
     border-radius: 4px;
+    padding: 1px 7px;
+}
+
+/* ===== 出题 / 改题页（/daily/question） ===== */
+
+.question-editor-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+/* 表单里「标签 + 行内按钮」的对齐：label 靠左、操作靠右 */
+.question-label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.question-preview {
+    margin-top: 12px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px dashed var(--card-border);
+    border-radius: var(--radius);
+    max-height: 460px;
+    overflow-y: auto;
+}
+
+.question-preview[hidden] {
+    display: none;
 }
 
 .question-form-row {
@@ -3265,19 +3362,8 @@ body.daily-page {
         grid-template-columns: 1fr;
     }
 
-    .daily-history-row {
-        flex-wrap: wrap;
-        gap: 6px;
-    }
-
-    .daily-history-date {
-        min-width: 0;
-    }
-
-    .daily-history-q {
-        white-space: normal;
-        flex-basis: 100%;
-        order: 3;
+    .daily-side-card {
+        padding: 14px 14px 16px;
     }
 }
 
@@ -3302,8 +3388,10 @@ body.daily-page {
 
     <main class="container container-daily">
         <h1 class="page-title">每日一题</h1>
-        <p class="page-subtitle">每天一道 C++ / MySQL 面试题 · 答案点开才显示</p>
+        <p class="page-subtitle">每天一道后端面试题 · C++ / Linux / MySQL / Redis / 网络 / 操作系统 / 算法 · 答案点开才显示</p>
 
+        <div class="daily-layout">
+        <div class="daily-main">
         <section class="daily-card">
             <div class="daily-card-head">
                 <span class="daily-badge">每日一题</span>
@@ -3335,14 +3423,17 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
 
         <div class="daily-section-head">
             <h2 class="daily-section-title">题库</h2>
-            <span class="daily-section-note">共 46 题</span>
+            <span class="daily-section-note">共 500 题</span>
         </div>
         <div class="filter-bar">
             <div class="filter-row">
                 <span class="filter-label">分类</span>
                 <span class="filter-tab active" data-name="">全部</span>
                 <span class="filter-tab" data-name="cpp">C++</span>
+                <span class="filter-tab" data-name="linux">Linux</span>
                 <span class="filter-tab" data-name="mysql">MySQL</span>
+                <span class="filter-tab" data-name="redis">Redis</span>
+                <span class="filter-tab" data-name="db">其他数据库</span>
                 <span class="filter-tab" data-name="net">网络</span>
                 <span class="filter-tab" data-name="os">操作系统</span>
                 <span class="filter-tab" data-name="algo">算法</span>
@@ -3358,7 +3449,7 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
                 <p class="daily-item-question">聚簇索引和二级索引有什么区别？什么是回表？</p>
                 <div class="daily-item-actions">
                     <button type="button" class="daily-link" data-toggle="bankAnswer1">收起答案</button>
-                    <button type="button" class="daily-link">编辑</button>
+                    <a class="daily-link" href="#">编辑</a>
                     <button type="button" class="daily-link daily-link-danger">删除</button>
                 </div>
                 <div class="daily-item-answer" id="bankAnswer1">
@@ -3377,7 +3468,7 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
                 <p class="daily-item-question">什么是 RAII？为什么说它是 C++ 资源管理的核心？</p>
                 <div class="daily-item-actions">
                     <button type="button" class="daily-link" data-toggle="bankAnswer2">查看答案</button>
-                    <button type="button" class="daily-link">编辑</button>
+                    <a class="daily-link" href="#">编辑</a>
                     <button type="button" class="daily-link daily-link-danger">删除</button>
                 </div>
                 <div class="daily-item-answer" id="bankAnswer2" hidden>
@@ -3390,11 +3481,12 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
         <div class="daily-more">
             <button type="button" class="btn btn-secondary">加载更多</button>
         </div>
+        </div><!-- /.daily-main -->
 
-        <div class="daily-section-head">
-            <h2 class="daily-section-title">历史题目</h2>
-        </div>
-        <div class="daily-history">
+        <aside class="daily-aside">
+        <section class="daily-side-card">
+            <h2 class="daily-side-title">历史题目</h2>
+            <div class="daily-history">
             <div class="daily-history-row">
                 <span class="daily-history-date">2026-10-08</span>
                 <span class="daily-history-q">聚簇索引和二级索引的区别？回表是什么？</span>
@@ -3412,50 +3504,17 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
             </div>
         </div>
 
-        <section class="daily-bank-admin">
-            <div class="admin-panel">
-                <button type="button" class="admin-toggle" id="bankToggle" aria-expanded="false">
-                    题库管理
-                    <span class="admin-toggle-caret"></span>
-                </button>
-                <div id="bankPanel" hidden>
-                    <p class="bank-hint">答案支持 Markdown：代码块用三反引号包裹，画图用 <code>```mermaid</code>。</p>
-                    <div class="question-form-row">
-                        <div class="form-group">
-                            <label for="qCategory">分类</label>
-                            <input type="text" id="qCategory" placeholder="C++ / MySQL">
-                        </div>
-                        <div class="form-group">
-                            <label for="qDifficulty">难度</label>
-                            <select id="qDifficulty">
-                                <option>基础</option>
-                                <option selected>进阶</option>
-                                <option>困难</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="qStatus">状态</label>
-                            <select id="qStatus">
-                                <option selected>已发布</option>
-                                <option>草稿</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="qQuestion">题干（支持 Markdown）</label>
-                        <textarea id="qQuestion" rows="3"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="qAnswer">答案（支持 Markdown / 代码块 / mermaid）</label>
-                        <textarea id="qAnswer" rows="6"></textarea>
-                    </div>
-                    <div class="question-form-actions">
-                        <button type="button" class="btn btn-primary">添加题目</button>
-                        <span class="question-form-hint">正在编辑 #31</span>
-                    </div>
-                </div>
-            </div>
+        <section class="daily-side-card">
+            <h2 class="daily-side-title">题目管理</h2>
+            <a class="btn btn-primary btn-block" href="#">添加题目</a>
+            <p class="daily-side-hint">
+                答案支持 Markdown，画图用 <code>```mermaid</code>。<br>
+                也可导入 <code>tools/seed_questions.sql</code> 批量补题。
+            </p>
         </section>
+        </aside>
+        </div><!-- /.daily-layout -->
+
     </main>
 
     <footer class="site-footer">
@@ -3472,15 +3531,6 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
                 btn.textContent = box.hidden ? '查看答案' : '收起答案';
             });
         });
-        var toggle = document.getElementById('bankToggle');
-        var panel = document.getElementById('bankPanel');
-        if (toggle && panel) {
-            toggle.addEventListener('click', function () {
-                var open = panel.hidden;
-                panel.hidden = !panel.hidden;
-                toggle.setAttribute('aria-expanded', String(open));
-            });
-        }
         document.querySelectorAll('.filter-row').forEach(function (row) {
             row.addEventListener('click', function (e) {
                 var tab = e.target.closest('.filter-tab');

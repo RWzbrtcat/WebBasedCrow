@@ -583,8 +583,10 @@ daily_html = '''<!DOCTYPE html>
 
     <main class="container container-daily">
         <h1 class="page-title">每日一题</h1>
-        <p class="page-subtitle">每天一道 C++ / MySQL 面试题 · 答案点开才显示</p>
+        <p class="page-subtitle">每天一道后端面试题 · C++ / Linux / MySQL / Redis / 网络 / 操作系统 / 算法 · 答案点开才显示</p>
 
+        <div class="daily-layout">
+        <div class="daily-main">
         <section class="daily-card">
             <div class="daily-card-head">
                 <span class="daily-badge">每日一题</span>
@@ -616,14 +618,17 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
 
         <div class="daily-section-head">
             <h2 class="daily-section-title">题库</h2>
-            <span class="daily-section-note">共 46 题</span>
+            <span class="daily-section-note">共 500 题</span>
         </div>
         <div class="filter-bar">
             <div class="filter-row">
                 <span class="filter-label">分类</span>
                 <span class="filter-tab active" data-name="">全部</span>
                 <span class="filter-tab" data-name="cpp">C++</span>
+                <span class="filter-tab" data-name="linux">Linux</span>
                 <span class="filter-tab" data-name="mysql">MySQL</span>
+                <span class="filter-tab" data-name="redis">Redis</span>
+                <span class="filter-tab" data-name="db">其他数据库</span>
                 <span class="filter-tab" data-name="net">网络</span>
                 <span class="filter-tab" data-name="os">操作系统</span>
                 <span class="filter-tab" data-name="algo">算法</span>
@@ -639,7 +644,7 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
                 <p class="daily-item-question">聚簇索引和二级索引有什么区别？什么是回表？</p>
                 <div class="daily-item-actions">
                     <button type="button" class="daily-link" data-toggle="bankAnswer1">收起答案</button>
-                    <button type="button" class="daily-link">编辑</button>
+                    <a class="daily-link" href="#">编辑</a>
                     <button type="button" class="daily-link daily-link-danger">删除</button>
                 </div>
                 <div class="daily-item-answer" id="bankAnswer1">
@@ -658,7 +663,7 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
                 <p class="daily-item-question">什么是 RAII？为什么说它是 C++ 资源管理的核心？</p>
                 <div class="daily-item-actions">
                     <button type="button" class="daily-link" data-toggle="bankAnswer2">查看答案</button>
-                    <button type="button" class="daily-link">编辑</button>
+                    <a class="daily-link" href="#">编辑</a>
                     <button type="button" class="daily-link daily-link-danger">删除</button>
                 </div>
                 <div class="daily-item-answer" id="bankAnswer2" hidden>
@@ -671,11 +676,12 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
         <div class="daily-more">
             <button type="button" class="btn btn-secondary">加载更多</button>
         </div>
+        </div><!-- /.daily-main -->
 
-        <div class="daily-section-head">
-            <h2 class="daily-section-title">历史题目</h2>
-        </div>
-        <div class="daily-history">
+        <aside class="daily-aside">
+        <section class="daily-side-card">
+            <h2 class="daily-side-title">历史题目</h2>
+            <div class="daily-history">
             <div class="daily-history-row">
                 <span class="daily-history-date">2026-10-08</span>
                 <span class="daily-history-q">聚簇索引和二级索引的区别？回表是什么？</span>
@@ -693,50 +699,17 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
             </div>
         </div>
 
-        <section class="daily-bank-admin">
-            <div class="admin-panel">
-                <button type="button" class="admin-toggle" id="bankToggle" aria-expanded="false">
-                    题库管理
-                    <span class="admin-toggle-caret"></span>
-                </button>
-                <div id="bankPanel" hidden>
-                    <p class="bank-hint">答案支持 Markdown：代码块用三反引号包裹，画图用 <code>```mermaid</code>。</p>
-                    <div class="question-form-row">
-                        <div class="form-group">
-                            <label for="qCategory">分类</label>
-                            <input type="text" id="qCategory" placeholder="C++ / MySQL">
-                        </div>
-                        <div class="form-group">
-                            <label for="qDifficulty">难度</label>
-                            <select id="qDifficulty">
-                                <option>基础</option>
-                                <option selected>进阶</option>
-                                <option>困难</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="qStatus">状态</label>
-                            <select id="qStatus">
-                                <option selected>已发布</option>
-                                <option>草稿</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="qQuestion">题干（支持 Markdown）</label>
-                        <textarea id="qQuestion" rows="3"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="qAnswer">答案（支持 Markdown / 代码块 / mermaid）</label>
-                        <textarea id="qAnswer" rows="6"></textarea>
-                    </div>
-                    <div class="question-form-actions">
-                        <button type="button" class="btn btn-primary">添加题目</button>
-                        <span class="question-form-hint">正在编辑 #31</span>
-                    </div>
-                </div>
-            </div>
+        <section class="daily-side-card">
+            <h2 class="daily-side-title">题目管理</h2>
+            <a class="btn btn-primary btn-block" href="#">添加题目</a>
+            <p class="daily-side-hint">
+                答案支持 Markdown，画图用 <code>```mermaid</code>。<br>
+                也可导入 <code>tools/seed_questions.sql</code> 批量补题。
+            </p>
         </section>
+        </aside>
+        </div><!-- /.daily-layout -->
+
     </main>
 
     <footer class="site-footer">
@@ -753,15 +726,6 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
                 btn.textContent = box.hidden ? '查看答案' : '收起答案';
             });
         });
-        var toggle = document.getElementById('bankToggle');
-        var panel = document.getElementById('bankPanel');
-        if (toggle && panel) {
-            toggle.addEventListener('click', function () {
-                var open = panel.hidden;
-                panel.hidden = !panel.hidden;
-                toggle.setAttribute('aria-expanded', String(open));
-            });
-        }
         document.querySelectorAll('.filter-row').forEach(function (row) {
             row.addEventListener('click', function (e) {
                 var tab = e.target.closest('.filter-tab');
@@ -787,3 +751,153 @@ with io.open(DAILY_OUT, "w", encoding="utf-8") as f:
     f.write(daily_out)
 
 print("written:", DAILY_OUT, len(daily_out), "chars")
+
+
+# ---------------- 出题 / 改题页预览 ----------------
+QUESTION_OUT = os.path.join(ROOT, "preview_daily_question.html")
+
+question_html = '''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>添加题目预览 · LazyCat's Blog</title>
+<style>
+{css}
+</style>
+</head>
+<body class="daily-question-page">
+    <header class="site-header site-header-pill">
+        <div class="header-inner">
+            <div class="brand"><a class="site-title" href="#">LazyCat</a></div>
+            <nav class="nav">
+                <a href="#">首页</a>
+                <a href="#" class="active">每日一题</a>
+                <a href="#">草稿</a>
+                <a href="#">隐藏</a>
+                <a href="#">创作</a>
+                <a href="#" class="nav-avatar">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container container-question">
+        <div class="question-editor-head">
+            <h1 class="page-title">添加题目</h1>
+            <a class="daily-link" href="#">← 返回每日一题</a>
+        </div>
+        <p class="page-subtitle">新题目会进入题库，按「分类 + 题干」判重，重复题干不会重复入库</p>
+
+        <section class="daily-card">
+            <form onsubmit="return false">
+                <div class="question-form-row">
+                    <div class="form-group">
+                        <label for="pvCategory">分类 *</label>
+                        <input type="text" id="pvCategory" list="pvCategoryOptions" value="C++" placeholder="C++ / Linux / MySQL">
+                        <datalist id="pvCategoryOptions">
+                            <option value="C++"></option>
+                            <option value="Linux"></option>
+                            <option value="MySQL"></option>
+                            <option value="Redis"></option>
+                            <option value="其他数据库"></option>
+                            <option value="网络"></option>
+                            <option value="操作系统"></option>
+                            <option value="算法"></option>
+                        </datalist>
+                    </div>
+                    <div class="form-group">
+                        <label for="pvDifficulty">难度</label>
+                        <select id="pvDifficulty">
+                            <option>基础</option>
+                            <option selected>进阶</option>
+                            <option>困难</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="pvStatus">状态</label>
+                        <select id="pvStatus">
+                            <option selected>已发布</option>
+                            <option>草稿</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="pvTags">标签（逗号分隔，可选）</label>
+                    <input type="text" id="pvTags" value="智能指针,RAII" placeholder="智能指针,RAII">
+                </div>
+
+                <div class="form-group">
+                    <label for="pvQuestion">题干 *（支持 Markdown）</label>
+                    <textarea id="pvQuestion" rows="3">什么是 RAII？为什么说它是 C++ 资源管理的核心？</textarea>
+                </div>
+
+                <div class="form-group">
+                    <div class="question-label-row">
+                        <label for="pvAnswer">答案 *（支持 Markdown / 代码块 / mermaid）</label>
+                        <button type="button" class="daily-link" id="pvPreviewToggle" aria-expanded="true">收起预览</button>
+                    </div>
+                    <textarea id="pvAnswer" rows="14">RAII = Resource Acquisition Is Initialization。
+
+**把资源的生命周期绑定到栈对象的作用域上**：构造时获取，析构时释放。
+
+```cpp
+{
+    std::lock_guard&lt;std::mutex&gt; lk(m);   // 构造时加锁
+    // ...
+}                                        // 离开作用域自动解锁
+```
+
+因此即使中途抛异常，资源也一定会被释放。</textarea>
+                    <div class="question-preview markdown-body" id="pvAnswerPreview">
+                        <p>RAII = Resource Acquisition Is Initialization。</p>
+                        <p><strong>把资源的生命周期绑定到栈对象的作用域上</strong>：构造时获取，析构时释放。</p>
+                        <pre><code>{
+    std::lock_guard&lt;std::mutex&gt; lk(m);   // 构造时加锁
+    // ...
+}                                        // 离开作用域自动解锁</code></pre>
+                        <p>因此即使中途抛异常，资源也一定会被释放。</p>
+                    </div>
+                </div>
+
+                <div class="question-form-actions">
+                    <button type="button" class="btn btn-primary">保存</button>
+                    <a class="btn btn-secondary" href="#">返回</a>
+                    <span class="question-form-hint"></span>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <a href="#">冀ICP备2026039047号</a>
+    </footer>
+
+    <script>
+    (function () {
+        var btn = document.getElementById('pvPreviewToggle');
+        var box = document.getElementById('pvAnswerPreview');
+        btn.addEventListener('click', function () {
+            box.hidden = !box.hidden;
+            btn.textContent = box.hidden ? '预览' : '收起预览';
+            btn.setAttribute('aria-expanded', String(!box.hidden));
+        });
+        var h = document.querySelector('.site-header-pill');
+        if (h) {
+            var update = function () { h.classList.toggle('scrolled', window.scrollY > 0); };
+            update();
+            window.addEventListener('scroll', update, { passive: true });
+        }
+    })();
+    </script>
+</body>
+</html>'''
+
+question_out = question_html.replace("{css}", css)
+
+with io.open(QUESTION_OUT, "w", encoding="utf-8") as f:
+    f.write(question_out)
+
+print("written:", QUESTION_OUT, len(question_out), "chars")

@@ -2918,11 +2918,87 @@ input[readonly] {
 /* ========== 每日一题 ========== */
 
 body.daily-page {
-    --header-width: 900px;
+    --header-width: 1120px;
 }
 
 .container-daily {
+    max-width: 1120px;
+}
+
+/* 出题 / 改题页（/daily/question）：单列表单，收窄更利于阅读 */
+body.daily-question-page {
+    --header-width: 900px;
+}
+
+.container-question {
     max-width: 900px;
+}
+
+/* 左右两栏：主栏放今日题目与题库，侧栏放历史题目与题目管理 */
+.daily-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 278px;
+    gap: 30px;
+    align-items: start;
+    margin-top: 28px;
+}
+
+.daily-main {
+    min-width: 0;
+}
+
+.daily-aside {
+    position: sticky;
+    top: 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    max-height: calc(100vh - 130px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.daily-side-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 16px 18px;
+}
+
+.daily-side-title {
+    font-family: var(--serif);
+    font-size: 0.98rem;
+    font-weight: 500;
+    color: var(--text);
+    margin: 0 0 12px;
+}
+
+.daily-side-hint {
+    font-size: 0.76rem;
+    line-height: 1.65;
+    color: var(--text-muted);
+    margin: 12px 0 0;
+}
+
+.daily-side-hint code {
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+/* 窄屏：侧栏回到主栏下方，取消吸顶与内部滚动 */
+@media (max-width: 1000px) {
+    .daily-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 24px;
+    }
+
+    .daily-aside {
+        position: static;
+        max-height: none;
+        overflow: visible;
+    }
 }
 
 /* 题目卡片（今日题目 / 随机一题共用） */
@@ -3144,62 +3220,83 @@ body.daily-page {
     margin-top: 14px;
 }
 
-/* 历史题目 */
+/* 历史题目：只在右侧栏出现，按窄栏排版（日期一行、题干一行、分类做小标签） */
 .daily-history {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
+    display: block;
 }
 
 .daily-history-row {
-    display: flex;
-    align-items: baseline;
-    gap: 14px;
-    padding: 12px 18px;
+    display: block;
+    padding: 11px 0;
     border-bottom: 1px solid var(--border);
+}
+
+.daily-history-row:first-child {
+    padding-top: 0;
 }
 
 .daily-history-row:last-child {
     border-bottom: none;
+    padding-bottom: 0;
 }
 
 .daily-history-date {
-    font-size: 0.78rem;
+    display: block;
+    font-size: 0.75rem;
     color: var(--text-muted);
-    min-width: 84px;
+    margin-bottom: 4px;
 }
 
 .daily-history-q {
-    flex: 1;
-    min-width: 0;
-    font-size: 0.9rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: 0.86rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
 }
 
 .daily-history-cat {
-    font-size: 0.75rem;
+    display: inline-block;
+    margin-top: 7px;
+    font-size: 0.72rem;
     color: var(--accent-dark);
-}
-
-/* 站长：题库管理 */
-.daily-bank-admin {
-    margin-top: 36px;
-}
-
-.bank-hint {
-    font-size: 0.82rem;
-    color: var(--text-muted);
-    margin: 12px 0 16px;
-}
-
-.bank-hint code {
     background: var(--accent-soft);
-    color: var(--accent-dark);
-    padding: 1px 5px;
     border-radius: 4px;
+    padding: 1px 7px;
+}
+
+/* ===== 出题 / 改题页（/daily/question） ===== */
+
+.question-editor-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+/* 表单里「标签 + 行内按钮」的对齐：label 靠左、操作靠右 */
+.question-label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.question-preview {
+    margin-top: 12px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px dashed var(--card-border);
+    border-radius: var(--radius);
+    max-height: 460px;
+    overflow-y: auto;
+}
+
+.question-preview[hidden] {
+    display: none;
 }
 
 .question-form-row {
@@ -3265,19 +3362,8 @@ body.daily-page {
         grid-template-columns: 1fr;
     }
 
-    .daily-history-row {
-        flex-wrap: wrap;
-        gap: 6px;
-    }
-
-    .daily-history-date {
-        min-width: 0;
-    }
-
-    .daily-history-q {
-        white-space: normal;
-        flex-basis: 100%;
-        order: 3;
+    .daily-side-card {
+        padding: 14px 14px 16px;
     }
 }
 

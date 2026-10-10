@@ -512,6 +512,8 @@ WebBasedCrow/
 ├── static/                 # 前端（运行时读取，改完刷新即生效）
 │   ├── index.html          # 首页（专栏/主题双层筛选）
 │   ├── post.html           # 文章详情
+│   ├── daily.html          # 每日一题（左主栏 + 右侧「历史题目 / 题目管理」）
+│   ├── daily-question.html # 出题 / 改题页（/daily/question，仅站长）
 │   ├── editor.html         # Markdown 编辑器（支持 Mermaid）
 │   ├── login.html          # 登录
 │   ├── admin.html          # 管理员管理（主管理员可见）
@@ -520,10 +522,15 @@ WebBasedCrow/
 │   ├── hidden.html         # 隐藏文章
 │   ├── css/                # style.css（全站样式）、highlight.css
 │   ├── js/                 # auth/header/theme/list/post/editor/admin/profile/login/markdown
+│   │                       # daily-common.js（共用工具）+ daily.js + daily-question.js
 │   └── uploads/            # 上传图片（gitignore）
 ├── tools/                    # 开发辅助脚本
 │   ├── build_preview.py      # 生成 preview*.html 静态预览
 │   ├── repro_list.mjs        # Node 模拟 DOM，回归首页渲染流程
+│   ├── gen_seed.py           # 汇总 qbank/*.py → 生成 seed_questions.sql（含 SQL 自检）
+│   ├── qbank/                # 题库数据源（分类, 标签, 难度, 题干, 答案）
+│   ├── _extract_existing.py  # 旧 SQL → qbank/existing.py 无损提取（勿手改产物）
+│   ├── _verify_seed.py       # 校验种子 SQL：切分语句 + 逐条比对 + 换行符检查
 │   ├── seed_questions.sql    # 面试题库种子（可重复执行）
 │   ├── charset_precheck.sql  # 字符集诊断（只读，见 13.8）
 │   ├── charset_to_utf8.sql   # 老数据 cp1252 转义 → 真 utf8mb4（见 13.8.1）
@@ -543,6 +550,10 @@ python tools/build_preview.py
 
 # 回归首页渲染：Node 模拟 DOM + fixture 数据执行 list.js，能捕获 ReferenceError 等渲染期异常
 node tools/repro_list.mjs
+
+# 回归每日一题：Node 模拟 DOM + 假接口跑 daily.js / daily-question.js 全流程
+# （今日题目/题库/历史是否渲染、编辑是否链到 /daily/question?id=N、出题页回填是否正确）
+node tools/repro_daily.mjs
 ```
 
 > ⚠️ `tools/build_preview.py` 生成的是**独立骨架的预览页**，与真实 `static/*.html` 不是同一份 HTML。
@@ -756,7 +767,7 @@ journalctl -u blog.service -n 40 --no-pager | grep 字符集   # 期望 results=
 
 ## 十四、API 一览
 
-页面路由：`/` `/post` `/login` `/logout` `/drafts` `/hidden` `/editor` `/admin` `/profile`
+页面路由：`/` `/post` `/daily` `/daily/question` `/login` `/logout` `/drafts` `/hidden` `/editor` `/admin` `/profile`
 
 | 方法 | 路径 | 说明 | 权限 |
 |---|---|---|---|
@@ -825,6 +836,16 @@ journalctl -u blog.service -n 40 --no-pager | grep 字符集   # 期望 results=
 
 首页顶部与独立页 `/daily` 展示当天题目；访客**不需要登录**，答题记录靠匿名 Cookie（`blog_anon`）。
 
+`/daily` 为**左右两栏**布局（窄屏 ≤1000px 自动回落单列）：
+
+| 位置 | 内容 |
+|---|---|
+| 主栏 | 今日题目卡片（查看答案 / 换一题 / 连答天数）、题库浏览（分类筛选 + 分页「加载更多」） |
+| 右侧栏（吸顶） | **历史题目**（近 12 条排期，按日期倒序）、**题目管理**（仅站长可见，只有一个「添加题目」按钮） |
+
+出题与改题**不在列表页内联完成**，而是跳到独立页面 `/daily/question`（见 [16.4](#164-题库与出题)）：
+题库列表里每题的「编辑」直接链到 `/daily/question?id=N`，避免把一整个大表单塞进列表页。
+
 ### 16.1 选题机制：不用定时任务
 
 Crow 是单进程服务，没有 cron。当天题目采用**懒生成**：第一个访问当天题目的请求触发计算并落库，之后当天固定不变。
@@ -892,13 +913,28 @@ mysql -u <用户> -p --default-character-set=utf8mb4 blogdb < tools/seed_questio
 > 已存在则为空操作），所以「先导库再编译重启」和「先编译重启再导库」两种顺序都能跑通。
 > 若跳过这步直接用临时表复制，会出现 `ERROR 1146 (42S02): Table 'blogdb.questions' doesn't exist`。
 
-**② 站长的题库管理面板**
+**② 站长的出题页 `/daily/question`**
 
-用主管理员登录后打开 `/daily`，页面底部有「题库管理」（节点带 `data-auth-role="main"`，仅站长可见）：
+用主管理员登录后，`/daily` 右侧栏的「题目管理」里点**「添加题目」**即进入该页（路由与 `/admin` 同级校验：
+未登录跳 `/login`、非站长跳 `/`）：
 
 - 表单含分类、标签、难度（基础/进阶/困难）、状态（草稿/已发布）、题干与答案（Markdown）；
-- 列表每项都有「查看答案 / 编辑 / 删除」，编辑会把内容回填到表单；
+- **答案带「预览」按钮**，直接复用文章页的 `markdown.js` 渲染（含代码高亮与 mermaid），不用来回切页面看效果；
+- 分类用 `<datalist>` 做输入联想，候选项来自题库现有的 `DISTINCT category`，也允许直接输入新分类
+  （新分类导入后会自动参与每日轮转，见 [16.1](#161-选题机制不用定时任务)）；
+- **带 `?id=N` 时同一页面复用为编辑页**：拉取 `/api/questions/<id>` 回填并改标题为「修改题目 #N」；
+  新增成功后**留在本页并清空表单**，方便连续录入；修改成功则回到 `/daily`；
 - 列表请求带 `with_drafts=1`，草稿会打「草稿」标记。**草稿不会进入每日排期**（选题只取 `status=1`）。
+
+前端脚本按用途拆成三个文件，避免列表页背上编辑器的逻辑：
+
+| 文件 | 作用 |
+|---|---|
+| `static/js/daily-common.js` | 共用工具（`apiRequest` 带 GET 重试、`showToast`、`esc` / `escapeAttr`、错误文案） |
+| `static/js/daily.js` | `/daily`：今日题目、题库列表、历史题目、删除 |
+| `static/js/daily-question.js` | `/daily/question`：新增 / 回填编辑 / 保存 / 答案预览 |
+
+> `daily-common.js` 必须在这两个脚本**之前**加载（见 `static/daily.html` 与 `static/daily-question.html` 的 `<script>` 顺序）。
 
 **草稿的价值**：AI 生成或从别处摘来的题目先落草稿，人工核对答案后再发布 —— 面试题答案写错比没有更糟。
 

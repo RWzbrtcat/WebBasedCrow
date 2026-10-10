@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>管理员管理预览 · LazyCat's Blog</title>
+<title>添加题目预览 · LazyCat's Blog</title>
 <style>
 /* ========== 基础重置 ========== */
 * {
@@ -3369,94 +3369,109 @@ body.daily-question-page {
 
 </style>
 </head>
-<body>
-    <header class="site-header site-header-pill scrolled">
+<body class="daily-question-page">
+    <header class="site-header site-header-pill">
         <div class="header-inner">
             <div class="brand"><a class="site-title" href="#">LazyCat</a></div>
             <nav class="nav">
                 <a href="#">首页</a>
+                <a href="#" class="active">每日一题</a>
                 <a href="#">草稿</a>
                 <a href="#">隐藏</a>
                 <a href="#">创作</a>
-                <div class="nav-avatar-wrap">
-                    <button type="button" class="nav-avatar" title="个人资料" aria-label="个人资料" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></button>
-                    <div class="nav-avatar-menu" hidden>
-                        <a href="#">个人资料</a>
-                        <a href="#">管理员</a>
-                        <a href="#">退出</a>
-                    </div>
-                </div>
-                <div class="nav-dropdown">
-                    <button type="button" class="personalize-btn nav-dropdown-toggle">个性化<span class="nav-dropdown-caret"></span></button>
-                    <div class="nav-dropdown-menu" hidden>
-                        <button type="button" class="nav-dropdown-item">更换背景</button>
-                        <button type="button" class="nav-dropdown-item">更换样式</button>
-                    </div>
-                </div>
+                <a href="#" class="nav-avatar">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                </a>
             </nav>
         </div>
     </header>
 
-    <main class="container container-admin">
-        <div class="admin-layout">
-            <section class="admin-panel">
-                <h1 class="admin-title">添加管理员</h1>
-                <form>
-                    <div class="form-group">
-                        <label for="emailPrefix">登录账号</label>
-                        <div class="input-affix">
-                            <input type="text" id="emailPrefix" placeholder="用户名" autocomplete="off" spellcheck="false">
-                            <span class="input-affix-suffix">@lazycat.com</span>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="password">密码</label>
-                        <input type="password" id="password" placeholder="自定义密码" autocomplete="new-password">
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-block">添加管理员</button>
-                </form>
-            </section>
-
-            <section class="admin-panel">
-                <button type="button" class="admin-toggle" id="adminToggle" aria-expanded="false" aria-controls="adminList">
-                    <span>查看已有管理员</span>
-                    <span class="admin-count">3</span>
-                    <span class="admin-toggle-caret"></span>
-                </button>
-                <div class="admin-list" id="adminList" hidden>
-<div class="admin-item">
-                    <div class="admin-item-info">
-                        <img class="admin-item-avatar" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c98c5a'><circle cx='12' cy='12' r='12'/></svg>" alt="">
-                        <div class="admin-item-text">
-                            <span class="admin-item-nickname">LazyCat<span class="admin-item-badge">主管理员</span></span>
-                            <span class="admin-item-email">admin@lazycat.com</span>
-                        </div>
-                    </div>
-                    
-                </div>
-<div class="admin-item">
-                    <div class="admin-item-info">
-                        <span class="admin-item-avatar admin-item-avatar-empty">小</span>
-                        <div class="admin-item-text">
-                            <span class="admin-item-nickname">小猫助手</span>
-                            <span class="admin-item-email">helper@lazycat.com</span>
-                        </div>
-                    </div>
-                    <button type="button" class="admin-item-del">删除</button>
-                </div>
-<div class="admin-item">
-                    <div class="admin-item-info">
-                        <span class="admin-item-avatar admin-item-avatar-empty">编</span>
-                        <div class="admin-item-text">
-                            <span class="admin-item-nickname">编辑小喵</span>
-                            <span class="admin-item-email">editor@lazycat.com</span>
-                        </div>
-                    </div>
-                    <button type="button" class="admin-item-del">删除</button>
-                </div>
-                </div>
-            </section>
+    <main class="container container-question">
+        <div class="question-editor-head">
+            <h1 class="page-title">添加题目</h1>
+            <a class="daily-link" href="#">← 返回每日一题</a>
         </div>
+        <p class="page-subtitle">新题目会进入题库，按「分类 + 题干」判重，重复题干不会重复入库</p>
+
+        <section class="daily-card">
+            <form onsubmit="return false">
+                <div class="question-form-row">
+                    <div class="form-group">
+                        <label for="pvCategory">分类 *</label>
+                        <input type="text" id="pvCategory" list="pvCategoryOptions" value="C++" placeholder="C++ / Linux / MySQL">
+                        <datalist id="pvCategoryOptions">
+                            <option value="C++"></option>
+                            <option value="Linux"></option>
+                            <option value="MySQL"></option>
+                            <option value="Redis"></option>
+                            <option value="其他数据库"></option>
+                            <option value="网络"></option>
+                            <option value="操作系统"></option>
+                            <option value="算法"></option>
+                        </datalist>
+                    </div>
+                    <div class="form-group">
+                        <label for="pvDifficulty">难度</label>
+                        <select id="pvDifficulty">
+                            <option>基础</option>
+                            <option selected>进阶</option>
+                            <option>困难</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="pvStatus">状态</label>
+                        <select id="pvStatus">
+                            <option selected>已发布</option>
+                            <option>草稿</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="pvTags">标签（逗号分隔，可选）</label>
+                    <input type="text" id="pvTags" value="智能指针,RAII" placeholder="智能指针,RAII">
+                </div>
+
+                <div class="form-group">
+                    <label for="pvQuestion">题干 *（支持 Markdown）</label>
+                    <textarea id="pvQuestion" rows="3">什么是 RAII？为什么说它是 C++ 资源管理的核心？</textarea>
+                </div>
+
+                <div class="form-group">
+                    <div class="question-label-row">
+                        <label for="pvAnswer">答案 *（支持 Markdown / 代码块 / mermaid）</label>
+                        <button type="button" class="daily-link" id="pvPreviewToggle" aria-expanded="true">收起预览</button>
+                    </div>
+                    <textarea id="pvAnswer" rows="14">RAII = Resource Acquisition Is Initialization。
+
+**把资源的生命周期绑定到栈对象的作用域上**：构造时获取，析构时释放。
+
+```cpp
+{
+    std::lock_guard&lt;std::mutex&gt; lk(m);   // 构造时加锁
+    // ...
+}                                        // 离开作用域自动解锁
+```
+
+因此即使中途抛异常，资源也一定会被释放。</textarea>
+                    <div class="question-preview markdown-body" id="pvAnswerPreview">
+                        <p>RAII = Resource Acquisition Is Initialization。</p>
+                        <p><strong>把资源的生命周期绑定到栈对象的作用域上</strong>：构造时获取，析构时释放。</p>
+                        <pre><code>{
+    std::lock_guard&lt;std::mutex&gt; lk(m);   // 构造时加锁
+    // ...
+}                                        // 离开作用域自动解锁</code></pre>
+                        <p>因此即使中途抛异常，资源也一定会被释放。</p>
+                    </div>
+                </div>
+
+                <div class="question-form-actions">
+                    <button type="button" class="btn btn-primary">保存</button>
+                    <a class="btn btn-secondary" href="#">返回</a>
+                    <span class="question-form-hint"></span>
+                </div>
+            </form>
+        </section>
     </main>
 
     <footer class="site-footer">
@@ -3465,14 +3480,19 @@ body.daily-question-page {
 
     <script>
     (function () {
-        var toggle = document.getElementById('adminToggle');
-        var list = document.getElementById('adminList');
-        if (!toggle || !list) return;
-        toggle.addEventListener('click', function () {
-            var expanded = toggle.getAttribute('aria-expanded') === 'true';
-            toggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-            list.hidden = expanded;
+        var btn = document.getElementById('pvPreviewToggle');
+        var box = document.getElementById('pvAnswerPreview');
+        btn.addEventListener('click', function () {
+            box.hidden = !box.hidden;
+            btn.textContent = box.hidden ? '预览' : '收起预览';
+            btn.setAttribute('aria-expanded', String(!box.hidden));
         });
+        var h = document.querySelector('.site-header-pill');
+        if (h) {
+            var update = function () { h.classList.toggle('scrolled', window.scrollY > 0); };
+            update();
+            window.addEventListener('scroll', update, { passive: true });
+        }
     })();
     </script>
 </body>

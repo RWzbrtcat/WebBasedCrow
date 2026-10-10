@@ -1038,6 +1038,23 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
         return htmlResponse(readFile(staticDir + "/daily.html"));
     });
 
+    // 出题 / 改题页（仅主管理员）。带 ?id=N 时前端会拉取原题回填，复用为编辑页。
+    CROW_ROUTE(app, "/daily/question")([staticDir](const crow::request& req){
+        if (!isLoggedIn(req))
+        {
+            crow::response res;
+            res.moved("/login");
+            return res;
+        }
+        if (!isMainAdmin(req))
+        {
+            crow::response res;
+            res.moved("/");
+            return res;
+        }
+        return htmlResponse(readFile(staticDir + "/daily-question.html"));
+    });
+
     // CSS 文件
     CROW_ROUTE(app, "/css/<string>")([staticDir](std::string filename){
         auto content = readFile(staticDir + "/css/" + filename);

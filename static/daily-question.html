@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>添加题目 · LazyCat's Blog</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/highlight.css">
+</head>
+<body class="daily-question-page">
+    <!-- 站点头部 -->
+    <header class="site-header site-header-pill">
+        <div class="header-inner">
+            <div class="brand">
+                <a class="site-title" href="/">LazyCat</a>
+            </div>
+            <nav class="nav">
+                <a href="/">首页</a>
+                <a href="/daily" class="active">每日一题</a>
+                <a href="/drafts" data-auth-role="admin" hidden>草稿</a>
+                <a href="/hidden" data-auth-role="admin" hidden>隐藏</a>
+                <a href="/editor" data-auth-role="admin" hidden>创作</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 主体 -->
+    <main class="container container-question">
+        <div class="question-editor-head">
+            <h1 class="page-title" id="questionPageTitle">添加题目</h1>
+            <a class="daily-link" href="/daily">← 返回每日一题</a>
+        </div>
+        <p class="page-subtitle" id="questionPageSubtitle">新题目会进入题库，按「分类 + 题干」判重，重复题干不会重复入库</p>
+
+        <section class="daily-card">
+            <form id="questionForm">
+                <div class="question-form-row">
+                    <div class="form-group">
+                        <label for="qCategory">分类 *</label>
+                        <input type="text" id="qCategory" list="categoryOptions" placeholder="C++ / Linux / MySQL" maxlength="50" required>
+                        <datalist id="categoryOptions"></datalist>
+                    </div>
+                    <div class="form-group">
+                        <label for="qDifficulty">难度</label>
+                        <select id="qDifficulty">
+                            <option value="1">基础</option>
+                            <option value="2" selected>进阶</option>
+                            <option value="3">困难</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="qStatus">状态</label>
+                        <select id="qStatus">
+                            <option value="1" selected>已发布</option>
+                            <option value="0">草稿</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="qTags">标签（逗号分隔，可选）</label>
+                    <input type="text" id="qTags" maxlength="200" placeholder="智能指针,RAII">
+                </div>
+
+                <div class="form-group">
+                    <label for="qQuestion">题干 *（支持 Markdown）</label>
+                    <textarea id="qQuestion" rows="3" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <div class="question-label-row">
+                        <label for="qAnswer">答案 *（支持 Markdown / 代码块 / mermaid）</label>
+                        <button type="button" class="daily-link" id="previewToggle" aria-expanded="false" aria-controls="answerPreview">预览</button>
+                    </div>
+                    <textarea id="qAnswer" rows="14" required></textarea>
+                    <div class="question-preview markdown-body" id="answerPreview" hidden></div>
+                </div>
+
+                <div class="question-form-actions">
+                    <button type="submit" class="btn btn-primary" id="qSaveBtn">保存</button>
+                    <a class="btn btn-secondary" href="/daily">返回</a>
+                    <span class="question-form-hint" id="qFormHint"></span>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/marked.min.js"></script>
+    <script src="/js/purify.min.js"></script>
+    <script src="/js/highlight.min.js"></script>
+    <script src="/js/markdown.js"></script>
+    <script src="/js/daily-common.js"></script>
+    <script src="/js/daily-question.js"></script>
+    <script src="/js/header.js"></script>
+    <script src="/js/background.js"></script>
+    <script src="/js/theme.js"></script>
+
+    <footer class="site-footer">
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">冀ICP备2026039047号</a>
+    </footer>
+</body>
+</html>
