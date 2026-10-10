@@ -3590,11 +3590,29 @@ a.daily-history-row:hover .daily-history-q {
 /* ===== 题目详情页（/daily/q/<id>） ===== */
 
 body.daily-q-page {
-    --header-width: 900px;
+    --header-width: 1180px;
 }
 
 .container-q {
-    max-width: 900px;
+    max-width: 1180px;
+}
+
+/* 双列：主栏读题 + 右栏同分类相关题。与文章页 .post-layout.has-toc 同一套语言；
+   没有相关题时 JS 撤掉 .has-related ⇒ 回到居中单列，主栏始终是 860px 的舒适阅读宽度。 */
+.qdetail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 860px);
+    justify-content: center;
+    align-items: start;
+}
+
+.qdetail-layout.has-related {
+    grid-template-columns: minmax(0, 860px) 280px;
+    gap: 32px;
+}
+
+.qdetail-main {
+    min-width: 0;
 }
 
 .qdetail-nav {
@@ -3607,6 +3625,24 @@ body.daily-q-page {
 
 .qdetail-card {
     margin-bottom: 26px;
+}
+
+/* 右栏相关题：沿用文章页 .post-toc / 每日一题右栏同一套「吸顶卡片」做法 */
+.qdetail-aside {
+    position: sticky;
+    top: 96px;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding: 18px 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.qdetail-aside[hidden] {
+    display: none;
 }
 
 /* 题干即页面的 h1：详情页的主体就是这道题本身，不再另设页面标题 */
@@ -3636,17 +3672,17 @@ body.daily-q-page {
 .qdetail-related-list {
     display: flex;
     flex-direction: column;
-    gap: 1px;
-    margin-top: 12px;
+    gap: 2px;
 }
 
-/* 相关题：整行可点，hover 用强调色底 + 文字加深，靠左溢出 12px 让高亮块比文字更宽一点 */
+/* 相关题：整行可点，hover 用强调色底 + 文字加深，靠左溢出 12px 让高亮块比文字更宽一点。
+   280px 窄栏里题干与难度改上下排 —— 并排会把题干挤成窄条。 */
 .qdetail-related-item {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 14px;
-    padding: 11px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    padding: 10px 12px;
     margin: 0 -12px;
     border-radius: var(--radius-sm);
     text-decoration: none;
@@ -3659,7 +3695,7 @@ body.daily-q-page {
 }
 
 .qdetail-related-q {
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     line-height: 1.6;
     color: var(--text-secondary);
     transition: color var(--transition);
@@ -3671,8 +3707,24 @@ body.daily-q-page {
 
 .qdetail-related-diff {
     flex: none;
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
+}
+
+/* 窄屏：相关题落回主栏下方（整宽卡片），不退化成隐藏 —— 它是页面上唯一的「继续读」入口。
+   断点与文章页目录一致（1080px），全站同一套。 */
+@media (max-width: 1080px) {
+    .qdetail-layout,
+    .qdetail-layout.has-related {
+        grid-template-columns: minmax(0, 860px);
+        gap: 0;
+    }
+
+    .qdetail-aside {
+        position: static;
+        max-height: none;
+        overflow: visible;
+    }
 }
 
 /* 详情页的小屏收尾：字号降一档，避免题干与答案的层级被压平 */

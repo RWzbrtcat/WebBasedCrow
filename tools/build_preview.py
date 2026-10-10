@@ -968,6 +968,8 @@ qdetail_html = '''<!DOCTYPE html>
     </header>
 
     <main class="container container-q">
+     <div class="qdetail-layout has-related">
+      <div class="qdetail-main">
         <nav class="qdetail-nav">
             <a class="daily-link" href="#">&larr; 返回每日一题</a>
             <a class="daily-link" href="#">编辑此题</a>
@@ -999,9 +1001,10 @@ SELECT id, name, age FROM users WHERE name = 'lazycat';</code></pre>
                 <p><strong>实践结论</strong>：能用覆盖索引就别回表；回表次数多时，优化器可能干脆放弃二级索引改走全表扫描。</p>
             </div>
         </article>
+      </div>
 
-        <section class="qdetail-related">
-            <h2 class="daily-section-title">同分类相关题 · MySQL</h2>
+      <aside class="qdetail-aside">
+            <h2 class="daily-side-title">同分类相关题 · MySQL</h2>
             <div class="qdetail-related-list">
                 <a class="qdetail-related-item" href="#">
                     <span class="qdetail-related-q">为什么 InnoDB 用 B+ 树而不是 B 树或哈希索引？</span>
@@ -1020,7 +1023,8 @@ SELECT id, name, age FROM users WHERE name = 'lazycat';</code></pre>
                     <span class="qdetail-related-diff">困难</span>
                 </a>
             </div>
-        </section>
+      </aside>
+     </div>
     </main>
 
     <footer class="site-footer">

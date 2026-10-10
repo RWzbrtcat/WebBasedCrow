@@ -513,7 +513,7 @@ WebBasedCrow/
 │   ├── index.html          # 首页（专栏/主题双层筛选）
 │   ├── post.html           # 文章详情
 │   ├── daily.html          # 每日一题（左「历史题目/题目管理」+ 中「今日题目/题库」+ 右「打卡/分布」）
-│   ├── daily-q.html        # 题目详情页（/daily/q/<id>，公开只读）
+│   ├── daily-q.html        # 题目详情页（/daily/q/<id>，公开只读；左读题 + 右栏相关题）
 │   ├── daily-question.html # 出题 / 改题页（/daily/question，仅站长）
 │   ├── editor.html         # Markdown 编辑器（支持 Mermaid）
 │   ├── login.html          # 登录
@@ -555,7 +555,7 @@ node tools/repro_list.mjs
 # 回归每日一题：Node 模拟 DOM + 假接口跑 daily.js / daily-q.js / daily-question.js 全流程
 # （今日题目/题库/历史是否渲染、右栏打卡天数与 7 天格子、题库分布行、编辑是否链到
 #   /daily/question?id=N、历史与题库条目是否链到 /daily/q/<id>、草稿题是否被排除、
-#   详情页题干/答案/相关题是否渲染且 ?d= 优先、出题页回填是否正确）
+#   详情页题干/答案/相关题是否渲染且 ?d= 优先、右栏相关题显隐是否正确、出题页回填是否正确）
 node tools/repro_daily.mjs
 ```
 
@@ -952,7 +952,7 @@ mysql -u <用户> -p --default-character-set=utf8mb4 blogdb < tools/seed_questio
 |---|---|
 | `static/js/daily-common.js` | 共用工具（`apiRequest` 带 GET 重试、`showToast`、`esc` / `escapeAttr`、错误文案） |
 | `static/js/daily.js` | `/daily`：今日题目、题库列表、历史题目、删除 |
-| `static/js/daily-q.js` | `/daily/q/<id>`：题目详情（题干 + 答案 + 同分类相关题） |
+| `static/js/daily-q.js` | `/daily/q/<id>`：题目详情（题干 + 答案 + 右栏同分类相关题及其显隐） |
 | `static/js/daily-question.js` | `/daily/question`：新增 / 回填编辑 / 保存 / 答案预览 |
 
 > `daily-common.js` 必须在这几个脚本**之前**加载（见 `static/daily.html`、`static/daily-q.html`、
@@ -982,6 +982,12 @@ GET /api/daily/question?id=<id>          # 一次取全，避免详情页多次�
 - **答案默认展开**：点进详情页的意图就是看答案，不必再点一次；答案走 `markdown.js`，代码高亮与 mermaid 都可用。
 - **草稿题在列表里不给详情入口**：草稿只有站长看得到，而公开接口只放行已发布题目，
   所以 `buildBankItems()` 对 `status=0` 的题只保留「编辑 / 删除」，避免点进去必然 404。
+- **页面是双列**：主栏 860px 读题（题干 + 参考答案），右栏 280px 放**同分类相关题**，
+  右栏是吸顶卡片 —— 与文章页目录 `.post-toc`、`/daily` 右栏同一套做法（容器 1180px 也与文章页对齐）。
+- **没有相关题时右栏整栏收起**：`siblings` 为空（或加载失败）时隐藏右栏，并撤掉 `.has-related`
+  让主栏回到**居中单列** —— 否则右侧会留一张空卡片，主栏还被一条无内容的列挤窄。
+- 响应式：**≤1080px**（与文章页目录同一断点）相关题落回主栏下方，改为整宽卡片 ——
+  不退化成隐藏，它是页面上唯一的「继续读」入口。
 
 ### 16.6 已知边界
 

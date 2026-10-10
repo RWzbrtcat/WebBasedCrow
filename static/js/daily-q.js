@@ -1,5 +1,5 @@
 // ============================================
-// 题目详情页（/daily/q/<id>）：题干 + 参考答案 + 同分类相关题
+// 题目详情页（/daily/q/<id>）：题干 + 参考答案 + 右侧「同分类相关题」
 // 依赖：daily-common.js（apiRequest / esc / difficultyLabel / describeFetchError）
 //       markdown.js（renderMarkdownInto）、auth.js（站长的「编辑此题」按钮显隐）
 //
@@ -25,6 +25,17 @@ function parseSourceDate() {
     return m ? m[1] : '';
 }
 
+// 右栏相关题是「有内容才成立」的一栏：没有相关题（或加载失败）就整栏收起，
+// 同时撤掉 .has-related 让主栏回到居中单列 —— 否则右栏会留一块空卡片，
+// 主栏也被一条无内容的列挤窄。
+function setRelatedVisible(visible) {
+    const aside = document.getElementById('qRelated');
+    if (aside) aside.hidden = !visible;
+
+    const layout = document.getElementById('qDetailLayout');
+    if (layout) layout.classList.toggle('has-related', visible);
+}
+
 function renderDetailError(box, message) {
     box.innerHTML = `
         <div class="empty-state">
@@ -32,8 +43,7 @@ function renderDetailError(box, message) {
             <a class="btn btn-secondary" href="/daily">返回每日一题</a>
         </div>`;
 
-    const related = document.getElementById('qRelated');
-    if (related) related.hidden = true;
+    setRelatedVisible(false);
 }
 
 function renderDetail(box, data) {
@@ -59,14 +69,13 @@ function renderDetail(box, data) {
 }
 
 function renderRelated(data) {
-    const section = document.getElementById('qRelated');
     const list = document.getElementById('qRelatedList');
     const title = document.getElementById('qRelatedTitle');
-    if (!section || !list) return;
+    if (!list) return;
 
     const items = data.siblings || [];
     if (!items.length) {
-        section.hidden = true;
+        setRelatedVisible(false);
         return;
     }
 
@@ -77,7 +86,7 @@ function renderRelated(data) {
             <span class="qdetail-related-q">${esc(q.question || '')}</span>
             <span class="qdetail-related-diff">${esc(difficultyLabel(q.difficulty))}</span>
         </a>`).join('');
-    section.hidden = false;
+    setRelatedVisible(true);
 }
 
 async function loadDetail() {

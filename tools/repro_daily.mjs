@@ -10,7 +10,8 @@
 //   4. 出题页的新增模式不该去拉单题详情；
 //   5. 出题页带 ?id=N 时字段是否被正确回填；
 //   6. 历史题目与题库条目是否都链到详情页 /daily/q/<id>（草稿除外）；
-//   7. 详情页题干/答案/相关题渲染，以及 ?d= 是否优先于接口给的 date。
+//   7. 详情页题干/答案/相关题渲染，以及 ?d= 是否优先于接口给的 date；
+//   8. 详情页右栏「同分类相关题」的显隐：有相关题才切双列，没有/加载失败则回居中单列。
 import fs from 'fs';
 import path from 'path';
 import vm from 'vm';
@@ -33,7 +34,21 @@ function makeEl(tag = 'div') {
         dataset: {},
         children: [],
         _attrs: {},
-        classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
+        // 不能是空实现：详情页靠 layout.classList.toggle('has-related') 在
+        // 「双列（有相关题）/ 居中单列（无相关题）」之间切换，断言要读得到。
+        classList: (() => {
+            const set = new Set();
+            return {
+                add: (c) => set.add(c),
+                remove: (c) => set.delete(c),
+                toggle: (c, force) => {
+                    const on = force === undefined ? !set.has(c) : !!force;
+                    if (on) set.add(c); else set.delete(c);
+                    return on;
+                },
+                contains: (c) => set.has(c),
+            };
+        })(),
         addEventListener() {},
         removeEventListener() {},
         setAttribute(k, v) { this._attrs[k] = String(v); },
@@ -241,19 +256,40 @@ ok(getEl('qAnswerBody').innerHTML.includes('[md]'), '答案没有被交给 Markd
 ok(getEl('qEditLink').href === '/daily/question?id=12', '「编辑此题」没有带上课目 id');
 ok((getEl('qRelatedList').innerHTML.match(/qdetail-related-item/g) || []).length === 1, '相关题没有渲染');
 ok(getEl('qRelated').hidden === false, '有相关题时不该隐藏该区块');
+ok(getEl('qDetailLayout').classList.contains('has-related'), '有相关题时主栏应切到双列（.has-related）');
 console.log('/daily/q/12  : 题干 ✓  答案→markdown ✓  | 日期', detailHtml.includes('2026-10-08') ? '2026-10-08（来自 URL）✓' : '✗',
-    '| 相关题', (getEl('qRelatedList').innerHTML.match(/qdetail-related-item/g) || []).length + ' 条 ✓');
+    '| 相关题', (getEl('qRelatedList').innerHTML.match(/qdetail-related-item/g) || []).length + ' 条 → 右栏 ✓');
 
-// ---------- 用例 6：详情页（题目不存在） ----------
+// ---------- 用例 6：详情页（有题，但同分类一道相关题都没有） ----------
+// 这是撤掉右栏的另一条分支：右栏整栏收起，同时撤掉 .has-related 让主栏回居中单列，
+// 否则右侧会留一张空卡片、主栏也被一条无内容的列挤窄。
 elements.clear();
-responses = { '/api/daily/question': { success: false, message: '题目不存在或尚未发布' } };
-const sb6 = makeSandbox('', '/daily/q/999');
+responses = {
+    '/api/daily/question': {
+        success: true, id: 20, category: 'Redis', tags: '', difficulty: 1,
+        question: '没有同分类相关题的题', answer: '略', date: '', siblings: [],
+    },
+};
+const sb6 = makeSandbox('', '/daily/q/20');
 load(sb6, ['static/js/daily-common.js', 'static/js/daily-q.js']);
 await sb6.initDetailPage();
 await flush();
+ok(getEl('qRelated').hidden === true, '没有相关题时右栏应整栏收起');
+ok(!getEl('qDetailLayout').classList.contains('has-related'), '没有相关题时应撤掉双列，主栏回到居中单列');
+ok(getEl('qDetail').innerHTML.includes('题库题目'), '没有排期日期时应显示「题库题目」徽章');
+console.log('/daily/q/20  : 无相关题 → 右栏收起、主栏居中单列 ✓');
+
+// ---------- 用例 7：详情页（题目不存在） ----------
+elements.clear();
+responses = { '/api/daily/question': { success: false, message: '题目不存在或尚未发布' } };
+const sb7 = makeSandbox('', '/daily/q/999');
+load(sb7, ['static/js/daily-common.js', 'static/js/daily-q.js']);
+await sb7.initDetailPage();
+await flush();
 ok(getEl('qDetail').innerHTML.includes('题目不存在或尚未发布'), '题目不存在时应显示接口给的提示');
 ok(getEl('qRelated').hidden === true, '加载失败时应隐藏相关题区块');
-console.log('/daily/q/999 : 失败态 ✓  相关题区块已隐藏 ✓');
+ok(!getEl('qDetailLayout').classList.contains('has-related'), '加载失败时应撤掉双列，主栏回到居中单列');
+console.log('/daily/q/999 : 失败态 ✓  相关题区块已隐藏 ✓  单列居中 ✓');
 
 console.log('');
 if (problems.length) {
