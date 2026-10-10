@@ -3330,7 +3330,7 @@ body.daily-question-page {
 }
 
 /* 题干本身即详情页入口（<a> 而非 <p>）：去掉下划线，hover 用强调色提示可点。
-   就地「查看答案」的按钮仍保留在下方操作区，两条路径各自独立。 */
+   操作区现在只有站长见得到，所以访客看到的就是「题干可点、整条没有按钮」。 */
 .daily-item-link {
     display: block;
     text-decoration: none;
@@ -3342,19 +3342,14 @@ body.daily-question-page {
     color: var(--accent);
 }
 
+/* 操作区是「有才出现」的（访客没有按钮），题干下边距只在后面还跟着东西时才留 */
+.daily-item-question:last-child {
+    margin-bottom: 0;
+}
+
 .daily-item-actions {
     display: flex;
     gap: 14px;
-}
-
-.daily-item-answer {
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px dashed var(--border);
-}
-
-.daily-item-answer[hidden] {
-    display: none;
 }
 
 .daily-link {

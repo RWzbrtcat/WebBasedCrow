@@ -67,9 +67,11 @@
                 </div>
             </div>
 
-            <!-- 右栏：我的打卡 / 题库分布（题目管理已移到左栏历史题目下方） -->
+            <!-- 右栏：我的打卡（仅登录后可见）/ 题库分布。题目管理在左栏历史题目下方。
+                 打卡靠匿名 Cookie 就能积累，但它是「我的」数据 —— 对未登录访客既无意义，
+                 也平白暴露一份与本人无关的记录，所以对访客整卡隐藏。 -->
             <aside class="daily-aside">
-                <section class="daily-side-card">
+                <section class="daily-side-card" data-auth-role="admin" hidden>
                     <h2 class="daily-side-title">我的打卡</h2>
                     <div class="streak-figure">
                         <span class="streak-num" id="streakNum">0</span>

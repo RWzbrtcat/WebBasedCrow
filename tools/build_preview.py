@@ -680,15 +680,8 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
                 </div>
                 <a class="daily-item-question daily-item-link" href="#">聚簇索引和二级索引有什么区别？什么是回表？</a>
                 <div class="daily-item-actions">
-                    <a class="daily-link" href="#">详情</a>
-                    <button type="button" class="daily-link" data-toggle="bankAnswer1">收起答案</button>
                     <a class="daily-link" href="#">编辑</a>
                     <button type="button" class="daily-link daily-link-danger">删除</button>
-                </div>
-                <div class="daily-item-answer" id="bankAnswer1">
-                    <div class="markdown-body">
-                        <p>聚簇索引的叶子节点存<strong>整行数据</strong>，二级索引的叶子只存<strong>索引列 + 主键值</strong>；用二级索引查到主键后再回聚簇索引取整行，这一步就是<strong>回表</strong>。</p>
-                    </div>
                 </div>
             </article>
             <article class="daily-item">

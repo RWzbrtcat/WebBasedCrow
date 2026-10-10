@@ -11,7 +11,9 @@
 //   5. 出题页带 ?id=N 时字段是否被正确回填；
 //   6. 历史题目与题库条目是否都链到详情页 /daily/q/<id>（草稿除外）；
 //   7. 详情页题干/答案/相关题渲染，以及 ?d= 是否优先于接口给的 date；
-//   8. 详情页右栏「同分类相关题」的显隐：有相关题才切双列，没有/加载失败则回居中单列。
+//   8. 详情页右栏「同分类相关题」的显隐：有相关题才切双列，没有/加载失败则回居中单列；
+//   9. /daily 访客视角：题库是纯陈列（题干可点、整条无按钮），且请求不带 with_drafts；
+//  10. daily.html 的打卡卡带 data-auth-role="admin"（未登录不显示打卡记录）。
 import fs from 'fs';
 import path from 'path';
 import vm from 'vm';
@@ -144,7 +146,11 @@ const todayHtml = getEl('todayCard').innerHTML;
 ok(bankHtml.includes('href="/daily/question?id=7"'), '题库列表的「编辑」没有指向 /daily/question?id=7');
 ok(!bankHtml.includes('q-edit'), '题库列表仍残留 q-edit 按钮（应改为链接）');
 ok(bankHtml.includes('q-del'), '题库列表丢失了「删除」按钮');
-ok(bankHtml.includes('href="/daily/q/7"'), '题库条目的题干/「详情」没有指向详情页 /daily/q/7');
+ok(bankHtml.includes('href="/daily/q/7"'), '题库条目的题干没有指向详情页 /daily/q/7');
+// 题库条目只陈列题干：题干即详情入口，不再重复放「详情」，也不就地展开「查看答案」
+ok(!bankHtml.includes('>详情<'), '题库条目仍残留「详情」按钮（题干即入口，重复了）');
+ok(!bankHtml.includes('q-reveal'), '题库条目仍残留「查看答案」按钮（答案统一去详情页看）');
+ok(!bankHtml.includes('daily-item-answer'), '题库条目仍残留就地展开答案的容器');
 ok(!bankHtml.includes('/daily/q/8'), '草稿题不应有详情页链接（公开接口只放行已发布题目）');
 ok(historyHtml.includes('href="/daily/q/42?d=2026-10-09"'), '历史题目没有链到详情页（应为 /daily/q/42?d=2026-10-09）');
 ok(historyHtml.includes('昨天的题'), '历史题目没有渲染');
@@ -290,6 +296,45 @@ ok(getEl('qDetail').innerHTML.includes('题目不存在或尚未发布'), '题�
 ok(getEl('qRelated').hidden === true, '加载失败时应隐藏相关题区块');
 ok(!getEl('qDetailLayout').classList.contains('has-related'), '加载失败时应撤掉双列，主栏回到居中单列');
 console.log('/daily/q/999 : 失败态 ✓  相关题区块已隐藏 ✓  单列居中 ✓');
+
+// ---------- 用例 8：/daily（访客视角，与用例 1 的站长视角对照） ----------
+// 题库对访客应当是「纯陈列」：题干可点进详情页，整条没有任何按钮
+// （没有「详情」「查看答案」，也没有站长的「编辑」「删除」）。
+elements.clear();
+fetchLog.length = 0;
+responses = {
+    '/api/auth': { authed: false, is_main: false },
+    '/api/daily/history': { questions: [] },
+    '/api/daily': { available: true, id: 1, date: '2026-10-10', question: '今日的题', category: 'Linux', difficulty: 2, streak: 0 },
+    '/api/questions': {
+        questions: [{ id: 7, category: 'C++', difficulty: 3, status: 1, question: '测试题干' }],
+        categories: [{ name: 'C++', count: 100 }],
+        total: 1, hasMore: false,
+    },
+};
+
+const sb8 = makeSandbox();
+load(sb8, ['static/js/daily-common.js', 'static/js/daily.js']);
+await sb8.initDailyPage();
+await flush();
+
+const guestBank = getEl('questionList').innerHTML;
+ok(fetchLog.every((u) => !u.includes('with_drafts')), '访客请求不该带 with_drafts（草稿不外泄）');
+ok(guestBank.includes('href="/daily/q/7"'), '访客侧：题库题干仍应是详情页入口');
+ok(!guestBank.includes('daily-item-actions'), '访客侧：题库条目不该有任何操作按钮');
+ok(!guestBank.includes('q-del'), '访客侧：不该出现站长的「删除」');
+ok(!guestBank.includes('>详情<') && !guestBank.includes('q-reveal'), '访客侧：题库不该有「详情」「查看答案」');
+console.log('/daily (访客) : 题库纯陈列（题干可点，整条无按钮）✓');
+
+// ---------- 静态结构断言：打卡卡只对登录用户显示 ----------
+// 它靠 HTML 属性 + auth.js 遍历 DOM 生效，这层在桩里跑不到（桩没有 querySelectorAll），
+// 所以只能查源码。删掉这个属性 = 未登录访客又会看到「别人的」打卡记录。
+const dailyHtmlSrc = read('static/daily.html');
+ok(/class="daily-side-card"[^>]*data-auth-role="admin"/.test(dailyHtmlSrc),
+    '「我的打卡」卡缺少 data-auth-role="admin"（未登录访客会看到打卡记录）');
+ok(/class="daily-side-card"[^>]*data-auth-role="admin"[^>]*hidden/.test(dailyHtmlSrc),
+    '「我的打卡」卡应默认 hidden（否则登录态返回前会闪一下）');
+console.log('daily.html   : 打卡卡 data-auth-role="admin" + 默认 hidden ✓');
 
 console.log('');
 if (problems.length) {

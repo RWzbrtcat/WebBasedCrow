@@ -2,9 +2,10 @@
 // 每日一题（/daily）：今日题目 / 题库浏览 / 历史题目 / 打卡与题库分布
 // 依赖：daily-common.js（apiRequest / showToast / esc 等工具，必须先加载）
 //       markdown.js（renderMarkdownInto）、auth.js（控制站长入口显隐）
-// 三栏：左=历史题目+题目管理(站长)，中=今日题目+题库，右=打卡/题库分布
+// 三栏：左=历史题目+题目管理(站长)，中=今日题目+题库，右=打卡(仅登录可见)/题库分布
 // 出题 / 改题已拆到独立页面 /daily/question（见 daily-question.js）
-// 题目详情（只读）在 /daily/q/<id>（见 daily-q.js），历史题目与题库条目都链到那里
+// 题目详情（只读）在 /daily/q/<id>（见 daily-q.js）：历史题目整行、题库条目题干都链过去。
+// 题库条目自身只陈列题干，没有「详情」「查看答案」按钮 —— 答案去详情页看。
 // ============================================
 
 const dailyState = {
@@ -100,7 +101,8 @@ async function loadRandomQuestion() {
     }
 }
 
-// 展开 / 收起答案：答案走单独接口，避免在列表里就剧透
+// 展开 / 收起答案：答案走单独接口，避免在列表里就剧透。
+// 只服务中栏的今日题目卡片 —— 题库条目不再就地展开（答案去详情页看）。
 async function revealAnswer(btn, id, container) {
     if (!container.hidden) {
         container.hidden = true;
@@ -180,18 +182,20 @@ function buildBankItems(questions) {
     return questions.map((q) => {
         const isDraft = Number(q.status) === 0;
 
-        // 草稿只有站长看得到，而详情页与「查看答案」走的公开接口只放行已发布题目，
-        // 所以草稿题不给这两个入口（点了必然 404），直接把站长引到编辑页。
+        // 题干即详情页入口（草稿除外：详情页走的公开接口只放行已发布题目，点进去必然 404）。
+        // 操作区不再重复放「详情」——同一目标两个入口纯属冗余。
         const questionHtml = isDraft
             ? `<p class="daily-item-question">${esc(q.question)}</p>`
             : `<a class="daily-item-question daily-item-link" href="/daily/q/${q.id}">${esc(q.question)}</a>`;
-        const publicActions = isDraft
-            ? ''
-            : `<a class="daily-link" href="/daily/q/${q.id}">详情</a>
-                <button type="button" class="daily-link q-reveal">查看答案</button>`;
+
+        // 题库里也不再就地展开答案：这里的使用方式是把题都列出来扫一遍，
+        // 展开会把列表高度拉得参差不齐，答案统一去详情页看。
+        // 操作区因此只剩站长的「编辑 / 删除」——访客看到的题库是纯陈列，整条没有按钮。
         const adminActions = dailyState.isMain
-            ? `<a class="daily-link" href="/daily/question?id=${q.id}">编辑</a>
-                <button type="button" class="daily-link daily-link-danger q-del">删除</button>`
+            ? `<div class="daily-item-actions">
+                <a class="daily-link" href="/daily/question?id=${q.id}">编辑</a>
+                <button type="button" class="daily-link daily-link-danger q-del">删除</button>
+            </div>`
             : '';
 
         return `
@@ -203,8 +207,7 @@ function buildBankItems(questions) {
                 <span class="daily-item-id">#${q.id}</span>
             </div>
             ${questionHtml}
-            <div class="daily-item-actions">${publicActions}${adminActions}</div>
-            <div class="daily-item-answer" hidden></div>
+            ${adminActions}
         </article>`;
     }).join('');
 }
@@ -408,16 +411,12 @@ function bindDailyEvents() {
 
     const list = document.getElementById('questionList');
     if (list) {
+        // 题库里只剩站长的「删除」要在这里接（「编辑」是普通链接）。
+        // 「查看答案」已从题库取消，答案统一去详情页看 —— 见 buildBankItems。
         list.addEventListener('click', (e) => {
+            if (!e.target.closest('.q-del')) return;
             const item = e.target.closest('.daily-item');
-            if (!item) return;
-            const id = Number(item.dataset.id);
-
-            if (e.target.closest('.q-reveal')) {
-                revealAnswer(e.target.closest('.q-reveal'), id, item.querySelector('.daily-item-answer'));
-            } else if (e.target.closest('.q-del')) {
-                removeQuestion(id);
-            }
+            if (item) removeQuestion(Number(item.dataset.id));
         });
     }
 }

@@ -3337,7 +3337,7 @@ body.daily-question-page {
 }
 
 /* 题干本身即详情页入口（<a> 而非 <p>）：去掉下划线，hover 用强调色提示可点。
-   就地「查看答案」的按钮仍保留在下方操作区，两条路径各自独立。 */
+   操作区现在只有站长见得到，所以访客看到的就是「题干可点、整条没有按钮」。 */
 .daily-item-link {
     display: block;
     text-decoration: none;
@@ -3349,19 +3349,14 @@ body.daily-question-page {
     color: var(--accent);
 }
 
+/* 操作区是「有才出现」的（访客没有按钮），题干下边距只在后面还跟着东西时才留 */
+.daily-item-question:last-child {
+    margin-bottom: 0;
+}
+
 .daily-item-actions {
     display: flex;
     gap: 14px;
-}
-
-.daily-item-answer {
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px dashed var(--border);
-}
-
-.daily-item-answer[hidden] {
-    display: none;
 }
 
 .daily-link {
@@ -3864,15 +3859,8 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
                 </div>
                 <a class="daily-item-question daily-item-link" href="#">聚簇索引和二级索引有什么区别？什么是回表？</a>
                 <div class="daily-item-actions">
-                    <a class="daily-link" href="#">详情</a>
-                    <button type="button" class="daily-link" data-toggle="bankAnswer1">收起答案</button>
                     <a class="daily-link" href="#">编辑</a>
                     <button type="button" class="daily-link daily-link-danger">删除</button>
-                </div>
-                <div class="daily-item-answer" id="bankAnswer1">
-                    <div class="markdown-body">
-                        <p>聚簇索引的叶子节点存<strong>整行数据</strong>，二级索引的叶子只存<strong>索引列 + 主键值</strong>；用二级索引查到主键后再回聚簇索引取整行，这一步就是<strong>回表</strong>。</p>
-                    </div>
                 </div>
             </article>
             <article class="daily-item">
