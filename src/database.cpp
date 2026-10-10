@@ -2635,6 +2635,92 @@ crow::json::wvalue DataBase::getQuestionById(int id)
     return result;
 }
 
+// 公开单题详情（详情页 /daily/q/<id> 用）。
+// 与 getQuestionById 的两点区别：① 只放行已发布题目，草稿不外泄；
+// ② 不吃匿名打卡 —— 详情页是「查资料」，不该顺手把当天也算成已作答。
+crow::json::wvalue DataBase::getPublicQuestionDetail(int id)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    result["success"] = false;
+
+    const std::string sql = "SELECT id, category, tags, difficulty, question, answer FROM questions WHERE id=" +
+                            std::to_string(id) + " AND status=1";
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        result["message"] = "查询失败";
+        return result;
+    }
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res)
+    {
+        result["message"] = "查询失败";
+        return result;
+    }
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (!row)
+    {
+        mysql_free_result(res);
+        result["message"] = "题目不存在或尚未发布";
+        return result;
+    }
+
+    result["success"] = true;
+    result["id"] = row[0] ? std::atoi(row[0]) : 0;
+    const std::string category = row[1] ? row[1] : "";
+    result["category"] = category;
+    result["tags"] = row[2] ? row[2] : "";
+    result["difficulty"] = row[3] ? std::atoi(row[3]) : 2;
+    result["question"] = row[4] ? row[4] : "";
+    result["answer"] = row[5] ? row[5] : "";
+    mysql_free_result(res);
+
+    // 最近一次被排为「每日一题」的日期；从未排期则为空串（前端据此切换徽章文案）。
+    // 取 MAX(d) 而非 MIN(d)：用户多是刚从历史列表点进来的，最近那次更贴近预期。
+    result["date"] = "";
+    const std::string dateSql = "SELECT MAX(d) FROM daily_questions WHERE question_id=" + std::to_string(id);
+    if (mysql_query(conn_, dateSql.c_str()) == 0)
+    {
+        MYSQL_RES* dateRes = mysql_store_result(conn_);
+        if (dateRes)
+        {
+            MYSQL_ROW dateRow = mysql_fetch_row(dateRes);
+            if (dateRow && dateRow[0]) result["date"] = dateRow[0];
+            mysql_free_result(dateRes);
+        }
+    }
+
+    // 同分类相关题（最多 6 道）。用 RAND() 而不是取 id 最小/最大的几道：
+    // 否则每次进详情页看到的永远是同样那几道，显得死板；500 题规模下随机代价可忽略。
+    std::vector<crow::json::wvalue> siblings;
+    std::string sibSql = "SELECT id, question, difficulty FROM questions WHERE status=1 AND id<>" +
+                         std::to_string(id);
+    if (!category.empty()) sibSql += " AND category=" + sqlQuote(conn_, category);
+    sibSql += " ORDER BY RAND() LIMIT 6";
+    if (mysql_query(conn_, sibSql.c_str()) == 0)
+    {
+        MYSQL_RES* sibRes = mysql_store_result(conn_);
+        if (sibRes)
+        {
+            MYSQL_ROW sibRow;
+            while ((sibRow = mysql_fetch_row(sibRes)))
+            {
+                crow::json::wvalue item;
+                item["id"] = sibRow[0] ? std::atoi(sibRow[0]) : 0;
+                item["question"] = sibRow[1] ? sibRow[1] : "";
+                item["difficulty"] = sibRow[2] ? std::atoi(sibRow[2]) : 2;
+                siblings.push_back(std::move(item));
+            }
+            mysql_free_result(sibRes);
+        }
+    }
+    result["siblings"] = std::move(siblings);
+
+    return result;
+}
+
 // 新增题目（仅主管理员，权限由路由层校验）
 crow::json::wvalue DataBase::addQuestion(const std::string& category, const std::string& tags, int difficulty,
                                          const std::string& question, const std::string& answer, int status)

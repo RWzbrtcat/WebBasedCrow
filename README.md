@@ -512,7 +512,8 @@ WebBasedCrow/
 ├── static/                 # 前端（运行时读取，改完刷新即生效）
 │   ├── index.html          # 首页（专栏/主题双层筛选）
 │   ├── post.html           # 文章详情
-│   ├── daily.html          # 每日一题（左「历史题目」+ 中「今日题目/题库」+ 右「打卡/分布/管理」）
+│   ├── daily.html          # 每日一题（左「历史题目/题目管理」+ 中「今日题目/题库」+ 右「打卡/分布」）
+│   ├── daily-q.html        # 题目详情页（/daily/q/<id>，公开只读）
 │   ├── daily-question.html # 出题 / 改题页（/daily/question，仅站长）
 │   ├── editor.html         # Markdown 编辑器（支持 Mermaid）
 │   ├── login.html          # 登录
@@ -522,7 +523,7 @@ WebBasedCrow/
 │   ├── hidden.html         # 隐藏文章
 │   ├── css/                # style.css（全站样式）、highlight.css
 │   ├── js/                 # auth/header/theme/list/post/editor/admin/profile/login/markdown
-│   │                       # daily-common.js（共用工具）+ daily.js + daily-question.js
+│   │                       # daily-common.js（共用工具）+ daily.js + daily-q.js + daily-question.js
 │   └── uploads/            # 上传图片（gitignore）
 ├── tools/                    # 开发辅助脚本
 │   ├── build_preview.py      # 生成 preview*.html 静态预览
@@ -551,9 +552,10 @@ python tools/build_preview.py
 # 回归首页渲染：Node 模拟 DOM + fixture 数据执行 list.js，能捕获 ReferenceError 等渲染期异常
 node tools/repro_list.mjs
 
-# 回归每日一题：Node 模拟 DOM + 假接口跑 daily.js / daily-question.js 全流程
+# 回归每日一题：Node 模拟 DOM + 假接口跑 daily.js / daily-q.js / daily-question.js 全流程
 # （今日题目/题库/历史是否渲染、右栏打卡天数与 7 天格子、题库分布行、编辑是否链到
-#   /daily/question?id=N、出题页回填是否正确）
+#   /daily/question?id=N、历史与题库条目是否链到 /daily/q/<id>、草稿题是否被排除、
+#   详情页题干/答案/相关题是否渲染且 ?d= 优先、出题页回填是否正确）
 node tools/repro_daily.mjs
 ```
 
@@ -768,7 +770,7 @@ journalctl -u blog.service -n 40 --no-pager | grep 字符集   # 期望 results=
 
 ## 十四、API 一览
 
-页面路由：`/` `/post` `/daily` `/daily/question` `/login` `/logout` `/drafts` `/hidden` `/editor` `/admin` `/profile`
+页面路由：`/` `/post` `/daily` `/daily/q/<id>` `/daily/question` `/login` `/logout` `/drafts` `/hidden` `/editor` `/admin` `/profile`
 
 | 方法 | 路径 | 说明 | 权限 |
 |---|---|---|---|
@@ -796,10 +798,11 @@ journalctl -u blog.service -n 40 --no-pager | grep 字符集   # 期望 results=
 | POST | `/api/settings/background` `/api/settings/theme` | 修改站点背景 / 主题色 | 登录 |
 | GET | `/api/daily` | 今日题目（首次访问自动生成并落库，不含答案），附 `answered` / `streak` | 公开 |
 | GET | `/api/daily/answer?id=` | 取题目答案，同时记录「今天看过答案」 | 公开 |
-| GET | `/api/daily/history?page=` | 历史排期（按日期倒序，不含答案） | 公开 |
+| GET | `/api/daily/history?page=` | 历史排期（按日期倒序，不含答案），含 `id` / `difficulty` 以供跳详情页 | 公开 |
 | GET | `/api/daily/random?category=` | 随机换一题（不含答案） | 公开 |
+| GET | `/api/daily/question?id=` | 单题详情页数据（含答案）：仅已发布题目，另附最近一次排期日期与同分类相关题 | 公开 |
 | GET | `/api/questions?category=&page=&page_size=` | 题库浏览（不含答案）；站长带 `with_drafts=1` 可见草稿 | 公开 |
-| GET | `/api/questions/<id>` | 单题详情（含答案，编辑回填用） | 主管理员 |
+| GET | `/api/questions/<id>` | 单题详情（含答案，编辑回填用；含草稿） | 主管理员 |
 | POST | `/api/questions` | 新增题目 | 主管理员 |
 | PUT | `/api/questions/<id>` | 修改题目 | 主管理员 |
 | DELETE | `/api/questions/<id>` | 删除题目 | 主管理员 |
@@ -842,26 +845,26 @@ journalctl -u blog.service -n 40 --no-pager | grep 字符集   # 期望 results=
 ```
 ┌──────────────────┬────────────────────────────────┬────────────────────┐
 │ 历史题目          │ 今日题目卡片                    │ 我的打卡            │
-│ （吸顶）          │ 题库（筛选 + 加载更多）          │ 题库分布            │
-│                  │                                │ 题目管理            │
+│ 题目管理（站长）  │ 题库（筛选 + 加载更多）          │ 题库分布            │
 └──────────────────┴────────────────────────────────┴────────────────────┘
       256px                minmax(0, 1fr)                 300px
 ```
 
 | 位置 | 内容 |
 |---|---|
-| 左栏（吸顶） | **历史题目**：往期排期，按日期倒序，带分类标签 |
-| 中栏 | 今日题目卡片（查看答案 / 换一题 / 连答天数）、题库浏览（分类筛选 + 分页「加载更多」） |
-| 右栏（吸顶） | **我的打卡**（连答天数 + 今日状态 + 近 7 天格子）、**题库分布**（各分类题量与占比条，点击即筛选题库）、**题目管理**（仅站长可见，只有一个「添加题目」按钮） |
+| 左栏（吸顶） | **历史题目**：往期排期，按日期倒序，带分类标签，**整行可点进详情页**；**题目管理**（仅站长可见，只有一个「添加题目」按钮） |
+| 中栏 | 今日题目卡片（查看答案 / 换一题 / 连答天数）、题库浏览（分类筛选 + 分页「加载更多」，**题干即可点进详情页**，另有「详情」入口） |
+| 右栏（吸顶） | **我的打卡**（连答天数 + 今日状态 + 近 7 天格子）、**题库分布**（各分类题量与占比条，点击即筛选题库） |
 
 - 容器由 1120px 放宽到 **1420px**（导航胶囊 `--header-width` 同步），左右栏加宽到 **256px / 300px**：两栏各向外延伸，中栏正文约 810px。
-- **右栏不会对游客「空掉」**：题目管理卡带 `data-auth-role="main"` 只有站长可见，但打卡卡与题库分布在**任何身份下都渲染**。
+- **左栏始终有内容**：题目管理卡带 `data-auth-role="main"` 只有站长可见，但它与历史题目同处左栏，所以访客看到的仍是满满一列历史题目（早先「题目管理独占一栏会让访客看到空白」的问题已不存在）。
 - 打卡与分布**不需要新增接口**：连答天数来自 `/api/daily` 的 `streak`（配合 `answered` 即可反推出「已作答的日期集合」），分类题量来自 `/api/questions` 已有的 `categories[].count`。
-- 响应式：**≥1281px** 三栏 → **≤1280px** 两栏（历史题目落到中栏下方，改网格排布，右栏跨两行继续吸顶）→ **≤880px** 单栏（主栏 → 右栏 → 历史题目）。
+- 响应式：**≥1281px** 三栏 → **≤1280px** 两栏（左栏整体落到中栏下方，历史题目改多列网格，右栏跨两行继续吸顶）→ **≤880px** 单栏（主栏 → 右栏 → 左栏）。
   （三栏断点随容器加宽同步从 1200px 提到 1280px，否则中等宽度下中栏会被两侧挤压。）
 
 出题与改题**不在列表页内联完成**，而是跳到独立页面 `/daily/question`（见 [16.4](#164-题库与出题)）：
 题库列表里每题的「编辑」直接链到 `/daily/question?id=N`，避免把一整个大表单塞进列表页。
+只读查看则在 `/daily/q/<id>`（见 [16.5](#165-题目详情页)）。
 
 ### 16.1 选题机制：不用定时任务
 
@@ -932,8 +935,8 @@ mysql -u <用户> -p --default-character-set=utf8mb4 blogdb < tools/seed_questio
 
 **② 站长的出题页 `/daily/question`**
 
-用主管理员登录后，`/daily` 右侧栏的「题目管理」里点**「添加题目」**即进入该页（路由与 `/admin` 同级校验：
-未登录跳 `/login`、非站长跳 `/`）：
+用主管理员登录后，`/daily` **左侧栏**（历史题目下方的「题目管理」卡）点**「添加题目」**即进入该页
+（路由与 `/admin` 同级校验：未登录跳 `/login`、非站长跳 `/`）：
 
 - 表单含分类、标签、难度（基础/进阶/困难）、状态（草稿/已发布）、题干与答案（Markdown）；
 - **答案带「预览」按钮**，直接复用文章页的 `markdown.js` 渲染（含代码高亮与 mermaid），不用来回切页面看效果；
@@ -943,22 +946,48 @@ mysql -u <用户> -p --default-character-set=utf8mb4 blogdb < tools/seed_questio
   新增成功后**留在本页并清空表单**，方便连续录入；修改成功则回到 `/daily`；
 - 列表请求带 `with_drafts=1`，草稿会打「草稿」标记。**草稿不会进入每日排期**（选题只取 `status=1`）。
 
-前端脚本按用途拆成三个文件，避免列表页背上编辑器的逻辑：
+前端脚本按用途拆成四个文件，避免列表页背上编辑器的逻辑：
 
 | 文件 | 作用 |
 |---|---|
 | `static/js/daily-common.js` | 共用工具（`apiRequest` 带 GET 重试、`showToast`、`esc` / `escapeAttr`、错误文案） |
 | `static/js/daily.js` | `/daily`：今日题目、题库列表、历史题目、删除 |
+| `static/js/daily-q.js` | `/daily/q/<id>`：题目详情（题干 + 答案 + 同分类相关题） |
 | `static/js/daily-question.js` | `/daily/question`：新增 / 回填编辑 / 保存 / 答案预览 |
 
-> `daily-common.js` 必须在这两个脚本**之前**加载（见 `static/daily.html` 与 `static/daily-question.html` 的 `<script>` 顺序）。
+> `daily-common.js` 必须在这几个脚本**之前**加载（见 `static/daily.html`、`static/daily-q.html`、
+> `static/daily-question.html` 的 `<script>` 顺序）。
 
 **草稿的价值**：AI 生成或从别处摘来的题目先落草稿，人工核对答案后再发布 —— 面试题答案写错比没有更糟。
 
-### 16.5 已知边界
+### 16.5 题目详情页
+
+`/daily/q/<id>` 是**公开只读**的题目详情页，历史题目、题库条目的题干与「详情」都链到这里：
+
+```
+GET /api/daily/question?id=<id>          # 一次取全，避免详情页多次往返
+      ↓
+{ success, id, category, tags, difficulty, question, answer,
+  date,          ← 该题最近一次被排为「每日一题」的日期（从未排期则为空串）
+  siblings[] }   ← 同分类相关题（最多 6 道，RAND() 取，每次进来看的不完全一样）
+```
+
+- **为什么要单独开一个接口**：`/api/questions/<id>` 是主管理员的编辑回填接口（含草稿、含 `status`），
+  不能给访客；而公开能拿答案的 `/api/daily/answer?id=` 又不含题干。所以新开
+  `GET /api/daily/question?id=`，**只放行 `status=1` 的题目**，草稿一律返回「题目不存在或尚未发布」。
+- **详情页不吃匿名打卡**：这是刻意的。在 `/daily` 展开答案算「今天作答」，而详情页是查资料 ——
+  否则随手点开几道历史题的详情，当天就被记成已完成，连续天数的意义会被稀释。
+- **日期优先取 URL 的 `?d=`**：历史题目点进来时带 `?d=YYYY-MM-DD`（同一道题可能被排期多次，
+  那次点击的日期最精确），没有才退回接口给的 `date`。据此切换徽章文案「每日一题 / 题库题目」。
+- **答案默认展开**：点进详情页的意图就是看答案，不必再点一次；答案走 `markdown.js`，代码高亮与 mermaid 都可用。
+- **草稿题在列表里不给详情入口**：草稿只有站长看得到，而公开接口只放行已发布题目，
+  所以 `buildBankItems()` 对 `status=0` 的题只保留「编辑 / 删除」，避免点进去必然 404。
+
+### 16.6 已知边界
 
 - **分类名称直接参与轮转**：改分类名相当于换了一批题，历史排期不受影响，但后续轮转节奏会变。
 - **`ORDER BY RAND()` 只适合小题库**（几千题以内毫无压力），题量到十万级需要改成按 id 随机取。
+  （详情页的「同分类相关题」同理。）
 - 题库为空时首页卡片**自动隐藏不占位**，`/daily` 会给出空状态提示。
 
 ## 十七、已知限制与待办

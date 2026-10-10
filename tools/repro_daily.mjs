@@ -8,7 +8,9 @@
 //   2. 右栏「我的打卡」天数与 7 天格子、「题库分布」分类行与占比条；
 //   3. 题库列表的「编辑」是否指向 /daily/question?id=N（而不是内联回填）；
 //   4. 出题页的新增模式不该去拉单题详情；
-//   5. 出题页带 ?id=N 时字段是否被正确回填。
+//   5. 出题页带 ?id=N 时字段是否被正确回填；
+//   6. 历史题目与题库条目是否都链到详情页 /daily/q/<id>（草稿除外）；
+//   7. 详情页题干/答案/相关题渲染，以及 ?d= 是否优先于接口给的 date。
 import fs from 'fs';
 import path from 'path';
 import vm from 'vm';
@@ -62,7 +64,7 @@ let fetchLog = [];
 // 连续让出微任务队列，等所有「即发即忘」的异步渲染落地
 const flush = async () => { for (let i = 0; i < 50; i++) await Promise.resolve(); };
 
-function makeSandbox(search = '') {
+function makeSandbox(search = '', pathname = '/') {
     const document = {
         getElementById: getEl,
         createElement: (t) => makeEl(t),
@@ -71,8 +73,8 @@ function makeSandbox(search = '') {
         addEventListener() {},
         body: makeEl('body'),
     };
-    // window.location 与 location 必须是同一个对象：页面代码读的是 window.location.search
-    const loc = { search, href: '', pathname: '/' };
+    // window.location 与 location 必须是同一个对象：页面代码读的是 window.location.search / pathname
+    const loc = { search, href: '', pathname };
     const sandbox = {
         document,
         window: { location: loc },
@@ -82,6 +84,9 @@ function makeSandbox(search = '') {
         clearTimeout: () => {},
         Promise,
         URLSearchParams,
+        // markdown.js 的渲染入口。真实页面由 markdown.js 提供，这里只要一个能证明
+        // 「答案确实被交给渲染器」的桩，避免为了它把 marked/purify/highlight 全搬进沙箱。
+        renderMarkdownInto: (el, text) => { if (el) el.innerHTML = `[md]${text}`; },
         fetch: async (url) => {
             fetchLog.push(url);
             const key = Object.keys(responses).find((k) => url.includes(k));
@@ -98,12 +103,17 @@ const load = (sandbox, scripts) =>
 // ---------- 用例 1：/daily 页 ----------
 responses = {
     '/api/auth': { authed: true, is_main: true },
-    '/api/daily/history': { questions: [{ date: '2026-10-09', question: '昨天的题', category: 'C++' }] },
+    '/api/daily/history': {
+        questions: [{ id: 42, date: '2026-10-09', question: '昨天的题', category: 'C++', difficulty: 2 }],
+    },
     '/api/daily': { available: true, id: 1, date: '2026-10-10', question: '今日的题', category: 'Linux', difficulty: 2, streak: 3 },
     '/api/questions': {
-        questions: [{ id: 7, category: 'C++', difficulty: 3, status: 1, question: '测试题干' }],
+        questions: [
+            { id: 7, category: 'C++', difficulty: 3, status: 1, question: '测试题干' },
+            { id: 8, category: 'C++', difficulty: 1, status: 0, question: '草稿题干' },
+        ],
         categories: [{ name: 'C++', count: 100 }, { name: 'Linux', count: 90 }],
-        total: 1, hasMore: false,
+        total: 2, hasMore: false,
     },
 };
 
@@ -119,6 +129,9 @@ const todayHtml = getEl('todayCard').innerHTML;
 ok(bankHtml.includes('href="/daily/question?id=7"'), '题库列表的「编辑」没有指向 /daily/question?id=7');
 ok(!bankHtml.includes('q-edit'), '题库列表仍残留 q-edit 按钮（应改为链接）');
 ok(bankHtml.includes('q-del'), '题库列表丢失了「删除」按钮');
+ok(bankHtml.includes('href="/daily/q/7"'), '题库条目的题干/「详情」没有指向详情页 /daily/q/7');
+ok(!bankHtml.includes('/daily/q/8'), '草稿题不应有详情页链接（公开接口只放行已发布题目）');
+ok(historyHtml.includes('href="/daily/q/42?d=2026-10-09"'), '历史题目没有链到详情页（应为 /daily/q/42?d=2026-10-09）');
 ok(historyHtml.includes('昨天的题'), '历史题目没有渲染');
 ok(historyHtml.includes('daily-history-date'), '历史题目缺少日期节点');
 ok(todayHtml.includes('今日的题'), '今日题目卡片没有渲染');
@@ -200,6 +213,47 @@ await sb4.initQuestionPage();
 await flush();
 ok(getEl('qSaveBtn').textContent !== '保存修改', 'id 非法时不应进入编辑模式');
 console.log('/daily/question: 坏 id 未进入编辑模式 ✓');
+
+// ---------- 用例 5：题目详情页（/daily/q/12?d=2026-10-08） ----------
+elements.clear();
+fetchLog.length = 0;
+responses = {
+    '/api/daily/question': {
+        success: true, id: 12, category: 'MySQL', tags: '索引,B+树', difficulty: 2,
+        question: '什么是回表？', answer: '**回表**指 ……',
+        // 接口给的是「最近一次排期」，URL 里带的是「这次从哪天的历史点进来的」——后者应当优先
+        date: '2026-10-06',
+        siblings: [{ id: 13, question: '相关题一', difficulty: 3 }],
+    },
+};
+
+const sb5 = makeSandbox('?d=2026-10-08', '/daily/q/12');
+load(sb5, ['static/js/daily-common.js', 'static/js/daily-q.js']);
+await sb5.initDetailPage();
+await flush();
+
+const detailHtml = getEl('qDetail').innerHTML;
+ok(detailHtml.includes('什么是回表？'), '详情页没有渲染题干');
+ok(detailHtml.includes('2026-10-08'), '详情页日期应优先用 URL 的 ?d=（期望 2026-10-08）');
+ok(!detailHtml.includes('2026-10-06'), '详情页日期不该退回接口的 date（URL 已给出更精确的那次）');
+ok(detailHtml.includes('每日一题'), '详情页带来源日期时应显示「每日一题」徽章');
+ok(getEl('qAnswerBody').innerHTML.includes('[md]'), '答案没有被交给 Markdown 渲染器');
+ok(getEl('qEditLink').href === '/daily/question?id=12', '「编辑此题」没有带上课目 id');
+ok((getEl('qRelatedList').innerHTML.match(/qdetail-related-item/g) || []).length === 1, '相关题没有渲染');
+ok(getEl('qRelated').hidden === false, '有相关题时不该隐藏该区块');
+console.log('/daily/q/12  : 题干 ✓  答案→markdown ✓  | 日期', detailHtml.includes('2026-10-08') ? '2026-10-08（来自 URL）✓' : '✗',
+    '| 相关题', (getEl('qRelatedList').innerHTML.match(/qdetail-related-item/g) || []).length + ' 条 ✓');
+
+// ---------- 用例 6：详情页（题目不存在） ----------
+elements.clear();
+responses = { '/api/daily/question': { success: false, message: '题目不存在或尚未发布' } };
+const sb6 = makeSandbox('', '/daily/q/999');
+load(sb6, ['static/js/daily-common.js', 'static/js/daily-q.js']);
+await sb6.initDetailPage();
+await flush();
+ok(getEl('qDetail').innerHTML.includes('题目不存在或尚未发布'), '题目不存在时应显示接口给的提示');
+ok(getEl('qRelated').hidden === true, '加载失败时应隐藏相关题区块');
+console.log('/daily/q/999 : 失败态 ✓  相关题区块已隐藏 ✓');
 
 console.log('');
 if (problems.length) {

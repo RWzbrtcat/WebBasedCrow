@@ -585,36 +585,43 @@ daily_html = '''<!DOCTYPE html>
         <h1 class="page-title">每日一题</h1>
 
         <div class="daily-layout">
+        <div class="daily-rail">
         <aside class="daily-rail-history">
         <h2 class="daily-rail-title">历史题目</h2>
         <div class="daily-history">
-            <div class="daily-history-row">
+            <a class="daily-history-row" href="#">
                 <span class="daily-history-date">2026-10-08</span>
                 <span class="daily-history-q">聚簇索引和二级索引的区别？回表是什么？</span>
                 <span class="daily-history-cat">MySQL</span>
-            </div>
-            <div class="daily-history-row">
+            </a>
+            <a class="daily-history-row" href="#">
                 <span class="daily-history-date">2026-10-07</span>
                 <span class="daily-history-q">move 语义解决了什么问题？std::move 真的移动了吗？</span>
                 <span class="daily-history-cat">C++</span>
-            </div>
-            <div class="daily-history-row">
+            </a>
+            <a class="daily-history-row" href="#">
                 <span class="daily-history-date">2026-10-06</span>
                 <span class="daily-history-q">TCP 三次握手为什么不是两次？</span>
                 <span class="daily-history-cat">网络</span>
-            </div>
-            <div class="daily-history-row">
+            </a>
+            <a class="daily-history-row" href="#">
                 <span class="daily-history-date">2026-10-05</span>
                 <span class="daily-history-q">epoll 的 LT 与 ET 模式有什么区别？</span>
                 <span class="daily-history-cat">Linux</span>
-            </div>
-            <div class="daily-history-row">
+            </a>
+            <a class="daily-history-row" href="#">
                 <span class="daily-history-date">2026-10-04</span>
                 <span class="daily-history-q">Redis 的持久化有哪两种？各自适合什么场景？</span>
                 <span class="daily-history-cat">Redis</span>
-            </div>
+            </a>
         </div>
         </aside>
+
+        <aside class="daily-rail-admin">
+        <h2 class="daily-rail-title">题目管理</h2>
+        <a class="btn btn-primary btn-block" href="#">添加题目</a>
+        </aside>
+        </div><!-- /.daily-rail -->
 
         <div class="daily-main">
         <section class="daily-card">
@@ -671,8 +678,9 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
                     <span class="daily-item-diff">进阶</span>
                     <span class="daily-item-id">#12</span>
                 </div>
-                <p class="daily-item-question">聚簇索引和二级索引有什么区别？什么是回表？</p>
+                <a class="daily-item-question daily-item-link" href="#">聚簇索引和二级索引有什么区别？什么是回表？</a>
                 <div class="daily-item-actions">
+                    <a class="daily-link" href="#">详情</a>
                     <button type="button" class="daily-link" data-toggle="bankAnswer1">收起答案</button>
                     <a class="daily-link" href="#">编辑</a>
                     <button type="button" class="daily-link daily-link-danger">删除</button>
@@ -692,14 +700,8 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
                 </div>
                 <p class="daily-item-question">什么是 RAII？为什么说它是 C++ 资源管理的核心？</p>
                 <div class="daily-item-actions">
-                    <button type="button" class="daily-link" data-toggle="bankAnswer2">查看答案</button>
                     <a class="daily-link" href="#">编辑</a>
                     <button type="button" class="daily-link daily-link-danger">删除</button>
-                </div>
-                <div class="daily-item-answer" id="bankAnswer2" hidden>
-                    <div class="markdown-body">
-                        <p>资源在构造函数中获取、在析构函数中释放，把资源生命周期绑定到栈对象的作用域上。</p>
-                    </div>
                 </div>
             </article>
         </div>
@@ -739,11 +741,6 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
                 <button type="button" class="cat-dist-row"><span class="cat-dist-name">Redis</span><span class="cat-dist-count">40</span><span class="cat-dist-bar"><i style="width:40%"></i></span></button>
                 <button type="button" class="cat-dist-row"><span class="cat-dist-name">其他数据库</span><span class="cat-dist-count">40</span><span class="cat-dist-bar"><i style="width:40%"></i></span></button>
             </div>
-        </section>
-
-        <section class="daily-side-card">
-            <h2 class="daily-side-title">题目管理</h2>
-            <a class="btn btn-primary btn-block" href="#">添加题目</a>
         </section>
         </aside>
         </div><!-- /.daily-layout -->
@@ -938,3 +935,114 @@ with io.open(QUESTION_OUT, "w", encoding="utf-8") as f:
     f.write(question_out)
 
 print("written:", QUESTION_OUT, len(question_out), "chars")
+
+
+# ---------------- 题目详情页预览（/daily/q/<id>） ----------------
+QDETAIL_OUT = os.path.join(ROOT, "preview_daily_q.html")
+
+qdetail_html = '''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>题目详情预览 · LazyCat's Blog</title>
+<style>
+{css}
+</style>
+</head>
+<body class="daily-q-page">
+    <header class="site-header site-header-pill">
+        <div class="header-inner">
+            <div class="brand"><a class="site-title" href="#">LazyCat</a></div>
+            <nav class="nav">
+                <a href="#">首页</a>
+                <a href="#" class="active">每日一题</a>
+                <a href="#">草稿</a>
+                <a href="#">隐藏</a>
+                <a href="#">创作</a>
+                <a href="#" class="nav-avatar">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container container-q">
+        <nav class="qdetail-nav">
+            <a class="daily-link" href="#">&larr; 返回每日一题</a>
+            <a class="daily-link" href="#">编辑此题</a>
+        </nav>
+
+        <article class="daily-card qdetail-card">
+            <div class="daily-card-head">
+                <span class="daily-badge">每日一题</span>
+                <span class="daily-date">2026-10-08</span>
+                <span class="daily-meta">MySQL · 进阶</span>
+                <span class="daily-item-id">#12</span>
+            </div>
+            <h1 class="qdetail-question">聚簇索引和二级索引有什么区别？什么是回表？</h1>
+            <p class="daily-tags">索引, B+树, InnoDB</p>
+            <div class="qdetail-rule"></div>
+            <div class="daily-answer-label">参考答案</div>
+            <div class="markdown-body">
+                <p><strong>聚簇索引</strong>的叶子节点存的是<strong>整行数据</strong>，而<strong>二级索引</strong>的叶子节点只存<strong>索引列 + 主键值</strong>。</p>
+                <ol>
+                    <li>InnoDB 的主键索引就是聚簇索引，一张表只有一个；表数据按主键顺序物理组织。</li>
+                    <li>二级索引查到主键值后，还要再拿主键去聚簇索引里取整行 —— 这一步就是<strong>回表</strong>。</li>
+                    <li>所以「<code>SELECT *</code> 走二级索引」通常比「走覆盖索引」慢：后者所需字段全在二级索引里，不必回表。</li>
+                </ol>
+<pre><code>-- 覆盖索引：只查 idx_name 与主键，不需要回表
+SELECT id, name FROM users WHERE name = 'lazycat';
+
+-- 需要回表：还要取 age，二级索引里没有
+SELECT id, name, age FROM users WHERE name = 'lazycat';</code></pre>
+                <p><strong>实践结论</strong>：能用覆盖索引就别回表；回表次数多时，优化器可能干脆放弃二级索引改走全表扫描。</p>
+            </div>
+        </article>
+
+        <section class="qdetail-related">
+            <h2 class="daily-section-title">同分类相关题 · MySQL</h2>
+            <div class="qdetail-related-list">
+                <a class="qdetail-related-item" href="#">
+                    <span class="qdetail-related-q">为什么 InnoDB 用 B+ 树而不是 B 树或哈希索引？</span>
+                    <span class="qdetail-related-diff">进阶</span>
+                </a>
+                <a class="qdetail-related-item" href="#">
+                    <span class="qdetail-related-q">最左前缀原则是什么？联合索引 (a, b, c) 能命中哪些查询？</span>
+                    <span class="qdetail-related-diff">进阶</span>
+                </a>
+                <a class="qdetail-related-item" href="#">
+                    <span class="qdetail-related-q">MySQL 的 MVCC 是怎么实现的？undo log 与 read view 各起什么作用？</span>
+                    <span class="qdetail-related-diff">困难</span>
+                </a>
+                <a class="qdetail-related-item" href="#">
+                    <span class="qdetail-related-q">什么是间隙锁？它解决了什么问题，又带来了什么代价？</span>
+                    <span class="qdetail-related-diff">困难</span>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <a href="#">冀ICP备2026039047号</a>
+    </footer>
+
+    <script>
+    (function () {
+        var h = document.querySelector('.site-header-pill');
+        if (h) {
+            var update = function () { h.classList.toggle('scrolled', window.scrollY > 0); };
+            update();
+            window.addEventListener('scroll', update, { passive: true });
+        }
+    })();
+    </script>
+</body>
+</html>'''
+
+qdetail_out = qdetail_html.replace("{css}", css)
+
+with io.open(QDETAIL_OUT, "w", encoding="utf-8") as f:
+    f.write(qdetail_out)
+
+print("written:", QDETAIL_OUT, len(qdetail_out), "chars")

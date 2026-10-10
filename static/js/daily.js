@@ -2,8 +2,9 @@
 // 每日一题（/daily）：今日题目 / 题库浏览 / 历史题目 / 打卡与题库分布
 // 依赖：daily-common.js（apiRequest / showToast / esc 等工具，必须先加载）
 //       markdown.js（renderMarkdownInto）、auth.js（控制站长入口显隐）
-// 三栏：左=历史题目，中=今日题目+题库，右=打卡/题库分布/题目管理
+// 三栏：左=历史题目+题目管理(站长)，中=今日题目+题库，右=打卡/题库分布
 // 出题 / 改题已拆到独立页面 /daily/question（见 daily-question.js）
+// 题目详情（只读）在 /daily/q/<id>（见 daily-q.js），历史题目与题库条目都链到那里
 // ============================================
 
 const dailyState = {
@@ -41,7 +42,7 @@ function renderCard(box, data, isDaily) {
         box.innerHTML = `
             <div class="empty-state">
                 <p>${esc((data && data.message) || '题库里还没有已发布的题目')}</p>
-                <p class="daily-empty-hint">站长可在右侧「题目管理」里点「添加题目」，或导入 tools/seed_questions.sql</p>
+                <p class="daily-empty-hint">站长可在左侧「题目管理」里点「添加题目」，或导入 tools/seed_questions.sql</p>
             </div>`;
         return;
     }
@@ -176,23 +177,36 @@ async function loadBank(reset) {
 }
 
 function buildBankItems(questions) {
-    return questions.map((q) => `
+    return questions.map((q) => {
+        const isDraft = Number(q.status) === 0;
+
+        // 草稿只有站长看得到，而详情页与「查看答案」走的公开接口只放行已发布题目，
+        // 所以草稿题不给这两个入口（点了必然 404），直接把站长引到编辑页。
+        const questionHtml = isDraft
+            ? `<p class="daily-item-question">${esc(q.question)}</p>`
+            : `<a class="daily-item-question daily-item-link" href="/daily/q/${q.id}">${esc(q.question)}</a>`;
+        const publicActions = isDraft
+            ? ''
+            : `<a class="daily-link" href="/daily/q/${q.id}">详情</a>
+                <button type="button" class="daily-link q-reveal">查看答案</button>`;
+        const adminActions = dailyState.isMain
+            ? `<a class="daily-link" href="/daily/question?id=${q.id}">编辑</a>
+                <button type="button" class="daily-link daily-link-danger q-del">删除</button>`
+            : '';
+
+        return `
         <article class="daily-item" data-id="${q.id}">
             <div class="daily-item-head">
                 <span class="daily-item-cat">${esc(q.category)}</span>
                 <span class="daily-item-diff">${difficultyLabel(q.difficulty)}</span>
-                ${Number(q.status) === 0 ? '<span class="daily-item-draft">草稿</span>' : ''}
+                ${isDraft ? '<span class="daily-item-draft">草稿</span>' : ''}
                 <span class="daily-item-id">#${q.id}</span>
             </div>
-            <p class="daily-item-question">${esc(q.question)}</p>
-            <div class="daily-item-actions">
-                <button type="button" class="daily-link q-reveal">查看答案</button>
-                ${dailyState.isMain
-                    ? `<a class="daily-link" href="/daily/question?id=${q.id}">编辑</a><button type="button" class="daily-link daily-link-danger q-del">删除</button>`
-                    : ''}
-            </div>
+            ${questionHtml}
+            <div class="daily-item-actions">${publicActions}${adminActions}</div>
             <div class="daily-item-answer" hidden></div>
-        </article>`).join('');
+        </article>`;
+    }).join('');
 }
 
 function renderCategoryTabs(categories) {
@@ -308,12 +322,19 @@ async function loadHistory() {
             box.innerHTML = '<div class="empty-state"><p>还没有历史记录</p></div>';
             return;
         }
-        box.innerHTML = items.map((h) => `
-            <div class="daily-history-row">
+        // 整行可点进详情页。带上 ?d= 让详情页显示「这是哪天的题」——
+        // 同一道题可能被排期多次，接口给的是最近一次，URL 里的才精确。
+        // 题目被删除时后端给 id=0，此时无处可去，降级成不可点的纯文本行。
+        box.innerHTML = items.map((h) => {
+            const id = Number(h.id) || 0;
+            const tag = id > 0 ? 'a' : 'div';
+            const attrs = id > 0 ? ` href="/daily/q/${id}?d=${encodeURIComponent(h.date || '')}"` : '';
+            return `<${tag} class="daily-history-row"${attrs}>
                 <span class="daily-history-date">${esc(h.date)}</span>
                 <span class="daily-history-q">${esc(h.question || '（题目已删除）')}</span>
                 <span class="daily-history-cat">${esc(h.category || '')}</span>
-            </div>`).join('');
+            </${tag}>`;
+        }).join('');
     } catch (e) {
         box.innerHTML = `<div class="empty-state"><p>${esc(describeFetchError(e))}</p></div>`;
     }
