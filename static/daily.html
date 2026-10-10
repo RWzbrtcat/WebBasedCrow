@@ -29,13 +29,20 @@
         <h1 class="page-title">每日一题</h1>
 
         <div class="daily-layout">
-            <!-- 左栏：历史题目（往期排期，可回看） -->
-            <aside class="daily-rail-history">
-                <h2 class="daily-rail-title">历史题目</h2>
-                <div class="daily-history" id="historyList">
-                    <div class="loading">加载中...</div>
-                </div>
-            </aside>
+            <!-- 左栏：历史题目 + 题目管理（仅站长），两张卡片共用一个吸顶容器 -->
+            <div class="daily-rail">
+                <aside class="daily-rail-history">
+                    <h2 class="daily-rail-title">历史题目</h2>
+                    <div class="daily-history" id="historyList">
+                        <div class="loading">加载中...</div>
+                    </div>
+                </aside>
+
+                <aside class="daily-rail-admin" data-auth-role="main" hidden>
+                    <h2 class="daily-rail-title">题目管理</h2>
+                    <a class="btn btn-primary btn-block" href="/daily/question" id="addQuestionBtn">添加题目</a>
+                </aside>
+            </div>
 
             <!-- 中栏：今日题目 + 题库浏览 -->
             <div class="daily-main">
@@ -60,7 +67,7 @@
                 </div>
             </div>
 
-            <!-- 右栏：我的打卡 / 题库分布 / 题目管理 -->
+            <!-- 右栏：我的打卡 / 题库分布（题目管理已移到左栏历史题目下方） -->
             <aside class="daily-aside">
                 <section class="daily-side-card">
                     <h2 class="daily-side-title">我的打卡</h2>
@@ -75,12 +82,6 @@
                 <section class="daily-side-card">
                     <h2 class="daily-side-title">题库分布</h2>
                     <div class="cat-dist" id="catDist"></div>
-                </section>
-
-                <!-- 题目管理（仅站长可见）：按钮跳转到独立的出题页 -->
-                <section class="daily-side-card" id="bankAdmin" data-auth-role="main" hidden>
-                    <h2 class="daily-side-title">题目管理</h2>
-                    <a class="btn btn-primary btn-block" href="/daily/question" id="addQuestionBtn">添加题目</a>
                 </section>
             </aside>
         </div>

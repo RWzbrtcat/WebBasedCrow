@@ -2938,14 +2938,22 @@ body.daily-question-page {
     margin-top: 28px;
 }
 
-/* 左栏：历史题目。与文章页 .post-toc 同一套「吸顶卡片」做法，保持全站一致 */
-.daily-rail-history {
+/* 左栏容器：装两张卡片（历史题目 + 仅站长可见的题目管理），共用同一个吸顶滚动容器。
+   与文章页 .post-toc 同一套「吸顶」做法，保持全站一致。 */
+.daily-rail {
     grid-area: history;
     position: sticky;
     top: 96px;
     max-height: calc(100vh - 130px);
     overflow-y: auto;
     scrollbar-width: thin;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.daily-rail-history,
+.daily-rail-admin {
     padding: 18px 16px 20px;
     background: var(--surface);
     border: 1px solid var(--border);
@@ -3321,6 +3329,19 @@ body.daily-question-page {
     white-space: pre-wrap;
 }
 
+/* 题干本身即详情页入口（<a> 而非 <p>）：去掉下划线，hover 用强调色提示可点。
+   就地「查看答案」的按钮仍保留在下方操作区，两条路径各自独立。 */
+.daily-item-link {
+    display: block;
+    text-decoration: none;
+    color: var(--text);
+    transition: color var(--transition);
+}
+
+.daily-item-link:hover {
+    color: var(--accent);
+}
+
 .daily-item-actions {
     display: flex;
     gap: 14px;
@@ -3375,6 +3396,20 @@ body.daily-question-page {
     border-bottom: 1px solid var(--border);
 }
 
+/* 历史题目整行可点进详情页（/daily/q/<id>）；题面本身是纯文本，所以链接挂在整行上 */
+a.daily-history-row {
+    text-decoration: none;
+    color: inherit;
+}
+
+a.daily-history-row .daily-history-q {
+    transition: color var(--transition);
+}
+
+a.daily-history-row:hover .daily-history-q {
+    color: var(--accent);
+}
+
 .daily-history-row:first-child {
     padding-top: 0;
 }
@@ -3420,7 +3455,7 @@ body.daily-question-page {
             "history side";
     }
 
-    .daily-rail-history {
+    .daily-rail {
         position: static;
         max-height: none;
         overflow: visible;
@@ -3549,5 +3584,105 @@ body.daily-question-page {
 
     .daily-side-card {
         padding: 14px 14px 16px;
+    }
+}
+
+/* ===== 题目详情页（/daily/q/<id>） ===== */
+
+body.daily-q-page {
+    --header-width: 900px;
+}
+
+.container-q {
+    max-width: 900px;
+}
+
+.qdetail-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.qdetail-card {
+    margin-bottom: 26px;
+}
+
+/* 题干即页面的 h1：详情页的主体就是这道题本身，不再另设页面标题 */
+.qdetail-question {
+    font-family: var(--serif);
+    font-size: 1.42rem;
+    font-weight: 600;
+    line-height: 1.55;
+    color: var(--text);
+    margin: 0 0 10px;
+    white-space: pre-wrap;
+    text-wrap: pretty;
+}
+
+/* 题干与答案之间的分隔：用虚线而非实线，和卡片内部的 .daily-answer 分隔同一套语言 */
+.qdetail-rule {
+    margin: 20px 0 18px;
+    border-top: 1px dashed var(--card-border);
+}
+
+/* .daily-item-id 全局是 margin-left:auto（列表里用来把编号推到行尾）。
+   详情页头部已经有 .daily-meta 承担推挤，id 再 auto 会把剩余空隙切成两半、看着发散。 */
+.qdetail-card .daily-item-id {
+    margin-left: 10px;
+}
+
+.qdetail-related-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-top: 12px;
+}
+
+/* 相关题：整行可点，hover 用强调色底 + 文字加深，靠左溢出 12px 让高亮块比文字更宽一点 */
+.qdetail-related-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 11px 12px;
+    margin: 0 -12px;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    color: inherit;
+    transition: background var(--transition);
+}
+
+.qdetail-related-item:hover {
+    background: var(--accent-soft);
+}
+
+.qdetail-related-q {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    transition: color var(--transition);
+}
+
+.qdetail-related-item:hover .qdetail-related-q {
+    color: var(--accent-dark);
+}
+
+.qdetail-related-diff {
+    flex: none;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+/* 详情页的小屏收尾：字号降一档，避免题干与答案的层级被压平 */
+@media (max-width: 640px) {
+    .qdetail-question {
+        font-size: 1.2rem;
+    }
+
+    .qdetail-related-item {
+        margin: 0 -6px;
+        padding: 10px 6px;
     }
 }

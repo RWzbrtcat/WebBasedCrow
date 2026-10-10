@@ -708,6 +708,26 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
         return res;
     });
 
+    // GET /api/daily/question?id=<题目ID> - 公开单题详情（含答案，仅已发布题目）。
+    // 与 /api/questions/<id> 的分工：那个要主管理员（含草稿、给编辑页回填），
+    // 这个是访客看的只读接口。不吃匿名打卡，看详情页不会把当天算作已作答。
+    CROW_ROUTE(app, "/api/daily/question").methods("GET"_method)([&db](const crow::request& req){
+        const char* rawId = req.url_params.get("id");
+        const int questionId = rawId ? std::atoi(rawId) : 0;
+        if (questionId <= 0)
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["message"] = "缺少有效的题目 id";
+            crow::response res(400, err);
+            addCorsHeaders(res);
+            return res;
+        }
+        crow::response res(db.getPublicQuestionDetail(questionId));
+        addCorsHeaders(res);
+        return res;
+    });
+
     // GET /api/daily/history?page=1 - 历史题目（按日期倒序，不含答案）
     CROW_ROUTE(app, "/api/daily/history").methods("GET"_method)([&db](const crow::request& req){
         const char* rawPage = req.url_params.get("page");
@@ -1053,6 +1073,13 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
             return res;
         }
         return htmlResponse(readFile(staticDir + "/daily-question.html"));
+    });
+
+    // 题目详情页（公开只读）：/daily/q/<id>。带 ?d=YYYY-MM-DD 时显示来源日期。
+    // id 由前端从 location.pathname 解析，服务端只负责把静态页送出去。
+    CROW_ROUTE(app, "/daily/q/<int>")([staticDir](int id){
+        (void)id;
+        return htmlResponse(readFile(staticDir + "/daily-q.html"));
     });
 
     // CSS 文件

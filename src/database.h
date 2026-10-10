@@ -71,6 +71,9 @@ public:
     crow::json::wvalue getQuestions(const std::string& category, int page, int pageSize, bool includeDrafts);
     // 单题详情（含答案，供站长编辑时回填）
     crow::json::wvalue getQuestionById(int id);
+    // 公开单题详情（含答案），只允许已发布题目（status=1），不吃匿名打卡。
+    // 除题目本身外附带「最近一次作为每日一题的日期」与同分类相关题，让详情页一次请求即可渲染完整。
+    crow::json::wvalue getPublicQuestionDetail(int id);
     // 题目增删改（权限由路由层校验：仅主管理员）
     crow::json::wvalue addQuestion(const std::string& category, const std::string& tags, int difficulty,
                                     const std::string& question, const std::string& answer, int status);
