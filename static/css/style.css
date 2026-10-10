@@ -2911,11 +2911,11 @@ input[readonly] {
 /* ========== 每日一题 ========== */
 
 body.daily-page {
-    --header-width: 1120px;
+    --header-width: 1260px;
 }
 
 .container-daily {
-    max-width: 1120px;
+    max-width: 1260px;
 }
 
 /* 出题 / 改题页（/daily/question）：单列表单，收窄更利于阅读 */
@@ -2927,20 +2927,47 @@ body.daily-question-page {
     max-width: 900px;
 }
 
-/* 左右两栏：主栏放今日题目与题库，侧栏放历史题目与题目管理 */
+/* 三栏：左=历史题目，中=今日题目+题库，右=我的打卡/题库分布/题目管理。
+   用 grid-template-areas 驱动回流：窄屏只要改 areas 即可重排，无需动 DOM。 */
 .daily-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 278px;
-    gap: 30px;
+    grid-template-columns: 208px minmax(0, 1fr) 252px;
+    grid-template-areas: "history main side";
+    gap: 26px;
     align-items: start;
     margin-top: 28px;
 }
 
+/* 左栏：历史题目。与文章页 .post-toc 同一套「吸顶卡片」做法，保持全站一致 */
+.daily-rail-history {
+    grid-area: history;
+    position: sticky;
+    top: 96px;
+    max-height: calc(100vh - 130px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding: 16px 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.daily-rail-title {
+    font-family: var(--serif);
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--text);
+    margin: 0 0 12px;
+}
+
 .daily-main {
+    grid-area: main;
     min-width: 0;
 }
 
 .daily-aside {
+    grid-area: side;
     position: sticky;
     top: 96px;
     display: flex;
@@ -2966,18 +2993,156 @@ body.daily-question-page {
     margin: 0 0 12px;
 }
 
-/* 窄屏：侧栏回到主栏下方，取消吸顶与内部滚动 */
-@media (max-width: 1000px) {
-    .daily-layout {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 24px;
-    }
+/* 我的打卡：大数字 + 今日状态 + 近 7 天格子 */
+.streak-figure {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
 
-    .daily-aside {
-        position: static;
-        max-height: none;
-        overflow: visible;
-    }
+.streak-num {
+    font-family: var(--serif);
+    font-size: 2.1rem;
+    font-weight: 700;
+    line-height: 1.05;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+}
+
+.streak-unit {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.streak-status {
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin: 4px 0 12px;
+}
+
+.streak-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+}
+
+.streak-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.streak-dot {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    transition: background var(--transition), border-color var(--transition);
+}
+
+.streak-day.on .streak-dot {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+/* 今天：无论答没答都给一个描边焦点，方便定位 */
+.streak-day.today .streak-dot {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.streak-day.today.on .streak-dot {
+    box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.streak-day-label {
+    font-size: 0.64rem;
+    line-height: 1;
+    color: var(--text-muted);
+}
+
+.streak-day.today .streak-day-label {
+    color: var(--accent-dark);
+    font-weight: 600;
+}
+
+/* 题库分布：一行一个分类（名称 + 题量 + 占比条），点击即筛选题库 */
+.cat-dist {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.cat-dist-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 3px 8px;
+    width: 100%;
+    padding: 6px 8px;
+    margin: 0 -8px;
+    border: none;
+    background: none;
+    font: inherit;
+    text-align: left;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--transition);
+}
+
+.cat-dist-row:hover {
+    background: var(--accent-soft);
+}
+
+.cat-dist-name {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cat-dist-count {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.cat-dist-bar {
+    grid-column: 1 / -1;
+    display: block;
+    height: 3px;
+    border-radius: 999px;
+    background: var(--border);
+    overflow: hidden;
+}
+
+.cat-dist-bar > i {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--accent);
+}
+
+.cat-dist-row.active {
+    background: var(--accent-soft);
+}
+
+.cat-dist-row.active .cat-dist-name {
+    color: var(--accent-dark);
+    font-weight: 600;
+}
+
+.cat-dist-row.active .cat-dist-count {
+    color: var(--accent-dark);
+}
+
+.cat-dist-empty {
+    font-size: 0.8rem;
+    color: var(--text-muted);
 }
 
 /* 题目卡片（今日题目 / 随机一题共用） */
@@ -3244,6 +3409,46 @@ body.daily-question-page {
     background: var(--accent-soft);
     border-radius: 4px;
     padding: 1px 7px;
+}
+
+/* 两栏回落：历史题目移到主栏下方，改为格子排布；侧栏跨两行继续吸顶 */
+@media (max-width: 1200px) {
+    .daily-layout {
+        grid-template-columns: minmax(0, 1fr) 252px;
+        grid-template-areas:
+            "main side"
+            "history side";
+    }
+
+    .daily-rail-history {
+        position: static;
+        max-height: none;
+        overflow: visible;
+    }
+
+    .daily-history {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        gap: 0 22px;
+    }
+}
+
+/* 单栏：主栏 → 侧栏 → 历史题目（历史最长，放最后不挡主内容） */
+@media (max-width: 880px) {
+    .daily-layout {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "main"
+            "side"
+            "history";
+        gap: 20px;
+    }
+
+    .daily-aside {
+        position: static;
+        max-height: none;
+        overflow: visible;
+    }
 }
 
 /* ===== 出题 / 改题页（/daily/question） ===== */

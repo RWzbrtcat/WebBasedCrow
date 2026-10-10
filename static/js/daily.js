@@ -1,7 +1,8 @@
 // ============================================
-// 每日一题（/daily）：今日题目 / 题库浏览 / 历史题目
+// 每日一题（/daily）：今日题目 / 题库浏览 / 历史题目 / 打卡与题库分布
 // 依赖：daily-common.js（apiRequest / showToast / esc 等工具，必须先加载）
 //       markdown.js（renderMarkdownInto）、auth.js（控制站长入口显隐）
+// 三栏：左=历史题目，中=今日题目+题库，右=打卡/题库分布/题目管理
 // 出题 / 改题已拆到独立页面 /daily/question（见 daily-question.js）
 // ============================================
 
@@ -22,6 +23,7 @@ async function loadToday() {
         const data = await apiRequest(`${DAILY_API}/daily`);
         dailyState.today = data;
         renderCard(box, data, true);
+        renderStreakCard(data);
     } catch (e) {
         box.innerHTML = `
             <div class="empty-state">
@@ -121,6 +123,8 @@ async function revealAnswer(btn, id, container) {
             const badge = document.getElementById('streakBadge');
             if (badge) badge.textContent = `连答 ${data.streak} 天`;
         }
+        // 揭晓答案即代表今天已作答（后端按 d + owner_token 记打卡），右栏打卡卡跟着更新
+        renderStreakCard(Object.assign({}, dailyState.today, { streak: data.streak, answered: true }));
     } catch (e) {
         showToast(describeFetchError(e), 'error');
     } finally {
@@ -156,7 +160,10 @@ async function loadBank(reset) {
         const count = document.getElementById('bankCount');
         if (count) count.textContent = data.total ? `共 ${data.total} 题` : '';
 
-        if (reset) renderCategoryTabs(data.categories || []);
+        if (reset) {
+            renderCategoryTabs(data.categories || []);
+            renderCategoryDist(data.categories || []);
+        }
 
         if (!reset && !html) showToast('没有更多了', 'error');
     } catch (e) {
@@ -198,6 +205,95 @@ function renderCategoryTabs(categories) {
         html += `<span class="filter-tab${dailyState.category === c.name ? ' active' : ''}" data-name="${escapeAttr(c.name)}">${esc(c.name)}</span>`;
     });
     box.innerHTML = html;
+}
+
+// ---------- 右栏：题库分布 ----------
+// 数据来自题库接口已有的 categories（含各分类题量），点一行即筛选题库。
+// 接口返回的 categories 不受当前分类影响（始终是全量），所以这里不需要额外请求。
+
+function renderCategoryDist(categories) {
+    const box = document.getElementById('catDist');
+    if (!box) return;
+
+    if (!categories.length) {
+        box.innerHTML = '<p class="cat-dist-empty">题库还是空的</p>';
+        return;
+    }
+
+    const counts = categories.map((c) => Number(c.count) || 0);
+    const max = Math.max.apply(null, counts) || 1;
+
+    box.innerHTML = categories.map((c, i) => {
+        const count = counts[i];
+        const pct = Math.max(5, Math.round((count / max) * 100));
+        const active = dailyState.category === c.name ? ' active' : '';
+        return `<button type="button" class="cat-dist-row${active}" data-name="${escapeAttr(c.name)}">
+            <span class="cat-dist-name">${esc(c.name)}</span>
+            <span class="cat-dist-count">${count}</span>
+            <span class="cat-dist-bar"><i style="width:${pct}%"></i></span>
+        </button>`;
+    }).join('');
+}
+
+// ---------- 右栏：我的打卡 ----------
+
+const WEEK_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
+
+function pad2(n) {
+    return n < 10 ? '0' + n : String(n);
+}
+
+function ymd(d) {
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+// 后端只返回 streak（连续作答天数）与 answered（今天是否已答），
+// 但这两者已经唯一确定「已作答的日期集合」：从今天（已答）或昨天（未答）往前连续 streak 天。
+// 因此近 7 天格子无需新增接口。
+function renderStreakCard(data) {
+    const numEl = document.getElementById('streakNum');
+    const statusEl = document.getElementById('streakStatus');
+    const weekEl = document.getElementById('streakWeek');
+    if (!numEl || !statusEl || !weekEl) return;
+
+    const streak = Number((data && data.streak) || 0);
+    const answered = !!(data && data.answered);
+    numEl.textContent = String(streak);
+
+    if (!data || !data.available || !data.date) {
+        statusEl.textContent = '题库还没有已发布的题目';
+        weekEl.innerHTML = '';
+        return;
+    }
+
+    statusEl.textContent = answered ? `今日已作答 · ${data.date}` : '今日尚未作答';
+
+    const parts = String(data.date).split('-').map(Number);
+    const base = new Date(parts[0], parts[1] - 1, parts[2]);
+    if (isNaN(base.getTime())) {
+        weekEl.innerHTML = '';
+        return;
+    }
+
+    const done = new Set();
+    const startOffset = answered ? 0 : 1;
+    for (let i = 0; i < streak && i < 60; i++) {
+        done.add(ymd(new Date(base.getFullYear(), base.getMonth(), base.getDate() - startOffset - i)));
+    }
+
+    const todayKey = ymd(base);
+    let html = '';
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() - i);
+        const key = ymd(d);
+        const isToday = key === todayKey;
+        const cls = `streak-day${done.has(key) ? ' on' : ''}${isToday ? ' today' : ''}`;
+        html += `<div class="${cls}" title="${key}">
+            <span class="streak-dot"></span>
+            <span class="streak-day-label">${isToday ? '今' : WEEK_LABELS[d.getDay()]}</span>
+        </div>`;
+    }
+    weekEl.innerHTML = html;
 }
 
 // ---------- 历史题目 ----------
@@ -265,6 +361,30 @@ function bindDailyEvents() {
         });
     }
 
+    // 右栏「题库分布」：点分类即等同于点中栏的分类筛选
+    const dist = document.getElementById('catDist');
+    if (dist) {
+        dist.addEventListener('click', (e) => {
+            const row = e.target.closest('.cat-dist-row');
+            if (!row) return;
+            const name = row.dataset.name || '';
+            if (name === dailyState.category) return;
+
+            dailyState.category = name;
+            loadBank(true);
+
+            // 窄屏下侧栏在题库下方，不把题库标题带回视口顶部会「看不到任何变化」。
+            // window.scrollTo 在测试用的 DOM 桩里不存在，故做能力检测而非直接调用。
+            const head = document.getElementById('bankSectionHead');
+            if (head && typeof head.getBoundingClientRect === 'function' && typeof window.scrollTo === 'function') {
+                window.scrollTo({
+                    top: head.getBoundingClientRect().top + (window.pageYOffset || 0) - 88,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    }
+
     const list = document.getElementById('questionList');
     if (list) {
         list.addEventListener('click', (e) => {
@@ -283,16 +403,18 @@ function bindDailyEvents() {
 
 async function initDailyPage() {
     bindDailyEvents();
-    loadToday();
-    loadHistory();
 
-    // 站长身份决定题库列表是否带出草稿；「添加题目」入口由 auth.js 按 data-auth-role 控制显隐
+    // 先取站长身份：它决定题库列表是否带出草稿；
+    // 「添加题目」入口由 auth.js 按 data-auth-role 控制显隐。
     try {
         const auth = await apiRequest(`${DAILY_API}/auth`);
         dailyState.isMain = !!(auth && auth.is_main);
     } catch (e) {
         dailyState.isMain = false;
     }
+
+    loadToday();
+    loadHistory();
     loadBank(true);
 }
 

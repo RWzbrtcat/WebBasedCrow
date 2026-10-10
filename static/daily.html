@@ -29,7 +29,15 @@
         <h1 class="page-title">每日一题</h1>
 
         <div class="daily-layout">
-            <!-- 主栏：今日题目 + 题库浏览 -->
+            <!-- 左栏：历史题目（往期排期，可回看） -->
+            <aside class="daily-rail-history">
+                <h2 class="daily-rail-title">历史题目</h2>
+                <div class="daily-history" id="historyList">
+                    <div class="loading">加载中...</div>
+                </div>
+            </aside>
+
+            <!-- 中栏：今日题目 + 题库浏览 -->
             <div class="daily-main">
                 <!-- 今日题目 -->
                 <section class="daily-card" id="todayCard">
@@ -37,7 +45,7 @@
                 </section>
 
                 <!-- 题库：分类筛选 + 列表 -->
-                <div class="daily-section-head">
+                <div class="daily-section-head" id="bankSectionHead">
                     <h2 class="daily-section-title">题库</h2>
                     <span class="daily-section-note" id="bankCount"></span>
                 </div>
@@ -52,13 +60,21 @@
                 </div>
             </div>
 
-            <!-- 侧栏：历史题目 + 题目管理 -->
+            <!-- 右栏：我的打卡 / 题库分布 / 题目管理 -->
             <aside class="daily-aside">
                 <section class="daily-side-card">
-                    <h2 class="daily-side-title">历史题目</h2>
-                    <div class="daily-history" id="historyList">
-                        <div class="loading">加载中...</div>
+                    <h2 class="daily-side-title">我的打卡</h2>
+                    <div class="streak-figure">
+                        <span class="streak-num" id="streakNum">0</span>
+                        <span class="streak-unit">天连答</span>
                     </div>
+                    <p class="streak-status" id="streakStatus">今日尚未作答</p>
+                    <div class="streak-week" id="streakWeek"></div>
+                </section>
+
+                <section class="daily-side-card">
+                    <h2 class="daily-side-title">题库分布</h2>
+                    <div class="cat-dist" id="catDist"></div>
                 </section>
 
                 <!-- 题目管理（仅站长可见）：按钮跳转到独立的出题页 -->

@@ -585,6 +585,37 @@ daily_html = '''<!DOCTYPE html>
         <h1 class="page-title">每日一题</h1>
 
         <div class="daily-layout">
+        <aside class="daily-rail-history">
+        <h2 class="daily-rail-title">历史题目</h2>
+        <div class="daily-history">
+            <div class="daily-history-row">
+                <span class="daily-history-date">2026-10-08</span>
+                <span class="daily-history-q">聚簇索引和二级索引的区别？回表是什么？</span>
+                <span class="daily-history-cat">MySQL</span>
+            </div>
+            <div class="daily-history-row">
+                <span class="daily-history-date">2026-10-07</span>
+                <span class="daily-history-q">move 语义解决了什么问题？std::move 真的移动了吗？</span>
+                <span class="daily-history-cat">C++</span>
+            </div>
+            <div class="daily-history-row">
+                <span class="daily-history-date">2026-10-06</span>
+                <span class="daily-history-q">TCP 三次握手为什么不是两次？</span>
+                <span class="daily-history-cat">网络</span>
+            </div>
+            <div class="daily-history-row">
+                <span class="daily-history-date">2026-10-05</span>
+                <span class="daily-history-q">epoll 的 LT 与 ET 模式有什么区别？</span>
+                <span class="daily-history-cat">Linux</span>
+            </div>
+            <div class="daily-history-row">
+                <span class="daily-history-date">2026-10-04</span>
+                <span class="daily-history-q">Redis 的持久化有哪两种？各自适合什么场景？</span>
+                <span class="daily-history-cat">Redis</span>
+            </div>
+        </div>
+        </aside>
+
         <div class="daily-main">
         <section class="daily-card">
             <div class="daily-card-head">
@@ -679,24 +710,36 @@ sp = other;          // 同时改 sp → 数据竞争</code></pre>
 
         <aside class="daily-aside">
         <section class="daily-side-card">
-            <h2 class="daily-side-title">历史题目</h2>
-            <div class="daily-history">
-            <div class="daily-history-row">
-                <span class="daily-history-date">2026-10-08</span>
-                <span class="daily-history-q">聚簇索引和二级索引的区别？回表是什么？</span>
-                <span class="daily-history-cat">MySQL</span>
+            <h2 class="daily-side-title">我的打卡</h2>
+            <div class="streak-figure">
+                <span class="streak-num">12</span>
+                <span class="streak-unit">天连答</span>
             </div>
-            <div class="daily-history-row">
-                <span class="daily-history-date">2026-10-07</span>
-                <span class="daily-history-q">move 语义解决了什么问题？std::move 真的移动了吗？</span>
-                <span class="daily-history-cat">C++</span>
+            <p class="streak-status">今日已作答 · 2026-10-09</p>
+            <div class="streak-week">
+                <div class="streak-day on"><span class="streak-dot"></span><span class="streak-day-label">五</span></div>
+                <div class="streak-day on"><span class="streak-dot"></span><span class="streak-day-label">六</span></div>
+                <div class="streak-day on"><span class="streak-dot"></span><span class="streak-day-label">日</span></div>
+                <div class="streak-day on"><span class="streak-dot"></span><span class="streak-day-label">一</span></div>
+                <div class="streak-day on"><span class="streak-dot"></span><span class="streak-day-label">二</span></div>
+                <div class="streak-day on"><span class="streak-dot"></span><span class="streak-day-label">三</span></div>
+                <div class="streak-day on today"><span class="streak-dot"></span><span class="streak-day-label">今</span></div>
             </div>
-            <div class="daily-history-row">
-                <span class="daily-history-date">2026-10-06</span>
-                <span class="daily-history-q">TCP 三次握手为什么不是两次？</span>
-                <span class="daily-history-cat">网络</span>
+        </section>
+
+        <section class="daily-side-card">
+            <h2 class="daily-side-title">题库分布</h2>
+            <div class="cat-dist">
+                <button type="button" class="cat-dist-row"><span class="cat-dist-name">C++</span><span class="cat-dist-count">100</span><span class="cat-dist-bar"><i style="width:100%"></i></span></button>
+                <button type="button" class="cat-dist-row"><span class="cat-dist-name">Linux</span><span class="cat-dist-count">90</span><span class="cat-dist-bar"><i style="width:90%"></i></span></button>
+                <button type="button" class="cat-dist-row active"><span class="cat-dist-name">MySQL</span><span class="cat-dist-count">70</span><span class="cat-dist-bar"><i style="width:70%"></i></span></button>
+                <button type="button" class="cat-dist-row"><span class="cat-dist-name">网络</span><span class="cat-dist-count">55</span><span class="cat-dist-bar"><i style="width:55%"></i></span></button>
+                <button type="button" class="cat-dist-row"><span class="cat-dist-name">操作系统</span><span class="cat-dist-count">55</span><span class="cat-dist-bar"><i style="width:55%"></i></span></button>
+                <button type="button" class="cat-dist-row"><span class="cat-dist-name">算法</span><span class="cat-dist-count">50</span><span class="cat-dist-bar"><i style="width:50%"></i></span></button>
+                <button type="button" class="cat-dist-row"><span class="cat-dist-name">Redis</span><span class="cat-dist-count">40</span><span class="cat-dist-bar"><i style="width:40%"></i></span></button>
+                <button type="button" class="cat-dist-row"><span class="cat-dist-name">其他数据库</span><span class="cat-dist-count">40</span><span class="cat-dist-bar"><i style="width:40%"></i></span></button>
             </div>
-        </div>
+        </section>
 
         <section class="daily-side-card">
             <h2 class="daily-side-title">题目管理</h2>

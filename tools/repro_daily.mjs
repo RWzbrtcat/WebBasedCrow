@@ -5,9 +5,10 @@
 // 静态 id 交叉核对只能证明「元素存在」，证明不了「渲染结果正确」。
 // 这里用 DOM 桩把两个脚本真跑一遍，覆盖：
 //   1. /daily 的今日题目、题库列表、历史题目是否都渲染出来；
-//   2. 题库列表的「编辑」是否指向 /daily/question?id=N（而不是内联回填）；
-//   3. 出题页的新增模式不该去拉单题详情；
-//   4. 出题页带 ?id=N 时字段是否被正确回填。
+//   2. 右栏「我的打卡」天数与 7 天格子、「题库分布」分类行与占比条；
+//   3. 题库列表的「编辑」是否指向 /daily/question?id=N（而不是内联回填）；
+//   4. 出题页的新增模式不该去拉单题详情；
+//   5. 出题页带 ?id=N 时字段是否被正确回填。
 import fs from 'fs';
 import path from 'path';
 import vm from 'vm';
@@ -101,7 +102,7 @@ responses = {
     '/api/daily': { available: true, id: 1, date: '2026-10-10', question: '今日的题', category: 'Linux', difficulty: 2, streak: 3 },
     '/api/questions': {
         questions: [{ id: 7, category: 'C++', difficulty: 3, status: 1, question: '测试题干' }],
-        categories: [{ name: 'C++' }, { name: 'Linux' }],
+        categories: [{ name: 'C++', count: 100 }, { name: 'Linux', count: 90 }],
         total: 1, hasMore: false,
     },
 };
@@ -122,9 +123,30 @@ ok(historyHtml.includes('昨天的题'), '历史题目没有渲染');
 ok(historyHtml.includes('daily-history-date'), '历史题目缺少日期节点');
 ok(todayHtml.includes('今日的题'), '今日题目卡片没有渲染');
 ok(todayHtml.includes('streakBadge'), '今日题目卡片缺少连答徽标节点');
+
+// 右栏「我的打卡」：streak=3 且 answered 未给（视为未答）→ 应从昨天起往前 3 天点亮
+// 注意正则要卡住引号/空格：class="streak-day-label" 也会被 class="streak-day 匹配到
+const weekHtml = getEl('streakWeek').innerHTML;
+ok(getEl('streakNum').textContent === '3', '打卡卡连答天数没有渲染（期望 3）');
+ok((weekHtml.match(/class="streak-day[" ]/g) || []).length === 7, '打卡卡应渲染 7 天格子');
+ok((weekHtml.match(/class="streak-day on/g) || []).length === 3, '打卡卡点亮天数应等于 streak（期望 3）');
+ok(weekHtml.includes('today'), '打卡卡没有标出今天');
+ok(getEl('streakStatus').textContent === '今日尚未作答', '打卡卡今日状态文案不对');
+
+// 右栏「题库分布」：行数 = 分类数，含题量与占比条
+const distHtml = getEl('catDist').innerHTML;
+ok((distHtml.match(/cat-dist-row/g) || []).length === 2, '题库分布行数应等于分类数');
+ok(distHtml.includes('C++') && distHtml.includes('Linux'), '题库分布没有渲染分类名');
+ok(distHtml.includes('>100<'), '题库分布没有渲染题量');
+ok(distHtml.includes('cat-dist-bar'), '题库分布缺少占比条');
+ok(!distHtml.includes('active'), '未选中分类时不应有高亮行');
+
 console.log('/daily        : 题库', bankHtml.includes('/daily/question?id=7') ? '✓' : '✗',
     '| 历史', historyHtml.includes('昨天的题') ? '✓' : '✗',
-    '| 今日题', todayHtml.includes('今日的题') ? '✓' : '✗');
+    '| 今日题', todayHtml.includes('今日的题') ? '✓' : '✗',
+    '| 打卡', getEl('streakNum').textContent + ' 天/' +
+        (weekHtml.match(/class="streak-day on/g) || []).length + ' 格 ✓',
+    '| 分布', (distHtml.match(/cat-dist-row/g) || []).length + ' 类 ✓');
 
 // ---------- 用例 2：出题页（新增模式） ----------
 elements.clear();
