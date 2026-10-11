@@ -43,38 +43,6 @@
 namespace
 {
 
-// ---------- 内置示例题（exercise_id = 1）----------
-// 与前端 static/js/practice.js 中 EXERCISES[0] 对应。
-// 接数据库后，这里改为查 practice_exercises + practice_test_cases。
-
-// 隐藏测试驱动：拼接在玩家代码之后（用 raw string，避免转义地狱）。
-// 依赖玩家代码提供：int g_value（全局变量）、int& get_ref()、int get_value()
-const char* kTestDriver1 = R"DRV(#include <cstdio>
-
-// 隐藏测试驱动（题目侧提供，玩家不可见）
-int main() {
-    int fail = 0;
-    // 用例1：get_ref 返回引用，赋值能改 g_value
-    get_ref() = 100;
-    if (g_value != 100) {
-        std::printf("FAIL: get_ref() 应返回引用，赋值应改变 g_value\n");
-        ++fail;
-    }
-    // 用例2：get_value 返回拷贝，改返回值不影响 g_value
-    int v = get_value();
-    v = 999;
-    if (g_value != 100) {
-        std::printf("FAIL: get_value() 应返回拷贝，修改返回值不应影响 g_value\n");
-        ++fail;
-    }
-    if (fail == 0) std::printf("PASS\n");
-    return fail;
-}
-)DRV";
-
-const int kTotalCases1 = 2;
-const int kTimeLimitMs1 = 2000;
-
 // ---------- 子进程运行结果 ----------
 struct ProcResult
 {
@@ -340,26 +308,16 @@ void removeDir(const std::string& dir)
 
 } // namespace
 
-PracticeJudge judgeSubmission(int exerciseId, const std::string& tier, const std::string& code)
+PracticeJudge judgeSubmission(const std::string& code, const std::string& testDriver,
+                              int totalCases, int timeLimitMs)
 {
-    (void)tier;  // 最小版：档位暂不影响隐藏用例，接库后按档取不同用例
     PracticeJudge j;
 
-    // ---------- 取题目的测试驱动与参数（最小版内置，接库后查表） ----------
-    std::string testDriver;
-    int totalCases = 0;
-    int timeLimitMs = 2000;
-    if (exerciseId == 1)
-    {
-        testDriver = kTestDriver1;
-        totalCases = kTotalCases1;
-        timeLimitMs = kTimeLimitMs1;
-    }
-    else
+    if (testDriver.empty())
     {
         j.ok = false;
         j.status = "internal_error";
-        j.message = "题目不存在（当前最小版仅内置题 1）。";
+        j.message = "题目测试驱动为空。";
         return j;
     }
 

@@ -507,6 +507,63 @@ void DataBase::initTable()
         }
     }
 
+    // ===== 练习闯关：三张表 =====
+    // 章节（三学期分组）
+    const char* practiceChaptersSql = R"(
+        CREATE TABLE IF NOT EXISTS practice_chapters(
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            semester VARCHAR(50) NOT NULL DEFAULT '' COMMENT '学期分组',
+            title VARCHAR(128) NOT NULL COMMENT '章节标题',
+            sort_order INT NOT NULL DEFAULT 0 COMMENT '排序',
+            status TINYINT NOT NULL DEFAULT 1 COMMENT '0草稿/1发布'
+        )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    )";
+    if (mysql_query(conn_, practiceChaptersSql) != 0)
+    {
+        throw std::runtime_error(std::string("创建练习章节表失败：") + mysql_error(conn_));
+    }
+
+    // 题目（写代码题）：三档脚手架 + 隐藏测试驱动
+    const char* practiceExercisesSql = R"(
+        CREATE TABLE IF NOT EXISTS practice_exercises(
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            chapter_id INT NOT NULL COMMENT '所属章节',
+            type VARCHAR(10) NOT NULL DEFAULT 'short' COMMENT 'short/boss',
+            title VARCHAR(256) NOT NULL COMMENT '题目标题',
+            prompt TEXT NOT NULL COMMENT '题目需求(markdown)',
+            sort_order INT NOT NULL DEFAULT 0 COMMENT '章内排序',
+            starter_easy TEXT COMMENT '入门脚手架',
+            starter_medium TEXT COMMENT '进阶脚手架',
+            starter_hard TEXT COMMENT '挑战脚手架',
+            test_driver TEXT NOT NULL COMMENT '隐藏测试驱动(含main)',
+            total_cases INT NOT NULL DEFAULT 1 COMMENT '用例数',
+            time_limit_ms INT NOT NULL DEFAULT 2000 COMMENT '运行时限',
+            status TINYINT NOT NULL DEFAULT 1 COMMENT '0草稿/1发布',
+            INDEX idx_practice_chapter (chapter_id)
+        )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    )";
+    if (mysql_query(conn_, practiceExercisesSql) != 0)
+    {
+        throw std::runtime_error(std::string("创建练习题表失败：") + mysql_error(conn_));
+    }
+
+    // 进度：匿名访客凭 blog_anon Cookie 认领，记录每题每档是否通关
+    const char* practiceProgressSql = R"(
+        CREATE TABLE IF NOT EXISTS practice_progress(
+            owner_token VARCHAR(64) NOT NULL COMMENT '匿名访客标识',
+            exercise_id INT NOT NULL COMMENT '题目ID',
+            tier VARCHAR(10) NOT NULL COMMENT 'easy/medium/hard',
+            passed TINYINT NOT NULL DEFAULT 0 COMMENT '是否通关(0/1)',
+            attempts INT NOT NULL DEFAULT 0 COMMENT '尝试次数',
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+            PRIMARY KEY (owner_token, exercise_id, tier)
+        )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    )";
+    if (mysql_query(conn_, practiceProgressSql) != 0)
+    {
+        throw std::runtime_error(std::string("创建练习进度表失败：") + mysql_error(conn_));
+    }
+
     // 兼容旧表：若 posts 缺少 author_id 列，则补充（记录文章归属的管理员）
     if (!columnExists("posts", "author_id"))
     {
@@ -2929,4 +2986,204 @@ crow::json::wvalue DataBase::deleteQuestion(int id)
     }
     mysql_stmt_close(stmt);
     return result;
+}
+
+// ===== 练习闯关 =====
+
+// 章节列表（按学期分组），附每章已发布题目数
+crow::json::wvalue DataBase::getPracticeChapters()
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    std::vector<crow::json::wvalue> semesters;
+
+    // 一条 JOIN 同时取到章节与其已发布题目数（无题目的章节 LEFT JOIN 出 0）
+    const char* sql =
+        "SELECT c.id, c.semester, c.title, COUNT(e.id) "
+        "FROM practice_chapters c "
+        "LEFT JOIN practice_exercises e ON e.chapter_id = c.id AND e.status = 1 "
+        "WHERE c.status = 1 "
+        "GROUP BY c.id, c.semester, c.title "
+        "ORDER BY c.sort_order, c.id";
+
+    std::string curSemester;
+    std::vector<crow::json::wvalue> curChapters;
+    auto flushSemester = [&]() {
+        if (!curSemester.empty() || !curChapters.empty())
+        {
+            crow::json::wvalue sem;
+            sem["name"] = curSemester;
+            sem["chapters"] = std::move(curChapters);
+            semesters.push_back(std::move(sem));
+            curChapters.clear();
+        }
+    };
+
+    if (mysql_query(conn_, sql) == 0)
+    {
+        MYSQL_RES* res = mysql_store_result(conn_);
+        if (res)
+        {
+            MYSQL_ROW row;
+            while ((row = mysql_fetch_row(res)))
+            {
+                std::string sem = row[1] ? row[1] : "";
+                if (sem != curSemester)
+                {
+                    flushSemester();
+                    curSemester = sem;
+                }
+                crow::json::wvalue ch;
+                ch["id"] = row[0] ? std::atoi(row[0]) : 0;
+                ch["title"] = row[2] ? row[2] : "";
+                ch["exercise_count"] = row[3] ? std::atoi(row[3]) : 0;
+                curChapters.push_back(std::move(ch));
+            }
+            mysql_free_result(res);
+        }
+    }
+    flushSemester();
+
+    result["semesters"] = std::move(semesters);
+    result["success"] = true;
+    return result;
+}
+
+// 某章的题目列表（仅列表字段，不含测试驱动与脚手架）
+crow::json::wvalue DataBase::getPracticeExercises(int chapterId)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    std::vector<crow::json::wvalue> items;
+
+    std::string sql = "SELECT id, type, title, sort_order FROM practice_exercises "
+                      "WHERE status=1 AND chapter_id=" + std::to_string(chapterId) +
+                      " ORDER BY sort_order, id";
+    if (mysql_query(conn_, sql.c_str()) == 0)
+    {
+        MYSQL_RES* res = mysql_store_result(conn_);
+        if (res)
+        {
+            MYSQL_ROW row;
+            while ((row = mysql_fetch_row(res)))
+            {
+                crow::json::wvalue item;
+                item["id"] = row[0] ? std::atoi(row[0]) : 0;
+                item["type"] = row[1] ? row[1] : "";
+                item["title"] = row[2] ? row[2] : "";
+                item["sort_order"] = row[3] ? std::atoi(row[3]) : 0;
+                items.push_back(std::move(item));
+            }
+            mysql_free_result(res);
+        }
+    }
+
+    result["exercises"] = std::move(items);
+    result["success"] = true;
+    return result;
+}
+
+// 单题详情：题干 + 三档脚手架（不含隐藏测试驱动）
+crow::json::wvalue DataBase::getPracticeExercise(int id)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+
+    std::string sql = "SELECT id, chapter_id, type, title, prompt, starter_easy, starter_medium, starter_hard "
+                      "FROM practice_exercises WHERE status=1 AND id=" + std::to_string(id);
+    if (mysql_query(conn_, sql.c_str()) != 0)
+    {
+        result["success"] = false;
+        result["message"] = "查询题目失败";
+        return result;
+    }
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res)
+    {
+        result["success"] = false;
+        result["message"] = "查询题目失败";
+        return result;
+    }
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (!row)
+    {
+        mysql_free_result(res);
+        result["success"] = false;
+        result["message"] = "题目不存在或未发布";
+        return result;
+    }
+
+    result["id"] = row[0] ? std::atoi(row[0]) : 0;
+    result["chapter_id"] = row[1] ? std::atoi(row[1]) : 0;
+    result["type"] = row[2] ? row[2] : "";
+    result["title"] = row[3] ? row[3] : "";
+    result["prompt"] = row[4] ? row[4] : "";
+
+    crow::json::wvalue tiers;
+    crow::json::wvalue easy;
+    easy["label"] = "入门";
+    easy["starter"] = row[5] ? row[5] : "";
+    tiers["easy"] = std::move(easy);
+    crow::json::wvalue medium;
+    medium["label"] = "进阶";
+    medium["starter"] = row[6] ? row[6] : "";
+    tiers["medium"] = std::move(medium);
+    crow::json::wvalue hard;
+    hard["label"] = "挑战";
+    hard["starter"] = row[7] ? row[7] : "";
+    tiers["hard"] = std::move(hard);
+    result["tiers"] = std::move(tiers);
+
+    mysql_free_result(res);
+    result["success"] = true;
+    return result;
+}
+
+// 取隐藏测试驱动与判定参数（供 /api/practice/submit 用）；未找到返回 false
+bool DataBase::getPracticeTestDriver(int id, std::string& outDriver, int& outTotal, int& outTimeLimit)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    std::string sql = "SELECT test_driver, total_cases, time_limit_ms FROM practice_exercises "
+                      "WHERE status=1 AND id=" + std::to_string(id);
+    if (mysql_query(conn_, sql.c_str()) != 0) return false;
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res) return false;
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (!row)
+    {
+        mysql_free_result(res);
+        return false;
+    }
+    outDriver = row[0] ? row[0] : "";
+    outTotal = row[1] ? std::atoi(row[1]) : 0;
+    outTimeLimit = row[2] ? std::atoi(row[2]) : 2000;
+    mysql_free_result(res);
+    return !outDriver.empty();
+}
+
+// 记录一次提交：attempts +1；passed 只升不降（一旦通关就保持）
+void DataBase::recordPracticeAttempt(const std::string& ownerToken, int exerciseId,
+                                     const std::string& tier, bool passed)
+{
+    if (ownerToken.empty()) return;  // 无匿名标识不记录
+
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    std::string sql = "INSERT INTO practice_progress (owner_token, exercise_id, tier, passed, attempts) VALUES ("
+                      + sqlQuote(conn_, ownerToken) + ", " + std::to_string(exerciseId) + ", "
+                      + sqlQuote(conn_, tier) + ", " + (passed ? "1" : "0") + ", 1)";
+    if (passed)
+        sql += " ON DUPLICATE KEY UPDATE attempts = attempts + 1, passed = 1";
+    else
+        sql += " ON DUPLICATE KEY UPDATE attempts = attempts + 1";
+    mysql_query(conn_, sql.c_str());
 }

@@ -1,45 +1,71 @@
-# 练习闯关：代码沙箱部署与验证说明
+# 练习闯关：接库 + 沙箱判定部署与验证说明
 
-本文档说明 `/api/practice/submit`（C++ 代码编译运行判定）的部署与验证步骤。
-代码实现：`src/practice.cpp` + `src/practice.h`；路由：`src/routes.cpp`。
+本文档说明练习闯关（C++ 代码编译运行判定）的部署与验证步骤。
+代码：`src/practice.cpp`（沙箱判定）、`src/database.cpp`（练习查询）、`src/routes.cpp`（接口）。
+题库：`tools/seed_practice.sql`（由 `tools/gen_practice_seed.py` 生成）。
 
 ## 1. 前置条件
 
-- 服务器已安装 `g++`（验证：`which g++`）。若系统无 g++，请先 `sudo apt install g++`（Debian/Ubuntu）或 `sudo yum install gcc-c++`（CentOS）。
-- 已安装 `cmake` 与 `make`（原有项目就依赖，应已具备）。
+- 服务器已安装 `g++`（验证：`which g++`）。若无，`sudo yum install gcc-c++`（OpenCloudOS/CentOS）。
+- 已有 `cmake` 与 `make`（原项目依赖，应已具备）。
 - 服务进程能访问 `/tmp`（用 `mkdtemp` 建临时目录）。
 
-## 2. 编译与部署
+## 2. 部署步骤
 
-在项目根目录（`WebBasedCrow/`）执行：
+在项目根目录（`WebBasedCrow/`）按顺序执行：
 
 ```bash
+# 1) 导题库：建表 + 14 章节 + 写代码题（幂等，可重复执行）
+mysql -u root -p blogdb < tools/seed_practice.sql
+
+# 2) 编译（新增 practice.cpp，已加入 CMakeLists.txt）
 cmake --build build
+
+# 3) 重启
 sudo systemctl restart blog.service
 ```
 
-> 本次改动新增了 `src/practice.cpp`，已加入 `CMakeLists.txt` 的 `add_executable`。
+> 三张表（practice_chapters / practice_exercises / practice_progress）服务端启动时也会
+> 自动创建（`initTable`），seed 只负责灌数据；但**题目数据必须先导**，否则前端章节全是空的。
 > 若 `build` 目录是旧配置，建议重新 configure：`cmake -B build` 再 build。
 
 ## 3. 接口约定
 
-`POST /api/practice/submit`，`Content-Type: application/json`：
+| 接口 | 方法 | 说明 |
+|---|---|---|
+| `/api/practice/chapters` | GET | 章节列表（按学期分组），附每章题目数 |
+| `/api/practice/exercises?chapter=N` | GET | 某章题目列表（仅列表字段） |
+| `/api/practice/exercise/<id>` | GET | 单题详情：题干(markdown) + 三档脚手架（**不含隐藏测试驱动**） |
+| `/api/practice/submit` | POST | 提交代码，沙箱编译运行判定 |
+
+`POST /api/practice/submit` 的 body：
 
 ```json
 { "exercise_id": 1, "tier": "easy", "code": "..." }
 ```
 
-- `code`：玩家实现的函数（**不含 main**）。服务端拼隐藏测试驱动后编译运行。
+- `code`：玩家实现的函数（**不含 main**）。服务端从库里取该题的隐藏测试驱动，拼接后编译运行。
 - 返回字段：`success`、`status`、`passed`、`total`、`message`，
   失败时附 `compile_output`（编译原文）或 `runtime_output`（运行输出）。
 - `status` 取值：`passed` / `failed` / `compile_error` / `runtime_error` / `timeout` / `internal_error`。
+- 首次提交会下发匿名 Cookie（`blog_anon`，与每日一题共用），据此累计每题每档的进度（attempts / passed）。
 
-当前最小版**仅内置 `exercise_id = 1`** 一道示例题（C1 短题 1，`get_ref` / `get_value`），
-`tier` 暂不影响判定。接数据库题库后改为查表。
+## 4. curl 验证
 
-## 4. curl 验证（四个场景）
+以下均在本机 `localhost:8080` 执行。**先确认已导 seed（第 2 节第 1 步）**，否则题目查不到。
 
-以下均在本机 `localhost:8080` 执行，逐条核对返回。
+### 4.0 先验证读接口
+
+```bash
+# 章节列表（应有 3 学期、14 章，C1 的 exercise_count=2）
+curl -s http://localhost:8080/api/practice/chapters
+
+# C1 题目列表（应有 2 道短题）
+curl -s "http://localhost:8080/api/practice/exercises?chapter=1"
+
+# 单题详情（应返回 prompt + tiers.easy/medium/hard）
+curl -s http://localhost:8080/api/practice/exercise/1
+```
 
 ### 4.1 正常通过 → 期望 `status=passed, passed=2, total=2`
 
@@ -76,6 +102,14 @@ curl -s -X POST http://localhost:8080/api/practice/submit \
   -d '{"exercise_id":1,"tier":"easy","code":"int g_value = 42;\nint& get_ref() { for(;;){} return g_value; }\nint get_value() { return g_value; }"}'
 ```
 
+### 4.5 第二道题（enum class）正常通过 → 期望 `status=passed, passed=4`
+
+```bash
+curl -s -X POST http://localhost:8080/api/practice/submit \
+  -H 'Content-Type: application/json' \
+  -d '{"exercise_id":2,"tier":"easy","code":"#include <cstring>\nenum class LogLevel { Debug, Info, Warn, Error };\nconst char* level_to_string(LogLevel l) { switch (l) { case LogLevel::Debug: return \"Debug\"; case LogLevel::Info: return \"Info\"; case LogLevel::Warn: return \"Warn\"; default: return \"Error\"; } }\nbool level_from_string(const char* s, LogLevel& out) { if (strcmp(s,\"Debug\")==0){out=LogLevel::Debug;return true;} if (strcmp(s,\"Info\")==0){out=LogLevel::Info;return true;} if (strcmp(s,\"Warn\")==0){out=LogLevel::Warn;return true;} if (strcmp(s,\"Error\")==0){out=LogLevel::Error;return true;} return false; }"}'
+```
+
 ## 5. 安全边界（务必读）
 
 当前为**裸机 fork/exec + rlimit**，非容器：
@@ -90,11 +124,12 @@ curl -s -X POST http://localhost:8080/api/practice/submit \
 - 服务以 root 跑时 `RLIMIT_NPROC` 对 root 无效（内核不限制 root 进程数），CPU/内存/文件仍生效。
 - 当前站点提交者基本是站长本人，风险可接受；**对外公开前必须补 chroot 或换 docker**。
 
-## 6. 已知待办（对应题库文档 §7）
+## 6. 已知待办
 
-1. 接数据库：从 `practice_exercises` / `practice_test_cases` 取测试驱动，替换内置题。
-2. `tier` 与隐藏用例挂钩（进阶含 easy+medium，挑战全跑）。
-3. 补 chroot 或 docker 隔离。
-4. 数据库题（C11）的临时 schema 隔离方案。
-5. 提交限流（代码提交是重操作，防滥用）。
-6. 编译超时 / 内存上限按真实题压测定值（当前 10s / 512MB 为暂定）。
+1. 扩充题库：`tools/gen_practice_seed.py` 里加 C1 剩余 3 题 + C2-C14 的题（每题三档脚手架 + 隐藏测试驱动）。
+2. `tier` 与隐藏用例挂钩（进阶含 easy+medium，挑战全跑）——当前三档共用同一份测试驱动，靠脚手架递减体现难度。
+3. 选择题 / 填空题的独立判定（客观题无需沙箱，对答案 / 静态编译即可）。
+4. 补 chroot 或 docker 隔离。
+5. 数据库题（C11）的临时 schema 隔离方案。
+6. 提交限流（代码提交是重操作，防滥用）。
+7. 编译超时 / 内存上限按真实题压测定值（当前 10s / 512MB 为暂定）。

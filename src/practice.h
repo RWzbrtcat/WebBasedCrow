@@ -20,6 +20,9 @@ struct PracticeJudge
 };
 
 // 编译并运行玩家代码，返回判定结果。
-// 最小版：exerciseId 仅支持 1（内置示例题），tier 暂不影响判定（将来按档取不同隐藏用例）。
+// code 为玩家提交的函数实现（不含 main）；testDriver 为题目侧的隐藏测试驱动（含 main），
+// totalCases / timeLimitMs 为判定的用例数与运行时限（均由路由层从数据库查出后传入）。
+// 本模块保持纯判定，不依赖数据库。
 // 安全边界：裸机 fork/exec + rlimit，未 chroot —— 详见 practice.cpp 顶部说明。
-PracticeJudge judgeSubmission(int exerciseId, const std::string& tier, const std::string& code);
+PracticeJudge judgeSubmission(const std::string& code, const std::string& testDriver,
+                              int totalCases, int timeLimitMs);

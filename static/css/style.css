@@ -4037,6 +4037,48 @@ body.practice-page {
     margin: 4px 0;
 }
 
+/* 题目列表（点章节后、点题目前的中间态） */
+.practice-exercise-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.practice-exercise-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text-primary);
+    font-size: 15px;
+    text-align: left;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.practice-exercise-item:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.practice-exercise-title {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 题干走 markdown 渲染（markdown-body 提供正文排版） */
+.practice-question-prompt.markdown-body {
+    margin-top: 12px;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
 /* 小屏：单栏，章节列表不再吸顶、落到顶部横排 */
 @media (max-width: 900px) {
     .practice-layout {

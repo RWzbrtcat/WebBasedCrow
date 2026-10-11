@@ -1088,10 +1088,33 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
         return htmlResponse(readFile(staticDir + "/practice.html"));
     });
 
+    // GET /api/practice/chapters - 章节列表（按学期分组，公开）
+    CROW_ROUTE(app, "/api/practice/chapters").methods("GET"_method)([&db](){
+        crow::response res(db.getPracticeChapters());
+        addCorsHeaders(res);
+        return res;
+    });
+
+    // GET /api/practice/exercises?chapter=N - 某章题目列表（公开）
+    CROW_ROUTE(app, "/api/practice/exercises").methods("GET"_method)([&db](const crow::request& req){
+        const char* rawChapter = req.url_params.get("chapter");
+        const int chapterId = rawChapter ? std::atoi(rawChapter) : 0;
+        crow::response res(db.getPracticeExercises(chapterId));
+        addCorsHeaders(res);
+        return res;
+    });
+
+    // GET /api/practice/exercise/<id> - 单题详情（三档脚手架，不含隐藏测试驱动，公开）
+    CROW_ROUTE(app, "/api/practice/exercise/<int>").methods("GET"_method)([&db](int id){
+        crow::response res(db.getPracticeExercise(id));
+        addCorsHeaders(res);
+        return res;
+    });
+
     // POST /api/practice/submit - 提交代码，后端沙箱编译运行判定（公开）。
     // body: { exercise_id, tier, code }。code 为玩家实现的函数（不含 main）。
     // 返回: { success, status, passed, total, message, compile_output?, runtime_output? }
-    CROW_ROUTE(app, "/api/practice/submit").methods("POST"_method)([](const crow::request& req){
+    CROW_ROUTE(app, "/api/practice/submit").methods("POST"_method)([&db](const crow::request& req){
         auto body = crow::json::load(req.body);
         if (!body)
         {
@@ -1117,7 +1140,30 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
             return res;
         }
 
-        PracticeJudge j = judgeSubmission(exerciseId, tier, code);
+        // 取隐藏测试驱动与判定参数（题目不存在/未发布则 404）
+        std::string testDriver;
+        int totalCases = 0;
+        int timeLimitMs = 2000;
+        if (!db.getPracticeTestDriver(exerciseId, testDriver, totalCases, timeLimitMs))
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["status"] = "internal_error";
+            err["message"] = "题目不存在或未发布";
+            crow::response res(404, err);
+            addCorsHeaders(res);
+            return res;
+        }
+
+        // 匿名 Cookie：首次提交下发，之后据此记录进度
+        std::string anonToken = getAnonToken(req);
+        const bool needSetCookie = anonToken.empty();
+        if (needSetCookie) anonToken = randomHex(16);
+
+        PracticeJudge j = judgeSubmission(code, testDriver, totalCases, timeLimitMs);
+
+        // 记录进度：attempts +1，通过则置 passed
+        db.recordPracticeAttempt(anonToken, exerciseId, tier, j.status == "passed");
 
         crow::json::wvalue result;
         result["success"] = j.ok;
@@ -1129,6 +1175,7 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
         if (!j.runtimeOutput.empty()) result["runtime_output"] = j.runtimeOutput;
 
         crow::response res(result);
+        if (needSetCookie) setAnonCookie(res, anonToken);
         addCorsHeaders(res);
         return res;
     });

@@ -81,6 +81,19 @@ public:
                                       const std::string& question, const std::string& answer, int status);
     crow::json::wvalue deleteQuestion(int id);
 
+    // ===== 练习闯关 =====
+    // 章节列表（按学期分组），附每章已发布题目数
+    crow::json::wvalue getPracticeChapters();
+    // 某章的题目列表（不含测试驱动与脚手架，仅列表用）
+    crow::json::wvalue getPracticeExercises(int chapterId);
+    // 单题详情：题干 + 三档脚手架（不含隐藏测试驱动）
+    crow::json::wvalue getPracticeExercise(int id);
+    // 取隐藏测试驱动与判定参数（供 /api/practice/submit 用）；未找到返回 false
+    bool getPracticeTestDriver(int id, std::string& outDriver, int& outTotal, int& outTimeLimit);
+    // 记录一次提交：attempts +1；passed 只升不降（一旦通关就保持）
+    void recordPracticeAttempt(const std::string& ownerToken, int exerciseId,
+                               const std::string& tier, bool passed);
+
     // ===== 配置 =====
     std::string getSetting(const std::string& key);
     crow::json::wvalue setSetting(const std::string& key, const std::string& value);

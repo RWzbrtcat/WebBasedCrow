@@ -1,146 +1,56 @@
 // ============================================
 // 练习闯关：前端逻辑
-// 章节/题目目前仍是内置 mock 数据（仅 C1 一道示例题）；
-// 提交判定走真实后端 POST /api/practice/submit（沙箱编译运行），
-// 后端未部署时降级为「判定未就绪」提示。
-// 依赖：daily-common.js（esc / showToast）
+// 数据全部来自后端接口：
+//   GET /api/practice/chapters        章节列表（按学期分组）
+//   GET /api/practice/exercises?chapter=N  某章题目列表
+//   GET /api/practice/exercise/<id>   单题详情（题干 + 三档脚手架）
+//   POST /api/practice/submit         提交代码，沙箱编译运行判定
+// 交互流：章节 → 题目列表 → 题目详情（题干 + 代码编辑器）→ 提交判定。
+// 依赖：daily-common.js（esc / showToast / apiRequest / describeFetchError）、
+//       markdown.js（renderMarkdownInto，渲染题干）。
 // ============================================
 (function () {
     'use strict';
 
-    // ---------- 章节数据（mock） ----------
-    const SEMESTERS = [
-        {
-            name: '第一学期 · 语言地基',
-            chapters: [
-                { id: 1, title: '现代语法糖' },
-                { id: 2, title: '移动语义与完美转发' },
-                { id: 3, title: '智能指针与 RAII' },
-                { id: 4, title: 'Lambda 与函数式' },
-                { id: 5, title: '模板与元编程基础' },
-                { id: 6, title: '现代工具类型' },
-            ],
-        },
-        {
-            name: '第二学期 · 后端应用',
-            chapters: [
-                { id: 7, title: 'STL 容器与算法' },
-                { id: 8, title: '文件操作与流' },
-                { id: 9, title: '多线程与并发' },
-                { id: 10, title: '网络编程' },
-                { id: 11, title: '数据库交互' },
-            ],
-        },
-        {
-            name: '第三学期 · 进阶工程',
-            chapters: [
-                { id: 12, title: 'constexpr 与编译期计算' },
-                { id: 13, title: 'C++20 高级特性' },
-                { id: 14, title: '模块与工程实践' },
-            ],
-        },
-    ];
-
-    // ---------- 题目数据（mock，仅 C1 有一道完整示例题） ----------
-    const EXERCISES = [
-        {
-            id: 1,
-            chapterId: 1,
-            title: '短题 1 · auto 与 decltype 推导',
-            type: 'short',
-            promptHtml: [
-                '<p>实现两个函数，验证 <code>auto</code> 的类型推导规则：</p>',
-                '<ol>',
-                '<li><code>get_ref()</code>：返回 <code>g_value</code> 的引用</li>',
-                '<li><code>get_value()</code>：返回 <code>g_value</code> 的值拷贝</li>',
-                '</ol>',
-                '<p>考点：<code>auto&amp;</code> 保留引用，<code>auto</code> 丢失引用与顶层 const。</p>',
-            ].join(''),
-            tiers: {
-                easy: {
-                    label: '入门',
-                    starter: [
-                        '// 全局变量（题目已提供，请勿修改）',
-                        'int g_value = 42;',
-                        '',
-                        '// TODO: 补全返回类型 —— get_ref 应返回 g_value 的「引用」',
-                        '// 提示：返回类型写 int&，函数体 return g_value;',
-                        '____ get_ref() {',
-                        '    return g_value;',
-                        '}',
-                        '',
-                        '// TODO: 补全返回类型 —— get_value 应返回 g_value 的「值拷贝」',
-                        '// 提示：返回类型写 int（值），函数体 return g_value;',
-                        '____ get_value() {',
-                        '    return g_value;',
-                        '}',
-                        '',
-                        '// 只实现函数，不要写 main（隐藏测试会提供）',
-                    ].join('\n'),
-                },
-                medium: {
-                    label: '进阶',
-                    starter: [
-                        '// 进阶：只给接口签名，自己实现函数体',
-                        'int g_value = 42;',
-                        '',
-                        'int& get_ref() {',
-                        '    // TODO: 返回 g_value 的引用',
-                        '}',
-                        '',
-                        'int get_value() {',
-                        '    // TODO: 返回 g_value 的值拷贝',
-                        '}',
-                        '',
-                        '// 只实现函数，不要写 main（隐藏测试会提供）',
-                    ].join('\n'),
-                },
-                hard: {
-                    label: '挑战',
-                    starter: [
-                        '// 挑战：用 decltype(auto) 让返回值类别与表达式完全一致',
-                        'int g_value = 42;',
-                        '',
-                        'decltype(auto) get_ref() {',
-                        '    // TODO: 返回 g_value（引用类别）',
-                        '}',
-                        '',
-                        'int get_value() {',
-                        '    // TODO: 返回 g_value 的值拷贝',
-                        '}',
-                        '',
-                        '// 只实现函数，不要写 main（隐藏测试会提供）',
-                    ].join('\n'),
-                },
-            },
-        },
-    ];
-
-    const EXERCISE_BY_CHAPTER = {};
-    EXERCISES.forEach((e) => { EXERCISE_BY_CHAPTER[e.chapterId] = e; });
-
     // ---------- 状态 ----------
-    let currentChapter = 1;
-    let currentExercise = null;
+    let chaptersData = null;      // /api/practice/chapters 返回的 semesters
+    let currentChapter = null;    // 当前选中章节 id
+    let chapterExercises = [];    // 当前章的题目列表
+    let currentExercise = null;   // 当前题目详情（/api/practice/exercise/<id> 返回）
     let currentTier = 'easy';
 
     // ---------- DOM ----------
     const chapterListEl = document.getElementById('chapterList');
     const questionCardEl = document.getElementById('questionCard');
+    const editorCardEl = document.getElementById('editorCard');
     const codeEditorEl = document.getElementById('codeEditor');
     const resultCardEl = document.getElementById('resultCard');
     const resultBodyEl = document.getElementById('resultBody');
     const submitBtn = document.getElementById('submitBtn');
     const resetBtn = document.getElementById('resetBtn');
 
-    // ---------- 渲染章节列表 ----------
+    const TIER_LABELS = { easy: '入门', medium: '进阶', hard: '挑战' };
+
+    // ---------- 章节列表 ----------
+    async function loadChapters() {
+        try {
+            const data = await apiRequest('/api/practice/chapters');
+            chaptersData = data.semesters || [];
+            renderChapters();
+            autoSelectFirst();
+        } catch (e) {
+            chapterListEl.innerHTML = '<div class="empty-state">' + esc(describeFetchError(e)) + '</div>';
+        }
+    }
+
     function renderChapters() {
+        if (!chaptersData) return;
         let html = '';
-        SEMESTERS.forEach((sem) => {
+        chaptersData.forEach((sem) => {
             html += '<div class="practice-semester">' + esc(sem.name) + '</div>';
-            sem.chapters.forEach((ch) => {
+            (sem.chapters || []).forEach((ch) => {
                 const active = ch.id === currentChapter ? ' active' : '';
-                const hasEx = EXERCISE_BY_CHAPTER[ch.id] ? '' : ' is-empty';
+                const hasEx = ch.exercise_count > 0 ? '' : ' is-empty';
                 html += '<button type="button" class="practice-chapter' + active + hasEx + '" data-id="' + ch.id + '">' +
                     '<span class="practice-chapter-num">C' + ch.id + '</span>' +
                     '<span class="practice-chapter-title">' + esc(ch.title) + '</span>' +
@@ -150,44 +60,99 @@
         chapterListEl.innerHTML = html;
 
         chapterListEl.querySelectorAll('.practice-chapter').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                selectChapter(Number(btn.dataset.id));
-            });
+            btn.addEventListener('click', () => selectChapter(Number(btn.dataset.id)));
         });
     }
 
-    // ---------- 选中章节 ----------
-    function selectChapter(id) {
+    function autoSelectFirst() {
+        // 优先选第一个有题目的章节；全空则选第一个章节
+        let firstAny = null;
+        for (const sem of chaptersData) {
+            for (const ch of (sem.chapters || [])) {
+                if (firstAny == null) firstAny = ch.id;
+                if (ch.exercise_count > 0) {
+                    selectChapter(ch.id);
+                    return;
+                }
+            }
+        }
+        if (firstAny != null) selectChapter(firstAny);
+    }
+
+    // ---------- 选中章节：拉题目列表 ----------
+    async function selectChapter(id) {
         currentChapter = id;
-        currentTier = 'easy';
-        currentExercise = EXERCISE_BY_CHAPTER[id] || null;
+        currentExercise = null;
+        chapterExercises = [];
         renderChapters();
-        if (currentExercise) {
-            loadExercise();
-        } else {
-            renderEmptyChapter();
+        try {
+            const data = await apiRequest('/api/practice/exercises?chapter=' + id);
+            chapterExercises = data.exercises || [];
+            renderExerciseList();
+        } catch (e) {
+            renderEmptyChapter(describeFetchError(e));
         }
     }
 
-    // ---------- 加载题目 ----------
-    function loadExercise() {
-        renderQuestion();
-        renderTier(currentTier);
-        resultCardEl.hidden = true;
-    }
-
-    // ---------- 渲染题目 ----------
-    function renderQuestion() {
-        const ex = currentExercise;
-        const tier = ex.tiers[currentTier];
+    // ---------- 渲染题目列表 ----------
+    function renderExerciseList() {
+        hideEditor();
+        if (!chapterExercises.length) {
+            renderEmptyChapter('本章题目尚未录入。');
+            return;
+        }
+        const items = chapterExercises.map((ex) => {
+            const badge = ex.type === 'boss' ? 'Boss' : '写代码';
+            return '<button type="button" class="practice-exercise-item" data-id="' + ex.id + '">' +
+                '<span class="daily-badge">' + esc(badge) + '</span>' +
+                '<span class="practice-exercise-title">' + esc(ex.title) + '</span>' +
+                '</button>';
+        }).join('');
         questionCardEl.innerHTML = [
             '<div class="practice-question-head">',
-            '<span class="daily-badge">写代码</span>',
+            '<h2 class="practice-question-title">选择题目</h2>',
+            '</div>',
+            '<div class="practice-exercise-list">' + items + '</div>',
+        ].join('');
+        questionCardEl.querySelectorAll('.practice-exercise-item').forEach((btn) => {
+            btn.addEventListener('click', () => selectExercise(Number(btn.dataset.id)));
+        });
+    }
+
+    // ---------- 选中题目：拉详情 ----------
+    async function selectExercise(id) {
+        try {
+            const data = await apiRequest('/api/practice/exercise/' + id);
+            currentExercise = data;
+            currentTier = 'easy';
+            renderQuestion();
+            renderTier(currentTier);
+            editorCardEl.hidden = false;
+            resultCardEl.hidden = true;
+        } catch (e) {
+            showToast(describeFetchError(e), 'error');
+        }
+    }
+
+    // ---------- 渲染题目详情 ----------
+    function renderQuestion() {
+        const ex = currentExercise;
+        const badge = ex.type === 'boss' ? 'Boss' : '写代码';
+        questionCardEl.innerHTML = [
+            '<div class="practice-question-head">',
+            '<span class="daily-badge">' + esc(badge) + '</span>',
             '<h2 class="practice-question-title">' + esc(ex.title) + '</h2>',
             '</div>',
-            '<div class="practice-question-prompt">' + ex.promptHtml + '</div>',
+            '<div class="practice-question-prompt markdown-body" id="promptBody"></div>',
             '<div class="practice-tier-bar" id="tierBar"></div>',
         ].join('');
+
+        const promptBody = document.getElementById('promptBody');
+        if (window.renderMarkdownInto) {
+            renderMarkdownInto(promptBody, ex.prompt || '');
+        } else {
+            promptBody.textContent = ex.prompt || '';
+        }
         bindTierBar();
     }
 
@@ -195,11 +160,11 @@
     function bindTierBar() {
         const bar = document.getElementById('tierBar');
         if (!bar) return;
-        const ex = currentExercise;
-        bar.innerHTML = Object.keys(ex.tiers).map((key) => {
-            const t = ex.tiers[key];
+        const tiers = currentExercise.tiers || {};
+        bar.innerHTML = Object.keys(tiers).map((key) => {
             const active = key === currentTier ? ' active' : '';
-            return '<button type="button" class="practice-tier' + active + '" data-tier="' + key + '">' + esc(t.label) + '</button>';
+            const label = (tiers[key] && tiers[key].label) || (TIER_LABELS[key] || key);
+            return '<button type="button" class="practice-tier' + active + '" data-tier="' + key + '">' + esc(label) + '</button>';
         }).join('');
         bar.querySelectorAll('.practice-tier').forEach((btn) => {
             btn.addEventListener('click', () => {
@@ -210,10 +175,10 @@
     }
 
     function renderTier(tierKey) {
-        const tier = currentExercise.tiers[tierKey];
-        codeEditorEl.value = tier.starter;
+        const tiers = currentExercise.tiers || {};
+        const tier = tiers[tierKey] || {};
+        codeEditorEl.value = tier.starter || '';
         resultCardEl.hidden = true;
-        // 更新 tierBar 的 active 态
         const bar = document.getElementById('tierBar');
         if (bar) {
             bar.querySelectorAll('.practice-tier').forEach((btn) => {
@@ -222,19 +187,21 @@
         }
     }
 
-    // ---------- 空章节占位 ----------
-    function renderEmptyChapter() {
+    // ---------- 空章节 / 空状态 ----------
+    function renderEmptyChapter(hint) {
+        hideEditor();
         questionCardEl.innerHTML = [
             '<div class="practice-question-head">',
             '<h2 class="practice-question-title">题目待补充</h2>',
             '</div>',
-            '<p class="practice-empty-hint">本章题面已设计（见 docs/practice-bank.md），',
-            '尚未录入到前端。当前仅 C1 有一道完整示例题用于跑通交互。</p>',
+            '<p class="practice-empty-hint">' + esc(hint || '本章题面已设计（见 docs/practice-bank.md），尚未录入题库。') + '</p>',
         ].join('');
+    }
+
+    function hideEditor() {
+        editorCardEl.hidden = true;
         codeEditorEl.value = '';
         resultCardEl.hidden = true;
-        const tierBar = document.getElementById('tierBar');
-        if (tierBar) tierBar.innerHTML = '';
     }
 
     // ---------- 事件绑定 ----------
@@ -279,13 +246,12 @@
             const data = await resp.json();
             renderResult(data);
         } catch (err) {
-            // 后端未就绪（本地预览 / 沙箱未部署）
             resultBodyEl.innerHTML = [
                 '<div class="practice-result-head practice-result-fail">',
                 '<span class="practice-result-icon">⚠</span>',
-                '<span>后端判定未就绪</span>',
+                '<span>判定服务不可用</span>',
                 '</div>',
-                '<p class="practice-result-note">无法连接判定服务。请在服务器部署后重试（见 docs/practice-sandbox.md）。</p>',
+                '<p class="practice-result-note">无法连接判定服务，请稍后重试。</p>',
             ].join('');
         }
 
@@ -304,7 +270,7 @@
                 '<span class="practice-result-icon">✓</span>',
                 '<span>通过全部 ' + (result.total || 0) + ' 个用例</span>',
                 '</div>',
-                '<p class="practice-result-note">入门档通关即得 1 星。可尝试「进阶」或「挑战」档。</p>',
+                '<p class="practice-result-note">本档已通关。可尝试更高难度档位。</p>',
             ].join('');
             return;
         }
@@ -346,8 +312,7 @@
 
     // ---------- 启动 ----------
     document.addEventListener('DOMContentLoaded', () => {
-        renderChapters();
-        selectChapter(1);
         bindEvents();
+        loadChapters();
     });
 })();
