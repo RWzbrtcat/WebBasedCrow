@@ -60,6 +60,7 @@ add_executable(task_server
     src/database.cpp
     src/auth.cpp
     src/routes.cpp
+    src/practice.cpp
 )
 
 

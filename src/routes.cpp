@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "auth.h"
+#include "practice.h"
 #include "utils.h"
 
 namespace
@@ -1080,6 +1081,56 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
     CROW_ROUTE(app, "/daily/q/<int>")([staticDir](int id){
         (void)id;
         return htmlResponse(readFile(staticDir + "/daily-q.html"));
+    });
+
+    // 练习闯关页（公开：练习进度靠匿名 Cookie，同每日一题）
+    CROW_ROUTE(app, "/practice")([staticDir](){
+        return htmlResponse(readFile(staticDir + "/practice.html"));
+    });
+
+    // POST /api/practice/submit - 提交代码，后端沙箱编译运行判定（公开）。
+    // body: { exercise_id, tier, code }。code 为玩家实现的函数（不含 main）。
+    // 返回: { success, status, passed, total, message, compile_output?, runtime_output? }
+    CROW_ROUTE(app, "/api/practice/submit").methods("POST"_method)([](const crow::request& req){
+        auto body = crow::json::load(req.body);
+        if (!body)
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["message"] = "无效的 JSON 数据";
+            crow::response res(400, err);
+            addCorsHeaders(res);
+            return res;
+        }
+
+        int exerciseId = body.has("exercise_id") ? static_cast<int>(body["exercise_id"].i()) : 0;
+        std::string tier = body.has("tier") ? std::string(body["tier"].s()) : std::string("easy");
+        std::string code = body.has("code") ? std::string(body["code"].s()) : std::string("");
+
+        if (exerciseId <= 0 || code.empty())
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["message"] = "缺少题目 ID 或代码";
+            crow::response res(400, err);
+            addCorsHeaders(res);
+            return res;
+        }
+
+        PracticeJudge j = judgeSubmission(exerciseId, tier, code);
+
+        crow::json::wvalue result;
+        result["success"] = j.ok;
+        result["status"] = j.status;
+        result["passed"] = j.passed;
+        result["total"] = j.total;
+        result["message"] = j.message;
+        if (!j.compileOutput.empty()) result["compile_output"] = j.compileOutput;
+        if (!j.runtimeOutput.empty()) result["runtime_output"] = j.runtimeOutput;
+
+        crow::response res(result);
+        addCorsHeaders(res);
+        return res;
     });
 
     // CSS 文件

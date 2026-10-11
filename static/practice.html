@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>练习闯关 · LazyCat's Blog</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/highlight.css">
+</head>
+<body class="practice-page">
+    <!-- 站点头部 -->
+    <header class="site-header site-header-pill">
+        <div class="header-inner">
+            <div class="brand">
+                <a class="site-title" href="/">LazyCat</a>
+            </div>
+            <nav class="nav">
+                <a href="/">首页</a>
+                <a href="/daily">每日一题</a>
+                <a href="/practice" class="active">练习闯关</a>
+                <a href="/drafts" data-auth-role="admin" hidden>草稿</a>
+                <a href="/hidden" data-auth-role="admin" hidden>隐藏</a>
+                <a href="/editor" data-auth-role="admin" hidden>创作</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 主体 -->
+    <main class="container container-practice">
+        <h1 class="page-title">练习闯关</h1>
+        <p class="page-subtitle">C++ 后端知识 · 短题热身 + 项目 Boss 收口</p>
+
+        <div class="practice-layout">
+            <!-- 左栏：章节列表 -->
+            <aside class="practice-side">
+                <h2 class="practice-side-title">章节</h2>
+                <div class="practice-chapters" id="chapterList">
+                    <div class="loading">加载中...</div>
+                </div>
+            </aside>
+
+            <!-- 右栏：题目 + 编辑器 + 反馈 -->
+            <div class="practice-main">
+                <!-- 题目卡片 -->
+                <section class="practice-card" id="questionCard">
+                    <div class="loading">加载中...</div>
+                </section>
+
+                <!-- 代码编辑器 -->
+                <section class="practice-card" id="editorCard">
+                    <div class="practice-editor-head">
+                        <span class="practice-editor-title">代码</span>
+                        <span class="practice-editor-lang">C++17</span>
+                    </div>
+                    <textarea id="codeEditor" class="practice-editor" spellcheck="false"
+                        placeholder="在这里编写你的 C++ 代码..."></textarea>
+                    <div class="practice-editor-actions">
+                        <button type="button" class="btn btn-primary" id="submitBtn">提交运行</button>
+                        <button type="button" class="btn btn-secondary" id="resetBtn">重置代码</button>
+                    </div>
+                </section>
+
+                <!-- 反馈区 -->
+                <section class="practice-card practice-result" id="resultCard" hidden>
+                    <div id="resultBody"></div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/daily-common.js"></script>
+    <script src="/js/practice.js"></script>
+    <script src="/js/header.js"></script>
+    <script src="/js/background.js"></script>
+    <script src="/js/theme.js"></script>
+
+    <footer class="site-footer">
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">冀ICP备2026039047号</a>
+    </footer>
+</body>
+</html>
