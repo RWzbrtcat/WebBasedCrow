@@ -523,20 +523,22 @@ void DataBase::initTable()
         throw std::runtime_error(std::string("创建练习章节表失败：") + mysql_error(conn_));
     }
 
-    // 题目（写代码题）：三档脚手架 + 隐藏测试驱动
+    // 题目：写代码题(short/boss) + 客观题(choice/blank)
     const char* practiceExercisesSql = R"(
         CREATE TABLE IF NOT EXISTS practice_exercises(
             id INT AUTO_INCREMENT PRIMARY KEY,
             chapter_id INT NOT NULL COMMENT '所属章节',
-            type VARCHAR(10) NOT NULL DEFAULT 'short' COMMENT 'short/boss',
+            type VARCHAR(10) NOT NULL DEFAULT 'short' COMMENT 'choice/blank/short/boss',
             title VARCHAR(256) NOT NULL COMMENT '题目标题',
-            prompt TEXT NOT NULL COMMENT '题目需求(markdown)',
+            prompt TEXT NOT NULL COMMENT '题干：写代码=需求；选择=题干；填空=代码骨架(含______)',
             sort_order INT NOT NULL DEFAULT 0 COMMENT '章内排序',
-            starter_easy TEXT COMMENT '入门脚手架',
-            starter_medium TEXT COMMENT '进阶脚手架',
-            starter_hard TEXT COMMENT '挑战脚手架',
-            test_driver TEXT NOT NULL COMMENT '隐藏测试驱动(含main)',
-            total_cases INT NOT NULL DEFAULT 1 COMMENT '用例数',
+            options TEXT NULL COMMENT '选择题选项JSON(非选择题为NULL)',
+            answer TEXT NULL COMMENT '选择=正确label(JSON字符串)；填空=答案数组(JSON)；写代码=NULL',
+            starter_easy TEXT COMMENT '入门脚手架(写代码题)',
+            starter_medium TEXT COMMENT '进阶脚手架(写代码题)',
+            starter_hard TEXT COMMENT '挑战脚手架(写代码题)',
+            test_driver TEXT NULL COMMENT '隐藏测试驱动(写代码题,含main)',
+            total_cases INT NOT NULL DEFAULT 0 COMMENT '用例数(写代码题)',
             time_limit_ms INT NOT NULL DEFAULT 2000 COMMENT '运行时限',
             status TINYINT NOT NULL DEFAULT 1 COMMENT '0草稿/1发布',
             INDEX idx_practice_chapter (chapter_id)
@@ -545,6 +547,32 @@ void DataBase::initTable()
     if (mysql_query(conn_, practiceExercisesSql) != 0)
     {
         throw std::runtime_error(std::string("创建练习题表失败：") + mysql_error(conn_));
+    }
+
+    // 旧表迁移：补 options / answer 两列（客观题支持）
+    if (!columnExists("practice_exercises", "options"))
+    {
+        const char* alterOptions = "ALTER TABLE practice_exercises ADD COLUMN options TEXT NULL COMMENT '选择题选项JSON' AFTER sort_order";
+        if (mysql_query(conn_, alterOptions) != 0)
+        {
+            throw std::runtime_error(std::string("补充 options 列失败：") + mysql_error(conn_));
+        }
+    }
+    if (!columnExists("practice_exercises", "answer"))
+    {
+        const char* alterAnswer = "ALTER TABLE practice_exercises ADD COLUMN answer TEXT NULL COMMENT '客观题答案JSON' AFTER options";
+        if (mysql_query(conn_, alterAnswer) != 0)
+        {
+            throw std::runtime_error(std::string("补充 answer 列失败：") + mysql_error(conn_));
+        }
+    }
+    // 旧表 test_driver 是 NOT NULL，客观题需存 NULL；MODIFY 为可空（幂等，重复执行无害）
+    {
+        const char* alterDriver = "ALTER TABLE practice_exercises MODIFY COLUMN test_driver TEXT NULL COMMENT '隐藏测试驱动(写代码题,含main)'";
+        if (mysql_query(conn_, alterDriver) != 0)
+        {
+            throw std::runtime_error(std::string("调整 test_driver 列为可空失败：") + mysql_error(conn_));
+        }
     }
 
     // 进度：匿名访客凭 blog_anon Cookie 认领，记录每题每档是否通关
@@ -3095,7 +3123,7 @@ crow::json::wvalue DataBase::getPracticeExercise(int id)
 
     crow::json::wvalue result;
 
-    std::string sql = "SELECT id, chapter_id, type, title, prompt, starter_easy, starter_medium, starter_hard "
+    std::string sql = "SELECT id, chapter_id, type, title, prompt, options, starter_easy, starter_medium, starter_hard "
                       "FROM practice_exercises WHERE status=1 AND id=" + std::to_string(id);
     if (mysql_query(conn_, sql.c_str()) != 0)
     {
@@ -3124,19 +3152,21 @@ crow::json::wvalue DataBase::getPracticeExercise(int id)
     result["type"] = row[2] ? row[2] : "";
     result["title"] = row[3] ? row[3] : "";
     result["prompt"] = row[4] ? row[4] : "";
+    // 选择题下发选项（不含答案）；客观题不返回 answer，判定在服务端做
+    if (row[5]) result["options"] = row[5];
 
     crow::json::wvalue tiers;
     crow::json::wvalue easy;
     easy["label"] = "入门";
-    easy["starter"] = row[5] ? row[5] : "";
+    easy["starter"] = row[6] ? row[6] : "";
     tiers["easy"] = std::move(easy);
     crow::json::wvalue medium;
     medium["label"] = "进阶";
-    medium["starter"] = row[6] ? row[6] : "";
+    medium["starter"] = row[7] ? row[7] : "";
     tiers["medium"] = std::move(medium);
     crow::json::wvalue hard;
     hard["label"] = "挑战";
-    hard["starter"] = row[7] ? row[7] : "";
+    hard["starter"] = row[8] ? row[8] : "";
     tiers["hard"] = std::move(hard);
     result["tiers"] = std::move(tiers);
 
@@ -3167,6 +3197,35 @@ bool DataBase::getPracticeTestDriver(int id, std::string& outDriver, int& outTot
     outTimeLimit = row[2] ? std::atoi(row[2]) : 2000;
     mysql_free_result(res);
     return !outDriver.empty();
+}
+
+// 取客观题类型与标准答案 JSON（供 /api/practice/answer 用）；非客观题或未找到返回 false
+bool DataBase::getPracticeAnswer(int id, std::string& outType, std::string& outAnswerJson)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    std::string sql = "SELECT type, answer FROM practice_exercises "
+                      "WHERE status=1 AND id=" + std::to_string(id);
+    if (mysql_query(conn_, sql.c_str()) != 0) return false;
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res) return false;
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (!row)
+    {
+        mysql_free_result(res);
+        return false;
+    }
+    std::string type = row[0] ? row[0] : "";
+    if (type != "choice" && type != "blank")
+    {
+        mysql_free_result(res);
+        return false;
+    }
+    outType = type;
+    outAnswerJson = row[1] ? row[1] : "";
+    mysql_free_result(res);
+    return !outAnswerJson.empty();
 }
 
 // 记录一次提交：attempts +1；passed 只升不降（一旦通关就保持）

@@ -361,8 +361,10 @@ PracticeJudge judgeSubmission(const std::string& code, const std::string& testDr
     compileLimits.nproc = 64;
     compileLimits.nofile = 128;
 
+    // C++20：C13 章节（concept / ranges / 三路比较）需要 C++20；C++20 向后兼容 C++17，
+    // 对前面 12 章的 C++17 代码无影响。要求服务器 g++ >= 10（C++20 完整支持）。
     std::vector<std::string> compileArgs = {
-        "g++", "-std=c++17", "-O2", "-Wall", "-pthread", "solution.cpp", "-o", "a.out"
+        "g++", "-std=c++20", "-O2", "-Wall", "-pthread", "solution.cpp", "-o", "a.out"
     };
 
     std::string procErr;

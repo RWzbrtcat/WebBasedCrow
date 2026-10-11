@@ -4024,7 +4024,7 @@ body.practice-page {
     word-break: break-word;
     max-height: 280px;
     overflow-y: auto;
-    color: var(--text-primary);
+    color: var(--text);
 }
 
 .practice-result-failed {
@@ -4054,7 +4054,7 @@ body.practice-page {
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--surface);
-    color: var(--text-primary);
+    color: var(--text);
     font-size: 15px;
     text-align: left;
     cursor: pointer;
@@ -4076,7 +4076,89 @@ body.practice-page {
     margin-top: 12px;
     font-size: 15px;
     line-height: 1.7;
-    color: var(--text-primary);
+    color: var(--text);
+}
+
+/* 客观题：选择题选项 */
+.practice-choice-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.practice-choice {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.practice-choice:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.practice-choice input[type="radio"] {
+    margin-top: 4px;
+    accent-color: var(--accent);
+}
+
+.practice-choice-label {
+    font-weight: 600;
+    color: var(--accent);
+    min-width: 20px;
+}
+
+.practice-choice-text {
+    color: var(--text);
+    font-family: ui-monospace, SFMono-Regular, Consolas, 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* 客观题：填空题代码骨架 + 内嵌输入框 */
+.practice-blank-code {
+    margin: 16px 0 0;
+    padding: 16px;
+    background: var(--code-bg, rgba(0, 0, 0, 0.04));
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    font-size: 14px;
+    line-height: 2;
+}
+
+.practice-blank-code code {
+    font-family: ui-monospace, SFMono-Regular, Consolas, 'Courier New', monospace;
+    color: var(--text);
+    white-space: pre;
+}
+
+.practice-blank-input {
+    display: inline-block;
+    width: 150px;
+    margin: 0 2px;
+    padding: 2px 8px;
+    border: 1px dashed var(--accent);
+    border-radius: 4px;
+    background: var(--accent-soft);
+    color: var(--text);
+    font-family: ui-monospace, SFMono-Regular, Consolas, 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.4;
+    vertical-align: baseline;
+}
+
+.practice-blank-input:focus {
+    outline: none;
+    border-style: solid;
+    background: var(--surface);
 }
 
 /* 小屏：单栏，章节列表不再吸顶、落到顶部横排 */

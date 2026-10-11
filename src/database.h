@@ -90,6 +90,8 @@ public:
     crow::json::wvalue getPracticeExercise(int id);
     // 取隐藏测试驱动与判定参数（供 /api/practice/submit 用）；未找到返回 false
     bool getPracticeTestDriver(int id, std::string& outDriver, int& outTotal, int& outTimeLimit);
+    // 取客观题类型与标准答案 JSON（供 /api/practice/answer 用）；非客观题或未找到返回 false
+    bool getPracticeAnswer(int id, std::string& outType, std::string& outAnswerJson);
     // 记录一次提交：attempts +1；passed 只升不降（一旦通关就保持）
     void recordPracticeAttempt(const std::string& ownerToken, int exerciseId,
                                const std::string& tier, bool passed);

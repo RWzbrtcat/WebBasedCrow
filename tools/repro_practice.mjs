@@ -40,9 +40,14 @@ const js = readFileSync(resolve(staticDir, 'js/practice.js'), 'utf8');
 assert(js.includes('/api/practice/chapters'), '拉取章节列表');
 assert(js.includes('/api/practice/exercises?chapter='), '按章节拉题目列表');
 assert(js.includes('/api/practice/exercise/'), '拉单题详情');
-assert(js.includes('/api/practice/submit'), '提交走真实判定');
+assert(js.includes('/api/practice/submit'), '写代码题提交走真实判定');
+assert(js.includes('/api/practice/answer'), '客观题提交走 /api/practice/answer');
 assert(js.includes('renderExerciseList'), '有题目列表中间态');
 assert(js.includes('renderMarkdownInto'), '题干走 markdown 渲染');
+assert(js.includes('renderChoice'), '选择题渲染分支');
+assert(js.includes('renderBlank'), '填空题渲染分支');
+assert(js.includes('submitChoice'), '选择题提交');
+assert(js.includes('submitBlank'), '填空题提交');
 
 // 4. seed 数据（由 tools/gen_practice_seed.py 生成）
 console.log('== seed_practice.sql ==');
@@ -50,7 +55,7 @@ const seed = readFileSync(resolve(root, 'tools/seed_practice.sql'), 'utf8');
 const chapterInserts = (seed.match(/INSERT IGNORE INTO practice_chapters/g) || []).length;
 assert(chapterInserts === 14, '14 个章节');
 const exerciseInserts = (seed.match(/INSERT IGNORE INTO practice_exercises/g) || []).length;
-assert(exerciseInserts >= 2, '至少 2 道题（当前 ' + exerciseInserts + '）');
+assert(exerciseInserts === 154, '应为 154 道题（当前 ' + exerciseInserts + '）');
 assert(seed.includes('practice_progress'), '含进度表');
 assert(!seed.includes('\r'), 'seed 无 CRLF');
 
@@ -71,7 +76,9 @@ assert(routes.includes('"/api/practice/chapters"'), '注册 /api/practice/chapte
 assert(routes.includes('"/api/practice/exercises"'), '注册 /api/practice/exercises');
 assert(routes.includes('"/api/practice/exercise/<int>"'), '注册 /api/practice/exercise/<int>');
 assert(routes.includes('"/api/practice/submit"'), '注册 /api/practice/submit');
+assert(routes.includes('"/api/practice/answer"'), '注册 /api/practice/answer');
 assert(routes.includes('getPracticeTestDriver'), 'submit 查库取测试驱动');
+assert(routes.includes('getPracticeAnswer'), 'answer 查库取客观题答案');
 assert(routes.includes('recordPracticeAttempt'), 'submit 记录进度');
 assert(routes.includes('judgeSubmission'), '调用 judgeSubmission');
 
@@ -81,9 +88,12 @@ const dbh = readFileSync(resolve(root, 'src/database.h'), 'utf8');
 const dbc = readFileSync(resolve(root, 'src/database.cpp'), 'utf8');
 assert(dbh.includes('getPracticeChapters'), 'database.h 声明 getPracticeChapters');
 assert(dbh.includes('getPracticeTestDriver'), 'database.h 声明 getPracticeTestDriver');
+assert(dbh.includes('getPracticeAnswer'), 'database.h 声明 getPracticeAnswer');
 assert(dbc.includes('practice_chapters'), 'database.cpp initTable 建 practice_chapters');
 assert(dbc.includes('practice_exercises'), 'database.cpp initTable 建 practice_exercises');
 assert(dbc.includes('practice_progress'), 'database.cpp initTable 建 practice_progress');
+assert(dbc.includes('options'), 'database.cpp practice_exercises 含 options 列');
+assert(dbc.includes('answer'), 'database.cpp practice_exercises 含 answer 列');
 
 console.log(failed === 0 ? '\n\u5168\u90e8\u901a\u8fc7 \u2713' : '\n' + failed + ' \u9879\u5931\u8d25 \u2717');
 process.exit(failed === 0 ? 0 : 1);

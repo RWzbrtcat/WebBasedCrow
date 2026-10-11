@@ -71,6 +71,31 @@ crow::response tooManyRequests(const char* message)
     addCorsHeaders(res);
     return res;
 }
+
+// 填空答案规范化：去首尾空白 + 压缩连续空白为单个空格（C++ 关键字大小写敏感，不做小写化）
+std::string normalizeBlankAnswer(std::string s)
+{
+    size_t b = s.find_first_not_of(" \t\r\n");
+    if (b == std::string::npos) return "";
+    size_t e = s.find_last_not_of(" \t\r\n");
+    s = s.substr(b, e - b + 1);
+
+    std::string out;
+    bool inSpace = false;
+    for (char c : s)
+    {
+        if (c == ' ' || c == '\t')
+        {
+            if (!inSpace) { out += ' '; inSpace = true; }
+        }
+        else
+        {
+            out += c;
+            inSpace = false;
+        }
+    }
+    return out;
+}
 } // namespace
 
 void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDir)
@@ -1174,6 +1199,100 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
         if (!j.compileOutput.empty()) result["compile_output"] = j.compileOutput;
         if (!j.runtimeOutput.empty()) result["runtime_output"] = j.runtimeOutput;
 
+        crow::response res(result);
+        if (needSetCookie) setAnonCookie(res, anonToken);
+        addCorsHeaders(res);
+        return res;
+    });
+
+    // POST /api/practice/answer - 客观题判定（选择/填空，无沙箱，公开）。
+    // body: { exercise_id, answer }。answer 选择题=选项label字符串，填空题=按空位顺序的字符串数组。
+    // 返回: { success, correct, message }
+    CROW_ROUTE(app, "/api/practice/answer").methods("POST"_method)([&db](const crow::request& req){
+        auto body = crow::json::load(req.body);
+        if (!body)
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["message"] = "无效的 JSON 数据";
+            crow::response res(400, err);
+            addCorsHeaders(res);
+            return res;
+        }
+
+        int exerciseId = body.has("exercise_id") ? static_cast<int>(body["exercise_id"].i()) : 0;
+        if (exerciseId <= 0)
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["message"] = "缺少题目 ID";
+            crow::response res(400, err);
+            addCorsHeaders(res);
+            return res;
+        }
+
+        std::string type;
+        std::string answerJson;
+        if (!db.getPracticeAnswer(exerciseId, type, answerJson))
+        {
+            crow::json::wvalue err;
+            err["success"] = false;
+            err["message"] = "题目不存在、未发布或非客观题";
+            crow::response res(404, err);
+            addCorsHeaders(res);
+            return res;
+        }
+
+        // 匿名 Cookie：首次提交下发，之后据此记录进度
+        std::string anonToken = getAnonToken(req);
+        const bool needSetCookie = anonToken.empty();
+        if (needSetCookie) anonToken = randomHex(16);
+
+        bool correct = false;
+        std::string message;
+
+        if (type == "choice")
+        {
+            std::string userAns = body.has("answer") ? std::string(body["answer"].s()) : "";
+            auto stdAns = crow::json::load(answerJson);
+            std::string stdLabel = (stdAns && stdAns.t() == crow::json::type::String)
+                                       ? std::string(stdAns.s()) : "";
+            correct = (!userAns.empty() && userAns == stdLabel);
+            message = correct ? "回答正确" : "回答错误，再想想";
+        }
+        else // blank
+        {
+            auto stdArr = crow::json::load(answerJson);
+            bool isUserList = body.has("answer") && body["answer"].t() == crow::json::type::List;
+            if (stdArr && stdArr.t() == crow::json::type::List && isUserList)
+            {
+                auto userArr = body["answer"];
+                if (userArr.size() == stdArr.size())
+                {
+                    correct = true;
+                    for (size_t i = 0; i < stdArr.size(); ++i)
+                    {
+                        std::string stdVal = stdArr[i].t() == crow::json::type::String
+                                                 ? std::string(stdArr[i].s()) : "";
+                        std::string userVal = userArr[i].t() == crow::json::type::String
+                                                  ? std::string(userArr[i].s()) : "";
+                        if (normalizeBlankAnswer(stdVal) != normalizeBlankAnswer(userVal))
+                        {
+                            correct = false;
+                            break;
+                        }
+                    }
+                }
+            }
+            message = correct ? "全部填对" : "有空格答案不正确";
+        }
+
+        db.recordPracticeAttempt(anonToken, exerciseId, "easy", correct);
+
+        crow::json::wvalue result;
+        result["success"] = true;
+        result["correct"] = correct;
+        result["message"] = message;
         crow::response res(result);
         if (needSetCookie) setAnonCookie(res, anonToken);
         addCorsHeaders(res);
