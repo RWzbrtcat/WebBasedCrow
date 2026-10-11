@@ -6,6 +6,7 @@
 #include <cstring>
 #include <ctime>
 #include <iostream>
+#include <set>
 #include <stdexcept>
 
 #include "utils.h"
@@ -2233,14 +2234,51 @@ int DataBase::ensureDailyQuestion(const std::string& date)
     }
     if (pool.empty()) return 0;
 
-    const int picked = pool[static_cast<size_t>((dayIndex / n) % static_cast<long>(pool.size()))];
+    const size_t startIdx = static_cast<size_t>((dayIndex / n) % static_cast<long>(pool.size()));
 
-    // 5. INSERT IGNORE：app 是多线程的，同一秒可能有两个请求同时进来，只让先到的写入生效
+    // 5. 防重兜底：轮转的映射依赖「当前的分类集合」（dayIndex % n 与 dayIndex / n），
+    //    所以题库一旦增删分类或改名，整个映射就会整体错位，可能算出与前几天相同的题。
+    //    实测踩过：题库从 46 道扩到 500 道（分类 5 → 8）后，新旧映射恰好都落到
+    //    MySQL 分类里 id 最小的那道，连续两天同一题。
+    //    这里在类内从原位置向后线性探测，跳过最近 7 天已经排过的题；
+    //    池子比窗口还小时必然无解，就保持原位置那一题（不阻塞出题）。
+    //    只查 d < date 的历史，所以不会受「今天已写库」影响，同一天多次调用结果一致。
+    std::set<int> recent;
+    {
+        std::string sql = "SELECT question_id FROM daily_questions WHERE d < " + sqlQuote(conn_, date) +
+                          " ORDER BY d DESC LIMIT 7";
+        if (mysql_query(conn_, sql.c_str()) == 0)
+        {
+            MYSQL_RES* res = mysql_store_result(conn_);
+            if (res)
+            {
+                MYSQL_ROW row;
+                while ((row = mysql_fetch_row(res)))
+                {
+                    if (row[0]) recent.insert(std::atoi(row[0]));
+                }
+                mysql_free_result(res);
+            }
+        }
+    }
+
+    int picked = pool[startIdx];
+    for (size_t step = 0; step < pool.size(); ++step)
+    {
+        const int candidate = pool[(startIdx + step) % pool.size()];
+        if (recent.find(candidate) == recent.end())
+        {
+            picked = candidate;
+            break;
+        }
+    }
+
+    // 6. INSERT IGNORE：app 是多线程的，同一秒可能有两个请求同时进来，只让先到的写入生效
     std::string ins = "INSERT IGNORE INTO daily_questions (d, question_id) VALUES (" + sqlQuote(conn_, date) + ", " +
                       std::to_string(picked) + ")";
     mysql_query(conn_, ins.c_str());
 
-    // 6. 重新读一次：并发时以先写入的那条为准，保证所有客户端看到同一题
+    // 7. 重新读一次：并发时以先写入的那条为准，保证所有客户端看到同一题
     std::string back = "SELECT question_id FROM daily_questions WHERE d=" + sqlQuote(conn_, date) + " LIMIT 1";
     if (mysql_query(conn_, back.c_str()) == 0)
     {
