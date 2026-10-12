@@ -111,6 +111,8 @@ const exerciseInserts = (seed.match(/INSERT INTO practice_exercises/g) || []).le
 assert(exerciseInserts === 154, '应为 154 道题（当前 ' + exerciseInserts + '）');
 assert(!/INSERT IGNORE/.test(seed), 'seed 不应再有 INSERT IGNORE（已改 upsert）');
 assert(/solution\s+TEXT/.test(seed), 'seed 建表含 solution（题解）列');
+assert(seed.includes('ADD COLUMN solution'), 'seed 含 solution 幂等补列迁移（老库自愈，防 1054）');
+assert(seed.includes('PREPARE stmt_mig FROM @ddl'), '补列迁移用 information_schema + PREPARE 动态执行');
 {
     const solUpserts = (seed.match(/solution=VALUES\(solution\)/g) || []).length;
     assert(solUpserts === 154, '154 题均带题解 upsert（当前 ' + solUpserts + '）');

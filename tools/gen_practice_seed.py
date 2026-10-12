@@ -8191,6 +8191,89 @@ def sql_or_null(s):
     return sql_literal(s)
 
 
+# 旧表补列迁移：CREATE TABLE IF NOT EXISTS 只对「不存在的表」建表，**无法给已有表加列**；
+# 所以表结构新增列时，必须在这里补一条幂等迁移（与 src/database.cpp 的 columnExists 迁移对应）。
+COLUMN_MIGRATIONS = [
+    ('practice_exercises', 'solution',
+     "TEXT NULL COMMENT '题解(思路+参考实现+要点，markdown)' AFTER answer"),
+]
+
+
+def add_column_if_missing(table, column, definition):
+    """生成幂等的「缺列则补」SQL 片段。
+
+    MySQL 没有 ADD COLUMN IF NOT EXISTS（那是 MariaDB 语法），因此用
+    information_schema 判断列是否存在、再 PREPARE 动态执行 ALTER，兼容 MySQL 5.7/8.x。
+    老库缺列时自动补上，避免后续 INSERT 报 `1054 Unknown column`。
+    """
+    ddl = 'ALTER TABLE %s ADD COLUMN %s %s' % (table, column, definition)
+    ddl_lit = ddl.replace("'", "''")
+    return '\n'.join([
+        'SET @ddl := (',
+        '    SELECT IF(COUNT(*) = 0,',
+        "        '%s'," % ddl_lit,
+        "        'SELECT 1'",
+        '    )',
+        '    FROM information_schema.COLUMNS',
+        '    WHERE TABLE_SCHEMA = DATABASE()',
+        "      AND TABLE_NAME = '%s'" % table,
+        "      AND COLUMN_NAME = '%s'" % column,
+        ');',
+        'PREPARE stmt_mig FROM @ddl;',
+        'EXECUTE stmt_mig;',
+        'DEALLOCATE PREPARE stmt_mig;',
+    ])
+
+
+def validate_sql(sql):
+    """字符串感知扫描生成结果：引号/注释闭合 + 语句终止符齐全。
+
+    起因：曾漏掉语句结尾分号导致导入报 1064（客户端把下一条语句一起发过去）。
+    朴素字符扫描会被题干/答案里的引号、分号误判，必须按 MySQL 字面量规则
+    跳过 '' 与 \\ 转义、'' 形式的转义引号、-- 与 /* */ 注释。
+    返回扫描到的语句（分号）条数。
+    """
+    n = len(sql)
+    i = 0
+    stmts = 0
+    while i < n:
+        c = sql[i]
+        if c in "'\"`":
+            quote = c
+            i += 1
+            while True:
+                if i >= n:
+                    raise SystemExit('SQL 中存在未闭合的 %s 字符串' % quote)
+                if sql[i] == '\\' and quote != '`':
+                    i += 2
+                    continue
+                if sql[i] == quote:
+                    if i + 1 < n and sql[i + 1] == quote:   # '' / "" / `` 转义，不算结束
+                        i += 2
+                        continue
+                    i += 1
+                    break
+                i += 1
+            continue
+        if sql.startswith('--', i) and (i + 2 >= n or sql[i + 2] in ' \t\r\n'):
+            j = sql.find('\n', i)
+            i = n if j < 0 else j
+            continue
+        if sql.startswith('/*', i):
+            j = sql.find('*/', i + 2)
+            if j < 0:
+                raise SystemExit('SQL 中存在未闭合的 /* 注释')
+            i = j + 2
+            continue
+        if c == ';':
+            stmts += 1
+        i += 1
+
+    if not sql.rstrip().endswith(';'):
+        raise SystemExit('生成结果未以分号收尾，末条语句可能未终止')
+    return stmts
+
+
 def build():
     out = []
     out.append('-- ============================================================')
@@ -8204,6 +8287,12 @@ def build():
     out.append('')
     out.append('-- ---------- 第 1 步：确保三张表存在 ----------')
     out.append(DDL.rstrip())
+    out.append('')
+    out.append('-- ---------- 第 1.5 步：旧表补列（幂等迁移） ----------')
+    out.append('-- 说明：CREATE TABLE IF NOT EXISTS 只对「不存在的表」生效，无法给已有表加列；')
+    out.append('--       这里对老库缺失的列做幂等补列，避免第 3 步 INSERT 报 1054 Unknown column。')
+    for tbl, col, definition in COLUMN_MIGRATIONS:
+        out.append(add_column_if_missing(tbl, col, definition))
     out.append('')
     out.append('-- ---------- 第 2 步：插入 14 个章节 ----------')
     for cid, sem, title, sort in CHAPTERS:
@@ -8275,7 +8364,18 @@ def main():
     assert not missing, f'以下题目缺题解，请补 SOLUTIONS：{missing}'
     n_sol = content.count('solution=VALUES(solution)')
     assert n_sol == len(EXERCISES), f'题解 upsert 数不符：{n_sol} != {len(EXERCISES)}'
-    print(f'OK: 生成 {target}（{len(CHAPTERS)} 章节 / {len(EXERCISES)} 题，题解 {len(SOLUTIONS)} 条）')
+    # 旧表补列迁移必须存在（否则老库导入会报 1054 Unknown column）
+    n_mig = content.count('PREPARE stmt_mig FROM @ddl')
+    assert n_mig == len(COLUMN_MIGRATIONS), f'补列迁移数不符：{n_mig} != {len(COLUMN_MIGRATIONS)}'
+    for _, col, _def in COLUMN_MIGRATIONS:
+        assert f'ADD COLUMN {col} ' in content, f'缺列迁移缺失：{col}'
+    # 语句终止符校验（字符串感知）：DDL 建表 + SET NAMES 1 句 + 每条迁移 4 句 + 章节 + 题目
+    expected_stmts = (validate_sql(DDL) + 1 + 4 * len(COLUMN_MIGRATIONS)
+                      + len(CHAPTERS) + len(EXERCISES))
+    n_stmts = validate_sql(content)
+    assert n_stmts == expected_stmts, f'语句数不符：{n_stmts} != {expected_stmts}（可能有语句未终止）'
+    print(f'OK: 生成 {target}（{len(CHAPTERS)} 章节 / {len(EXERCISES)} 题，题解 {len(SOLUTIONS)} 条，'
+          f'语句 {n_stmts} 条）')
 
 
 if __name__ == '__main__':

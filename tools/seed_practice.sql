@@ -46,6 +46,23 @@ CREATE TABLE IF NOT EXISTS practice_progress(
     PRIMARY KEY (owner_token, exercise_id, tier)
 )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------- 第 1.5 步：旧表补列（幂等迁移） ----------
+-- 说明：CREATE TABLE IF NOT EXISTS 只对「不存在的表」生效，无法给已有表加列；
+--       这里对老库缺失的列做幂等补列，避免第 3 步 INSERT 报 1054 Unknown column。
+SET @ddl := (
+    SELECT IF(COUNT(*) = 0,
+        'ALTER TABLE practice_exercises ADD COLUMN solution TEXT NULL COMMENT ''题解(思路+参考实现+要点，markdown)'' AFTER answer',
+        'SELECT 1'
+    )
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'practice_exercises'
+      AND COLUMN_NAME = 'solution'
+);
+PREPARE stmt_mig FROM @ddl;
+EXECUTE stmt_mig;
+DEALLOCATE PREPARE stmt_mig;
+
 -- ---------- 第 2 步：插入 14 个章节 ----------
 INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (1, '第一学期 · 语言地基', '现代语法糖', 1, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
 INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (2, '第一学期 · 语言地基', '移动语义与完美转发', 2, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
