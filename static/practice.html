@@ -49,13 +49,24 @@
 
                 <!-- 并排主体：题目描述卡 | 编辑器·作答 -->
                 <div class="practice-work-body single" id="workBody">
-                    <!-- 题目描述卡：题目描述 + 题解（滚动区） + 测试结果（固定底，紧邻题解下方） -->
+                    <!-- 题目描述卡：标签栏（题目描述 | 题解）共用一栏，底部固定「测试结果」 -->
                     <section class="practice-card practice-prompt-card" id="questionCard">
-                        <h3 class="practice-pane-title">题目描述</h3>
-                        <div class="practice-desc-scroll">
+                        <div class="practice-tabs" role="tablist" aria-label="题目内容">
+                            <button type="button" class="practice-tab is-active" id="tabDesc" role="tab"
+                                aria-selected="true" aria-controls="descPane">题目描述</button>
+                            <button type="button" class="practice-tab" id="tabSolution" role="tab"
+                                aria-selected="false" aria-controls="solutionPane">题解</button>
+                        </div>
+                        <!-- 面板一：题目描述（默认显示） -->
+                        <div class="practice-desc-scroll" id="descPane" role="tabpanel" aria-labelledby="tabDesc">
                             <div id="promptHost">
                                 <div class="practice-prompt practice-empty">从左侧选择一道题目开始练习。</div>
                             </div>
+                        </div>
+                        <!-- 面板二：题解（点「题解」标签后显示） -->
+                        <div class="practice-desc-scroll" id="solutionPane" role="tabpanel"
+                            aria-labelledby="tabSolution" hidden>
+                            <div class="practice-solution-host" id="solutionHost"></div>
                         </div>
                         <!-- 测试结果：每次运行/提交后出现，固定在描述卡底部 -->
                         <section class="practice-result" id="resultCard" hidden>

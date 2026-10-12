@@ -3,99 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>练习闯关 · v0.3 预览（题目描述 + 题解 + 测试结果） · LazyCat's Blog</title>
-<!-- 直接引用真实样式表：预览静态 DOM 在真实 CSS 下的最终效果 -->
+<title>练习闯关 · v0.4 预览（题目描述 / 题解 标签页） · LazyCat's Blog</title>
+<!-- 直接引用真实样式表：预览即真实 CSS 下的最终效果（样式已并入 style.css） -->
 <link rel="stylesheet" href="static/css/style.css">
 <style>
-/* ===== v0.3 新增（待确认后并入 style.css）===== */
-/* 左栏题目卡：改为「题目描述 + 题解（滚动区）」+「测试结果（固定底）」 */
-.practice-desc-scroll {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    scrollbar-width: thin;
-}
-.practice-desc-scroll .practice-prompt {
-    flex: none;
-    min-height: 0;
-    overflow: visible;
-    padding-bottom: 4px;
-}
-/* 题解：默认折叠 */
-.practice-solution {
-    margin: 6px 20px 18px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--bg);
-    overflow: hidden;
-}
-.practice-solution > summary {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 11px 14px;
-    cursor: pointer;
+/* 预览页专属：仅用于说明可点击切换，不属于线上样式 */
+.preview-hint {
+    max-width: 1420px;
+    margin: 12px auto 0;
+    padding: 8px 14px;
     font-size: 13px;
-    font-weight: 600;
-    color: var(--accent-dark);
-    list-style: none;
-    user-select: none;
-}
-.practice-solution > summary::-webkit-details-marker { display: none; }
-.practice-solution > summary::before {
-    content: '';
-    width: 0; height: 0;
-    border-left: 6px solid currentColor;
-    border-top: 5px solid transparent;
-    border-bottom: 5px solid transparent;
-    transition: transform .15s ease;
-}
-.practice-solution[open] > summary::before { transform: rotate(90deg); }
-.practice-solution-body {
-    padding: 2px 16px 16px;
-    border-top: 1px solid var(--border);
-    font-size: 14px;
-    line-height: 1.8;
-    color: var(--text);
-}
-.practice-solution-body p { margin: 10px 0; }
-.practice-solution-body pre {
-    margin: 10px 0;
-    padding: 12px 14px;
-    background: var(--code-bg, #f6f3ef);
-    border-radius: var(--radius-sm);
-    overflow-x: auto;
-    font-size: 13px;
-    line-height: 1.6;
-}
-/* 测试结果：卡片内固定块（不再是工作台底部独立条） */
-.practice-result {
-    flex-shrink: 0;
-    margin: 0;
-    padding: 0;
-    border: none;
-    border-top: 1px solid var(--border);
-    border-radius: 0;
-    box-shadow: none;
-    background: var(--surface);
-    max-height: 40%;
-    overflow-y: auto;
-    scrollbar-width: thin;
-}
-.practice-result-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 11px 20px;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: .02em;
     color: var(--text-secondary);
 }
-.practice-result.is-pass .practice-result-title { color: var(--ok); }
-.practice-result.is-fail .practice-result-title { color: var(--danger, #dc2626); }
-.practice-result-body { padding: 0 20px 14px; }
-.practice-result-body .practice-result-head { margin-top: 0; }
 </style>
 </head>
 <body class="practice-page">
@@ -149,11 +68,17 @@
                 </div>
 
                 <div class="practice-work-body">
-                    <!-- 左：题目描述 + 题解 + 测试结果 -->
-                    <section class="practice-card practice-prompt-card">
-                        <h3 class="practice-pane-title">题目描述</h3>
+                    <!-- 左：描述卡（标签栏：题目描述 | 题解，共用一栏） + 测试结果 -->
+                    <section class="practice-card practice-prompt-card" id="questionCard">
+                        <div class="practice-tabs" role="tablist" aria-label="题目内容">
+                            <button type="button" class="practice-tab is-active" id="tabDesc" role="tab"
+                                aria-selected="true" aria-controls="descPane">题目描述</button>
+                            <button type="button" class="practice-tab" id="tabSolution" role="tab"
+                                aria-selected="false" aria-controls="solutionPane">题解</button>
+                        </div>
 
-                        <div class="practice-desc-scroll">
+                        <!-- 面板一：题目描述（默认显示） -->
+                        <div class="practice-desc-scroll" id="descPane" role="tabpanel" aria-labelledby="tabDesc">
                             <div class="practice-prompt">
                                 <p>下面的 <code>Wrapper</code> 类独占一个 <code>int*</code> 资源，但移动语义实现有 bug：移动后源对象仍指向同一块内存，析构时二次释放。请修复。</p>
                                 <pre><code>class Wrapper {
@@ -167,17 +92,18 @@ public:
 };</code></pre>
                                 <p>要求：移动后源对象可安全析构，不产生 <code>double free</code>；移动构造函数标记 <code>noexcept</code>。</p>
                             </div>
-
                             <div class="practice-tier-bar">
                                 <button class="practice-tier active" type="button">入门</button>
                                 <button class="practice-tier" type="button">进阶</button>
                                 <button class="practice-tier" type="button">挑战</button>
                             </div>
+                        </div>
 
-                            <!-- 题解：默认折叠 -->
-                            <details class="practice-solution">
-                                <summary>查看题解</summary>
-                                <div class="practice-solution-body">
+                        <!-- 面板二：题解（点「题解」标签后显示） -->
+                        <div class="practice-desc-scroll" id="solutionPane" role="tabpanel"
+                            aria-labelledby="tabSolution" hidden>
+                            <div class="practice-solution-host">
+                                <div class="practice-solution-body markdown-body">
                                     <p><strong>思路</strong>：移动语义的本质是「偷」资源——把源对象的指针接过来，并把源对象置为安全状态（<code>nullptr</code>），否则两个对象都会在析构时 <code>delete</code> 同一块内存。</p>
                                     <pre><code>Wrapper(Wrapper&amp;&amp; o) noexcept
     : p_(o.p_) {
@@ -189,10 +115,10 @@ public:
                                         <li>源对象置空后，其析构是 no-op，天然杜绝 <code>double free</code>。</li>
                                     </ul>
                                 </div>
-                            </details>
+                            </div>
                         </div>
 
-                        <!-- 测试结果（固定在左栏底部） -->
+                        <!-- 测试结果：每次运行/提交后出现，固定在描述卡底部 -->
                         <section class="practice-result is-pass">
                             <div class="practice-result-title"><span class="practice-result-icon">✓</span>测试结果</div>
                             <div class="practice-result-body">
@@ -228,5 +154,26 @@ public:
     <footer class="site-footer">
         <a href="#">冀ICP备2026039047号</a>
     </footer>
+
+    <script>
+    // 预览交互：点击标签切换「题目描述 / 题解」（线上由 practice.js 的 switchTab 负责）
+    (function () {
+        var desc = document.getElementById('descPane');
+        var sol = document.getElementById('solutionPane');
+        var tabDesc = document.getElementById('tabDesc');
+        var tabSol = document.getElementById('tabSolution');
+        function show(name) {
+            var isSol = name === 'solution';
+            desc.hidden = isSol;
+            sol.hidden = !isSol;
+            tabDesc.classList.toggle('is-active', !isSol);
+            tabSol.classList.toggle('is-active', isSol);
+            tabDesc.setAttribute('aria-selected', String(!isSol));
+            tabSol.setAttribute('aria-selected', String(isSol));
+        }
+        tabDesc.addEventListener('click', function () { show('desc'); });
+        tabSol.addEventListener('click', function () { show('solution'); });
+    })();
+    </script>
 </body>
 </html>

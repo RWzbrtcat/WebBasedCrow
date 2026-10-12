@@ -4647,55 +4647,55 @@ body.practice-page .site-footer {
     margin-top: 10px;
 }
 
-/* 题解：默认折叠，位于题目描述下方；无题解时宿主为空、不占空间 */
-.practice-solution-host:empty {
-    display: none;
-}
-
-.practice-solution {
-    margin: 6px 20px 18px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--bg);
-    overflow: hidden;
-}
-
-.practice-solution > summary {
+/* 描述卡标签栏：题目描述 | 题解（共用一栏，点击切换，默认题目描述） */
+.practice-tabs {
+    flex-shrink: 0;
     display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 11px 14px;
-    cursor: pointer;
+    align-items: stretch;
+    gap: 2px;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.practice-tab {
+    appearance: none;
+    border: none;
+    background: none;
+    padding: 13px 12px;
+    font: inherit;
     font-size: 13px;
     font-weight: 600;
+    letter-spacing: .02em;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    cursor: pointer;
+    transition: color .15s ease, border-color .15s ease;
+}
+
+.practice-tab:hover {
+    color: var(--text-secondary);
+}
+
+.practice-tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -4px;
+    border-radius: var(--radius-sm);
+}
+
+.practice-tab.is-active {
     color: var(--accent-dark);
-    list-style: none;
-    user-select: none;
+    border-bottom-color: var(--accent);
 }
 
-.practice-solution > summary::-webkit-details-marker {
-    display: none;
-}
-
-.practice-solution > summary::before {
-    content: '';
-    width: 0;
-    height: 0;
-    border-left: 6px solid currentColor;
-    border-top: 5px solid transparent;
-    border-bottom: 5px solid transparent;
-    transition: transform .15s ease;
-}
-
-.practice-solution[open] > summary::before {
-    transform: rotate(90deg);
+/* 题解面板：内容随面板滚动（面板复用 .practice-desc-scroll） */
+.practice-solution-host {
+    padding: 16px 20px 20px;
 }
 
 .practice-solution-body {
-    padding: 2px 16px 16px;
-    border-top: 1px solid var(--border);
     font-size: 14px;
-    line-height: 1.8;
+    line-height: 1.85;
     color: var(--text);
 }
 
@@ -4709,6 +4709,20 @@ body.practice-page .site-footer {
     padding-left: 22px;
 }
 
+.practice-solution-body li {
+    margin: 4px 0;
+}
+
+.practice-solution-body h1,
+.practice-solution-body h2,
+.practice-solution-body h3,
+.practice-solution-body h4 {
+    margin: 16px 0 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+}
+
 .practice-solution-body pre {
     margin: 10px 0;
     padding: 12px 14px;
@@ -4717,6 +4731,10 @@ body.practice-page .site-footer {
     overflow-x: auto;
     font-size: 13px;
     line-height: 1.6;
+}
+
+.practice-solution-body code {
+    font-size: 13px;
 }
 
 /* 测试结果：紧邻题解、固定在描述卡底部，运行/提交后出现 */

@@ -69,38 +69,41 @@ assert(/id="workBody"[\s\S]{0,40}single/.test(html) || html.includes('practice-w
     assert(commonIdx > 0 && jsIdx > 0 && commonIdx < jsIdx, 'daily-common 在 practice.js 之前加载');
 }
 
-// 3c. 描述卡三段式：题目描述 + 题解 + 测试结果
-console.log('== 描述卡（题目描述 / 题解 / 测试结果）==');
-assert(html.includes('practice-pane-title">题目描述<'), '题目卡标题为「题目描述」');
-assert(!/practice-pane-title">题目</.test(html), '不再残留旧的「题目」标题');
+// 3c. 描述卡：标签栏「题目描述 | 题解」共用一栏 + 底部「测试结果」
+console.log('== 描述卡（题目描述 / 题解 标签页 + 测试结果）==');
+const css = readFileSync(resolve(staticDir, 'css/style.css'), 'utf8');
+assert(html.includes('class="practice-tabs"') && html.includes('role="tablist"'), '描述卡含标签栏 practice-tabs');
+assert(/practice-tab is-active"[^>]*id="tabDesc"/.test(html), '默认激活「题目描述」标签');
+assert(/id="tabDesc"[\s\S]{0,140}题目描述<\/button>/.test(html), '标签一文案为「题目描述」');
+assert(/id="tabSolution"[\s\S]{0,140}题解<\/button>/.test(html), '标签二文案为「题解」');
+assert(!/practice-pane-title">题目/.test(html), '不再残留旧的「题目」标题');
 assert(html.includes('id="promptHost"'), '含题目描述宿主 promptHost');
 assert(html.includes('id="resultCard"'), '含测试结果卡 resultCard');
 assert(html.includes('practice-result-title">测试结果<'), '结果卡标题文案为「测试结果」');
-// resultCard 必须在 .practice-desc-scroll 之外（作为其兄弟节点，固定在描述卡底部）
-// 用 <div> 配平提取描述区整块，再断言 resultCard 不在其中 —— 比单纯正则可靠
-function extractDivBlock(src, openTag) {
-    const start = src.indexOf(openTag);
-    if (start < 0) return '';
-    let i = start + openTag.length;   // openTag 已含结尾 '>'，紧接其后即内容起点
-    let depth = 1;
-    const re = /<\/?div\b[^>]*>/g;
-    re.lastIndex = i;
-    let m;
-    while ((m = re.exec(src))) {
-        depth += m[0].startsWith('</') ? -1 : 1;
-        if (depth === 0) return src.slice(i, m.index);
-    }
-    return '';
-}
-const descBlock = extractDivBlock(html, '<div class="practice-desc-scroll">');
-assert(descBlock.includes('id="promptHost"'), '描述滚动区包含 promptHost');
-assert(!descBlock.includes('id="resultCard"'), 'resultCard 不在描述滚动区内（固定在描述卡底部）');
 
+// 两个面板：descPane 默认可见、solutionPane 默认 hidden；resultCard 位于二者之后（描述卡底部）
+const descPaneIdx = html.indexOf('id="descPane"');
+const solPaneIdx = html.indexOf('id="solutionPane"');
+const resultIdx = html.indexOf('id="resultCard"');
+assert(descPaneIdx > 0 && solPaneIdx > descPaneIdx, 'descPane 在 solutionPane 之前');
+assert(!/id="descPane"[\s\S]{0,90}hidden/.test(html), 'descPane 默认可见（无 hidden）');
+assert(/id="solutionPane"[\s\S]{0,140}hidden/.test(html), 'solutionPane 默认 hidden');
+assert(resultIdx > solPaneIdx, 'resultCard 在两个面板之后（固定在描述卡底部）');
+const descPaneSlice = html.slice(descPaneIdx, solPaneIdx);
+assert(descPaneSlice.includes('id="promptHost"'), '描述面板包含 promptHost');
+assert(!descPaneSlice.includes('id="resultCard"'), 'resultCard 不在描述面板内');
+assert(html.slice(solPaneIdx).includes('id="solutionHost"'), '题解面板包含 solutionHost');
+
+assert(js.includes('switchTab'), 'practice.js 实现标签切换 switchTab');
+assert(js.includes('bindTabs') && js.includes("switchTab('desc')"), '绑定标签事件并在每次渲染时复位到「题目描述」');
 assert(js.includes('renderSolution'), 'practice.js 渲染题解');
-assert(js.includes('practice-solution'), '题解使用折叠容器 practice-solution');
+assert(js.includes('practice-solution-body'), '题解填入 practice-solution-body');
+assert(!/<details/.test(js) && !js.includes('practice-solution"'), '题解不再用 <details> 折叠（已改标签页）');
 assert(js.includes('currentExercise.solution'), '读取详情里的 solution 字段');
-assert(js.includes('setPromptHtml'), '只重绘描述区（保留底部测试结果卡）');
+assert(js.includes('setPromptHtml'), '只重绘描述面板（保留标签栏与底部测试结果卡）');
 assert(/practice-pane-title">题目</.test(js) === false, '不再在 JS 里输出旧的「题目」标题');
+assert(css.includes('.practice-tab') && css.includes('.practice-tabs'), 'style.css 含标签栏样式');
+assert(css.includes('.practice-tab.is-active'), 'style.css 含激活标签样式');
 
 // 4. seed 数据（由 tools/gen_practice_seed.py 生成）
 console.log('== seed_practice.sql ==');
