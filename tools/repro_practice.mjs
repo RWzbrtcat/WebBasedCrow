@@ -69,6 +69,39 @@ assert(/id="workBody"[\s\S]{0,40}single/.test(html) || html.includes('practice-w
     assert(commonIdx > 0 && jsIdx > 0 && commonIdx < jsIdx, 'daily-common 在 practice.js 之前加载');
 }
 
+// 3c. 描述卡三段式：题目描述 + 题解 + 测试结果
+console.log('== 描述卡（题目描述 / 题解 / 测试结果）==');
+assert(html.includes('practice-pane-title">题目描述<'), '题目卡标题为「题目描述」');
+assert(!/practice-pane-title">题目</.test(html), '不再残留旧的「题目」标题');
+assert(html.includes('id="promptHost"'), '含题目描述宿主 promptHost');
+assert(html.includes('id="resultCard"'), '含测试结果卡 resultCard');
+assert(html.includes('practice-result-title">测试结果<'), '结果卡标题文案为「测试结果」');
+// resultCard 必须在 .practice-desc-scroll 之外（作为其兄弟节点，固定在描述卡底部）
+// 用 <div> 配平提取描述区整块，再断言 resultCard 不在其中 —— 比单纯正则可靠
+function extractDivBlock(src, openTag) {
+    const start = src.indexOf(openTag);
+    if (start < 0) return '';
+    let i = start + openTag.length;   // openTag 已含结尾 '>'，紧接其后即内容起点
+    let depth = 1;
+    const re = /<\/?div\b[^>]*>/g;
+    re.lastIndex = i;
+    let m;
+    while ((m = re.exec(src))) {
+        depth += m[0].startsWith('</') ? -1 : 1;
+        if (depth === 0) return src.slice(i, m.index);
+    }
+    return '';
+}
+const descBlock = extractDivBlock(html, '<div class="practice-desc-scroll">');
+assert(descBlock.includes('id="promptHost"'), '描述滚动区包含 promptHost');
+assert(!descBlock.includes('id="resultCard"'), 'resultCard 不在描述滚动区内（固定在描述卡底部）');
+
+assert(js.includes('renderSolution'), 'practice.js 渲染题解');
+assert(js.includes('practice-solution'), '题解使用折叠容器 practice-solution');
+assert(js.includes('currentExercise.solution'), '读取详情里的 solution 字段');
+assert(js.includes('setPromptHtml'), '只重绘描述区（保留底部测试结果卡）');
+assert(/practice-pane-title">题目</.test(js) === false, '不再在 JS 里输出旧的「题目」标题');
+
 // 4. seed 数据（由 tools/gen_practice_seed.py 生成）
 console.log('== seed_practice.sql ==');
 const seed = readFileSync(resolve(root, 'tools/seed_practice.sql'), 'utf8');
@@ -77,6 +110,11 @@ assert(chapterInserts === 14, '14 个章节');
 const exerciseInserts = (seed.match(/INSERT INTO practice_exercises/g) || []).length;
 assert(exerciseInserts === 154, '应为 154 道题（当前 ' + exerciseInserts + '）');
 assert(!/INSERT IGNORE/.test(seed), 'seed 不应再有 INSERT IGNORE（已改 upsert）');
+assert(/solution\s+TEXT/.test(seed), 'seed 建表含 solution（题解）列');
+{
+    const solUpserts = (seed.match(/solution=VALUES\(solution\)/g) || []).length;
+    assert(solUpserts === 154, '154 题均带题解 upsert（当前 ' + solUpserts + '）');
+}
 assert(seed.includes('practice_progress'), '含进度表');
 assert(!seed.includes('\r'), 'seed 无 CRLF');
 
@@ -115,6 +153,11 @@ assert(dbc.includes('practice_exercises'), 'database.cpp initTable 建 practice_
 assert(dbc.includes('practice_progress'), 'database.cpp initTable 建 practice_progress');
 assert(dbc.includes('options'), 'database.cpp practice_exercises 含 options 列');
 assert(dbc.includes('answer'), 'database.cpp practice_exercises 含 answer 列');
+assert(dbc.includes('solution'), 'database.cpp 含 solution（题解）列');
+assert(dbc.includes('ADD COLUMN solution') || dbc.includes('columnExists("practice_exercises", "solution")'),
+    'database.cpp 有旧表补 solution 列的迁移');
+assert(/SELECT[\s\S]{0,200}solution\s*"/.test(dbc) || dbc.includes(', solution "'), 'getPracticeExercise 查询下发 solution');
+assert(dbc.includes('result["solution"]'), '详情结果带 solution 字段');
 
 console.log(failed === 0 ? '\n\u5168\u90e8\u901a\u8fc7 \u2713' : '\n' + failed + ' \u9879\u5931\u8d25 \u2717');
 process.exit(failed === 0 ? 0 : 1);

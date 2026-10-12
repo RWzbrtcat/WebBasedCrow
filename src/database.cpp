@@ -534,6 +534,7 @@ void DataBase::initTable()
             sort_order INT NOT NULL DEFAULT 0 COMMENT '章内排序',
             options TEXT NULL COMMENT '选择题选项JSON(非选择题为NULL)',
             answer TEXT NULL COMMENT '选择=正确label(JSON字符串)；填空=答案数组(JSON)；写代码=NULL',
+            solution TEXT NULL COMMENT '题解(思路+参考实现+要点，markdown)',
             starter_easy TEXT COMMENT '入门脚手架(写代码题)',
             starter_medium TEXT COMMENT '进阶脚手架(写代码题)',
             starter_hard TEXT COMMENT '挑战脚手架(写代码题)',
@@ -564,6 +565,15 @@ void DataBase::initTable()
         if (mysql_query(conn_, alterAnswer) != 0)
         {
             throw std::runtime_error(std::string("补充 answer 列失败：") + mysql_error(conn_));
+        }
+    }
+    // 旧表迁移：补 solution（题解）列
+    if (!columnExists("practice_exercises", "solution"))
+    {
+        const char* alterSolution = "ALTER TABLE practice_exercises ADD COLUMN solution TEXT NULL COMMENT '题解(思路+参考实现+要点)' AFTER answer";
+        if (mysql_query(conn_, alterSolution) != 0)
+        {
+            throw std::runtime_error(std::string("补充 solution 列失败：") + mysql_error(conn_));
         }
     }
     // 旧表 test_driver 是 NOT NULL，客观题需存 NULL；MODIFY 为可空（幂等，重复执行无害）
@@ -3123,7 +3133,7 @@ crow::json::wvalue DataBase::getPracticeExercise(int id)
 
     crow::json::wvalue result;
 
-    std::string sql = "SELECT id, chapter_id, type, title, prompt, options, starter_easy, starter_medium, starter_hard "
+    std::string sql = "SELECT id, chapter_id, type, title, prompt, options, starter_easy, starter_medium, starter_hard, solution "
                       "FROM practice_exercises WHERE status=1 AND id=" + std::to_string(id);
     if (mysql_query(conn_, sql.c_str()) != 0)
     {
@@ -3154,6 +3164,8 @@ crow::json::wvalue DataBase::getPracticeExercise(int id)
     result["prompt"] = row[4] ? row[4] : "";
     // 选择题下发选项（不含答案）；客观题不返回 answer，判定在服务端做
     if (row[5]) result["options"] = row[5];
+    // 题解（公开下发，前端折叠展示）
+    if (row[9]) result["solution"] = row[9];
 
     crow::json::wvalue tiers;
     crow::json::wvalue easy;

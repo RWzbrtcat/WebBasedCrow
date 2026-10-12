@@ -1,17 +1,18 @@
 // ============================================
 // 练习闯关：前端逻辑
 // 布局：左栏「章节 + 当前章题目」两级树，右栏答题工作台
-//       （题干卡 | 编辑器·作答卡 并排，结果条固定在工作台底部）。
+//       （题目描述卡 | 编辑器·作答卡 并排）。
+//       描述卡内 = 题目描述 + 折叠题解（同一滚动区） + 底部固定「测试结果」条。
 // 数据全部来自后端接口：
 //   GET  /api/practice/chapters            章节列表（按学期分组）
 //   GET  /api/practice/exercises?chapter=N 某章题目列表
-//   GET  /api/practice/exercise/<id>       单题详情（题干 + 三档脚手架/选项）
+//   GET  /api/practice/exercise/<id>       单题详情（题干 + 题解 + 三档脚手架/选项）
 //   POST /api/practice/submit              写代码题：沙箱编译运行判定
 //   POST /api/practice/answer              客观题（选择/填空）：对答案
 // 题型：choice(选择) / blank(填空) / short(写代码) / boss(项目关)。
 // 「已完成」状态为本地记录（localStorage），无后端依赖，清缓存即重置。
 // 依赖：daily-common.js（esc / showToast / apiRequest / describeFetchError）、
-//       markdown.js（renderMarkdownInto，渲染题干）。
+//       markdown.js（renderMarkdownInto，渲染题干与题解）。
 // ============================================
 (function () {
     'use strict';
@@ -29,6 +30,7 @@
     const workHeadEl = document.getElementById('workHead');
     const workBodyEl = document.getElementById('workBody');
     const questionCardEl = document.getElementById('questionCard');
+    const promptHostEl = document.getElementById('promptHost');
     const editorCardEl = document.getElementById('editorCard');
     const codeEditorEl = document.getElementById('codeEditor');
     const answerCardEl = document.getElementById('answerCard');
@@ -43,6 +45,9 @@
     const TIER_LABELS = { easy: '入门', medium: '进阶', hard: '挑战' };
     const TYPE_BADGES = { choice: '选择', blank: '填空', short: '写代码', boss: 'Boss' };
     const DONE_KEY = 'practice.done.v1';
+
+    // 题解宿主占位：每个题型都追加一份，用于挂载折叠题解（无题解时为空，不占空间）
+    const SOLUTION_HOST = '<div class="practice-solution-host" id="solutionHost"></div>';
 
     function badgeFor(type) {
         return TYPE_BADGES[type] || '写代码';
@@ -237,6 +242,30 @@
         else body.textContent = text;
     }
 
+    // 只重绘「题目描述」区：#promptHost 内部整体替换，
+    // 但保留描述卡外层的标题、滚动容器与底部「测试结果」卡（#resultCard 是 #promptHost 的兄弟）。
+    function setPromptHtml(inner) {
+        if (promptHostEl) promptHostEl.innerHTML = inner;
+    }
+
+    // 题解：默认折叠，位于题目描述下方（无题解时不渲染）
+    function renderSolution() {
+        const host = document.getElementById('solutionHost');
+        if (!host) return;
+        const md = (currentExercise && currentExercise.solution) || '';
+        if (!md.trim()) { host.innerHTML = ''; return; }
+        host.innerHTML =
+            '<details class="practice-solution">' +
+            '<summary>查看题解</summary>' +
+            '<div class="practice-solution-body markdown-body" id="solutionBody"></div>' +
+            '</details>';
+        const body = document.getElementById('solutionBody');
+        if (body) {
+            if (window.renderMarkdownInto) renderMarkdownInto(body, md);
+            else body.textContent = md;
+        }
+    }
+
     // ---------- 渲染题目（按题型分支） ----------
     function renderQuestion() {
         const ex = currentExercise;
@@ -251,14 +280,15 @@
         const ex = currentExercise;
         setWorkLayout(false);
         renderHead(ex);
-        questionCardEl.innerHTML = [
-            '<h3 class="practice-pane-title">题目</h3>',
+        setPromptHtml([
             '<div class="practice-prompt markdown-body" id="promptBody"></div>',
             '<div class="practice-tier-bar" id="tierBar"></div>',
-        ].join('');
+            SOLUTION_HOST,
+        ].join(''));
         renderPromptInto();
         bindTierBar();
         renderTier(currentTier);
+        renderSolution();
         editorCardEl.hidden = false;
         answerCardEl.hidden = true;
         clearResult();
@@ -269,11 +299,12 @@
         const ex = currentExercise;
         setWorkLayout(false);
         renderHead(ex);
-        questionCardEl.innerHTML = [
-            '<h3 class="practice-pane-title">题目</h3>',
+        setPromptHtml([
             '<div class="practice-prompt markdown-body" id="promptBody"></div>',
-        ].join('');
+            SOLUTION_HOST,
+        ].join(''));
         renderPromptInto();
+        renderSolution();
 
         let options = [];
         try { options = JSON.parse(ex.options || '[]'); } catch (e) { options = []; }
@@ -296,17 +327,18 @@
         renderHead(ex);
         const codeHtml = esc(ex.prompt || '').replace(/_{3,}/g,
             '<input type="text" class="practice-blank-input" data-blank spellcheck="false" autocomplete="off">');
-        questionCardEl.innerHTML = [
-            '<h3 class="practice-pane-title">题目</h3>',
+        setPromptHtml([
             '<div class="practice-prompt"><pre class="practice-blank-code"><code>' + codeHtml + '</code></pre></div>',
             '<div class="practice-editor-actions">',
             '<button type="button" class="btn btn-primary" id="blankSubmitBtn">提交答案</button>',
             '</div>',
-        ].join('');
+            SOLUTION_HOST,
+        ].join(''));
         const blankBtn = document.getElementById('blankSubmitBtn');
         if (blankBtn) blankBtn.addEventListener('click', submit);
         editorCardEl.hidden = true;
         answerCardEl.hidden = true;
+        renderSolution();
         clearResult();
     }
 
@@ -315,10 +347,7 @@
         setWorkLayout(true);
         workHeadEl.hidden = true;
         workHeadEl.innerHTML = '';
-        questionCardEl.innerHTML = [
-            '<h3 class="practice-pane-title">题目</h3>',
-            '<div class="practice-prompt practice-empty">从左侧选择一道题目开始练习。</div>',
-        ].join('');
+        setPromptHtml('<div class="practice-prompt practice-empty">从左侧选择一道题目开始练习。</div>');
         editorCardEl.hidden = true;
         answerCardEl.hidden = true;
         clearResult();
@@ -328,11 +357,8 @@
         setWorkLayout(true);
         workHeadEl.hidden = true;
         workHeadEl.innerHTML = '';
-        questionCardEl.innerHTML = [
-            '<h3 class="practice-pane-title">题目</h3>',
-            '<div class="practice-prompt practice-empty">' +
-                esc(hint || '本章题目尚未录入。') + '</div>',
-        ].join('');
+        setPromptHtml('<div class="practice-prompt practice-empty">' +
+            esc(hint || '本章题目尚未录入。') + '</div>');
         editorCardEl.hidden = true;
         answerCardEl.hidden = true;
         clearResult();

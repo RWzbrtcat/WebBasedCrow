@@ -47,11 +47,21 @@
                 <!-- 题目头（固定在工作台顶部） -->
                 <div class="practice-work-head" id="workHead" hidden></div>
 
-                <!-- 并排主体：题干 | 编辑器·作答 -->
+                <!-- 并排主体：题目描述卡 | 编辑器·作答 -->
                 <div class="practice-work-body single" id="workBody">
-                    <!-- 题干卡 -->
+                    <!-- 题目描述卡：题目描述 + 题解（滚动区） + 测试结果（固定底，紧邻题解下方） -->
                     <section class="practice-card practice-prompt-card" id="questionCard">
-                        <div class="loading">加载中...</div>
+                        <h3 class="practice-pane-title">题目描述</h3>
+                        <div class="practice-desc-scroll">
+                            <div id="promptHost">
+                                <div class="practice-prompt practice-empty">从左侧选择一道题目开始练习。</div>
+                            </div>
+                        </div>
+                        <!-- 测试结果：每次运行/提交后出现，固定在描述卡底部 -->
+                        <section class="practice-result" id="resultCard" hidden>
+                            <div class="practice-result-title">测试结果</div>
+                            <div class="practice-result-body" id="resultBody"></div>
+                        </section>
                     </section>
 
                     <!-- 写代码题：编辑器 -->
@@ -76,11 +86,6 @@
                         </div>
                     </section>
                 </div>
-
-                <!-- 判定结果条（固定在工作台底部） -->
-                <section class="practice-result" id="resultCard" hidden>
-                    <div id="resultBody"></div>
-                </section>
             </div>
         </div>
     </main>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>练习闯关 · v0.3 预览（题目描述 + 题解 + 测试结果） · LazyCat's Blog</title>
+<!-- 直接引用真实样式表：预览静态 DOM 在真实 CSS 下的最终效果 -->
+<link rel="stylesheet" href="static/css/style.css">
+<style>
+/* ===== v0.3 新增（待确认后并入 style.css）===== */
+/* 左栏题目卡：改为「题目描述 + 题解（滚动区）」+「测试结果（固定底）」 */
+.practice-desc-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+.practice-desc-scroll .practice-prompt {
+    flex: none;
+    min-height: 0;
+    overflow: visible;
+    padding-bottom: 4px;
+}
+/* 题解：默认折叠 */
+.practice-solution {
+    margin: 6px 20px 18px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    overflow: hidden;
+}
+.practice-solution > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-dark);
+    list-style: none;
+    user-select: none;
+}
+.practice-solution > summary::-webkit-details-marker { display: none; }
+.practice-solution > summary::before {
+    content: '';
+    width: 0; height: 0;
+    border-left: 6px solid currentColor;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    transition: transform .15s ease;
+}
+.practice-solution[open] > summary::before { transform: rotate(90deg); }
+.practice-solution-body {
+    padding: 2px 16px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text);
+}
+.practice-solution-body p { margin: 10px 0; }
+.practice-solution-body pre {
+    margin: 10px 0;
+    padding: 12px 14px;
+    background: var(--code-bg, #f6f3ef);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+}
+/* 测试结果：卡片内固定块（不再是工作台底部独立条） */
+.practice-result {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: none;
+    background: var(--surface);
+    max-height: 40%;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+.practice-result-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    color: var(--text-secondary);
+}
+.practice-result.is-pass .practice-result-title { color: var(--ok); }
+.practice-result.is-fail .practice-result-title { color: var(--danger, #dc2626); }
+.practice-result-body { padding: 0 20px 14px; }
+.practice-result-body .practice-result-head { margin-top: 0; }
+</style>
+</head>
+<body class="practice-page">
+    <header class="site-header site-header-pill">
+        <div class="header-inner">
+            <div class="brand">
+                <a class="site-title" href="#">LazyCat</a>
+            </div>
+            <nav class="nav">
+                <a href="#">首页</a>
+                <a href="#">每日一题</a>
+                <a href="#" class="active">练习闯关</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container container-practice">
+        <div class="practice-bar">
+            <h1 class="practice-title">练习闯关</h1>
+            <span class="practice-sub">C++ 后端知识 · 短题热身 + 项目 Boss 收口</span>
+            <span class="practice-progress">已完成 12 / 154</span>
+        </div>
+
+        <div class="practice-layout">
+            <aside class="practice-side">
+                <div class="practice-side-head"><span>章节</span></div>
+                <div class="practice-chapters">
+                    <div class="practice-semester">学期二 · 进阶</div>
+                    <button class="practice-chapter active" type="button">
+                        <span class="practice-chapter-num">C2</span>
+                        <span class="practice-chapter-title">移动语义与完美转发</span>
+                        <span class="practice-chapter-count">11</span>
+                    </button>
+                    <div class="practice-ex-list">
+                        <button class="practice-ex-item done" type="button"><span class="practice-ex-dot">✓</span><span class="practice-ex-badge">选择</span><span class="practice-ex-title">move 之后源对象的状态</span></button>
+                        <button class="practice-ex-item done" type="button"><span class="practice-ex-dot">✓</span><span class="practice-ex-badge">选择</span><span class="practice-ex-title">移动构造的触发</span></button>
+                        <button class="practice-ex-item done" type="button"><span class="practice-ex-dot">✓</span><span class="practice-ex-badge">填空</span><span class="practice-ex-title">std::move</span></button>
+                        <button class="practice-ex-item current" type="button"><span class="practice-ex-dot">●</span><span class="practice-ex-badge">短题</span><span class="practice-ex-title">修复移动语义的 bug</span></button>
+                        <button class="practice-ex-item" type="button"><span class="practice-ex-dot">○</span><span class="practice-ex-badge">短题</span><span class="practice-ex-title">只移动类（=delete 拷贝）</span></button>
+                        <button class="practice-ex-item" type="button"><span class="practice-ex-dot">○</span><span class="practice-ex-badge">短题</span><span class="practice-ex-title">完美转发工厂</span></button>
+                        <button class="practice-ex-item" type="button"><span class="practice-ex-dot">○</span><span class="practice-ex-badge">Boss</span><span class="practice-ex-title">只移动的 Buffer 类</span></button>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="practice-work">
+                <div class="practice-work-head">
+                    <span class="practice-badge">写代码</span>
+                    <h2 class="practice-work-title">短题 2 · 修复移动语义的 bug</h2>
+                    <span class="practice-work-pos">C2 · 第 8 / 11 题</span>
+                </div>
+
+                <div class="practice-work-body">
+                    <!-- 左：题目描述 + 题解 + 测试结果 -->
+                    <section class="practice-card practice-prompt-card">
+                        <h3 class="practice-pane-title">题目描述</h3>
+
+                        <div class="practice-desc-scroll">
+                            <div class="practice-prompt">
+                                <p>下面的 <code>Wrapper</code> 类独占一个 <code>int*</code> 资源，但移动语义实现有 bug：移动后源对象仍指向同一块内存，析构时二次释放。请修复。</p>
+                                <pre><code>class Wrapper {
+    int* p_;
+public:
+    explicit Wrapper(int v) : p_(new int(v)) {}
+    ~Wrapper() { delete p_; }
+
+    Wrapper(Wrapper&amp;&amp; o)
+      : p_(o.p_) {}          // bug: 未清空 o.p_
+};</code></pre>
+                                <p>要求：移动后源对象可安全析构，不产生 <code>double free</code>；移动构造函数标记 <code>noexcept</code>。</p>
+                            </div>
+
+                            <div class="practice-tier-bar">
+                                <button class="practice-tier active" type="button">入门</button>
+                                <button class="practice-tier" type="button">进阶</button>
+                                <button class="practice-tier" type="button">挑战</button>
+                            </div>
+
+                            <!-- 题解：默认折叠 -->
+                            <details class="practice-solution">
+                                <summary>查看题解</summary>
+                                <div class="practice-solution-body">
+                                    <p><strong>思路</strong>：移动语义的本质是「偷」资源——把源对象的指针接过来，并把源对象置为安全状态（<code>nullptr</code>），否则两个对象都会在析构时 <code>delete</code> 同一块内存。</p>
+                                    <pre><code>Wrapper(Wrapper&amp;&amp; o) noexcept
+    : p_(o.p_) {
+    o.p_ = nullptr;   // 关键：源对象置空
+}</code></pre>
+                                    <p>两个要点：</p>
+                                    <ul>
+                                        <li>必须 <code>noexcept</code>——否则 <code>std::vector</code> 扩容时会放弃移动、退化为拷贝。</li>
+                                        <li>源对象置空后，其析构是 no-op，天然杜绝 <code>double free</code>。</li>
+                                    </ul>
+                                </div>
+                            </details>
+                        </div>
+
+                        <!-- 测试结果（固定在左栏底部） -->
+                        <section class="practice-result is-pass">
+                            <div class="practice-result-title"><span class="practice-result-icon">✓</span>测试结果</div>
+                            <div class="practice-result-body">
+                                <div class="practice-result-head practice-result-pass">
+                                    <span>通过全部 4 个用例</span>
+                                </div>
+                                <p class="practice-result-note">本档已通关。可尝试更高难度档位。</p>
+                            </div>
+                        </section>
+                    </section>
+
+                    <!-- 右：编辑器 -->
+                    <section class="practice-card practice-editor-card">
+                        <div class="practice-editor-head">
+                            <span class="practice-editor-title">代码</span>
+                            <span class="practice-editor-lang">C++20</span>
+                        </div>
+                        <textarea class="practice-editor" spellcheck="false">Wrapper(Wrapper&amp;&amp; o) noexcept
+    : p_(o.p_) {
+    o.p_ = nullptr;
+}
+</textarea>
+                        <div class="practice-editor-actions">
+                            <button class="btn btn-primary" type="button">提交运行</button>
+                            <button class="btn btn-secondary" type="button">重置代码</button>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <a href="#">冀ICP备2026039047号</a>
+    </footer>
+</body>
+</html>

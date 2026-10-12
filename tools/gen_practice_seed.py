@@ -6094,6 +6094,2050 @@ int main() {
 
 ]
 
+# ---------- 题解表（id -> markdown 题解：思路 + 参考实现 + 要点）----------
+# 与 EXERCISES 分离存放，便于集中维护与增补；build() 按 id 关联下发。
+# 缺失时 solution 记 NULL（前端不显示题解块）。
+SOLUTIONS = {
+    # ================= C1 · 现代语法糖 =================
+    1: '''**思路**：`auto` 按值推导、丢掉引用与顶层 const；要返回引用必须显式写 `int&`。
+
+**参考实现**
+```cpp
+int& get_ref()   { return g_value; }   // 返回引用，可改 g_value
+int  get_value() { return g_value; }   // 返回值拷贝
+```
+
+**要点**
+- `auto x = get();`（`get` 返回 `const int&`）推导出的 `x` 是 `int`——引用被丢弃。
+- 想保留引用：`auto& x = ...`，或 `decltype(auto) x = ...`。''',
+
+    2: '''**思路**：`enum class` 是强类型，映射到字符串用 `switch`；反向解析用一张小表逐个 `strcmp`。
+
+**参考实现**
+```cpp
+const char* level_to_string(LogLevel level) {
+    switch (level) {
+        case LogLevel::Debug: return "Debug";
+        case LogLevel::Info:  return "Info";
+        case LogLevel::Warn:  return "Warn";
+        case LogLevel::Error: return "Error";
+    }
+    return "Unknown";
+}
+
+bool level_from_string(const char* s, LogLevel& out) {
+    struct Pair { const char* name; LogLevel level; };
+    static const Pair table[] = {
+        {"Debug", LogLevel::Debug}, {"Info", LogLevel::Info},
+        {"Warn", LogLevel::Warn},   {"Error", LogLevel::Error},
+    };
+    for (const Pair& p : table)
+        if (std::strcmp(s, p.name) == 0) { out = p.level; return true; }
+    return false;
+}
+```
+
+**要点**
+- `enum class` 不隐式转 `int`，`switch` 里必须写全 `LogLevel::Xxx`。
+- 解析失败要返回 `false`（且别写坏 `out`），序列化要覆盖「未知」。''',
+
+    3: '''**思路**：`override` 让编译器校验「确实重写了基类虚函数」；`final` 禁止再继承；`=delete` 显式禁用拷贝。
+
+**参考实现**
+```cpp
+class Circle : public Shape {
+public:
+    explicit Circle(double radius) : radius_(radius) {}
+    double area() const override { return 3.141592653589793 * radius_ * radius_; }
+private:
+    double radius_;
+};
+
+class Square final : public Shape {          // final 禁止再被继承
+public:
+    explicit Square(double side) : side_(side) {}
+    double area() const override { return side_ * side_; }
+private:
+    double side_;
+};
+
+class NonCopyable {
+public:
+    NonCopyable() = default;
+    NonCopyable(const NonCopyable&) = delete;
+    NonCopyable& operator=(const NonCopyable&) = delete;
+};
+```
+
+**要点**
+- 漏写 `override` 且签名不匹配时，会「静默不重写」——`override` 把它变成编译错误。
+- `final` 放类名后禁止继承，放虚函数后禁止再重写。''',
+
+    4: '''**思路**：用 `std::initializer_list` 初始化，`begin/end` 返回裸指针即可支持范围 for；`operator[]` 返回引用才能就地修改。
+
+**参考实现**
+```cpp
+IntArray(std::initializer_list<int> init)
+    : data_(new int[init.size()]), size_(static_cast<int>(init.size())) {
+    int i = 0;
+    for (int v : init) data_[i++] = v;
+}
+~IntArray() { delete[] data_; }
+int size() const { return size_; }
+int& operator[](int i) { return data_[i]; }
+int* begin() { return data_; }
+int* end()   { return data_ + size_; }
+```
+
+**要点**
+- 范围 for 只要求有 `begin()`/`end()`，返回指针即可。
+- `operator[]` 返回 `int&`（引用），`for (int& x : arr) x *= 2;` 才能改到原数组。''',
+
+    5: '''**思路**：合法转移是一条单向链加一个回环（`TimeWait → Closed`）。用 `switch` 表达转移表；`=delete` 拷贝让状态机成为只移动类型。
+
+**参考实现**
+```cpp
+bool can_transition(TcpState from, TcpState to) {
+    switch (from) {
+        case TcpState::Closed:      return to == TcpState::Listen;
+        case TcpState::Listen:      return to == TcpState::Established;
+        case TcpState::Established: return to == TcpState::FinWait1;
+        case TcpState::FinWait1:    return to == TcpState::FinWait2;
+        case TcpState::FinWait2:    return to == TcpState::TimeWait;
+        case TcpState::TimeWait:    return to == TcpState::Closed;
+    }
+    return false;
+}
+
+const char* state_to_string(TcpState s) {
+    switch (s) {
+        case TcpState::Closed:      return "Closed";
+        case TcpState::Listen:      return "Listen";
+        case TcpState::Established: return "Established";
+        case TcpState::FinWait1:    return "FinWait1";
+        case TcpState::FinWait2:    return "FinWait2";
+        case TcpState::TimeWait:    return "TimeWait";
+    }
+    return "Unknown";
+}
+
+bool state_from_string(const char* s, TcpState& out) {
+    struct Pair { const char* name; TcpState st; };
+    static const Pair table[] = {
+        {"Closed", TcpState::Closed}, {"Listen", TcpState::Listen},
+        {"Established", TcpState::Established}, {"FinWait1", TcpState::FinWait1},
+        {"FinWait2", TcpState::FinWait2}, {"TimeWait", TcpState::TimeWait},
+    };
+    for (const Pair& p : table)
+        if (std::strcmp(s, p.name) == 0) { out = p.st; return true; }
+    return false;
+}
+
+class TcpStateMachine {
+public:
+    TcpStateMachine() : state_(TcpState::Closed) {}
+    TcpStateMachine(const TcpStateMachine&) = delete;
+    TcpStateMachine& operator=(const TcpStateMachine&) = delete;
+
+    bool transition(TcpState to) {
+        if (!can_transition(state_, to)) return false;
+        state_ = to;
+        return true;
+    }
+    TcpState state() const { return state_; }
+private:
+    TcpState state_;
+};
+```
+
+**要点**
+- 非法转移必须**返回 false 且保持状态不变**（别先赋值再校验）。
+- 序列化用「表驱动」比一串 `if` 更难漏项。
+- 收口本章三件事：`enum class`（强类型）+ `=delete`（只移动）+ 序列化 round-trip。''',
+
+    11: '''**正确答案：C（`int`）**。
+
+`get()` 返回 `const int&`，但 `auto` 会**按值推导**——丢掉引用，也丢掉顶层 `const`，所以 `a` 的类型是 `int`。
+
+想让 `a` 保留引用必须写 `auto& a = get();`（此时 `a` 是 `const int&`）。''',
+
+    12: '''**正确答案：B（`int&`）**。
+
+`decltype` 的规则：对**变量名** `x` 得到声明类型 `int`；但加了括号变成 `(x)` 后，`x` 是「左值表达式」，`decltype` 对左值返回**引用类型** `int&`。
+
+这是经典的 `decltype((x))` vs `decltype(x)` 陷阱。当 `decltype` 要「原样保留值类别」时，可用 `decltype(auto)`。''',
+
+    13: '''**正确答案：B（`{1, 2, 3}`）**。
+
+`for (auto x : v)` 是**值拷贝**——`x` 是元素的副本，`x *= 2` 只改副本，原容器不变。
+
+要就地修改必须用引用：`for (auto& x : v) { x *= 2; }`；只读遍历想省拷贝可用 `const auto&`。''',
+
+    14: '''**应填：`nullptr`**。
+
+`f(0)` / `f(NULL)` 都会匹配 `f(int)`（`NULL` 多数实现就是 `0`）。只有 `nullptr` 的类型是 `std::nullptr_t`，能明确匹配 `f(void*)`。
+
+这正是 `nullptr` 的意义——消除 `0`/`NULL` 在重载解析中的歧义。''',
+
+    15: '''**应填：`override`**。
+
+`override` 让编译器检查「这个函数确实重写了基类虚函数」。签名一旦不匹配（比如漏了 `const`），会**直接编译报错**，而不是静默变成一个「新函数」。
+
+不加 `override` 时，`void draw() const` 里漏写 `const` 不会报错，但多态会悄悄失效。''',
+
+    16: '''**三个空依次填：`= default`、`= delete`、`= delete`**。
+
+- 空 1：`Handle() = default;` —— 显式要求编译器生成默认构造。
+- 空 2：`Handle(const Handle&) = delete;` —— 禁用拷贝构造。
+- 空 3：`Handle& operator=(const Handle&) = delete;` —— 禁用拷贝赋值。
+
+`= default`/`= delete` 让「要默认行为 / 明确禁止」在代码里显式可见，比空实现更清晰。''',
+
+    # ================= C2 · 移动语义与完美转发 =================
+    6: '''**思路**：移动构造「偷」资源并置空源对象；移动赋值先释放旧资源、再转移，并处理自移动。
+
+**参考实现**
+```cpp
+Buffer(Buffer&& other) noexcept : data_(other.data_), size_(other.size_) {
+    other.data_ = nullptr;    // 源对象置空，防 double free
+    other.size_ = 0;
+}
+
+Buffer& operator=(Buffer&& other) noexcept {
+    if (this == &other) return *this;   // 自移动保护
+    delete[] data_;                     // 先释放自己的旧资源
+    data_ = other.data_;
+    size_ = other.size_;
+    other.data_ = nullptr;
+    other.size_ = 0;
+    return *this;
+}
+```
+
+**要点**
+- 移动后源对象必须可安全析构（置空）。
+- 移动赋值：先判断自移动，再释放旧资源，顺序不能反。''',
+
+    7: '''**思路**：三个 bug 都围绕「所有权」——移动构造忘了置空源、移动赋值忘了释放旧资源、忘了自移动保护。
+
+**参考实现**
+```cpp
+// BUG #1 修复：移动构造里清空源指针
+Wrapper(Wrapper&& other) noexcept : ptr_(other.ptr_) {
+    other.ptr_ = nullptr;
+}
+
+// BUG #2 & #3 修复：先判自移动，再释放旧资源，最后转移
+Wrapper& operator=(Wrapper&& other) noexcept {
+    if (this == &other) return *this;   // 自移动
+    delete ptr_;                        // 释放自己的旧资源
+    ptr_ = other.ptr_;
+    other.ptr_ = nullptr;
+    return *this;
+}
+```
+
+**要点**
+- 忘置空源 → 两对象指向同一块内存 → `double free`。
+- 忘释放旧资源 → 移动赋值时自己原来的指针无人 `delete` → 内存泄漏。
+- 自移动若先 `delete ptr_` 再 `ptr_ = other.ptr_`，而 `other` 就是 `this`，会把刚释放的指针又赋回来 → 悬空。''',
+
+    8: '''**思路**：`id=0` 表示「空」。移动即把 `id_` 拿走、源置 0；移动赋值先处理自移动再转移。
+
+**参考实现**
+```cpp
+Resource(Resource&& other) noexcept : id_(other.id_) {
+    other.id_ = 0;
+}
+
+Resource& operator=(Resource&& other) noexcept {
+    if (this == &other) return *this;
+    id_ = other.id_;
+    other.id_ = 0;
+    return *this;
+}
+```
+
+**要点**
+- 用「哨兵值 0」表示空资源，比指针版更直观，且移动后源对象仍可安全复用。
+- `=delete` 拷贝后，`Resource` 只能移动——正好表达「独占所有权」。''',
+
+    9: '''**思路**：`T&&` 是**转发引用**，`std::forward<T>(v)` 借助引用折叠还原实参的左右值类别。
+
+**参考实现**
+```cpp
+template <typename T>
+Thing make_thing(T&& v) {
+    return Thing(std::forward<T>(v));
+}
+```
+
+**要点**
+- 传入左值 `int a; make_thing(a);` → `T` = `int&` → 转发为左值 → 命中 `Thing(int&)`。
+- 传入右值 `make_thing(5);` → `T` = `int` → 转发为右值 → 命中 `Thing(int&&)`。
+- **别用 `std::move(v)`**——它会把左值也强行转成右值，破坏转发。''',
+
+    10: '''**思路**：综合三件事——移动语义（转移+置空）、异常安全（`noexcept`）、RVO（按值返回）。
+
+**参考实现**
+```cpp
+Buffer(Buffer&& other) noexcept : data_(other.data_), size_(other.size_) {
+    other.data_ = nullptr;
+    other.size_ = 0;
+}
+
+Buffer& operator=(Buffer&& other) noexcept {
+    if (this == &other) return *this;
+    delete[] data_;
+    data_ = other.data_;
+    size_ = other.size_;
+    other.data_ = nullptr;
+    other.size_ = 0;
+    return *this;
+}
+```
+
+**要点**
+- 两个移动操作都标 `noexcept`：`std::vector` 扩容才敢用移动，否则退化为拷贝。
+- `create()` 按值返回局部对象，触发 RVO/拷贝省略，理论上零次拷贝。
+- 移动赋值「先自检、再释放、后转移」，一步都不能少。''',
+
+    17: '''**正确答案：B**。
+
+`std::move` 只是**类型转换**（转成右值引用），本身不搬任何东西；真正搬资源的是随后的移动构造。移动后源对象处于**「有效但未指定」**状态——对 `vector`/`string` 通常是空的，但你**不能假设**它一定是某个值。
+
+可以安全地「赋新值或析构」源对象，但别读它原来的内容。''',
+
+    18: '''**正确答案：B（移动构造）**。
+
+`std::string t = std::move(s);` 是**初始化**，不是赋值——`t` 是新对象，所以调用**移动构造函数**（形参 `std::string&&`）。
+
+判别口诀：等号左边是不是「新对象」——是新对象就是构造；若 `t` 已存在再写 `t = std::move(s);`，那才是移动赋值。''',
+
+    19: '''**正确答案：C（零次，拷贝省略）**。
+
+`return w;` 返回局部对象，是 **NRVO（具名返回值优化）**的典型场景；再到 `Widget x = make_widget();` 的初始化，编译器可全程在目标内存里就地构造，理论上是零次拷贝/移动。
+
+C++17 起，**纯右值**（如 `return Widget{};`）的拷贝省略是**强制**的；NRVO 虽非强制，但 `-O2` 下现代编译器基本都做。''',
+
+    20: '''**应填：`std::move`**。
+
+`std::vector<int> b = std::move(a);` 把 `a` 转成右值引用，触发 `vector` 的**移动构造**——直接接管 `a` 的堆缓冲，不逐元素深拷贝，复杂度 O(1)。
+
+移动后 `a` 通常变空，但属「有效但未指定」，别依赖其内容。''',
+
+    21: '''**应填：`std::forward`**。
+
+`wrapper(T&& arg)` 里 `arg` 是**左值**（具名变量都是左值），直接传会丢右值属性。`std::forward<T>(arg)` 用引用折叠还原实参类别：
+
+- 实参左值 → `T` = `int&` → 转发为左值；
+- 实参右值 → `T` = `int` → 转发为右值。
+
+别写成 `std::move(arg)`——那会把左值也强行变成右值。''',
+
+    22: '''**应填：`noexcept`**。
+
+`Buffer(Buffer&& other) noexcept;` 声明移动构造**不抛异常**。
+
+为什么关键：`std::vector` 扩容时要在「移动」和「拷贝」间选——只有元素的移动构造是 `noexcept`，`vector` 才敢用移动（否则中途抛异常无法回滚）；否则退回拷贝，白白损失性能。''',
+    # ================= C3 · 智能指针与 RAII =================
+    95: '''**思路**：`unique_ptr` 独占所有权、不可拷贝，只能靠 `std::move` 转移。
+
+**参考实现**
+```cpp
+std::unique_ptr<int> make_int(int v) {
+    return std::make_unique<int>(v);
+}
+
+int take_ownership(std::unique_ptr<int> p) {
+    return *p;   // 按值接管，函数返回时 p 析构、资源释放
+}
+```
+
+**要点**
+- 转移所有权必须 `std::move(p)` 或按值传入；写 `p2 = p1` 会编译错误。
+- `make_unique` 比 `unique_ptr<int>(new int(v))` 更安全，也更简洁。''',
+
+    96: '''**思路**：把 `next` 从 `shared_ptr` 改成 `weak_ptr`，打断「互相持有」的环；用 `lock()` 提升为 `shared_ptr` 再判有效性。
+
+**参考实现**
+```cpp
+struct Node {
+    std::weak_ptr<Node> next;    // 改 weak_ptr 打破循环
+    int value;
+    static int alive;
+    Node(int v) : value(v) { ++alive; }
+    ~Node() { --alive; }
+};
+int Node::alive = 0;
+
+bool has_next(const std::shared_ptr<Node>& n) {
+    return static_cast<bool>(n->next.lock());
+}
+```
+
+**要点**
+- `weak_ptr` 不增加引用计数，因此不阻止对象析构——环被打断。
+- `lock()` 返回 `shared_ptr`（对象已死则为空），是访问 weak 指向对象的唯一安全方式；等价写法 `!n->next.expired()`。''',
+
+    97: '''**思路**：数组必须用 `delete[]` 释放，所以给 `unique_ptr` 指定自定义 deleter；数组版本用 `int[]` 特化。
+
+**参考实现**
+```cpp
+struct ArrayDeleter {
+    void operator()(int* p) const { delete[] p; }
+};
+
+std::unique_ptr<int[], ArrayDeleter> make_array(int n, int v) {
+    std::unique_ptr<int[], ArrayDeleter> arr(new int[n]);
+    for (int i = 0; i < n; ++i) arr[i] = v;
+    return arr;
+}
+```
+
+**要点**
+- `unique_ptr<int[], Del>` 提供 `operator[]`；用 `delete` 释放 `new[]` 分配的内存是未定义行为，deleter 必须匹配分配方式。
+- deleter 是类型的一部分，不能只传值——`unique_ptr` 的第二个模板参数决定 deleter 类型。''',
+
+    98: '''**思路**：控制块（引用计数）与资源指针一起共享；拷贝时计数 +1，析构时 -1，归零才释放。
+
+**参考实现**
+```cpp
+explicit SimpleSharedPtr(T* p) : ptr_(p), refcount_(new std::size_t(1)) {}
+
+SimpleSharedPtr(const SimpleSharedPtr& o)
+    : ptr_(o.ptr_), refcount_(o.refcount_) {
+    if (refcount_) ++*refcount_;
+}
+
+~SimpleSharedPtr() {
+    if (refcount_ && --*refcount_ == 0) {
+        delete ptr_;
+        delete refcount_;
+    }
+}
+```
+
+**要点**
+- 计数是「共享」的——所有副本指向同一块 `size_t`，所以拷贝构造**不能**重新 `new` 计数。
+- 只有归零时才释放资源与控制块，先删资源再删计数。''',
+
+    99: '''**思路**：RAII —— 构造接管、析构释放；禁拷贝、只移动，保证资源唯一归属、异常安全。
+
+**参考实现**
+```cpp
+ResourceGuard(ResourceGuard&& other) : p_(other.p_) {
+    other.p_ = nullptr;
+}
+ResourceGuard& operator=(ResourceGuard&& other) {
+    if (this == &other) return *this;
+    delete p_;                  // 先释放自己的
+    p_ = other.p_;
+    other.p_ = nullptr;
+    return *this;
+}
+~ResourceGuard() { delete p_; }
+
+int* release() { int* t = p_; p_ = nullptr; return t; }
+```
+
+**要点**
+- 析构自动释放 ⇒ 中途抛异常也不泄漏（异常安全的核心）。
+- `release()` 交出所有权后必须置空，否则析构会重复释放。
+- 移动赋值「先自检、再释放、后转移」。''',
+
+    23: '''**正确答案：B**。
+
+`a->next = b; b->next = a;` 让两个 `shared_ptr` 互相持有，引用计数各为 2。离开作用域时计数只降到 1（对方还持有），谁都到不了 0 ⇒ 两个对象**永不释放，内存泄漏**。
+
+修复：把其中一个（或两个）改成 `weak_ptr`，打破环。''',
+
+    24: '''**正确答案：B（编译错误）**。
+
+`unique_ptr` 删除了拷贝构造/拷贝赋值——它表达**独占**所有权，不允许两个 `unique_ptr` 指向同一资源。
+
+要转移必须显式移动：`std::unique_ptr<int> p2 = std::move(p1);`（此后 `p1` 为空）。''',
+
+    25: '''**正确答案：B（B 更好）**。
+
+`std::make_shared<Widget>()` 把「对象」和「控制块（引用计数）」**一次分配**在连续内存里；而 `shared_ptr<Widget>(new Widget)` 要分配两次。
+
+更关键是**异常安全**：`f(shared_ptr<Widget>(new Widget), g())` 中若 `new Widget` 成功而 `g()` 抛异常，`shared_ptr` 尚未构造 ⇒ 对象泄漏；`make_shared` 没有这个窗口。''',
+
+    26: '''**应填：`make_shared`**。
+
+`auto sp = std::make_shared<Widget>(args...);` 是创建 `shared_ptr` 的推荐写法——一次分配（对象 + 控制块）+ 异常安全。''',
+
+    27: '''**应填：`weak_ptr`**。
+
+`std::weak_ptr<Node> next;` 是**非拥有**的弱引用，不增加引用计数。父子/前后节点这类「回指」用 `weak_ptr` 即可打破循环引用，避免内存泄漏。''',
+
+    28: '''**应填：`lock`**。
+
+`wp.lock()` 把 `weak_ptr` **临时提升**为 `shared_ptr`：对象仍存活则返回有效 `shared_ptr`（计数 +1），否则返回空。
+
+这是访问 `weak_ptr` 所指对象的唯一安全方式（不允许直接解引用）；`if (auto p = wp.lock())` 能在持有期间保证对象不被释放。''',
+
+    # ================= C4 · Lambda 与函数式 =================
+    100: '''**思路**：lambda 按值捕获 `n`，用 `std::function` 包装返回。
+
+**参考实现**
+```cpp
+std::function<int(int)> make_adder(int n) {
+    return [n](int x) { return x + n; };
+}
+```
+
+**要点**
+- `n` 按值捕获，lambda 持有的是它的**拷贝**——`make_adder` 返回后依然有效。
+- 若用 `[&]`，`n` 是形参、返回即销毁 ⇒ 悬垂（正是下一题的反面教材）。''',
+
+    101: '''**思路**：把 `[&]` 改成按值捕获 `[count]`，并用 `mutable` 允许修改内部副本。
+
+**参考实现**
+```cpp
+std::function<int()> make_counter() {
+    int count = 0;
+    return [count]() mutable { return ++count; };
+}
+```
+
+**要点**
+- 按值捕获的变量在 lambda 内默认是 `const`，要改必须加 `mutable`。
+- 状态保存在 lambda 内部副本里，函数返回后仍有效——避免悬垂。
+- 每个 lambda 对象持有**自己**的一份 count 副本。''',
+
+    102: '''**思路**：用 `std::function` 存回调；调用前判空。
+
+**参考实现**
+```cpp
+void set(std::function<void(int)> fn) { fn_ = std::move(fn); }
+void call(int v) { if (fn_) fn_(v); }
+```
+
+**要点**
+- 空 `std::function` 转 `bool` 为 `false`，可直接 `if (fn_)` 判断。
+- `set` 里用 `std::move(fn)` 避免多一次拷贝。''',
+
+    103: '''**思路**：把 lambda 作为谓词/变换传给标准算法。
+
+**参考实现**
+```cpp
+int count_positive(const std::vector<int>& v) {
+    return static_cast<int>(std::count_if(v.begin(), v.end(),
+        [](int x) { return x > 0; }));
+}
+
+std::vector<int> double_all(const std::vector<int>& v) {
+    std::vector<int> out;
+    out.reserve(v.size());
+    std::transform(v.begin(), v.end(), std::back_inserter(out),
+        [](int x) { return x * 2; });
+    return out;
+}
+```
+
+**要点**
+- `std::count_if` 返回 `difference_type`，转 `int` 更贴合签名。
+- `std::transform` 写入目标用 `std::back_inserter`，无需预先 `resize`。''',
+
+    104: '''**思路**：handler 存在 `vector` 里，按注册顺序即 id；注销把槽位置空（不删，保持 id 稳定）；触发时跳过空槽。
+
+**参考实现**
+```cpp
+int subscribe(std::function<void(int)> fn) {
+    handlers_.push_back(std::move(fn));
+    return next_id_++;
+}
+
+void unsubscribe(int id) {
+    if (id >= 0 && id < static_cast<int>(handlers_.size()))
+        handlers_[id] = nullptr;
+}
+
+void emit(int v) {
+    for (auto& h : handlers_) if (h) h(v);
+}
+```
+
+**要点**
+- 注销用「置空」而非 `erase`——保证已发出的 id 与新 id 不冲突（`next_id_` 只增）。
+- `if (h)` 判空，避免调用空 `std::function` 抛 `bad_function_call`。''',
+
+    29: '''**正确答案：B（未定义行为）**。
+
+`[&]` 捕获的是 `count` 的**引用**，而 `count` 是局部变量，`make_counter` 返回后即销毁 ⇒ 引用悬垂。之后再调用 `f()` 访问的是已失效内存，属**未定义行为**。
+
+修复：按值捕获 + `mutable` —— `[count]() mutable { return ++count; }`。''',
+
+    30: '''**正确答案：B（模板化的函数对象）**。
+
+`[](auto a, auto b){...}` 是**泛型 lambda**（C++14）：编译器把它编译成一个函数对象，其 `operator()` 是**模板**——每个具体参数类型都会实例化出对应版本。
+
+因此 `add(1, 2)` 和 `add(1.5, 2.5)` 都能用，甚至可混用不同类型。''',
+
+    31: '''**正确答案：B（捕获 this 指针）**。
+
+成员函数里写 `[=]`，编译器捕获的是 **`this` 指针**（按值），而非逐个拷贝成员；lambda 体里的 `v` 实际是 `this->v`。
+
+⚠️ 因此若对象已析构，lambda 里的 `this` 就是悬垂的——异步/延迟回调要格外小心（C++20 可用 `[*this]` 按值拷贝整个对象）。''',
+
+    32: '''**应填：`&`**。
+
+`[&]` 按引用捕获所有用到的外部变量；`[&threshold]` 只按引用捕获 `threshold`。语义是「共享、可改」。
+
+注意：按引用捕获要求被捕获对象在 lambda **调用**时仍然存活。''',
+
+    33: '''**应填：`mutable`**。
+
+按值捕获的变量在 lambda 内默认是 **const**，要修改必须加 `mutable`。它让 lambda 的 `operator()` 变成非 const 版本，可修改自己持有的副本。
+
+⚠️ 改的是**副本**，不影响外部的 `n`。''',
+
+    34: '''**应填：`auto`**。
+
+`[](auto x){...}` 是泛型 lambda——参数 `auto` 让 `operator()` 成为模板，可接受任意类型（`int`/`double`…）。
+
+比写死 `int` 更通用，本质是「按调用处实例化出多个版本」。''',
+
+    # ================= C5 · 模板与元编程基础 =================
+    105: '''**思路**：变参模板求和——单参数出口 + 递归展开（也可用 C++17 折叠表达式）。
+
+**参考实现**
+```cpp
+template <typename T>
+T sum(T t) { return t; }                       // 出口
+
+template <typename T, typename... Args>
+T sum(T t, Args... args) { return t + sum(args...); }
+```
+
+**要点**
+- 递归版必须有**单参数出口**，否则无限递归。
+- 折叠表达式等价写法：`template <typename... A> auto sum(A... a) { return (a + ...); }`。''',
+
+    106: '''**思路**：通用模板返回 `"other"` 作兜底，为 `int`/`double` 写全特化。
+
+**参考实现**
+```cpp
+template <typename T>
+const char* type_name() { return "other"; }
+
+template <> const char* type_name<int>()    { return "int"; }
+template <> const char* type_name<double>() { return "double"; }
+```
+
+**要点**
+- 全特化用 `template <>` 起头，且签名完全匹配。
+- 通用版本是兜底；特化优先匹配。通用模板需在特化之前声明/定义（可见性）。''',
+
+    107: '''**思路**：类型萃取靠「继承 `std::true_type`/`std::false_type`」实现，从而自带 `::value` 与 `::type`。
+
+**参考实现**
+```cpp
+template <typename T> struct is_integral_type : std::false_type {};
+template <> struct is_integral_type<int>       : std::true_type {};
+template <> struct is_integral_type<long long> : std::true_type {};
+```
+
+**要点**
+- `std::true_type` 即 `std::integral_constant<bool, true>`，继承它即获得 `::value`。
+- 未列出的类型落入通用版本（false）。''',
+
+    108: '''**思路**：用 `sizeof...(Ts)` 在编译期得到包中类型个数。
+
+**参考实现**
+```cpp
+template <typename... Ts> struct typelist {};
+
+template <typename List> struct length;
+template <typename... Ts>
+struct length<typelist<Ts...>> {
+    static constexpr int value = sizeof...(Ts);
+};
+```
+
+**要点**
+- 用**部分特化** `length<typelist<Ts...>>` 把包拆开，才能对 `Ts...` 用 `sizeof...`。
+- `sizeof...` 是编译期常量，`value` 可作模板参数。''',
+
+    109: '''**思路**：`Length` 用 `sizeof...`；`Contains` 用折叠表达式对每个 `Ts` 做 `is_same` 的或运算。
+
+**参考实现**
+```cpp
+template <typename... Ts> struct TypeList {};
+
+template <typename List> struct Length;
+template <typename... Ts>
+struct Length<TypeList<Ts...>> { static constexpr int value = sizeof...(Ts); };
+
+template <typename T, typename List> struct Contains;
+template <typename T, typename... Ts>
+struct Contains<T, TypeList<Ts...>> {
+    static constexpr bool value = (std::is_same_v<T, Ts> || ...);
+};
+```
+
+**要点**
+- `(std::is_same_v<T, Ts> || ...)` 是折叠表达式，空包对 `||` 退化为 `false`——语义正好正确。
+- 两个萃取都是 `constexpr` 成员，可直接当模板参数或 `if constexpr` 条件。''',
+
+    35: '''**正确答案：A（10）**。
+
+递归展开：`sum(1,2,3,4) = 1 + sum(2,3,4) = 1+2+sum(3,4) = 1+2+3+sum(4) = 1+2+3+4 = 10`。
+
+`sum` 的返回类型是 `T`（首个参数的类型 `int`），所有参数会被统一到该类型参与运算。''',
+
+    36: '''**正确答案：B（编译期丢弃）**。
+
+`if constexpr` 的条件在**编译期**求值，为假的分支**不会被实例化/编译**——它直接从生成的代码里消失。
+
+这是它和普通 `if` 的关键区别：普通 `if` 两个分支都要能编译通过，`if constexpr` 只编「命中」的那支。这正让「按类型走不同代码路径」的模板成为可能。''',
+
+    37: '''**正确答案：A**。
+
+`T::value_type` 是**依赖类型**（取决于模板参数 `T`）。在没有 `typename` 时，编译器无法判断 `T::value_type` 是「类型」还是「静态成员」，于是默认当成非类型 ⇒ 语法报错。
+
+`typename` 就是明确告诉编译器：`T::value_type` 是一个**类型名**。''',
+
+    38: '''**应填：`...`**。
+
+`return (args + ...);` 是 C++17 **折叠表达式**（一元右折叠），把包中所有 `args` 用 `+` 串起来。
+
+对 `+` 而言空包退化为 `0`；若想显式指定初始值可写 `(0 + ... + args)`。''',
+
+    39: '''**应填：`typename`**。
+
+`typename T::value_type x = c.front();` —— `T::value_type` 是依赖类型，必须用 `typename` 消歧，声明「这是个类型」。
+
+漏写会报「dependent name is not a type」类的编译错误。''',
+
+    40: '''**应填：`constexpr`**。
+
+`if constexpr (std::is_integral_v<T>) { ... } else { ... }` —— 条件在编译期求值，只有命中的分支会被编译，另一支被丢弃。
+
+这样即使「另一支」对当前 `T` 根本不合法（例如对非指针类型解引用），也不会报错。''',
+    # ================= C6 · 现代工具类型 =================
+    110: '''**思路**：找到就 `return x;`（`optional<int>` 可由 `int` 隐式构造），没找到 `return std::nullopt;`。
+
+**参考实现**
+```cpp
+std::optional<int> find_first_even(const std::vector<int>& v) {
+    for (int x : v) if (x % 2 == 0) return x;
+    return std::nullopt;
+}
+```
+
+**要点**
+- `optional<T>` 可用 `T` 或 `std::nullopt` 构造，表达「有值 / 无值」。
+- 调用方：`if (auto r = f(v)) { ... *r ... }`，或用 `r.value_or(默认值)`。''',
+
+    111: '''**思路**：`string_view` 不拥有内存——返回局部 `string` 的视图会悬垂。改成返回**字符串字面量**（静态存储期，全程有效）。
+
+**参考实现**
+```cpp
+std::string_view get_view() {
+    return "hello";   // 字面量静态存储期，安全
+}
+```
+
+**要点**
+- `string_view` = 「指针 + 长度」，绝不拥有数据；被指向对象的生命周期必须覆盖使用期。
+- 需要返回「自建字符串」时，返回 `std::string`（拥有）而不是 `string_view`。''',
+
+    112: '''**思路**：`std::visit` 按当前持有类型分派；lambda 里用 `if constexpr` 按类型走分支。
+
+**参考实现**
+```cpp
+std::string describe(const std::variant<int, std::string>& v) {
+    return std::visit([](auto&& arg) -> std::string {
+        using T = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<T, int>) {
+            return "int:" + std::to_string(arg);
+        } else {
+            return "str:" + arg;
+        }
+    }, v);
+}
+```
+
+**要点**
+- `std::visit` 是访问 `variant` 的**类型安全**方式（不必手动查 `index()`）。
+- `decltype(arg)` 带引用，用 `std::decay_t` 去掉修饰再比较。''',
+
+    113: '''**思路**：同 optional 模式——找到返回，找不到 `nullopt`。
+
+**参考实现**
+```cpp
+std::optional<int> find_divisible(const std::vector<int>& v, int d) {
+    if (d == 0) return std::nullopt;
+    for (int x : v) if (x % d == 0) return x;
+    return std::nullopt;
+}
+```
+
+**要点**
+- 用 `optional` 取代「返回 -1 表示失败」这类**魔法值**——调用方无法忽略「可能失败」。
+- 顺手防御 `d == 0`（除零）。''',
+
+    114: '''**思路**：`map` 存键值；`get_str` 查不到返回 nullopt；`get_int` 在 `stoi` 失败时 catch 返回 nullopt。
+
+**参考实现**
+```cpp
+void set(const std::string& key, const std::string& val) { kv_[key] = val; }
+
+std::optional<std::string> get_str(const std::string& key) {
+    auto it = kv_.find(key);
+    if (it == kv_.end()) return std::nullopt;
+    return it->second;
+}
+
+std::optional<int> get_int(const std::string& key) {
+    auto it = kv_.find(key);
+    if (it == kv_.end()) return std::nullopt;
+    try { return std::stoi(it->second); }
+    catch (...) { return std::nullopt; }
+}
+```
+
+**要点**
+- `std::stoi` 遇非法输入抛 `std::invalid_argument`（溢出抛 `out_of_range`），catch 后转 nullopt。
+- 两个 `get_*` 都不抛异常，统一用返回值表达失败——这就是 `optional` 的价值。''',
+
+    41: '''**正确答案：B（`std::nullopt`）**。
+
+`{1,3,5}` 没有偶数，循环走完后执行 `return std::nullopt;`——`optional<int>` 的「无值」状态。
+
+调用方应这样用：`if (auto r = find_even(v)) { 用 *r } else { 处理没找到 }`。注意**别**用 `*r` 直接解引用空 optional（未定义行为）。''',
+
+    42: '''**正确答案：B（类型安全联合）**。
+
+`std::variant` 与裸 `union` 不同：它**记得自己当前持有哪个类型**，访问时通过 `std::visit` 或 `std::get` 做类型检查——访问到错误类型会抛 `std::bad_variant_access`，而不是像 `union` 那样静默读到垃圾。
+
+它**同一时刻只持有一种值**（不是三种并存）。''',
+
+    43: '''**正确答案：B（悬垂，未定义行为）**。
+
+`get_view` 里 `s` 是**局部** `std::string`，函数返回即销毁；返回的 `string_view` 仍指向那块已释放内存 ⇒ 悬垂。之后 `std::cout << v` 读的是失效内存，未定义行为。
+
+修复：返回 `std::string`（拥有），或返回指向**静态存储期**字面量的 view。''',
+
+    44: '''**应填：`value_or`**。
+
+`o.value_or(42)`：`o` 有值则返回其值，无值则返回传入的默认值 `42`。
+
+它比 `o ? *o : 42` 更简洁，且不会在无值时抛异常（区别于 `*o` 和 `o.value()`）。''',
+
+    45: '''**应填：`visit`**。
+
+`std::visit(回调, v)` 按 `variant` **当前持有的类型**调用回调（通常配合泛型 lambda）。这是访问 `variant` 的类型安全入口。
+
+相比手动 `if (v.index() == 0)` 再 `get<0>`，`visit` 不会漏掉某个类型分支。''',
+
+    46: '''**应填：`substr`**。
+
+`view.substr(0, 5)` 返回 `"hello"` 的 `string_view`——只调整「指针 + 长度」，**零拷贝**。
+
+这正是 `string_view` 的用途：字符串切片/解析时避免频繁分配。前提是被切的原字符串在使用期内一直有效。''',
+
+    # ================= C7 · STL 容器与算法 =================
+    115: '''**思路**：`std::set` 自动去重 + 升序，构造后拷回 `vector`。
+
+**参考实现**
+```cpp
+std::vector<int> unique_sorted(const std::vector<int>& v) {
+    std::set<int> s(v.begin(), v.end());          // 去重 + 排序
+    return std::vector<int>(s.begin(), s.end());
+}
+```
+
+**要点**
+- `set` 底层红黑树：插入即去重、遍历即有序——「去重 + 排序」的最省事选型。
+- 只需去重、不需排序时，`unordered_set` 更快（均摊 O(n)）。''',
+
+    116: '''**思路**：`std::remove_if` 把要保留的元素前移、返回新的逻辑末尾，再 `erase` 掉尾部。别在循环里逐个 erase。
+
+**参考实现**
+```cpp
+void remove_even(std::vector<int>& v) {
+    v.erase(std::remove_if(v.begin(), v.end(),
+                           [](int x) { return x % 2 == 0; }),
+            v.end());
+}
+```
+
+**要点**
+- `erase` 会让「被删位置及之后」的迭代器**全部失效**；循环里 erase 必须用其返回值续接。
+- erase-remove 惯用法：一趟扫描 + 一次批量删除，既安全又高效。''',
+
+    117: '''**思路**：`std::set<int, std::greater<int>>` 用 `greater` 当比较器，遍历即为降序。
+
+**参考实现**
+```cpp
+std::set<int, std::greater<int>> make_desc_set(const std::vector<int>& v) {
+    return std::set<int, std::greater<int>>(v.begin(), v.end());
+}
+```
+
+**要点**
+- 比较器是**容器类型的一部分**，必须写进模板参数。
+- `std::greater<int>` 让「大者在前」，从而降序；默认 `std::less<int>` 是升序。''',
+
+    118: '''**思路**：先 `copy_if` 保留正数，再 `transform` 翻倍。
+
+**参考实现**
+```cpp
+std::vector<int> filter_and_double(const std::vector<int>& v) {
+    std::vector<int> tmp;
+    std::copy_if(v.begin(), v.end(), std::back_inserter(tmp),
+                 [](int x) { return x > 0; });
+    std::transform(tmp.begin(), tmp.end(), tmp.begin(),
+                   [](int x) { return x * 2; });
+    return tmp;
+}
+```
+
+**要点**
+- 两步流水线：`copy_if` 过滤 → `transform` 变换。
+- `transform` 可就地写回同一容器（输入、输出迭代器相同）。''',
+
+    119: '''**思路**：`list` 维护使用顺序（头最新、尾最旧），`unordered_map` 记录 key → list 迭代器，实现 O(1) 查找与移动。
+
+**参考实现**
+```cpp
+int get(int key) {
+    auto it = map_.find(key);
+    if (it == map_.end()) return -1;
+    items_.splice(items_.begin(), items_, it->second);   // 移到最前
+    return it->second->second;
+}
+
+void put(int key, int value) {
+    auto it = map_.find(key);
+    if (it != map_.end()) {                 // 已存在：更新 + 提前
+        it->second->second = value;
+        items_.splice(items_.begin(), items_, it->second);
+        return;
+    }
+    if (static_cast<int>(items_.size()) >= capacity_) {
+        map_.erase(items_.back().first);    // 淘汰最久未用（尾部）
+        items_.pop_back();
+    }
+    items_.push_front({key, value});
+    map_[key] = items_.begin();
+}
+```
+
+**要点**
+- `list::splice` 把节点在链内「搬」到头部：**不拷贝**、**迭代器不失效**——所以 `map_` 里的迭代器始终有效。
+- 容量满时**先淘汰尾部再插入**，顺序别反。''',
+
+    47: '''**正确答案：B（未定义行为）**。
+
+`vector::erase` 会让被删位置**及其之后**的所有迭代器失效。`v.erase(it)` 后循环又执行 `++it`，操作的是已失效迭代器 ⇒ 未定义行为。
+
+修复用 erase-remove 惯用法：`v.erase(std::remove_if(...), v.end())`。''',
+
+    48: '''**正确答案：B（`map`）**。
+
+`map` 底层红黑树，**按键有序**，遍历即升序——需要「按 key 排序遍历」时选它。
+
+`unordered_map` 是哈希表，均摊 O(1) 查找更快，但**遍历顺序无定义**（与插入顺序、哈希都无关）。''',
+
+    49: '''**正确答案：B**。
+
+`v.erase(std::remove(v.begin(), v.end(), 2), v.end())` —— `std::remove` 把**不为 2** 的元素前移、返回新逻辑末尾，`erase` 再删掉尾部的「残留」。
+
+循环里逐个 erase 会触发迭代器失效（见第 1 题）；`remove` 本身不改变容器大小，必须配合 `erase`。''',
+
+    50: '''**应填：`unordered_map`**。
+
+`std::unordered_map<Point, int, Hash> m;` —— 第三个模板参数是**自定义哈希**；`Point` 作 key 时标准库没有它的哈希，必须自己提供。
+
+注意 `unordered_map` 的 key 还需支持 `==` 比较（用于哈希冲突时的相等判断）。''',
+
+    51: '''**应填：`set`**。
+
+`std::set<int, std::greater<int>>` —— 第二个模板参数是**比较器**，`greater<int>` 让元素按降序排列。
+
+`set` 自动去重且有序；换个比较器就能改成降序，容器类型本身不变。''',
+
+    52: '''**应填：`find_if`**。
+
+`std::find_if(v.begin(), v.end(), 谓词)` 返回**第一个**满足谓词的元素迭代器；都满足则返回 `end()`。
+
+用前一定判 `it != v.end()` 再解引用，否则是未定义行为。要找「所有」满足的用 `copy_if`，找「个数」用 `count_if`。''',
+
+    # ================= C8 · 文件操作与流 =================
+    130: '''**思路**：`ofstream` 写、`ifstream` 读，逐行/逐个处理。
+
+**参考实现**
+```cpp
+void write_numbers(const std::string& path, const std::vector<int>& nums) {
+    std::ofstream out(path);
+    for (int n : nums) out << n << "\\n";
+}
+
+std::vector<int> read_numbers(const std::string& path) {
+    std::vector<int> result;
+    std::ifstream in(path);
+    int n;
+    while (in >> n) result.push_back(n);   // 读到 EOF/失败自动停
+    return result;
+}
+```
+
+**要点**
+- `while (in >> n)` 是标准读取惯用法：EOF 或格式不符时表达式为 false。
+- 写文本用 `<<`（会做格式化），读用 `>>`（自动按空白切分）。''',
+
+    131: '''**思路**：二进制模式用 `write`/`read` 原始字节；读回先定位文件大小再 `resize`。
+
+**参考实现**
+```cpp
+void save_binary(const std::string& path, const std::vector<int>& data) {
+    std::ofstream out(path, std::ios::binary);
+    out.write(reinterpret_cast<const char*>(data.data()),
+              static_cast<std::streamsize>(data.size() * sizeof(int)));
+}
+
+std::vector<int> load_binary(const std::string& path) {
+    std::ifstream in(path, std::ios::binary);
+    in.seekg(0, std::ios::end);
+    std::streamsize bytes = in.tellg();
+    in.seekg(0, std::ios::beg);
+    std::vector<int> result(static_cast<std::size_t>(bytes) / sizeof(int));
+    in.read(reinterpret_cast<char*>(result.data()), bytes);
+    return result;
+}
+```
+
+**要点**
+- 必须开 `std::ios::binary`，否则 Windows 上 `\\n` 的换行翻译会破坏字节流。
+- 读回：`seekg(末尾) → tellg()` 求字节数，再 `resize` 后 `read`。''',
+
+    132: '''**思路**：定长缓冲循环 `read`，按 `gcount()` 取实际读数拼接。
+
+**参考实现**
+```cpp
+std::string read_all_chunks(const std::string& path, size_t chunk_size) {
+    std::ifstream in(path, std::ios::binary);
+    std::string result;
+    std::vector<char> buf(chunk_size);
+    while (in.read(buf.data(), static_cast<std::streamsize>(chunk_size))
+           || in.gcount() > 0) {
+        result.append(buf.data(), static_cast<std::size_t>(in.gcount()));
+    }
+    return result;
+}
+```
+
+**要点**
+- 循环条件带 `|| in.gcount() > 0`，才能处理「最后一块不足 chunk_size」的收尾。
+- 必须按 `gcount()` **实际读数**追加，不能直接用 `chunk_size`（否则尾部拼进垃圾）。''',
+
+    133: '''**思路**：`ostringstream` 拼行；解析时先按行、再按逗号切。
+
+**参考实现**
+```cpp
+std::string to_csv(const std::vector<std::vector<int>>& rows) {
+    std::ostringstream out;
+    for (std::size_t r = 0; r < rows.size(); ++r) {
+        for (std::size_t c = 0; c < rows[r].size(); ++c) {
+            if (c) out << ',';
+            out << rows[r][c];
+        }
+        out << '\\n';
+    }
+    return out.str();
+}
+
+std::vector<std::vector<int>> from_csv(const std::string& text) {
+    std::vector<std::vector<int>> result;
+    std::istringstream lines(text);
+    std::string line;
+    while (std::getline(lines, line)) {
+        if (line.empty()) continue;
+        std::vector<int> row;
+        std::istringstream cells(line);
+        std::string cell;
+        while (std::getline(cells, cell, ',')) row.push_back(std::stoi(cell));
+        result.push_back(row);
+    }
+    return result;
+}
+```
+
+**要点**
+- 写：行内逗号分隔、行间换行；读：两级 `getline`（先整行、再逗号）。
+- `std::getline(stream, s, ',')` 指定分隔符即可按逗号切分。''',
+
+    134: '''**思路**：写入前判断行数，达到上限就把文件 `rename` 成 `.1` 并重置计数。
+
+**参考实现**
+```cpp
+void append(const std::string& line) {
+    if (count_ >= max_lines_) {
+        std::rename(base_.c_str(), (base_ + ".1").c_str());
+        count_ = 0;
+    }
+    std::ofstream out(base_, std::ios::app);
+    out << line << "\\n";
+    ++count_;
+}
+```
+
+**要点**
+- 滚动判断放在**写入前**，保证单文件不超过 `max_lines_` 行。
+- `std::rename` 会覆盖同名旧文件（POSIX 语义），比「先删再建」更简洁。
+- 生产环境还要处理多级滚动/按大小滚动，这里是最小实现。''',
+
+    53: '''**正确答案：B（流状态 good）**。
+
+`ifstream` 对象在布尔上下文里被转换为「流状态是否正常」——即 `!fail() && !bad()`。打开失败时流进入 fail 状态，`if (f)` 为假。
+
+注意：它检查的是**流状态**，不是「文件是否为空」「是否到 EOF」「文件是否存在」（后三者是流状态的**结果**，但 `if(f)` 本身只测状态）。''',
+
+    54: '''**正确答案：B（二进制模式 write）**。
+
+文本模式的 `<<` 会做格式化，且平台相关的换行翻译（Windows 把 `\\n` 变 `\\r\\n`）会让字节数与预期不符，读回时错位。
+
+要「按内存原样」存取 `int`，用 `std::ios::binary` + `write`/`read` 原始字节。跨平台严谨做法还要固定字节序（大小端），这里是同一平台读写。''',
+
+    55: '''**正确答案：A（读到 eof 或格式失败）**。
+
+`while (f >> x) { ... }` 里 `f >> x` 返回流引用，其布尔值反映**本次提取是否成功**：到达 EOF 或遇到不符合目标类型的字符时，流进入 fail 状态 ⇒ 循环结束。
+
+这是 C++ 读取循环的标准写法——把「读取」和「判断成败」合成一个表达式，避免读完才判 EOF 导致多读一次。''',
+
+    56: '''**应填：`app`**。
+
+`std::ofstream f("a.txt", std::ios::app);` —— `app`（append）模式在文件末尾追加，**不截断**原内容。默认的 `out` 模式会清空文件。
+
+（若文件不存在，`app` 会创建它。）''',
+
+    57: '''**应填：`getline`**。
+
+`while (std::getline(f, line)) { ... }` 每次读一整行（不含行尾换行）到 `line`，读到 EOF 时返回流进入 fail 状态、循环结束。
+
+`std::getline` 是「按行读取」的标准方式，比 `>>` 更适合含空格的整行文本。''',
+
+    58: '''**应填：`filesystem`**。
+
+`namespace fs = std::filesystem;` —— C++17 引入的文件系统库，提供路径拼接、遍历目录、判断存在、创建/删除目录、文件大小等能力。
+
+有时还需链接 `-lstdc++fs`（老编译器），较新的 GCC/Clang 已并入标准库。''',
+    # ================= C9 · 多线程与并发 =================
+    120: '''**思路**：用 `std::mutex` + `lock_guard` 把读/写包进临界区。
+
+**参考实现**
+```cpp
+void increment() {
+    std::lock_guard<std::mutex> lock(m_);
+    ++value_;
+}
+int get() const {
+    std::lock_guard<std::mutex> lock(m_);
+    return value_;
+}
+```
+
+**要点**
+- `lock_guard` 构造即加锁、析构即解锁（RAII）——即使中途抛异常也会解锁。
+- `m_` 必须声明为 `mutable`，否则 `get() const` 里无法加锁。''',
+
+    121: '''**思路**：把裸 `int` 换成 `std::atomic<int>`，自增即为原子的读-改-写。
+
+**参考实现**
+```cpp
+#include <atomic>
+std::atomic<int> counter{0};
+
+void increment() {
+    ++counter;          // 原子自增
+}
+```
+
+**要点**
+- `atomic` 对单个变量的自增/取值无需锁，性能优于 `mutex`。
+- 别写 `counter = counter + 1;`——那是「读 + 写」两步，整体不再是原子的。''',
+
+    122: '''**思路**：用带谓词的 `wait` 等待条件成立；改变条件后 `notify_one` 唤醒对端。
+
+**参考实现**
+```cpp
+void push(int v) {
+    std::unique_lock<std::mutex> lock(m_);
+    cv_.wait(lock, [this] { return !has_; });   // 有空间才继续
+    value_ = v;
+    has_ = true;
+    cv_.notify_one();
+}
+int pop() {
+    std::unique_lock<std::mutex> lock(m_);
+    cv_.wait(lock, [this] { return has_; });    // 有值才继续
+    has_ = false;
+    cv_.notify_one();
+    return value_;
+}
+```
+
+**要点**
+- 带谓词的 `wait` 等价于「while(!谓词) wait;」——能防**虚假唤醒**（spurious wakeup）。
+- 条件变量必须配 `unique_lock`（`wait` 内部要临时解锁/重锁）；普通 `lock_guard` 不够。''',
+
+    123: '''**思路**：`mutex` 保护 `deque`，`try_pop` 空队列返回 false（非阻塞）。
+
+**参考实现**
+```cpp
+void push(int v) {
+    std::lock_guard<std::mutex> lock(m_);
+    q_.push_back(v);
+}
+bool try_pop(int& out) {
+    std::lock_guard<std::mutex> lock(m_);
+    if (q_.empty()) return false;
+    out = q_.front();
+    q_.pop_front();
+    return true;
+}
+size_t size() const {
+    std::lock_guard<std::mutex> lock(m_);
+    return q_.size();
+}
+```
+
+**要点**
+- 用 `deque` 而非 `vector`：头部 `pop_front` 是 O(1)，`vector` 要搬元素。
+- `size()` 常量方法里也要加锁 ⇒ `m_` 需 `mutable`。''',
+
+    124: '''**思路**：`mutex` + `vector`；`drain` 用 `swap` 把整块缓冲「换走」，O(1) 清空。
+
+**参考实现**
+```cpp
+void append(const std::string& line) {
+    std::lock_guard<std::mutex> lock(m_);
+    lines_.push_back(line);
+}
+std::vector<std::string> drain() {
+    std::lock_guard<std::mutex> lock(m_);
+    std::vector<std::string> out;
+    out.swap(lines_);       // 交换指针，O(1) 清空原缓冲
+    return out;
+}
+size_t size() const {
+    std::lock_guard<std::mutex> lock(m_);
+    return lines_.size();
+}
+```
+
+**要点**
+- `swap` 比「拷贝出来再 `clear`」高效得多（只换内部指针）。
+- 收集日志的典型模式：多线程 `append`，单线程定时 `drain` 落盘。''',
+
+    59: '''**正确答案：B（数据竞争，结果未定义）**。
+
+`counter++` 不是原子操作——它被拆成「读 → 加 1 → 写回」三步。两个线程交错执行时可能互相覆盖，最终值**小于**期望，甚至行为未定义。
+
+修复：用 `std::atomic<int>` 或 `std::mutex` 保护。''',
+
+    60: '''**正确答案：B（可能死锁）**。
+
+线程 1 拿 `a` 等 `b`，线程 2 拿 `b` 等 `a` —— 若两边刚好各持一把再申请另一把，就形成**循环等待**，互相卡死。
+
+修复：**所有线程按同一顺序加锁**（如都用 `a`→`b`），或用 `std::lock` 一次锁住多把。这是死锁四条件里的「循环等待」，打破其一即可。''',
+
+    61: '''**正确答案：B（`std::atomic`）**。
+
+对单个变量的简单自增，`std::atomic<int>` 用硬件原子指令实现，无需加锁、无上下文切换开销——比 `mutex` 轻量得多。
+
+裸 `int` 会数据竞争。选型原则：单变量原子操作用 `atomic`；要保护「多步不变量」再用 `mutex`。''',
+
+    62: '''**应填：`lock_guard`**。
+
+`std::lock_guard<std::mutex> lock(m);` 构造时加锁、离开作用域时自动解锁（RAII）。即使临界区里抛异常也能正确解锁。
+
+需要手动 `unlock`/`lock` 或用条件变量时，改用 `std::unique_lock`。''',
+
+    63: '''**应填：`wait`**。
+
+`cv.wait(lock, 谓词)` 先检查谓词，为假才阻塞；被唤醒后**再次检查谓词**。这种「带谓词的等待」能防止**虚假唤醒**导致的错误。
+
+醒来时保证谓词为真、且持有锁。''',
+
+    64: '''**应填：`atomic`**。
+
+`std::atomic<int> counter{0};` 的读、写、自增都是原子操作，多线程下无需加锁。
+
+相比 `mutex`，`atomic` 更轻（无系统调用），适合计数器、标志位等单变量场景。''',
+
+    # ================= C10 · 网络编程 =================
+    135: '''**思路**：帧 = 4 字节**大端**长度前缀 + payload。解析时先读长度头，再按长度取 payload，不足一帧的留在缓冲里。
+
+**参考实现**
+```cpp
+std::string encode_frame(const std::string& payload) {
+    std::string frame;
+    uint32_t len = static_cast<uint32_t>(payload.size());
+    frame.push_back(static_cast<char>((len >> 24) & 0xFF));
+    frame.push_back(static_cast<char>((len >> 16) & 0xFF));
+    frame.push_back(static_cast<char>((len >> 8) & 0xFF));
+    frame.push_back(static_cast<char>(len & 0xFF));
+    frame += payload;
+    return frame;
+}
+
+std::vector<std::string> parse_frames(const std::string& buffer) {
+    std::vector<std::string> frames;
+    std::size_t pos = 0;
+    while (buffer.size() - pos >= 4) {
+        uint32_t len = (static_cast<uint8_t>(buffer[pos])     << 24) |
+                       (static_cast<uint8_t>(buffer[pos + 1]) << 16) |
+                       (static_cast<uint8_t>(buffer[pos + 2]) << 8)  |
+                        static_cast<uint8_t>(buffer[pos + 3]);
+        if (buffer.size() - pos - 4 < len) break;   // 不足一帧，等下次
+        frames.push_back(buffer.substr(pos + 4, len));
+        pos += 4 + len;
+    }
+    return frames;
+}
+```
+
+**要点**
+- 大端 = 高位字节在前；解析时务必用 `uint8_t` 转换，避免 `char` 有符号导致的**符号扩展**。
+- 「粘包/拆包」靠长度前缀解决：一次 recv 可能拿到半帧或多帧，靠缓冲累积 + 长度切分。''',
+
+    136: '''**思路**：找第一个 `:` 切分 key/value，两边各做 `trim`。
+
+**参考实现**
+```cpp
+static std::string trim(const std::string& s) {
+    std::size_t b = s.find_first_not_of(" \\t\\r\\n");
+    if (b == std::string::npos) return "";
+    std::size_t e = s.find_last_not_of(" \\t\\r\\n");
+    return s.substr(b, e - b + 1);
+}
+
+std::pair<std::string, std::string> parse_line(const std::string& line) {
+    std::size_t pos = line.find(':');
+    if (pos == std::string::npos) return { trim(line), "" };
+    return { trim(line.substr(0, pos)), trim(line.substr(pos + 1)) };
+}
+```
+
+**要点**
+- 只按**第一个** `:` 切分（value 里可能还有冒号）。
+- `trim` 用 `find_first_not_of` / `find_last_not_of` 定位有效字符区间，比手写循环简洁。''',
+
+    137: '''**思路**：逐字节 `read` 直到 `\\n`；边读边写回；`read` 返回 ≤0 视为 EOF/出错。
+
+**参考实现**
+```cpp
+bool echo_once(int fd) {
+    char c;
+    while (true) {
+        ssize_t n = read(fd, &c, 1);
+        if (n <= 0) return false;          // EOF 或出错
+        if (write(fd, &c, 1) != 1) return false;
+        if (c == '\\n') return true;
+    }
+}
+```
+
+**要点**
+- `read` 返回 0 = 对端关闭（EOF），返回 -1 = 出错。
+- 逐字节读能天然处理「短读」；真实代码可用缓冲批量读 + 自己按 `\\n` 切。''',
+
+    138: '''**思路**：`make_response` 按约定拼串；`parse_status` 从首行 `STATUS <n>` 里解析数字。
+
+**参考实现**
+```cpp
+std::string make_response(int status, const std::string& body) {
+    return "STATUS " + std::to_string(status) + "\\n\\n" + body;
+}
+
+int parse_status(const std::string& response) {
+    const std::string prefix = "STATUS ";
+    if (response.compare(0, prefix.size(), prefix) != 0) return -1;
+    std::size_t i = prefix.size();
+    int n = 0;
+    while (i < response.size() && response[i] >= '0' && response[i] <= '9')
+        n = n * 10 + (response[i++] - '0');
+    return n;
+}
+```
+
+**要点**
+- 手写数字解析避免依赖 `stoi` 的异常；也可用 `std::stoi(response.substr(7))`。
+- 协议里「状态码 + 空行 + 正文」是 HTTP 的简化版：空行 `\\n\\n` 分隔头与体。''',
+
+    139: '''**思路**：循环读「4 字节长度头 → payload」，原样写回。读/写都要循环补满，EOF 退出。
+
+**参考实现**
+```cpp
+static bool read_full(int fd, char* buf, std::size_t n) {
+    std::size_t got = 0;
+    while (got < n) {
+        ssize_t r = read(fd, buf + got, n - got);
+        if (r <= 0) return false;
+        got += static_cast<std::size_t>(r);
+    }
+    return true;
+}
+
+void handle_connection(int fd) {
+    char header[4];
+    while (read_full(fd, header, 4)) {
+        uint32_t len = (static_cast<uint8_t>(header[0]) << 24) |
+                       (static_cast<uint8_t>(header[1]) << 16) |
+                       (static_cast<uint8_t>(header[2]) << 8)  |
+                        static_cast<uint8_t>(header[3]);
+        std::string payload(len, '\\0');
+        if (len && !read_full(fd, &payload[0], len)) break;
+
+        std::string out = std::string(header, 4) + payload;
+        std::size_t sent = 0;
+        while (sent < out.size()) {
+            ssize_t w = write(fd, out.data() + sent, out.size() - sent);
+            if (w <= 0) return;
+            sent += static_cast<std::size_t>(w);
+        }
+    }
+}
+```
+
+**要点**
+- `read`/`write` 都可能**短读/短写**：必须循环到读满/写满，别假设一次调用就完成。
+- 长度头先收全 4 字节，再按 `len` 收 payload——这是所有长度前缀协议的核心循环。''',
+
+    65: '''**正确答案：B（TCP）**。
+
+TCP 提供**可靠、有序、面向连接**的字节流：丢包重传、乱序重排、拥塞控制都由协议栈保证。
+
+UDP 是「发出去就不管」的数据报，快但不可靠、不保证顺序。要「可靠有序」选 TCP；要低延迟、可容忍丢包（如音视频、游戏帧同步）才考虑 UDP。''',
+
+    66: '''**正确答案：B（任意 1–100 字节）**。
+
+TCP 是**字节流**，没有消息边界。`recv(fd, buf, 100)` 可能只返回 1 字节、也可能返回 100 字节——取决于内核缓冲和对端发送节奏。
+
+这就是「**粘包/拆包**」的根源。应用层必须自己定协议（如长度前缀）来切分消息，不能假设「一次 recv = 一条消息」。''',
+
+    67: '''**正确答案：A（大小端字节序转换）**。
+
+不同 CPU 存储多字节整数的字节序不同（x86 是小端，网络协议约定是**大端**）。直接发 `int` 的原始字节，对端可能解析出错误的数。
+
+用 `htons`/`htonl`（主机→网络）与 `ntohs`/`ntohl`（网络→主机）做转换，保证跨平台一致。''',
+
+    68: '''**应填：`socket`**。
+
+`int fd = socket(AF_INET, SOCK_STREAM, 0);` —— `AF_INET` 是 IPv4，`SOCK_STREAM` 是 TCP（面向字节流），返回文件描述符 `fd`。
+
+失败返回 -1。UDP 用 `SOCK_DGRAM`。''',
+
+    69: '''**应填：`htons`**。
+
+`uint16_t p = htons(port);` —— 「host to network short」：把 16 位端口从主机字节序转成网络字节序（大端）。
+
+`htons` 用于 16 位（端口），`htonl` 用于 32 位（IPv4 地址）。''',
+
+    70: '''**应填：`listen`**。
+
+`listen(fd, 128);` —— 把 socket 转为被动监听状态，第二个参数是**连接队列（backlog）**上限。
+
+之后用 `accept` 取出已建立的连接。顺序：`socket → bind → listen → accept`。''',
+
+    # ================= C11 · 数据库交互 =================
+    140: '''**思路**：逐字符扫描，遇单引号补成两个、遇反斜杠补成两个。
+
+**参考实现**
+```cpp
+std::string sql_escape(const std::string& s) {
+    std::string out;
+    out.reserve(s.size());
+    for (char c : s) {
+        if (c == '\\'') out += "''";
+        else if (c == '\\\\') out += "\\\\\\\\";
+        else out.push_back(c);
+    }
+    return out;
+}
+```
+
+**要点**
+- 「单引号转义成两个单引号」是 SQL 标准写法；反斜杠转义是 MySQL 的额外规则。
+- **手写转义容易漏**（还有 `\\0`、`\\n`、注释符等）——生产环境务必用**参数化查询**（见 binder 那题）而不是自己拼。''',
+
+    141: '''**思路**：遍历模板，遇 `?` 就取下一个参数，先转义再用单引号包起来。
+
+**参考实现**
+```cpp
+static std::string esc(const std::string& s) {
+    std::string o;
+    for (char c : s) { if (c == '\\'') o += "''"; else o.push_back(c); }
+    return o;
+}
+
+std::string bind_sql(const std::string& tmpl, const std::vector<std::string>& params) {
+    std::string out;
+    std::size_t pi = 0;
+    for (char c : tmpl) {
+        if (c == '?' && pi < params.size()) {
+            out += '\\'';
+            out += esc(params[pi++]);
+            out += '\\'';
+        } else {
+            out.push_back(c);
+        }
+    }
+    return out;
+}
+```
+
+**要点**
+- 真实数据库的预处理语句是「SQL 结构与数据分离」：`?` 由驱动绑定，**数据永远不被当成 SQL 解析**——比手工转义更安全。
+- 本题演示的是「绑定的思想」；参数用尽或多余都要有约定（这里多余的 `?` 原样保留）。''',
+
+    142: '''**思路**：用 `vector` 存空闲连接编号，加锁实现 acquire/release。
+
+**参考实现**
+```cpp
+ConnectionPool(int size) {
+    for (int i = 0; i < size; ++i) free_.push_back(i);
+}
+int acquire() {
+    std::lock_guard<std::mutex> lock(m_);
+    if (free_.empty()) return -1;
+    int id = free_.back();
+    free_.pop_back();
+    return id;
+}
+void release(int id) {
+    std::lock_guard<std::mutex> lock(m_);
+    free_.push_back(id);
+}
+```
+
+**要点**
+- 连接池把「建立/销毁连接」的昂贵开销摊到多次复用上，是服务端必备。
+- 生产实现还要处理：连接超时、坏连接剔除、最大等待（`acquire` 阻塞而非返回 -1）。''',
+
+    143: '''**思路**：`set` 前把旧值记进 undo 日志；`rollback` 倒序恢复。
+
+**参考实现**
+```cpp
+void begin() { in_tx_ = true; undo_.clear(); }
+void set(const std::string& k, const std::string& v) {
+    if (in_tx_) {
+        auto it = store_.find(k);
+        undo_.push_back({ k, it == store_.end() ? std::string() : it->second });
+    }
+    store_[k] = v;
+}
+void commit() { undo_.clear(); in_tx_ = false; }
+void rollback() {
+    for (auto it = undo_.rbegin(); it != undo_.rend(); ++it) {
+        if (it->second.empty()) store_.erase(it->first);   // 原本不存在
+        else store_[it->first] = it->second;
+    }
+    undo_.clear();
+    in_tx_ = false;
+}
+```
+
+**要点**
+- undo 日志记录「旧值」，回滚时**倒序**重放，才能正确撤销同一 key 的多次修改。
+- 用空串表示「原本不存在」是个简化（真实系统会用「存在标志位」区分空值）；这里以最小实现表达事务原子性。''',
+
+    144: '''**思路**：DAO 用 `map` 存数据；事务期把「被改动的旧状态」记进 undo，`rollback` 倒序恢复。
+
+**参考实现**
+```cpp
+bool insert(int id, const std::string& name) {
+    if (store_.count(id)) return false;
+    if (in_tx_) undo_.push_back({ id, "" });   // "" 表示「原本不存在」
+    store_[id] = name;
+    return true;
+}
+std::string find(int id) {
+    auto it = store_.find(id);
+    return it == store_.end() ? "" : it->second;
+}
+bool update(int id, const std::string& name) {
+    auto it = store_.find(id);
+    if (it == store_.end()) return false;
+    if (in_tx_) undo_.push_back({ id, it->second });
+    it->second = name;
+    return true;
+}
+bool remove(int id) {
+    auto it = store_.find(id);
+    if (it == store_.end()) return false;
+    if (in_tx_) undo_.push_back({ id, it->second });
+    store_.erase(it);
+    return true;
+}
+void begin() { in_tx_ = true; undo_.clear(); }
+void commit() { undo_.clear(); in_tx_ = false; }
+void rollback() {
+    for (auto it = undo_.rbegin(); it != undo_.rend(); ++it) {
+        if (it->second.empty()) store_.erase(it->first);  // insert 的撤销
+        else store_[it->first] = it->second;              // update/remove 的撤销
+    }
+    undo_.clear();
+    in_tx_ = false;
+}
+```
+
+**要点**
+- DAO 模式：把「数据访问」封装在类里，业务层只管调 `insert/find/update/remove`。
+- 三种改动的撤销统一成「旧值空串 ⇒ 删除，否则恢复」——又一次用倒序 undo 日志实现原子回滚。
+- 生产版应把 `map` 换成真实连接 + 预处理语句（见 C11 前几题）。''',
+
+    71: '''**正确答案：B（SQL 注入）**。
+
+把用户输入直接拼进 SQL 字符串，攻击者可构造 `' OR '1'='1`、`'; DROP TABLE ...` 之类输入，篡改查询语义、窃取或破坏数据。
+
+防御：**参数化查询**（预处理语句，`?` 占位符）——让数据与 SQL 结构分离，输入永远不被当代码执行。''',
+
+    72: '''**正确答案：A（事务）**。
+
+事务提供 **ACID**：一组操作要么全部成功（commit）、要么全部回滚（rollback），保证原子性。
+
+典型场景：转账——扣款与加款必须同生共死；只用普通语句写，中途失败会留下「半边账」。''',
+
+    73: '''**正确答案：A（频繁建立/销毁连接的开销）**。
+
+建立数据库连接要 TCP 握手 + 认证，开销大且耗时。连接池预先建好一批连接**复用**，用完归还而非关闭，显著提升吞吐、降低延迟。
+
+它同时能限制并发连接数，起到保护数据库的作用。''',
+
+    74: '''**应填：`?`**。
+
+`?` 是预处理语句的**位置占位符**。`prepare("... WHERE id = ?")` 只编译一次 SQL 结构，再用 `bind`/`execute` 传入参数——数据不参与 SQL 解析，从根本上杜绝注入。
+
+（不同驱动也有 `:name` 命名占位符，但 `?` 最通用。）''',
+
+    75: '''**应填：`commit`**。
+
+`conn.commit();` 提交当前事务——把本次事务内的所有改动**永久写入**数据库。
+
+提交前若出错则用 `rollback` 撤销，二者是事务的两种终局。''',
+
+    76: '''**应填：`rollback`**。
+
+`conn.rollback();` 回滚当前事务——把本次事务内的所有改动**全部撤销**，回到事务开始前的状态。
+
+典型用法：捕获异常后 rollback，保证不留下「半完成」的脏数据。''',
+    # ================= C12 · constexpr 与编译期计算 =================
+    125: '''**思路**：`constexpr` 递归阶乘，`n <= 1` 作出口。
+
+**参考实现**
+```cpp
+constexpr int factorial(int n) {
+    return n <= 1 ? 1 : n * factorial(n - 1);
+}
+```
+
+**要点**
+- `constexpr` 函数既可在编译期求值（作数组大小、`static_assert`），也可运行期调用。
+- C++14 起 constexpr 函数体内允许局部变量、循环、多返回。''',
+
+    126: '''**思路**：`constexpr` 斐波那契，直接按定义递归。
+
+**参考实现**
+```cpp
+constexpr int fib(int n) {
+    return n <= 1 ? n : fib(n - 1) + fib(n - 2);
+}
+```
+
+**要点**
+- 编译期求值有**步数上限**（编译器限制 constexpr 求值步数），大 `n` 会超限报错。
+- 生产场景的快速 Fibonacci 应用迭代或编译期查表（见本章 Boss）。''',
+
+    127: '''**思路**：`constexpr` 平方；结果直接用于编译期上下文。
+
+**参考实现**
+```cpp
+constexpr int square(int x) { return x * x; }
+
+// 使用：int arr[square(3)];  // 大小为 9
+```
+
+**要点**
+- 只有 `constexpr` 函数在「常量表达式」上下文里才会**编译期求值**；否则可能退化为运行期调用。
+- 编译期求值的证明：能通过 `static_assert(square(3) == 9);`。''',
+
+    128: '''**思路**：C++14 起 constexpr 函数可用循环，逐项填充 `std::array`。
+
+**参考实现**
+```cpp
+constexpr std::array<int, 10> make_square_table() {
+    std::array<int, 10> a{};
+    for (int i = 0; i < 10; ++i) a[i] = i * i;
+    return a;
+}
+```
+
+**要点**
+- 返回 `std::array` 可整体作编译期常量（`constexpr auto t = make_square_table();`）。
+- C++14 起 constexpr 支持 `for`/`if`/局部变量——不再需要 C++11 的「单表达式」限制。''',
+
+    129: '''**思路**：constexpr 阶乘 + constexpr 循环生成表，可再用 `static_assert` 校验。
+
+**参考实现**
+```cpp
+constexpr int factorial(int n) {
+    return n <= 1 ? 1 : n * factorial(n - 1);
+}
+
+constexpr std::array<int, 10> make_factorial_table() {
+    std::array<int, 10> a{};
+    for (int i = 0; i < 10; ++i) a[i] = factorial(i);
+    return a;
+}
+
+// 编译期验证
+static_assert(make_factorial_table()[5] == 120);
+```
+
+**要点**
+- 整张表在编译期算好，运行期零开销查表。
+- 注意 `9! = 362880`，仍在 `int` 范围内（`13!` 才会溢出）。''',
+
+    77: '''**正确答案：A（9）**。
+
+`constexpr int square(int)` 在**常量表达式上下文**里编译期求值，所以 `square(3)` 就是编译期常量 `9`，可直接当数组大小。
+
+可见 constexpr 函数让「编译期计算」变成写普通函数即可，无需模板元编程那套。''',
+
+    78: '''**正确答案：A（编译错误）**。
+
+`consteval`（C++20）声明的是「**立即函数**」：**每一次调用都必须在编译期求值**。`f(y)` 里的 `y` 是运行时变量，无法编译期取值 ⇒ 编译错误。
+
+对比 `constexpr`：后者「能编译期就编译期，否则运行期」；`consteval` 强制编译期，不满足即报错。''',
+
+    79: '''**正确答案：A**。
+
+`constinit`（C++20）要求变量**在编译期完成初始化**，否则编译报错。它用来消除「**静态初始化顺序问题**」（SIOF）：不同编译单元的全局对象初始化顺序不确定，constinit 能让关键全局量提前、确定地初始化好。
+
+注意：`constinit` 只约束**初始化时机**，不表示变量不可变（那是 `const`）。''',
+
+    80: '''**应填：`constexpr`**。
+
+`constexpr int square(int x) { return x * x; }` 声明函数**可用于常量表达式**——既能在编译期求值，也能运行期调用。
+
+它是 C++11 起的核心编译期计算工具。''',
+
+    81: '''**应填：`consteval`**。
+
+`consteval int f(int x) { return x * 2; }`（C++20）声明**立即函数**：每次调用都必须在编译期求值，否则编译错误。
+
+适合「只能编译期用」的场景（如生成编译期常量、模板参数）。''',
+
+    82: '''**应填：`constinit`**。
+
+`constinit int g = 42;`（C++20）保证 `g` 在**编译期完成初始化**，从而避免运行时初始化顺序问题；但 `g` 仍可变。
+
+`constinit` ≠ `const`：前者管「何时初始化」，后者管「能不能改」。''',
+
+    # ================= C13 · C++20 高级特性 =================
+    145: '''**思路**：`requires` 表达式列出「必须合法的表达式」；用 concept 约束模板参数。
+
+**参考实现**
+```cpp
+template <typename T>
+concept Addable = requires(T a, T b) {
+    a + b;                              // 要求 a + b 合法
+};
+
+template <Addable T>
+T add(T a, T b) { return a + b; }
+```
+
+**要点**
+- `requires(T a, T b){ a + b; }` 是「要求某个表达式能编译」；不满足时模板**不参与**重载、并给出可读错误。
+- `template <Addable T>` 是「约束模板参数」的简写，等价于 `template <typename T> requires Addable<T>`。
+- 想再约束返回类型可写 `{ a + b } -> std::convertible_to<T>;`。''',
+
+    146: '''**思路**：C++20 的三路比较可**一行 `= default`** 搞定全部比较运算符。
+
+**参考实现**
+```cpp
+#include <compare>
+
+struct Version {
+    int major = 0;
+    int minor = 0;
+    int patch = 0;
+
+    auto operator<=>(const Version&) const = default;
+};
+```
+
+**要点**
+- `= default` 的三路比较按成员**字典序**（先 `major`、再 `minor`、后 `patch`）生成 `< <= > >=`；同时隐式生成 `==`/`!=`。
+- 一个 `<=>` 顶替了过去要手写的 6 个比较运算符。''',
+
+    147: '''**思路**：用 `views::filter` + `views::transform` 组成惰性管道，物化成 `vector`。
+
+**参考实现**
+```cpp
+std::vector<int> even_doubled(const std::vector<int>& in) {
+    auto view = in
+        | std::views::filter([](int x) { return x % 2 == 0; })
+        | std::views::transform([](int x) { return x * 2; });
+    return std::vector<int>(view.begin(), view.end());
+}
+```
+
+**要点**
+- views **惰性**：`|` 只是搭管道，真正计算发生在遍历（构造 vector）时。
+- 好处：不产生中间容器、可组合；`filter` 只在需要时对元素求值。''',
+
+    148: '''**思路**：concept 约束元素类型；`views::transform` 平方后 `accumulate` 求和，初始值用元素类型。
+
+**参考实现**
+```cpp
+template <typename T>
+concept Arithmetic = std::is_arithmetic_v<T>;
+
+template <std::ranges::input_range R>
+    requires Arithmetic<std::ranges::range_value_t<R>>
+auto sum_of_squares(const R& r) {
+    auto sq = std::views::transform(r, [](auto x) { return x * x; });
+    using T = std::ranges::range_value_t<R>;
+    return std::accumulate(sq.begin(), sq.end(), T{0});
+}
+```
+
+**要点**
+- 用 `std::ranges::range_value_t<R>` 拿到元素类型，并用 `T{0}` 作累加初值——避免对 `double` 范围误用 `int(0)` 丢精度。
+- `requires` 子句让「不满足条件的类型」直接编译报错，而不是给出天书般的模板错误。''',
+
+    149: '''**思路**：`filter | transform | take` 三段管道，最后物化为 `vector<long long>`。
+
+**参考实现**
+```cpp
+template <std::ranges::input_range R>
+    requires std::integral<std::ranges::range_value_t<R>>
+std::vector<long long> positive_squares(const R& r, std::size_t n) {
+    auto view = r
+        | std::views::filter([](auto x) { return x > 0; })
+        | std::views::transform([](auto x) { return static_cast<long long>(x) * x; })
+        | std::views::take(n);
+    return std::vector<long long>(view.begin(), view.end());
+}
+```
+
+**要点**
+- `take(n)` 只取前 n 个——得益于惰性求值，不会先算完整个 range。
+- 用 `long long` 存平方，降低溢出风险；`std::integral` 约束保证元素是可比较的整数。''',
+
+    83: '''**正确答案：A（编译错误）**。
+
+`add` 被 concept `Numeric`（要求 `std::is_arithmetic_v<T>`）约束，而 `const char*` 不是算术类型 ⇒ 不满足约束 ⇒ `add("a","b")` 无法实例化，**编译错误**。
+
+这正是 concept 的价值：把「类型不合适」的错误提前、并给出可读提示，而不是长篇模板报错。''',
+
+    84: '''**正确答案：B（惰性求值）**。
+
+`v | views::filter(f) | views::transform(g)` 只是**构建视图（view）**，不立即计算；只有真正**遍历**它（如构造 `vector`、`for` 循环）时，元素才逐个经过 filter/transform 计算。
+
+好处：零中间容器、可组合、可在 `take` 等短路操作下提前结束。''',
+
+    85: '''**正确答案：A**。
+
+`co_yield` 在协程里**产出一个值并挂起**，把控制权交回调用方；下次恢复时从挂起点继续。它是「生成器（generator）」的核心——可按需惰性产出序列，而不是一次算完。
+
+同族关键字：`co_await`（等待异步操作）、`co_return`（结束协程并返回）。''',
+
+    86: '''**应填：`concept`**。
+
+`template <typename T> concept Numeric = std::is_arithmetic_v<T>;` 定义一个命名约束，之后可写 `template <Numeric T>` 或 `requires Numeric<T>` 来使用。
+
+concept 让模板约束可复用、可组合、可读，替代了以往 `enable_if` 那套晦涩写法。''',
+
+    87: '''**应填：`requires`**。
+
+`template <typename T> requires std::integral<T> void f(T t);` —— `requires` 子句给模板加约束，只有满足 `std::integral<T>` 的类型才能实例化 `f`。
+
+也可写成简写形式 `template <std::integral T> void f(T t);`，语义等价。''',
+
+    88: '''**应填：`co_yield`**。
+
+协程生成器里用 `co_yield value;` **产出一个值并挂起**，调用方取到值后可再次恢复执行。
+
+它是三种协程关键字之一（`co_await` / `co_yield` / `co_return`），常用于惰性序列、异步流。''',
+
+    # ================= C14 · 模块与工程实践 =================
+    150: '''**思路**：把相关常量放进命名空间，用 `config::` 前缀访问。
+
+**参考实现**
+```cpp
+namespace config {
+    constexpr int kMaxConnections = 100;
+    constexpr const char* kAppName = "crow-blog";
+    constexpr bool kDebug = false;
+}
+```
+
+**要点**
+- 命名空间隔离避免全局污染；调用处写 `config::kMaxConnections`。
+- C++11 起 `constexpr` 变量隐含 `const`，且可作编译期常量；`k` 前缀是常见的常量命名约定。''',
+
+    151: '''**思路**：Meyers 单例——函数内 `static` 局部对象，首次调用时初始化，天然线程安全。
+
+**参考实现**
+```cpp
+Config& get_config() {
+    static Config instance;
+    return instance;
+}
+```
+
+**要点**
+- C++11 起，函数内 `static` 局部变量的初始化是**线程安全**的（编译器加锁保证只初始化一次）。
+- 返回引用保证「全局唯一」；相比全局对象，还具备**按需初始化**、无静态初始化顺序问题。''',
+
+    152: '''**思路**：抽象基类 + 派生类重写 `area`；工厂返回 `unique_ptr<Shape>`。
+
+**参考实现**
+```cpp
+struct Circle : Shape {
+    double r_;
+    explicit Circle(double r) : r_(r) {}
+    double area() const override { return 3.141592653589793 * r_ * r_; }
+};
+
+struct Square : Shape {
+    double s_;
+    explicit Square(double s) : s_(s) {}
+    double area() const override { return s_ * s_; }
+};
+
+std::unique_ptr<Shape> make_shape(const std::string& kind, double x) {
+    if (kind == "circle") return std::make_unique<Circle>(x);
+    if (kind == "square") return std::make_unique<Square>(x);
+    return nullptr;
+}
+```
+
+**要点**
+- 工厂返回**基类**智能指针：调用方只依赖 `Shape` 接口，新增形状不必改调用代码。
+- `virtual ~Shape() = default;` 保证经基类指针删除时正确析构（避免 UB）。''',
+
+    153: '''**思路**：`Logger` 接口 + 两种实现；`do_work` 只依赖抽象（依赖注入）。
+
+**参考实现**
+```cpp
+struct ConsoleLogger : Logger {
+    void log(const std::string& msg) override {
+        std::printf("%s\\n", msg.c_str());
+    }
+};
+
+struct BufferedLogger : Logger {
+    std::vector<std::string> lines_;
+    void log(const std::string& msg) override { lines_.push_back(msg); }
+    const std::vector<std::string>& lines() const { return lines_; }
+};
+
+void do_work(Logger& logger) {
+    logger.log("start");
+    logger.log("done");
+}
+```
+
+**要点**
+- `do_work` 依赖抽象的 `Logger&`（**依赖注入**），实现可互换：生产用 `ConsoleLogger`，测试注入 `BufferedLogger` 后断言 `lines()`。
+- 让「业务逻辑」与「具体输出方式」解耦——这是可测试性与可扩展性的关键。''',
+
+    154: '''**思路**：把本章五种手法拼起来——命名空间、接口、单例、工厂、依赖注入。
+
+**参考实现**
+```cpp
+namespace app { constexpr int kVersion = 3; }
+
+class ConsoleReporter : public Reporter {
+public:
+    void report(int value) override { std::printf("value=%d\\n", value); }
+};
+
+class CaptureReporter : public Reporter {
+    std::vector<int> values_;
+public:
+    void report(int value) override { values_.push_back(value); }
+    const std::vector<int>& values() const { return values_; }
+};
+
+class Counter {
+    int n_ = 0;
+public:
+    void increment() { ++n_; }
+    int value() const { return n_; }
+};
+Counter& counter() { static Counter c; return c; }
+
+std::unique_ptr<Reporter> make_reporter(bool capture) {
+    if (capture) return std::make_unique<CaptureReporter>();
+    return std::make_unique<ConsoleReporter>();
+}
+
+void run_once(Reporter& r) {
+    counter().increment();
+    r.report(counter().value());
+}
+```
+
+**要点**
+- 命名空间 `app` 隔离常量；`Reporter` 抽象 + 两实现 + 工厂 + 单例 `counter()` 组合成一个「迷你库」。
+- `run_once` 通过注入的 `Reporter&` 上报——测试里注入 `CaptureReporter` 即可断言上报序列（`1,2`）。''',
+
+    89: '''**正确答案：A（编译隔离）**。
+
+`module`（C++20）把接口与实现分离、只在导入处**编译一次**并缓存，带来：避免头文件被反复解析、**宏不泄漏**（模块不传播宏）、符号可见性明确。
+
+它主要解决的是**编译期问题**（编译速度、隔离性），而非运行速度。''',
+
+    90: '''**正确答案：A（链接错误：多重定义）**。
+
+C++ 的 **ODR（单一定义规则）** 要求：同一非 `inline` 函数在**整个程序**中只能有一个定义。若多个编译单元各自定义了同名非 inline 函数，链接器会报「multiple definition」。
+
+修复：把定义放到**一个** `.cpp`，其余用声明；或加 `inline`；或（C++17）用 `inline` 变量 / 匿名命名空间限制作用域。''',
+
+    91: '''**正确答案：A（include guard 或 #pragma once）**。
+
+经典做法是 **include guard**：`#ifndef FOO_H / #define FOO_H / ... / #endif`；现代编译器普遍支持更简洁的 **`#pragma once`**。
+
+两者都防止**同一编译单元内**头文件被重复展开导致的重定义错误。''',
+
+    92: '''**应填：`export`**。
+
+`export module math;` 声明模块 `math` 的**接口**；想导出的实体写 `export int add(int,int);`，未 `export` 的默认只在模块内部可见。
+
+这是 C++20 模块的关键字（注意与旧标准里被废弃的 `export` 模板用法无关）。''',
+
+    93: '''**应填：`import`**。
+
+`import math;` 导入模块，即可使用其导出实体。相比 `#include`，导入不展开源码、不传播宏、编译更快。
+
+`import` 也是「消费」模块的唯一方式——模块之间同样用 `import` 组合。''',
+
+    94: '''**应填：`#endif`**。
+
+include guard 以 `#endif` 收尾：
+
+```cpp
+#ifndef FOO_H
+#define FOO_H
+// 内容
+#endif   // FOO_H
+```
+
+`#endif` 后建议加注释标出对应的宏名，便于阅读。等价替代是现代编译器广泛支持的 `#pragma once`。''',
+}
+
 # ---------- 三张表 DDL（与 src/database.cpp initTable 保持一致） ----------
 DDL = """CREATE TABLE IF NOT EXISTS practice_chapters(
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -6112,6 +8156,7 @@ CREATE TABLE IF NOT EXISTS practice_exercises(
     sort_order INT NOT NULL DEFAULT 0 COMMENT '章内排序',
     options TEXT NULL COMMENT '选择题选项JSON(非选择题为NULL)',
     answer TEXT NULL COMMENT '选择=正确label(JSON字符串)；填空=答案数组(JSON)；写代码=NULL',
+    solution TEXT NULL COMMENT '题解(思路+参考实现+要点，markdown)',
     starter_easy TEXT COMMENT '入门脚手架(写代码题)',
     starter_medium TEXT COMMENT '进阶脚手架(写代码题)',
     starter_hard TEXT COMMENT '挑战脚手架(写代码题)',
@@ -6184,20 +8229,23 @@ def build():
         test_driver = e.get('test_driver') or ''
         total_cases = e.get('total_cases', 0)
         time_limit_ms = e.get('time_limit_ms', 2000)
+        # 题解：优先取 EXERCISES 内联字段，否则查 SOLUTIONS 表
+        solution_val = e.get('solution') or SOLUTIONS.get(e['id'])
 
         out.append(
             'INSERT INTO practice_exercises '
-            '(id, chapter_id, type, title, prompt, sort_order, options, answer, '
+            '(id, chapter_id, type, title, prompt, sort_order, options, answer, solution, '
             'starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES ('
             f'{e["id"]}, {e["chapter_id"]}, {sql_literal(typ)}, {sql_literal(e["title"])}, '
             f'{sql_literal(e["prompt"])}, {e["sort_order"]}, '
-            f'{sql_or_null(options_val)}, {sql_or_null(answer_val)}, '
+            f'{sql_or_null(options_val)}, {sql_or_null(answer_val)}, {sql_or_null(solution_val)}, '
             f'{sql_literal(starter_easy)}, {sql_literal(starter_medium)}, '
             f'{sql_literal(starter_hard)}, {sql_or_null(test_driver)}, '
             f'{total_cases}, {time_limit_ms}, 1) '
             'ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), '
             'title=VALUES(title), prompt=VALUES(prompt), sort_order=VALUES(sort_order), '
-            'options=VALUES(options), answer=VALUES(answer), starter_easy=VALUES(starter_easy), '
+            'options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), '
+            'starter_easy=VALUES(starter_easy), '
             'starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), '
             'test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), '
             'time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);'
@@ -6222,7 +8270,12 @@ def main():
     assert n_chapters == len(CHAPTERS), f'章节 INSERT 数不符：{n_chapters} != {len(CHAPTERS)}'
     assert n_exercises == len(EXERCISES), f'题目 INSERT 数不符：{n_exercises} != {len(EXERCISES)}'
     assert 'practice_progress' in content, '缺 practice_progress 表'
-    print(f'OK: 生成 {target}（{len(CHAPTERS)} 章节 / {len(EXERCISES)} 题）')
+    # 题解覆盖：每题都必须有题解（SOLUTIONS 或内联 solution）
+    missing = [e['id'] for e in EXERCISES if not (e.get('solution') or SOLUTIONS.get(e['id']))]
+    assert not missing, f'以下题目缺题解，请补 SOLUTIONS：{missing}'
+    n_sol = content.count('solution=VALUES(solution)')
+    assert n_sol == len(EXERCISES), f'题解 upsert 数不符：{n_sol} != {len(EXERCISES)}'
+    print(f'OK: 生成 {target}（{len(CHAPTERS)} 章节 / {len(EXERCISES)} 题，题解 {len(SOLUTIONS)} 条）')
 
 
 if __name__ == '__main__':

@@ -4620,3 +4620,158 @@ body.practice-page .site-footer {
         display: none;
     }
 }
+
+/* ===== 题目描述 + 题解 + 测试结果（描述卡三段式） ===== */
+/* 描述卡内部：题目描述 + 题解 共用一个滚动区 */
+.practice-desc-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+/* 滚动区内的题干不再自己滚动，随描述区一起滚 */
+.practice-desc-scroll .practice-prompt {
+    flex: none;
+    min-height: 0;
+    overflow: visible;
+    padding-bottom: 4px;
+}
+
+.practice-desc-scroll .practice-prompt.practice-empty {
+    min-height: 220px;
+}
+
+/* 难度档位条：现位于描述滚动区内（题干与题解之间） */
+.practice-desc-scroll .practice-tier-bar {
+    margin-top: 10px;
+}
+
+/* 题解：默认折叠，位于题目描述下方；无题解时宿主为空、不占空间 */
+.practice-solution-host:empty {
+    display: none;
+}
+
+.practice-solution {
+    margin: 6px 20px 18px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    overflow: hidden;
+}
+
+.practice-solution > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-dark);
+    list-style: none;
+    user-select: none;
+}
+
+.practice-solution > summary::-webkit-details-marker {
+    display: none;
+}
+
+.practice-solution > summary::before {
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 6px solid currentColor;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    transition: transform .15s ease;
+}
+
+.practice-solution[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.practice-solution-body {
+    padding: 2px 16px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text);
+}
+
+.practice-solution-body p {
+    margin: 10px 0;
+}
+
+.practice-solution-body ul,
+.practice-solution-body ol {
+    margin: 10px 0;
+    padding-left: 22px;
+}
+
+.practice-solution-body pre {
+    margin: 10px 0;
+    padding: 12px 14px;
+    background: var(--code-bg, #f6f3ef);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+/* 测试结果：紧邻题解、固定在描述卡底部，运行/提交后出现 */
+.practice-result {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: none;
+    background: var(--surface);
+    max-height: 40%;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.practice-result-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    color: var(--text-secondary);
+}
+
+.practice-result.is-pass .practice-result-title {
+    color: var(--ok);
+}
+
+.practice-result.is-fail .practice-result-title {
+    color: var(--danger, #dc2626);
+}
+
+.practice-result-body {
+    padding: 0 20px 14px;
+}
+
+.practice-result-body .practice-result-head {
+    margin-top: 0;
+}
+
+/* 窄屏回落：描述卡整体展开、不再内部滚动 */
+@media (max-width: 1200px) {
+    .practice-desc-scroll {
+        overflow: visible;
+    }
+
+    .practice-desc-scroll .practice-prompt {
+        min-height: 200px;
+    }
+
+    .practice-result {
+        max-height: none;
+    }
+}
