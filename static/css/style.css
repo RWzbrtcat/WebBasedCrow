@@ -4873,6 +4873,19 @@ body.practice-page .site-footer {
     overflow: hidden;
 }
 
+/* 当前行高亮条：随光标移动、随滚动平移（VS Code 的「着重显示」） */
+.practice-code-currentline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 20.8px;
+    background: rgba(255, 255, 255, 0.045);
+    pointer-events: none;
+    z-index: 0;
+    will-change: transform;
+}
+
 /* 高亮层与输入框必须逐像素对齐：字体 / 行高 / 内边距 / 制表符宽度全部一致 */
 .practice-code-hl,
 .practice-code-input {
@@ -4894,7 +4907,7 @@ body.practice-page .site-footer {
     z-index: 1;
     overflow: hidden;
     pointer-events: none;
-    color: #e5e7eb;
+    color: #d4d4d4;
 }
 
 .practice-code-hl code {
@@ -4915,7 +4928,7 @@ body.practice-page .site-footer {
     background: transparent;
     color: transparent;
     -webkit-text-fill-color: transparent;
-    caret-color: #e5e7eb;
+    caret-color: #d4d4d4;
     scrollbar-width: thin;
     scrollbar-color: #3a4048 transparent;
 }
@@ -4963,40 +4976,56 @@ body.practice-page .site-footer {
     font-variant-numeric: tabular-nums;
 }
 
-/* 高亮层内的 C++ token 配色：与站点代码块同一套 Atom One Dark 色板 */
+/* 高亮层内的 C++ token 配色：对齐 VS Code Dark+ 色板 */
 .practice-code-hl .hljs-comment,
-.practice-code-hl .hljs-quote { color: #5c6370; font-style: italic; }
-.practice-code-hl .hljs-doctag,
-.practice-code-hl .hljs-formula,
-.practice-code-hl .hljs-keyword { color: #c678dd; }
-.practice-code-hl .hljs-deletion,
+.practice-code-hl .hljs-quote { color: #6a9955; font-style: italic; }
+
+/* 关键字 / 字面量 / 预处理：蓝 */
+.practice-code-hl .hljs-keyword,
+.practice-code-hl .hljs-literal,
 .practice-code-hl .hljs-name,
-.practice-code-hl .hljs-section,
-.practice-code-hl .hljs-selector-tag,
-.practice-code-hl .hljs-subst { color: #e06c75; }
-.practice-code-hl .hljs-literal { color: #56b6c2; }
-.practice-code-hl .hljs-addition,
-.practice-code-hl .hljs-attribute,
+.practice-code-hl .hljs-symbol,
+.practice-code-hl .hljs-meta { color: #569cd6; }
+
+/* 类型 / 内置：青绿 */
+.practice-code-hl .hljs-type,
+.practice-code-hl .hljs-built_in,
+.practice-code-hl .hljs-class,
+.practice-code-hl .hljs-title.class_ { color: #4ec9b0; }
+
+/* 数字：浅绿 */
+.practice-code-hl .hljs-number,
+.practice-code-hl .hljs-bullet { color: #b5cea8; }
+
+/* 字符串 / 正则 / 属性：橙棕 */
+.practice-code-hl .hljs-string,
 .practice-code-hl .hljs-meta .hljs-string,
 .practice-code-hl .hljs-regexp,
-.practice-code-hl .hljs-string { color: #98c379; }
-.practice-code-hl .hljs-attr,
-.practice-code-hl .hljs-number,
+.practice-code-hl .hljs-attribute,
+.practice-code-hl .hljs-addition,
 .practice-code-hl .hljs-selector-attr,
-.practice-code-hl .hljs-selector-class,
-.practice-code-hl .hljs-selector-pseudo,
+.practice-code-hl .hljs-selector-pseudo { color: #ce9178; }
+
+/* 函数名：黄 */
+.practice-code-hl .hljs-title,
+.practice-code-hl .hljs-title.function_,
+.practice-code-hl .hljs-function .hljs-title,
+.practice-code-hl .hljs-section { color: #dcdcaa; }
+
+/* 变量 / 参数 / 其它辅助 token：浅蓝 */
+.practice-code-hl .hljs-variable,
 .practice-code-hl .hljs-template-variable,
-.practice-code-hl .hljs-type,
-.practice-code-hl .hljs-variable { color: #d19a66; }
-.practice-code-hl .hljs-bullet,
-.practice-code-hl .hljs-link,
-.practice-code-hl .hljs-meta,
+.practice-code-hl .hljs-params,
+.practice-code-hl .hljs-attr,
+.practice-code-hl .hljs-property,
+.practice-code-hl .hljs-selector-tag,
 .practice-code-hl .hljs-selector-id,
-.practice-code-hl .hljs-symbol,
-.practice-code-hl .hljs-title { color: #61aeee; }
-.practice-code-hl .hljs-built_in,
-.practice-code-hl .hljs-class .hljs-title,
-.practice-code-hl .hljs-title.class_ { color: #e6c07b; }
+.practice-code-hl .hljs-selector-class,
+.practice-code-hl .hljs-link,
+.practice-code-hl .hljs-doctag,
+.practice-code-hl .hljs-formula,
+.practice-code-hl .hljs-subst,
+.practice-code-hl .hljs-deletion { color: #9cdcfe; }
 
 /* 窄屏回落：编辑器不再撑满高度，改固定高度（行号与高亮仍同步滚动） */
 @media (max-width: 1200px) {

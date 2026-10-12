@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>练习闯关 · v0.5 预览（题目描述 / 题解 / 测试结果 标签页） · LazyCat's Blog</title>
+<title>练习闯关 · v0.6 预览（VS Code 手感代码编辑器） · LazyCat's Blog</title>
 <!-- 直接引用真实样式表：预览即真实 CSS 下的最终效果（样式已并入 style.css） -->
 <link rel="stylesheet" href="static/css/style.css">
 <link rel="stylesheet" href="static/css/highlight.css">
@@ -146,11 +146,12 @@ public:
                         <div class="practice-code">
                             <div class="practice-code-bar">
                                 <span class="practice-code-file"><i class="practice-code-dot" aria-hidden="true"></i>solution.cpp</span>
-                                <span class="practice-code-tip">Ctrl / ⌘ + Enter 运行</span>
+                                <span class="practice-code-tip">可在编辑器里直接试输入 · Ctrl / ⌘ + Enter 运行</span>
                             </div>
                             <div class="practice-code-main">
                                 <div class="practice-code-gutter" id="codeGutter" aria-hidden="true">1</div>
                                 <div class="practice-code-body">
+                                    <div class="practice-code-currentline" id="codeCurrentLine" aria-hidden="true"></div>
                                     <pre class="practice-code-hl" aria-hidden="true"><code id="codeHighlight"></code></pre>
                                     <textarea id="codeEditor" class="practice-code-input" spellcheck="false"
                                         autocomplete="off" autocapitalize="off" autocorrect="off"
@@ -159,7 +160,7 @@ public:
                                 </div>
                             </div>
                             <div class="practice-code-status">
-                                <span id="codeStatusPos">行 6，列 9</span>
+                                <span id="codeStatusPos">行 1，列 1</span>
                                 <span class="practice-code-status-right">C++20 · 缩进 4 空格 · UTF-8</span>
                             </div>
                         </div>
@@ -200,12 +201,15 @@ public:
             it.tab.addEventListener('click', function () { show(it.key); });
         });
 
-        // ---- 代码编辑器 ----
+        // ---- 代码编辑器（行号 + 语法高亮 + 当前行 + 光标跟随滚动 + Tab/Enter 缩进）----
+        // 线上由 practice.js 的编辑器模块实现；此处为等价的精简版，便于直接体验手感
         var CODE = [
             '#include <utility>',
+            '#include <vector>',
             '',
-            'class Wrapper {',
-            '    int* p_;',
+            'class Wrapper final {',
+            '    int* p_ = nullptr;',
+            '    static constexpr int kMax = 42;',
             'public:',
             '    explicit Wrapper(int v) : p_(new int(v)) {}',
             '',
@@ -215,37 +219,101 @@ public:
             '    }',
             '',
             '    ~Wrapper() { delete p_; }',
+            '    bool empty() const { return p_ == nullptr; }',
             '};'
         ].join('\n');
 
         var ta = document.getElementById('codeEditor');
         var hl = document.getElementById('codeHighlight');
         var gutter = document.getElementById('codeGutter');
-        ta.value = CODE;
-
-        hl.innerHTML = window.hljs ? hljs.highlight(CODE, { language: 'cpp' }).value : '';
-        if (!window.hljs) hl.textContent = CODE;   // 无高亮库时至少保证文字可见
-
-        var lines = CODE.split('\n').length;
-        var nums = '';
-        for (var i = 1; i <= lines; i++) nums += '<div>' + i + '</div>';
-        gutter.innerHTML = nums;
-
+        var cur = document.getElementById('codeCurrentLine');
+        var statusPos = document.getElementById('codeStatusPos');
         var pre = hl.parentElement;
+        var INDENT = '    ';
+        var LH = 20.8;
+
+        function escHtml(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        function highlight(code) {
+            if (window.hljs) {
+                try { return hljs.highlight(code, { language: 'cpp' }).value; }
+                catch (e) { return escHtml(code); }
+            }
+            return escHtml(code);
+        }
+        function lineNo() {
+            return ta.value.slice(0, ta.selectionStart).split('\n').length;
+        }
         function sync() {
             gutter.scrollTop = ta.scrollTop;
             pre.scrollTop = ta.scrollTop;
             pre.scrollLeft = ta.scrollLeft;
         }
-        ta.addEventListener('scroll', sync);
-
-        // 尾部换行导致的高度差补偿（与线上一致）
-        pre.style.paddingBottom = '';
-        var diff = ta.scrollHeight - pre.scrollHeight;
-        if (diff > 0) {
-            var base = parseFloat(getComputedStyle(pre).paddingBottom) || 0;
-            pre.style.paddingBottom = (base + diff) + 'px';
+        function followCaret() {
+            if (!ta.clientHeight) return;
+            var yTop = 12 + (lineNo() - 1) * LH;
+            var yBot = yTop + LH;
+            if (yTop < ta.scrollTop) ta.scrollTop = yTop;
+            else if (yBot > ta.scrollTop + ta.clientHeight) ta.scrollTop = yBot - ta.clientHeight;
+            sync();
         }
+        function updateCurLine() {
+            var y = 12 + (lineNo() - 1) * LH - ta.scrollTop;
+            cur.style.height = LH + 'px';
+            cur.style.transform = 'translateY(' + y + 'px)';
+            var before = ta.value.slice(0, ta.selectionStart);
+            var col = ta.selectionStart - (before.lastIndexOf('\n') + 1) + 1;
+            statusPos.textContent = '行 ' + lineNo() + '，列 ' + col;
+        }
+        function refresh() {
+            var text = ta.value;
+            hl.innerHTML = text ? highlight(text) : '';
+            var n = text.split('\n').length, nums = '';
+            for (var i = 1; i <= n; i++) nums += '<div>' + i + '</div>';
+            gutter.innerHTML = nums;
+            pre.style.paddingBottom = '';
+            gutter.style.paddingBottom = '';
+            var diff = ta.scrollHeight - pre.scrollHeight;
+            if (diff > 0) {
+                var bp = parseFloat(getComputedStyle(pre).paddingBottom) || 0;
+                pre.style.paddingBottom = (bp + diff) + 'px';
+                var bg = parseFloat(getComputedStyle(gutter).paddingBottom) || 0;
+                gutter.style.paddingBottom = (bg + diff) + 'px';
+            }
+            sync();
+            followCaret();
+            updateCurLine();
+        }
+
+        ta.value = CODE;
+        refresh();
+
+        ta.addEventListener('input', refresh);
+        ta.addEventListener('scroll', function () { sync(); updateCurLine(); });
+        ['keyup', 'click', 'select', 'focus'].forEach(function (ev) {
+            ta.addEventListener(ev, function () { followCaret(); updateCurLine(); });
+        });
+        ta.addEventListener('keydown', function (e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                var s = ta.selectionStart, en = ta.selectionEnd;
+                ta.value = ta.value.slice(0, s) + INDENT + ta.value.slice(en);
+                ta.selectionStart = ta.selectionEnd = s + INDENT.length;
+                refresh();
+            } else if (e.key === 'Enter' && ta.selectionStart === ta.selectionEnd) {
+                var v = ta.value, pos = ta.selectionStart;
+                var ls = v.lastIndexOf('\n', pos - 1) + 1;
+                var curLn = v.slice(ls, pos), m = curLn.match(/^[ \t]*/);
+                var ind = m ? m[0] : '';
+                if (/[\[({]\s*$/.test(curLn)) ind += INDENT;
+                e.preventDefault();
+                var ins = '\n' + ind;
+                ta.value = v.slice(0, pos) + ins + v.slice(pos);
+                ta.selectionStart = ta.selectionEnd = pos + ins.length;
+                refresh();
+            }
+        });
     })();
     </script>
 </body>

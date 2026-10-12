@@ -543,11 +543,13 @@
     let codeGutterEl = null;
     let codeHighlightEl = null;
     let codeStatusPosEl = null;
+    let codeCurrentLineEl = null;
 
     function ensureCodeRefs() {
         if (!codeGutterEl) codeGutterEl = document.getElementById('codeGutter');
         if (!codeHighlightEl) codeHighlightEl = document.getElementById('codeHighlight');
         if (!codeStatusPosEl) codeStatusPosEl = document.getElementById('codeStatusPos');
+        if (!codeCurrentLineEl) codeCurrentLineEl = document.getElementById('codeCurrentLine');
     }
 
     function highlightCpp(code) {
@@ -574,16 +576,64 @@
         if (codeGutterEl) codeGutterEl.scrollTop = top;
         const pre = codeHighlightEl && codeHighlightEl.parentElement;
         if (pre) { pre.scrollTop = top; pre.scrollLeft = left; }
+        updateCurrentLine();
     }
 
-    function updateCodeStatus() {
-        if (!codeStatusPosEl) return;
+    // 光标所在行 / 列（1-based）与偏移量
+    function caretPos() {
         const v = codeEditorEl.value;
         const pos = codeEditorEl.selectionStart || 0;
         const before = v.slice(0, pos);
         const line = before.split('\n').length;
         const col = pos - (before.lastIndexOf('\n') + 1) + 1;
-        codeStatusPosEl.textContent = '行 ' + line + '，列 ' + col;
+        return { pos, line, col };
+    }
+
+    // 一行的像素高度（高亮层与输入框行高一致，取输入框计算值）
+    function codeLineHeight() {
+        const lh = parseFloat(getComputedStyle(codeEditorEl).lineHeight);
+        if (lh) return lh;
+        return (parseFloat(getComputedStyle(codeEditorEl).fontSize) || 13) * 1.6;
+    }
+
+    function updateCodeStatus() {
+        if (!codeStatusPosEl) return;
+        const c = caretPos();
+        codeStatusPosEl.textContent = '行 ' + c.line + '，列 ' + c.col;
+    }
+
+    // 当前行高亮条：随光标移动、随滚动平移（VS Code 的「着重显示」）
+    function updateCurrentLine() {
+        if (!codeCurrentLineEl || !codeEditorEl) return;
+        const lh = codeLineHeight();
+        const padTop = parseFloat(getComputedStyle(codeEditorEl).paddingTop) || 0;
+        const y = padTop + (caretPos().line - 1) * lh - codeEditorEl.scrollTop;
+        codeCurrentLineEl.style.height = lh + 'px';
+        codeCurrentLineEl.style.transform = 'translateY(' + y + 'px)';
+    }
+
+    // 光标跟随：光标移出可视区时自动滚动（含程序化改文后，浏览器不会自动滚动）
+    // —— 这就是「光标下移后右侧滚动条自动移动」的核心。
+    function scrollCaretIntoView() {
+        const ta = codeEditorEl;
+        if (ta && ta.clientHeight) {
+            const lh = codeLineHeight();
+            const padTop = parseFloat(getComputedStyle(ta).paddingTop) || 0;
+            const yTop = padTop + (caretPos().line - 1) * lh;
+            const yBot = yTop + lh;
+            if (yTop < ta.scrollTop) {
+                ta.scrollTop = yTop;                                   // 上边界之外：顶到顶部
+            } else if (yBot > ta.scrollTop + ta.clientHeight) {
+                ta.scrollTop = yBot - ta.clientHeight;                 // 下边界之外：滚到底部
+            }
+        }
+        syncCodeScroll();
+    }
+
+    // 光标/选区变化后的统一收尾：状态栏 + 当前行 + 跟随滚动
+    function onCaretActivity() {
+        updateCodeStatus();
+        scrollCaretIntoView();
     }
 
     // 重绘高亮层与行号。textarea 与 <pre> 对「结尾换行」的处理不同，
@@ -612,7 +662,7 @@
             }
         }
         renderCodeNumbers(text);
-        syncCodeScroll();
+        scrollCaretIntoView();     // 含 syncCodeScroll + 当前行高亮
         updateCodeStatus();
     }
 
@@ -657,7 +707,8 @@
         refreshCodeEditor();
     }
 
-    // Enter：继承上一行缩进；行尾是 { ( [ 时再多一级
+    // Enter：① 光标夹在一对括号之间 → 展开成三行（VS Code 招牌行为）
+    //        ② 否则继承上一行缩进；行尾是 { ( [ 再多一级
     function autoIndentOnEnter() {
         const ta = codeEditorEl;
         if (ta.selectionStart !== ta.selectionEnd) return false;
@@ -666,8 +717,23 @@
         const lineStart = v.lastIndexOf('\n', pos - 1) + 1;
         const cur = v.slice(lineStart, pos);
         const m = cur.match(/^[ \t]*/);
-        let indent = m ? m[0] : '';
+        const outer = m ? m[0] : '';
+        let indent = outer;
         if (/[\[({]\s*$/.test(cur)) indent += INDENT;
+
+        // 夹在一对括号之间：{ | }  →  {
+        //                              |
+        //                          }
+        const prev = v[pos - 1];
+        const next = v[pos];
+        if (prev && next && PAIRS[prev] === next) {
+            const insert = '\n' + indent + '\n' + outer;
+            ta.value = v.slice(0, pos) + insert + v.slice(pos);
+            ta.selectionStart = ta.selectionEnd = pos + 1 + indent.length;
+            refreshCodeEditor();
+            return true;
+        }
+
         const insert = '\n' + indent;
         ta.value = v.slice(0, pos) + insert + v.slice(pos);
         ta.selectionStart = ta.selectionEnd = pos + insert.length;
@@ -675,12 +741,141 @@
         return true;
     }
 
+    // 智能 Home：先跳到首个非空白字符，再按一次到行首（VS Code 行为）
+    function smartHome() {
+        const ta = codeEditorEl;
+        if (ta.selectionStart !== ta.selectionEnd) return false;
+        const v = ta.value;
+        const pos = ta.selectionStart;
+        const lineStart = v.lastIndexOf('\n', pos - 1) + 1;
+        const m = v.slice(lineStart).match(/^[ \t]*/);
+        const indentEnd = lineStart + (m ? m[0].length : 0);
+        if (pos !== indentEnd) {
+            ta.selectionStart = ta.selectionEnd = indentEnd;
+        } else if (pos !== lineStart) {
+            ta.selectionStart = ta.selectionEnd = lineStart;
+        } else {
+            return false;
+        }
+        onCaretActivity();
+        return true;
+    }
+
+    // 取选区覆盖的整行区间 [startIdx, endIdx)（不含末行换行符）
+    function lineRange(v, s, e) {
+        const startIdx = v.lastIndexOf('\n', s - 1) + 1;
+        let endIdx;
+        if (e > s && v[e - 1] === '\n') endIdx = e - 1;
+        else {
+            endIdx = v.indexOf('\n', e);
+            if (endIdx === -1) endIdx = v.length;
+        }
+        return { startIdx, endIdx };
+    }
+
+    // Ctrl/⌘ + /：整行注释开关（// ）
+    function toggleLineComment() {
+        const ta = codeEditorEl;
+        const v = ta.value;
+        const s = ta.selectionStart;
+        const e2 = ta.selectionEnd;
+        const { startIdx, endIdx } = lineRange(v, s, e2);
+        const lines = v.slice(startIdx, endIdx).split('\n');
+        const filled = lines.filter((ln) => ln.trim() !== '');
+        const allCommented = filled.length > 0 && filled.every((ln) => /^\s*\/\//.test(ln));
+
+        let deltaFirst = 0;
+        let deltaAll = 0;
+        const out = lines.map((ln, i) => {
+            if (ln.trim() === '') return ln;                 // 空行跳过
+            let nl;
+            if (allCommented) {
+                nl = ln.replace(/^(\s*)\/\/\s?/, '$1');      // 去掉注释
+            } else {
+                const ind = (ln.match(/^\s*/) || [''])[0];
+                nl = ind + '// ' + ln.slice(ind.length);     // 加注释
+            }
+            const d = nl.length - ln.length;
+            if (i === 0) deltaFirst = d;
+            deltaAll += d;
+            return nl;
+        }).join('\n');
+
+        ta.value = v.slice(0, startIdx) + out + v.slice(endIdx);
+        ta.selectionStart = Math.max(startIdx, s + deltaFirst);
+        ta.selectionEnd = Math.max(ta.selectionStart, e2 + deltaAll);
+        refreshCodeEditor();
+    }
+
+    // Alt+↑/↓ 移动行；Shift+Alt+↑/↓ 复制行（VS Code 默认键位）
+    function moveLines(up, copy) {
+        const ta = codeEditorEl;
+        const v = ta.value;
+        if (!v) return;
+        const s = ta.selectionStart;
+        const e2 = ta.selectionEnd;
+        const { startIdx, endIdx } = lineRange(v, s, e2);
+        const block = v.slice(startIdx, endIdx);
+
+        if (copy) {
+            if (up) {
+                if (startIdx === 0) return;
+                ta.value = v.slice(0, startIdx) + block + '\n' + v.slice(startIdx);
+                ta.selectionStart = s + block.length + 1;
+                ta.selectionEnd = e2 + block.length + 1;
+            } else {
+                if (endIdx >= v.length) return;
+                ta.value = v.slice(0, endIdx) + '\n' + block + v.slice(endIdx);
+                ta.selectionStart = s;
+                ta.selectionEnd = e2;
+            }
+            refreshCodeEditor();
+            return;
+        }
+
+        if (up) {
+            if (startIdx === 0) return;                                     // 已在首行
+            const prevStart = v.lastIndexOf('\n', startIdx - 2) + 1;
+            const prevLine = v.slice(prevStart, startIdx - 1);
+            ta.value = v.slice(0, prevStart) + block + '\n' + prevLine + v.slice(endIdx);
+            const shift = -(prevLine.length + 1);
+            ta.selectionStart = s + shift;
+            ta.selectionEnd = e2 + shift;
+        } else {
+            if (endIdx >= v.length) return;                                 // 已在末行
+            const nextStart = endIdx + 1;
+            let nextEnd = v.indexOf('\n', nextStart);
+            if (nextEnd === -1) nextEnd = v.length;
+            const nextLine = v.slice(nextStart, nextEnd);
+            ta.value = v.slice(0, startIdx) + nextLine + '\n' + block + v.slice(nextEnd);
+            const shift = nextLine.length + 1;
+            ta.selectionStart = s + shift;
+            ta.selectionEnd = e2 + shift;
+        }
+        refreshCodeEditor();
+    }
+
+    const CLOSERS = { ')': 1, ']': 1, '}': 1, '"': 1, "'": 1 };
+
     function handleCodeKeydown(e) {
         const ta = codeEditorEl;
 
+        // 运行：Ctrl/⌘ + Enter
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
             e.preventDefault();
             submit();
+            return;
+        }
+        // 整行注释：Ctrl/⌘ + /
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === '/') {
+            e.preventDefault();
+            toggleLineComment();
+            return;
+        }
+        // 移动 / 复制行：Alt+↑/↓、Shift+Alt+↑/↓（避开 Ctrl+Alt 组合）
+        if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+            e.preventDefault();
+            moveLines(e.key === 'ArrowUp', e.shiftKey);
             return;
         }
         if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -694,10 +889,38 @@
             if (autoIndentOnEnter()) e.preventDefault();
             return;
         }
+        if (e.key === 'Home') {
+            if (smartHome()) e.preventDefault();
+            return;
+        }
 
         const v = ta.value;
         const s = ta.selectionStart;
         const en = ta.selectionEnd;
+
+        // 右半边已存在：跳过而非重复输入（引号也走这里，需在自动配对之前）
+        if (CLOSERS[e.key] && s === en && v[s] === e.key) {
+            e.preventDefault();
+            ta.selectionStart = ta.selectionEnd = s + 1;
+            onCaretActivity();
+            return;
+        }
+
+        // 输入 } 时：整行只有缩进 → 反缩进一级（VS Code 行为）
+        if (e.key === '}' && s === en) {
+            const lineStart = v.lastIndexOf('\n', s - 1) + 1;
+            const before = v.slice(lineStart, s);
+            if (before.length >= INDENT.length && /^[ \t]*$/.test(before)) {
+                const remove = before.endsWith(INDENT)
+                    ? INDENT.length
+                    : (before.length % INDENT.length) || INDENT.length;
+                e.preventDefault();
+                ta.value = v.slice(0, s - remove) + '}' + v.slice(s);
+                ta.selectionStart = ta.selectionEnd = s - remove + 1;
+                refreshCodeEditor();
+                return;
+            }
+        }
 
         // Backspace：成对括号/引号删左半边时连带右半边
         if (e.key === 'Backspace' && s === en) {
@@ -710,8 +933,14 @@
             }
             return;
         }
+
         // 自动补全另一半括号 / 引号
         if (PAIRS[e.key]) {
+            const prevCh = s > 0 ? v[s - 1] : '';
+            const nextCh = v[s] || '';
+            const isQuote = (e.key === '"' || e.key === "'");
+            // 引号：词内引号（如 don't）、紧跟同种引号、转义后 —— 都不自动补
+            if (isQuote && (/[\w\\]/.test(prevCh) || prevCh === e.key)) return;
             e.preventDefault();
             if (s !== en) {
                 const sel = v.slice(s, en);
@@ -724,13 +953,6 @@
             }
             refreshCodeEditor();
             return;
-        }
-        // 右半边已存在：跳过而非重复输入
-        if ((e.key === ')' || e.key === ']' || e.key === '}' || e.key === '"' || e.key === "'")
-            && s === en && v[s] === e.key) {
-            e.preventDefault();
-            ta.selectionStart = ta.selectionEnd = s + 1;
-            updateCodeStatus();
         }
     }
 
@@ -747,8 +969,9 @@
         codeEditorEl.addEventListener('keydown', handleCodeKeydown);
         codeEditorEl.addEventListener('input', refreshCodeEditor);
         codeEditorEl.addEventListener('scroll', syncCodeScroll);
+        // 光标移动（方向键 / 点击 / 选择 / 聚焦）→ 状态栏 + 跟随滚动 + 当前行高亮
         ['keyup', 'click', 'select', 'focus'].forEach((ev) => {
-            codeEditorEl.addEventListener(ev, updateCodeStatus);
+            codeEditorEl.addEventListener(ev, onCaretActivity);
         });
     }
 

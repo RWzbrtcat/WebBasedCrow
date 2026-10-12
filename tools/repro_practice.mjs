@@ -152,6 +152,8 @@ assert(html.includes('class="practice-code-hl"'), '叠加层用 practice-code-hl
 assert(html.includes('class="practice-code-input"'), '输入框用 practice-code-input');
 assert(html.includes('id="codeEditor"'), '保留 codeEditor（提交逻辑依赖）');
 assert(html.includes('id="codeStatusPos"'), '含状态栏光标位置 codeStatusPos');
+assert(html.includes('id="codeCurrentLine"') && html.includes('practice-code-currentline'),
+    '含当前行高亮条 codeCurrentLine');
 assert(!/class="practice-editor"/.test(html), '旧的 .practice-editor 纯 textarea 已移除');
 
 assert(js.includes('hljs.highlight') && js.includes("language: 'cpp'"), 'JS 用 hljs 做 C++ 语法高亮');
@@ -162,9 +164,34 @@ assert(js.includes('handleCodeKeydown'), 'JS 接管编辑器快捷键');
 assert(js.includes('applyIndent') && js.includes('autoIndentOnEnter'), 'Tab 缩进 + Enter 自动缩进');
 assert(js.includes('renderTier(currentTier)') && js.includes("INDENT = '    '"), '切档位后重绘、缩进为 4 空格');
 
+// 3e. VS Code 级编辑规则 + 光标跟随滚动
+console.log('== 编辑器：VS Code 编辑规则与光标跟随 ==');
+assert(js.includes('function scrollCaretIntoView'), 'JS 有「光标跟随滚动」scrollCaretIntoView');
+assert(js.includes('function onCaretActivity'), 'JS 有光标活动统一收尾 onCaretActivity');
+assert(/\[.keyup., .click., .select., .focus.\]/.test(js) && js.includes('onCaretActivity'),
+    'keyup/click/select/focus 绑定到光标活动（方向键移动也会跟随滚动）');
+assert(js.includes('function updateCurrentLine'), 'JS 有当前行高亮 updateCurrentLine');
+assert(js.includes('function toggleLineComment'), 'JS 有 Ctrl+/ 整行注释开关');
+assert(js.includes('function moveLines'), 'JS 有 Alt+↑/↓ 移动行 / Shift+Alt+↑/↓ 复制行');
+assert(js.includes('function smartHome'), 'JS 有智能 Home');
+assert(/e\.key === .\/./.test(js) && /e\.altKey/.test(js) && /ArrowUp/.test(js),
+    '注册了 Ctrl+/ 与 Alt+方向键 快捷键');
+assert(js.includes('PAIRS[prev] === next'), 'Enter 在成对括号之间会展开成三行');
+
 assert(css.includes('.practice-code-gutter'), 'style.css 含行号槽样式');
 assert(css.includes('.practice-code-hl .hljs-keyword'), 'style.css 含编辑器 token 配色');
 assert(css.includes('.practice-code-body:focus-within'), 'style.css 含编辑器聚焦态');
+assert(css.includes('.practice-code-currentline'), 'style.css 含当前行高亮条样式');
+// 配色已从 Atom One Dark 换为 VS Code Dark+：只检查「编辑器配色区块」，避免误判站点代码块
+{
+    const from = css.indexOf('.practice-code-hl .hljs-comment');
+    const to = css.indexOf('#9cdcfe; }', from);
+    const palette = from >= 0 && to > from ? css.slice(from, to) : '';
+    assert(palette.length > 0, '能定位编辑器 token 配色区块');
+    assert(!/#c678dd/.test(palette) && !/#e6c07b/.test(palette), '编辑器 token 已弃用 Atom One Dark 配色');
+    assert(/#569cd6/.test(palette) && /#4ec9b0/.test(palette) && /#6a9955/.test(palette) && /#ce9178/.test(palette),
+        '编辑器 token 为 VS Code Dark+ 色板（#569cd6/#4ec9b0/#6a9955/#ce9178）');
+}
 
 // 4. seed 数据（由 tools/gen_practice_seed.py 生成）
 console.log('== seed_practice.sql ==');
