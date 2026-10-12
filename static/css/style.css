@@ -4793,3 +4793,218 @@ body.practice-page .site-footer {
         max-height: none;
     }
 }
+
+/* ===== 写代码题：IDE 观感代码编辑器（行号槽 + 高亮叠加层 + 状态栏） ===== */
+/* 配色沿用站点代码块（.markdown-body pre）的深色基调，保持视觉连续 */
+.practice-code {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    margin: 12px 20px;
+    border: 1px solid #2d323b;
+    border-radius: var(--radius-sm);
+    background: #1f2328;
+    overflow: hidden;
+}
+
+/* 顶部标签条：文件名 + 运行快捷键提示 */
+.practice-code-bar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 14px;
+    background: #171a1f;
+    border-bottom: 1px solid #2d323b;
+    font-size: 12px;
+    color: #8b94a3;
+}
+
+.practice-code-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: #c9cfd8;
+}
+
+.practice-code-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+}
+
+.practice-code-tip {
+    color: #6b7480;
+}
+
+/* 编辑区：左行号槽 + 右（高亮层叠 textarea） */
+.practice-code-main {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    overflow: hidden;
+}
+
+.practice-code-gutter {
+    flex-shrink: 0;
+    min-width: 46px;
+    padding: 12px 10px;
+    text-align: right;
+    font-family: 'SFMono-Regular', 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #4b5563;
+    background: #1b1f24;
+    border-right: 1px solid #2d323b;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    font-variant-numeric: tabular-nums;
+}
+
+.practice-code-body {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* 高亮层与输入框必须逐像素对齐：字体 / 行高 / 内边距 / 制表符宽度全部一致 */
+.practice-code-hl,
+.practice-code-input {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    font-family: 'SFMono-Regular', 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    tab-size: 4;
+    white-space: pre;
+}
+
+.practice-code-hl {
+    z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
+    color: #e5e7eb;
+}
+
+.practice-code-hl code {
+    display: block;
+    margin: 0;
+    padding: 0;
+    font: inherit;
+    white-space: pre;
+    background: transparent;
+    color: inherit;
+}
+
+.practice-code-input {
+    z-index: 2;
+    resize: none;
+    outline: none;
+    overflow: auto;
+    background: transparent;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    caret-color: #e5e7eb;
+    scrollbar-width: thin;
+    scrollbar-color: #3a4048 transparent;
+}
+
+.practice-code-input::placeholder {
+    color: #5c6370;
+    -webkit-text-fill-color: #5c6370;
+    opacity: 1;
+}
+
+.practice-code-input::selection {
+    background: rgba(97, 174, 238, 0.3);
+}
+
+.practice-code-input::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.practice-code-input::-webkit-scrollbar-thumb {
+    background: #3a4048;
+    border-radius: 5px;
+}
+
+.practice-code-input::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.practice-code-body:focus-within {
+    box-shadow: inset 0 0 0 1px rgba(194, 65, 12, 0.55);
+}
+
+/* 底部状态栏：光标位置 + 语言信息 */
+.practice-code-status {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 14px;
+    background: #171a1f;
+    border-top: 1px solid #2d323b;
+    font-size: 11.5px;
+    color: #6b7480;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 高亮层内的 C++ token 配色：与站点代码块同一套 Atom One Dark 色板 */
+.practice-code-hl .hljs-comment,
+.practice-code-hl .hljs-quote { color: #5c6370; font-style: italic; }
+.practice-code-hl .hljs-doctag,
+.practice-code-hl .hljs-formula,
+.practice-code-hl .hljs-keyword { color: #c678dd; }
+.practice-code-hl .hljs-deletion,
+.practice-code-hl .hljs-name,
+.practice-code-hl .hljs-section,
+.practice-code-hl .hljs-selector-tag,
+.practice-code-hl .hljs-subst { color: #e06c75; }
+.practice-code-hl .hljs-literal { color: #56b6c2; }
+.practice-code-hl .hljs-addition,
+.practice-code-hl .hljs-attribute,
+.practice-code-hl .hljs-meta .hljs-string,
+.practice-code-hl .hljs-regexp,
+.practice-code-hl .hljs-string { color: #98c379; }
+.practice-code-hl .hljs-attr,
+.practice-code-hl .hljs-number,
+.practice-code-hl .hljs-selector-attr,
+.practice-code-hl .hljs-selector-class,
+.practice-code-hl .hljs-selector-pseudo,
+.practice-code-hl .hljs-template-variable,
+.practice-code-hl .hljs-type,
+.practice-code-hl .hljs-variable { color: #d19a66; }
+.practice-code-hl .hljs-bullet,
+.practice-code-hl .hljs-link,
+.practice-code-hl .hljs-meta,
+.practice-code-hl .hljs-selector-id,
+.practice-code-hl .hljs-symbol,
+.practice-code-hl .hljs-title { color: #61aeee; }
+.practice-code-hl .hljs-built_in,
+.practice-code-hl .hljs-class .hljs-title,
+.practice-code-hl .hljs-title.class_ { color: #e6c07b; }
+
+/* 窄屏回落：编辑器不再撑满高度，改固定高度（行号与高亮仍同步滚动） */
+@media (max-width: 1200px) {
+    .practice-code {
+        flex: none;
+    }
+
+    .practice-code-main {
+        min-height: 340px;
+    }
+}

@@ -75,14 +75,32 @@
                         </section>
                     </section>
 
-                    <!-- 写代码题：编辑器 -->
+                    <!-- 写代码题：代码编辑器（IDE 观感：行号槽 + 语法高亮 + 状态栏） -->
                     <section class="practice-card practice-editor-card" id="editorCard" hidden>
                         <div class="practice-editor-head">
                             <span class="practice-editor-title">代码</span>
                             <span class="practice-editor-lang">C++20</span>
                         </div>
-                        <textarea id="codeEditor" class="practice-editor" spellcheck="false"
-                            placeholder="在这里编写你的 C++ 代码..."></textarea>
+                        <div class="practice-code" id="codeShell">
+                            <div class="practice-code-bar">
+                                <span class="practice-code-file"><i class="practice-code-dot" aria-hidden="true"></i>solution.cpp</span>
+                                <span class="practice-code-tip">Ctrl / ⌘ + Enter 运行</span>
+                            </div>
+                            <div class="practice-code-main">
+                                <div class="practice-code-gutter" id="codeGutter" aria-hidden="true">1</div>
+                                <div class="practice-code-body">
+                                    <pre class="practice-code-hl" aria-hidden="true"><code id="codeHighlight"></code></pre>
+                                    <textarea id="codeEditor" class="practice-code-input" spellcheck="false"
+                                        autocomplete="off" autocapitalize="off" autocorrect="off"
+                                        aria-label="C++ 代码编辑器"
+                                        placeholder="在这里编写你的 C++ 代码..."></textarea>
+                                </div>
+                            </div>
+                            <div class="practice-code-status">
+                                <span id="codeStatusPos">行 1，列 1</span>
+                                <span class="practice-code-status-right">C++20 · 缩进 4 空格 · UTF-8</span>
+                            </div>
+                        </div>
                         <div class="practice-editor-actions">
                             <button type="button" class="btn btn-primary" id="submitBtn">提交运行</button>
                             <button type="button" class="btn btn-secondary" id="resetBtn">重置代码</button>

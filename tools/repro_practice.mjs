@@ -105,6 +105,29 @@ assert(/practice-pane-title">题目</.test(js) === false, '不再在 JS 里输�
 assert(css.includes('.practice-tab') && css.includes('.practice-tabs'), 'style.css 含标签栏样式');
 assert(css.includes('.practice-tab.is-active'), 'style.css 含激活标签样式');
 
+// 3d. 代码编辑器：IDE 观感（行号槽 + 语法高亮叠加层 + 状态栏）
+console.log('== 代码编辑器（行号 / 语法高亮 / 状态栏）==');
+assert(html.includes('class="practice-code"'), '含编辑器外壳 practice-code');
+assert(html.includes('id="codeGutter"'), '含行号槽 codeGutter');
+assert(html.includes('id="codeHighlight"'), '含语法高亮叠加层 codeHighlight');
+assert(html.includes('class="practice-code-hl"'), '叠加层用 practice-code-hl');
+assert(html.includes('class="practice-code-input"'), '输入框用 practice-code-input');
+assert(html.includes('id="codeEditor"'), '保留 codeEditor（提交逻辑依赖）');
+assert(html.includes('id="codeStatusPos"'), '含状态栏光标位置 codeStatusPos');
+assert(!/class="practice-editor"/.test(html), '旧的 .practice-editor 纯 textarea 已移除');
+
+assert(js.includes('hljs.highlight') && js.includes("language: 'cpp'"), 'JS 用 hljs 做 C++ 语法高亮');
+assert(js.includes('refreshCodeEditor'), 'JS 有编辑器重绘 refreshCodeEditor');
+assert(js.includes('renderCodeNumbers'), 'JS 渲染行号');
+assert(js.includes('syncCodeScroll'), 'JS 同步行号/高亮层滚动');
+assert(js.includes('handleCodeKeydown'), 'JS 接管编辑器快捷键');
+assert(js.includes('applyIndent') && js.includes('autoIndentOnEnter'), 'Tab 缩进 + Enter 自动缩进');
+assert(js.includes('renderTier(currentTier)') && js.includes("INDENT = '    '"), '切档位后重绘、缩进为 4 空格');
+
+assert(css.includes('.practice-code-gutter'), 'style.css 含行号槽样式');
+assert(css.includes('.practice-code-hl .hljs-keyword'), 'style.css 含编辑器 token 配色');
+assert(css.includes('.practice-code-body:focus-within'), 'style.css 含编辑器聚焦态');
+
 // 4. seed 数据（由 tools/gen_practice_seed.py 生成）
 console.log('== seed_practice.sql ==');
 const seed = readFileSync(resolve(root, 'tools/seed_practice.sql'), 'utf8');

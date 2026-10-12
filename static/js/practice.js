@@ -4,6 +4,7 @@
 //       （题目描述卡 | 编辑器·作答卡 并排）。
 //       描述卡内 = 标签栏「题目描述 | 题解」共用一栏（默认题目描述，点题解切换）
 //       + 底部固定「测试结果」条。
+//       写代码题的编辑器卡 = IDE 观感（行号槽 + C++ 语法高亮叠加层 + 状态栏）。
 // 数据全部来自后端接口：
 //   GET  /api/practice/chapters            章节列表（按学期分组）
 //   GET  /api/practice/exercises?chapter=N 某章题目列表
@@ -13,7 +14,8 @@
 // 题型：choice(选择) / blank(填空) / short(写代码) / boss(项目关)。
 // 「已完成」状态为本地记录（localStorage），无后端依赖，清缓存即重置。
 // 依赖：daily-common.js（esc / showToast / apiRequest / describeFetchError）、
-//       markdown.js（renderMarkdownInto，渲染题干与题解）。
+//       markdown.js（renderMarkdownInto，渲染题干与题解）、
+//       highlight.min.js（hljs.highlight，编辑器 C++ 语法高亮）。
 // ============================================
 (function () {
     'use strict';
@@ -319,6 +321,8 @@
         editorCardEl.hidden = false;
         answerCardEl.hidden = true;
         clearResult();
+        // 卡片可见后再刷一次：隐藏时测不到高度，行高补偿会不准
+        refreshCodeEditor();
     }
 
     // 选择题：题干 | 选项
@@ -432,21 +436,224 @@
                 btn.classList.toggle('active', btn.dataset.tier === tierKey);
             });
         }
+        refreshCodeEditor();
+    }
+
+    // ---------- 代码编辑器（行号槽 + 语法高亮叠加层 + 状态栏） ----------
+    // 复用文章编辑器（editor.js）的「透明 textarea 叠在高亮层上」范式：
+    // 高亮层与输入框的字体/行高/内边距必须逐像素一致，否则文字与光标会错位。
+    const INDENT = '    ';                                   // 4 空格缩进
+    const PAIRS = { '(': ')', '[': ']', '{': '}', '"': '"', "'": "'" };
+
+    let codeGutterEl = null;
+    let codeHighlightEl = null;
+    let codeStatusPosEl = null;
+
+    function ensureCodeRefs() {
+        if (!codeGutterEl) codeGutterEl = document.getElementById('codeGutter');
+        if (!codeHighlightEl) codeHighlightEl = document.getElementById('codeHighlight');
+        if (!codeStatusPosEl) codeStatusPosEl = document.getElementById('codeStatusPos');
+    }
+
+    function highlightCpp(code) {
+        if (!code) return '';
+        if (window.hljs && window.hljs.getLanguage('cpp')) {
+            try { return window.hljs.highlight(code, { language: 'cpp' }).value; }
+            catch (e) { return esc(code); }
+        }
+        return esc(code);
+    }
+
+    function renderCodeNumbers(code) {
+        if (!codeGutterEl) return;
+        const lines = code.split('\n').length;
+        let html = '';
+        for (let i = 1; i <= lines; i++) html += '<div>' + i + '</div>';
+        codeGutterEl.innerHTML = html;
+    }
+
+    function syncCodeScroll() {
+        if (!codeEditorEl) return;
+        const top = codeEditorEl.scrollTop;
+        const left = codeEditorEl.scrollLeft;
+        if (codeGutterEl) codeGutterEl.scrollTop = top;
+        const pre = codeHighlightEl && codeHighlightEl.parentElement;
+        if (pre) { pre.scrollTop = top; pre.scrollLeft = left; }
+    }
+
+    function updateCodeStatus() {
+        if (!codeStatusPosEl) return;
+        const v = codeEditorEl.value;
+        const pos = codeEditorEl.selectionStart || 0;
+        const before = v.slice(0, pos);
+        const line = before.split('\n').length;
+        const col = pos - (before.lastIndexOf('\n') + 1) + 1;
+        codeStatusPosEl.textContent = '行 ' + line + '，列 ' + col;
+    }
+
+    // 重绘高亮层与行号。textarea 与 <pre> 对「结尾换行」的处理不同，
+    // 用两者 scrollHeight 的差值给高亮层补底部内边距，保证滚动同步不错位（同 editor.js）。
+    function refreshCodeEditor() {
+        ensureCodeRefs();
+        const text = codeEditorEl.value;
+        if (codeHighlightEl) {
+            codeHighlightEl.innerHTML = text ? highlightCpp(text) : '';
+            const pre = codeHighlightEl.parentElement;
+            if (pre) {
+                pre.style.paddingBottom = '';
+                if (codeGutterEl) codeGutterEl.style.paddingBottom = '';
+                if (text) {
+                    const diff = codeEditorEl.scrollHeight - pre.scrollHeight;
+                    if (diff > 0) {
+                        const prePad = parseFloat(getComputedStyle(pre).paddingBottom) || 0;
+                        pre.style.paddingBottom = (prePad + diff) + 'px';
+                        if (codeGutterEl) {
+                            // 行号槽补同样的高度，滚到底部时行号才不会错位
+                            const gutPad = parseFloat(getComputedStyle(codeGutterEl).paddingBottom) || 0;
+                            codeGutterEl.style.paddingBottom = (gutPad + diff) + 'px';
+                        }
+                    }
+                }
+            }
+        }
+        renderCodeNumbers(text);
+        syncCodeScroll();
+        updateCodeStatus();
+    }
+
+    // Tab / Shift+Tab：无选区插入一个缩进；有选区则整块缩进 / 反缩进
+    function applyIndent(outdent) {
+        const ta = codeEditorEl;
+        const v = ta.value;
+        const s = ta.selectionStart;
+        const e = ta.selectionEnd;
+
+        if (s === e && !outdent) {
+            ta.value = v.slice(0, s) + INDENT + v.slice(e);
+            ta.selectionStart = ta.selectionEnd = s + INDENT.length;
+            refreshCodeEditor();
+            return;
+        }
+
+        const lineStart = v.lastIndexOf('\n', s - 1) + 1;
+        const nl = v.indexOf('\n', e);
+        const blockEnd = nl === -1 ? v.length : nl;
+        const lines = v.slice(lineStart, blockEnd).split('\n');
+
+        let deltaFirst = 0;
+        let deltaAll = 0;
+        const out = lines.map((ln, i) => {
+            if (outdent) {
+                let remove = 0;
+                while (remove < INDENT.length && ln[remove] === ' ') remove++;
+                if (!remove && ln[0] === '\t') remove = 1;
+                if (i === 0) deltaFirst = -remove;
+                deltaAll -= remove;
+                return ln.slice(remove);
+            }
+            if (i === 0) deltaFirst = INDENT.length;
+            deltaAll += INDENT.length;
+            return INDENT + ln;
+        }).join('\n');
+
+        ta.value = v.slice(0, lineStart) + out + v.slice(blockEnd);
+        ta.selectionStart = Math.max(lineStart, s + deltaFirst);
+        ta.selectionEnd = Math.max(ta.selectionStart, e + deltaAll);
+        refreshCodeEditor();
+    }
+
+    // Enter：继承上一行缩进；行尾是 { ( [ 时再多一级
+    function autoIndentOnEnter() {
+        const ta = codeEditorEl;
+        if (ta.selectionStart !== ta.selectionEnd) return false;
+        const v = ta.value;
+        const pos = ta.selectionStart;
+        const lineStart = v.lastIndexOf('\n', pos - 1) + 1;
+        const cur = v.slice(lineStart, pos);
+        const m = cur.match(/^[ \t]*/);
+        let indent = m ? m[0] : '';
+        if (/[\[({]\s*$/.test(cur)) indent += INDENT;
+        const insert = '\n' + indent;
+        ta.value = v.slice(0, pos) + insert + v.slice(pos);
+        ta.selectionStart = ta.selectionEnd = pos + insert.length;
+        refreshCodeEditor();
+        return true;
+    }
+
+    function handleCodeKeydown(e) {
+        const ta = codeEditorEl;
+
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            submit();
+            return;
+        }
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            applyIndent(e.shiftKey);
+            return;
+        }
+        if (e.key === 'Enter') {
+            if (autoIndentOnEnter()) e.preventDefault();
+            return;
+        }
+
+        const v = ta.value;
+        const s = ta.selectionStart;
+        const en = ta.selectionEnd;
+
+        // Backspace：成对括号/引号删左半边时连带右半边
+        if (e.key === 'Backspace' && s === en) {
+            const prev = v[s - 1];
+            if (PAIRS[prev] && PAIRS[prev] === v[s]) {
+                e.preventDefault();
+                ta.value = v.slice(0, s - 1) + v.slice(s + 1);
+                ta.selectionStart = ta.selectionEnd = s - 1;
+                refreshCodeEditor();
+            }
+            return;
+        }
+        // 自动补全另一半括号 / 引号
+        if (PAIRS[e.key]) {
+            e.preventDefault();
+            if (s !== en) {
+                const sel = v.slice(s, en);
+                ta.value = v.slice(0, s) + e.key + sel + PAIRS[e.key] + v.slice(en);
+                ta.selectionStart = s + 1;
+                ta.selectionEnd = en + 1;
+            } else {
+                ta.value = v.slice(0, s) + e.key + PAIRS[e.key] + v.slice(s);
+                ta.selectionStart = ta.selectionEnd = s + 1;
+            }
+            refreshCodeEditor();
+            return;
+        }
+        // 右半边已存在：跳过而非重复输入
+        if ((e.key === ')' || e.key === ']' || e.key === '}' || e.key === '"' || e.key === "'")
+            && s === en && v[s] === e.key) {
+            e.preventDefault();
+            ta.selectionStart = ta.selectionEnd = s + 1;
+            updateCodeStatus();
+        }
     }
 
     // ---------- 事件绑定 ----------
     function bindEvents() {
+        ensureCodeRefs();
         bindTabs();
         submitBtn.addEventListener('click', submit);
         resetBtn.addEventListener('click', () => {
             if (currentExercise) renderTier(currentTier);
         });
         answerSubmitBtn.addEventListener('click', submit);
-        codeEditorEl.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
-                submit();
-            }
+
+        codeEditorEl.addEventListener('keydown', handleCodeKeydown);
+        codeEditorEl.addEventListener('input', refreshCodeEditor);
+        codeEditorEl.addEventListener('scroll', syncCodeScroll);
+        ['keyup', 'click', 'select', 'focus'].forEach((ev) => {
+            codeEditorEl.addEventListener(ev, updateCodeStatus);
         });
     }
 

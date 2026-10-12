@@ -6,6 +6,7 @@
 <title>练习闯关 · v0.4 预览（题目描述 / 题解 标签页） · LazyCat's Blog</title>
 <!-- 直接引用真实样式表：预览即真实 CSS 下的最终效果（样式已并入 style.css） -->
 <link rel="stylesheet" href="static/css/style.css">
+<link rel="stylesheet" href="static/css/highlight.css">
 <style>
 /* 预览页专属：仅用于说明可点击切换，不属于线上样式 */
 .preview-hint {
@@ -130,17 +131,32 @@ public:
                         </section>
                     </section>
 
-                    <!-- 右：编辑器 -->
+                    <!-- 右：代码编辑器（IDE 观感：行号槽 + 语法高亮 + 状态栏） -->
                     <section class="practice-card practice-editor-card">
                         <div class="practice-editor-head">
                             <span class="practice-editor-title">代码</span>
                             <span class="practice-editor-lang">C++20</span>
                         </div>
-                        <textarea class="practice-editor" spellcheck="false">Wrapper(Wrapper&amp;&amp; o) noexcept
-    : p_(o.p_) {
-    o.p_ = nullptr;
-}
-</textarea>
+                        <div class="practice-code">
+                            <div class="practice-code-bar">
+                                <span class="practice-code-file"><i class="practice-code-dot" aria-hidden="true"></i>solution.cpp</span>
+                                <span class="practice-code-tip">Ctrl / ⌘ + Enter 运行</span>
+                            </div>
+                            <div class="practice-code-main">
+                                <div class="practice-code-gutter" id="codeGutter" aria-hidden="true">1</div>
+                                <div class="practice-code-body">
+                                    <pre class="practice-code-hl" aria-hidden="true"><code id="codeHighlight"></code></pre>
+                                    <textarea id="codeEditor" class="practice-code-input" spellcheck="false"
+                                        autocomplete="off" autocapitalize="off" autocorrect="off"
+                                        aria-label="C++ 代码编辑器"
+                                        placeholder="在这里编写你的 C++ 代码..."></textarea>
+                                </div>
+                            </div>
+                            <div class="practice-code-status">
+                                <span id="codeStatusPos">行 6，列 9</span>
+                                <span class="practice-code-status-right">C++20 · 缩进 4 空格 · UTF-8</span>
+                            </div>
+                        </div>
                         <div class="practice-editor-actions">
                             <button class="btn btn-primary" type="button">提交运行</button>
                             <button class="btn btn-secondary" type="button">重置代码</button>
@@ -155,9 +171,12 @@ public:
         <a href="#">冀ICP备2026039047号</a>
     </footer>
 
+    <script src="static/js/highlight.min.js"></script>
     <script>
-    // 预览交互：点击标签切换「题目描述 / 题解」（线上由 practice.js 的 switchTab 负责）
+    // 预览交互：① 标签切换 ② 代码编辑器（行号 + 高亮 + 滚动同步）
+    // 线上分别由 practice.js 的 switchTab() / refreshCodeEditor() 负责
     (function () {
+        // ---- 标签切换 ----
         var desc = document.getElementById('descPane');
         var sol = document.getElementById('solutionPane');
         var tabDesc = document.getElementById('tabDesc');
@@ -173,6 +192,53 @@ public:
         }
         tabDesc.addEventListener('click', function () { show('desc'); });
         tabSol.addEventListener('click', function () { show('solution'); });
+
+        // ---- 代码编辑器 ----
+        var CODE = [
+            '#include <utility>',
+            '',
+            'class Wrapper {',
+            '    int* p_;',
+            'public:',
+            '    explicit Wrapper(int v) : p_(new int(v)) {}',
+            '',
+            '    Wrapper(Wrapper&& o) noexcept',
+            '        : p_(o.p_) {',
+            '        o.p_ = nullptr;   // 关键：源对象置空，避免 double free',
+            '    }',
+            '',
+            '    ~Wrapper() { delete p_; }',
+            '};'
+        ].join('\n');
+
+        var ta = document.getElementById('codeEditor');
+        var hl = document.getElementById('codeHighlight');
+        var gutter = document.getElementById('codeGutter');
+        ta.value = CODE;
+
+        hl.innerHTML = window.hljs ? hljs.highlight(CODE, { language: 'cpp' }).value : '';
+        if (!window.hljs) hl.textContent = CODE;   // 无高亮库时至少保证文字可见
+
+        var lines = CODE.split('\n').length;
+        var nums = '';
+        for (var i = 1; i <= lines; i++) nums += '<div>' + i + '</div>';
+        gutter.innerHTML = nums;
+
+        var pre = hl.parentElement;
+        function sync() {
+            gutter.scrollTop = ta.scrollTop;
+            pre.scrollTop = ta.scrollTop;
+            pre.scrollLeft = ta.scrollLeft;
+        }
+        ta.addEventListener('scroll', sync);
+
+        // 尾部换行导致的高度差补偿（与线上一致）
+        pre.style.paddingBottom = '';
+        var diff = ta.scrollHeight - pre.scrollHeight;
+        if (diff > 0) {
+            var base = parseFloat(getComputedStyle(pre).paddingBottom) || 0;
+            pre.style.paddingBottom = (base + diff) + 'px';
+        }
     })();
     </script>
 </body>
