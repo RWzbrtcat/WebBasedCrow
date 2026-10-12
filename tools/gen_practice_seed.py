@@ -11,7 +11,10 @@
 #
 # 说明：
 #   - 本脚本内嵌章节与题目数据（题多了再拆 tools/qbank 目录，与每日一题一致）。
-#   - 幂等：固定 id + INSERT IGNORE，重复导入不覆盖手改内容。
+#   - 幂等：固定 id + INSERT ... ON DUPLICATE KEY UPDATE（upsert）。
+#     重导会「更新」已有行 —— 生成器是题库唯一真源，改 sort_order/内容都要靠重导生效。
+#     历史坑：早期用 INSERT IGNORE，导致已有行（如 C1/C2 代码题的 sort_order）永远不更新，
+#     与新增客观题排序冲突，页面上题序错乱。
 #   - 三张表的 DDL 与 src/database.cpp 的 initTable 保持一致（改表结构两处都要动）。
 #   - 生成器负责 SQL 转义：单引号 -> ''，反斜杠 -> \\（C++ 代码里的 \n 靠这个保住）。
 #   - 写文件用 newline="\n"，杜绝 Windows CRLF 混入（历史坑：\r 落进字符串字面量）。
@@ -6148,7 +6151,7 @@ def build():
     out.append('-- ============================================================')
     out.append('-- 练习闯关 · seed 题库（14 章节 + 写代码题，由 gen_practice_seed.py 生成）')
     out.append('-- 用法：mysql -u root -p blogdb < tools/seed_practice.sql')
-    out.append('-- 幂等：固定 id + INSERT IGNORE，重复导入不覆盖手改内容。')
+    out.append('-- 幂等：固定 id + upsert（ON DUPLICATE KEY UPDATE），重导会更新已有行。')
     out.append('-- 注意：本文件是 UTF-8，先 SET NAMES utf8mb4 避免中文乱码。')
     out.append('-- ============================================================')
     out.append('')
@@ -6160,8 +6163,10 @@ def build():
     out.append('-- ---------- 第 2 步：插入 14 个章节 ----------')
     for cid, sem, title, sort in CHAPTERS:
         out.append(
-            'INSERT IGNORE INTO practice_chapters (id, semester, title, sort_order, status) VALUES '
-            f'({cid}, {sql_literal(sem)}, {sql_literal(title)}, {sort}, 1);'
+            'INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES '
+            f'({cid}, {sql_literal(sem)}, {sql_literal(title)}, {sort}, 1) '
+            'ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), '
+            'sort_order=VALUES(sort_order), status=VALUES(status);'
         )
     out.append('')
     out.append('-- ---------- 第 3 步：插入题目 ----------')
@@ -6181,7 +6186,7 @@ def build():
         time_limit_ms = e.get('time_limit_ms', 2000)
 
         out.append(
-            'INSERT IGNORE INTO practice_exercises '
+            'INSERT INTO practice_exercises '
             '(id, chapter_id, type, title, prompt, sort_order, options, answer, '
             'starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES ('
             f'{e["id"]}, {e["chapter_id"]}, {sql_literal(typ)}, {sql_literal(e["title"])}, '
@@ -6189,7 +6194,13 @@ def build():
             f'{sql_or_null(options_val)}, {sql_or_null(answer_val)}, '
             f'{sql_literal(starter_easy)}, {sql_literal(starter_medium)}, '
             f'{sql_literal(starter_hard)}, {sql_or_null(test_driver)}, '
-            f'{total_cases}, {time_limit_ms}, 1);'
+            f'{total_cases}, {time_limit_ms}, 1) '
+            'ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), '
+            'title=VALUES(title), prompt=VALUES(prompt), sort_order=VALUES(sort_order), '
+            'options=VALUES(options), answer=VALUES(answer), starter_easy=VALUES(starter_easy), '
+            'starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), '
+            'test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), '
+            'time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);'
         )
     out.append('')
     return '\n'.join(out)
@@ -6206,8 +6217,8 @@ def main():
     # 满是分号，会被误算成 SQL 语句；这是历史踩过的坑，务必用子串）。
     raw = content.encode('utf-8')
     assert b'\r' not in raw, '生成的 SQL 里出现了 CRLF（\\r），禁止'
-    n_chapters = content.count('INSERT IGNORE INTO practice_chapters')
-    n_exercises = content.count('INSERT IGNORE INTO practice_exercises')
+    n_chapters = content.count('INSERT INTO practice_chapters')
+    n_exercises = content.count('INSERT INTO practice_exercises')
     assert n_chapters == len(CHAPTERS), f'章节 INSERT 数不符：{n_chapters} != {len(CHAPTERS)}'
     assert n_exercises == len(EXERCISES), f'题目 INSERT 数不符：{n_exercises} != {len(EXERCISES)}'
     assert 'practice_progress' in content, '缺 practice_progress 表'

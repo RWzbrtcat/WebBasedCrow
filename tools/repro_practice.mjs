@@ -72,10 +72,11 @@ assert(/id="workBody"[\s\S]{0,40}single/.test(html) || html.includes('practice-w
 // 4. seed 数据（由 tools/gen_practice_seed.py 生成）
 console.log('== seed_practice.sql ==');
 const seed = readFileSync(resolve(root, 'tools/seed_practice.sql'), 'utf8');
-const chapterInserts = (seed.match(/INSERT IGNORE INTO practice_chapters/g) || []).length;
+const chapterInserts = (seed.match(/INSERT INTO practice_chapters/g) || []).length;
 assert(chapterInserts === 14, '14 个章节');
-const exerciseInserts = (seed.match(/INSERT IGNORE INTO practice_exercises/g) || []).length;
+const exerciseInserts = (seed.match(/INSERT INTO practice_exercises/g) || []).length;
 assert(exerciseInserts === 154, '应为 154 道题（当前 ' + exerciseInserts + '）');
+assert(!/INSERT IGNORE/.test(seed), 'seed 不应再有 INSERT IGNORE（已改 upsert）');
 assert(seed.includes('practice_progress'), '含进度表');
 assert(!seed.includes('\r'), 'seed 无 CRLF');
 
