@@ -42,12 +42,32 @@ assert(js.includes('/api/practice/exercises?chapter='), '按章节拉题目列�
 assert(js.includes('/api/practice/exercise/'), '拉单题详情');
 assert(js.includes('/api/practice/submit'), '写代码题提交走真实判定');
 assert(js.includes('/api/practice/answer'), '客观题提交走 /api/practice/answer');
-assert(js.includes('renderExerciseList'), '有题目列表中间态');
+assert(js.includes('renderExerciseList'), '有题目列表（左栏两级树）');
 assert(js.includes('renderMarkdownInto'), '题干走 markdown 渲染');
 assert(js.includes('renderChoice'), '选择题渲染分支');
 assert(js.includes('renderBlank'), '填空题渲染分支');
 assert(js.includes('submitChoice'), '选择题提交');
 assert(js.includes('submitBlank'), '填空题提交');
+assert(js.includes('setWorkLayout'), '工作台双列/单列切换');
+assert(js.includes('markDone'), '本地记录已通过题目');
+assert(js.includes('localStorage'), '完成状态存 localStorage');
+assert(js.includes('practice-ex-item'), '左栏渲染题目项');
+
+// 3b. practice.html 工作台布局骨架
+console.log('== practice.html 工作台布局 ==');
+assert(html.includes('practice-work-body'), '含并排主体容器 workBody');
+assert(html.includes('id="workBody"'), 'workBody 有 id');
+assert(html.includes('practice-work-head'), '含题目头容器');
+assert(html.includes('id="workHead"'), 'workHead 有 id');
+assert(html.includes('practice-side-head'), '左栏含标题条');
+assert(html.includes('/js/daily-common.js'), '先加载 daily-common.js（共用工具）');
+assert(/id="workBody"[\s\S]{0,40}single/.test(html) || html.includes('practice-work-body single'),
+    '初始为单列（未选题）');
+{
+    const jsIdx = html.indexOf('/js/practice.js');
+    const commonIdx = html.indexOf('/js/daily-common.js');
+    assert(commonIdx > 0 && jsIdx > 0 && commonIdx < jsIdx, 'daily-common 在 practice.js 之前加载');
+}
 
 // 4. seed 数据（由 tools/gen_practice_seed.py 生成）
 console.log('== seed_practice.sql ==');

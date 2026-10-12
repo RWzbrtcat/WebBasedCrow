@@ -4174,3 +4174,449 @@ body.practice-page {
         overflow: visible;
     }
 }
+
+/* ============================================================
+   练习闯关 · v2 工作台布局（整页平铺、面板独立滚动）
+   说明：本段后写，覆盖上方旧两栏布局规则（同特异性时后写胜出）。
+   旧类名 .practice-main / .practice-question-head / .practice-exercise-list
+   等已无元素引用，暂留未删以最小化改动。
+   ============================================================ */
+
+body.practice-page {
+    --header-width: 100%;
+    --ok: #16a34a;
+    --ok-soft: #f0fdf4;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+body.practice-page .site-header {
+    flex-shrink: 0;
+}
+
+/* 整页不滚 → 头部的 .scrolled 永不触发，常驻胶囊背景，避免导航浮在内容上 */
+body.practice-page .site-header-pill {
+    background: var(--nav-bg);
+    border-color: var(--card-border);
+    border-radius: 999px;
+    box-shadow: var(--shadow-md);
+}
+
+body.practice-page .site-footer {
+    flex-shrink: 0;
+    padding: 8px 16px 10px;
+}
+
+/* 主体容器：全宽铺满、撑满剩余高度 */
+.container-practice {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    flex: 1;
+    min-height: 0;
+    padding: 8px 22px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* 紧凑标题条 */
+.practice-bar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+}
+
+.practice-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.practice-sub {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.practice-progress {
+    margin-left: auto;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+}
+
+/* 工作区：左栏收窄，右栏吃满 */
+.practice-layout {
+    flex: 1;
+    min-height: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 22px;
+    align-items: stretch;
+}
+
+/* 左栏：章节 + 题目两级树（自身滚动） */
+.practice-side {
+    position: static;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding: 14px 12px 16px;
+}
+
+.practice-side-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 0 4px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.practice-chapters .practice-semester:first-child {
+    margin-top: 2px;
+}
+
+.practice-chapter-count {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.practice-chapter.active .practice-chapter-count {
+    color: var(--accent);
+}
+
+/* 左栏题目列表（当前章展开） */
+.practice-ex-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin: 2px 0 6px;
+}
+
+.practice-ex-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 7px 10px 7px 14px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.45;
+    text-align: left;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.practice-ex-item:hover {
+    background: var(--bg);
+}
+
+.practice-ex-item.current {
+    background: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--text);
+    font-weight: 600;
+}
+
+.practice-ex-dot {
+    flex-shrink: 0;
+    width: 14px;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1;
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+.practice-ex-item.done .practice-ex-dot {
+    color: var(--ok);
+    opacity: 1;
+}
+
+.practice-ex-item.current .practice-ex-dot {
+    color: var(--accent);
+    opacity: 1;
+}
+
+.practice-ex-badge {
+    flex-shrink: 0;
+    padding: 1px 6px;
+    border-radius: 5px;
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.6;
+}
+
+.practice-ex-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 右栏工作台 */
+.practice-work {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow: hidden;
+}
+
+.practice-work-head {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 2px;
+    min-height: 28px;
+}
+
+.practice-badge {
+    flex-shrink: 0;
+    padding: 2px 9px;
+    border-radius: 6px;
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.practice-work-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.4;
+}
+
+.practice-work-pos {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* 并排主体：题干 | 编辑器·作答（等高、各自滚动） */
+.practice-work-body {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    gap: 16px;
+    align-items: stretch;
+}
+
+.practice-work-body.single {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+/* 卡片：改为内部滚动容器（去掉通用内边距） */
+.practice-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
+}
+
+.practice-pane-title {
+    flex-shrink: 0;
+    padding: 13px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
+}
+
+/* 题干滚动区 */
+.practice-prompt {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px 20px 20px;
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--text);
+    scrollbar-width: thin;
+}
+
+.practice-prompt.practice-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+/* 难度档位：固定题干卡底部 */
+.practice-tier-bar {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+}
+
+/* 编辑器卡 */
+.practice-editor-head {
+    flex-shrink: 0;
+    padding: 13px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.practice-editor {
+    flex: 1;
+    min-height: 0;
+    border: none;
+    border-radius: 0;
+    resize: none;
+    outline: none;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.practice-editor:focus {
+    background: #fffdfb;
+    box-shadow: none;
+}
+
+.practice-editor-actions {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+}
+
+/* 客观题作答区 */
+.practice-answer-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px 20px 20px;
+    scrollbar-width: thin;
+}
+
+/* 结果条（固定在工作台底部） */
+.practice-result {
+    flex-shrink: 0;
+    max-height: 42%;
+    overflow-y: auto;
+    padding: 12px 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    scrollbar-width: thin;
+}
+
+.practice-result.is-pass {
+    background: var(--ok-soft);
+    border-color: #bbf7d0;
+}
+
+.practice-result.is-fail {
+    background: var(--danger-soft);
+    border-color: #fecaca;
+}
+
+.practice-result .loading {
+    padding: 16px;
+}
+
+.practice-result-output {
+    max-height: 220px;
+}
+
+/* 面板内滚动条收细 */
+.practice-side::-webkit-scrollbar,
+.practice-prompt::-webkit-scrollbar,
+.practice-editor::-webkit-scrollbar,
+.practice-answer-body::-webkit-scrollbar,
+.practice-result::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+/* 窄屏回落：整页滚动 + 上下折列 */
+@media (max-width: 1200px) {
+    body.practice-page {
+        display: block;
+        height: auto;
+        overflow: auto;
+    }
+
+    .container-practice {
+        display: block;
+        padding: 12px 18px 24px;
+    }
+
+    .practice-bar {
+        margin-bottom: 12px;
+    }
+
+    .practice-layout {
+        grid-template-columns: 200px minmax(0, 1fr);
+        grid-template-rows: none;
+    }
+
+    .practice-side {
+        overflow: visible;
+    }
+
+    .practice-work,
+    .practice-card {
+        overflow: visible;
+    }
+
+    .practice-work-body {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .practice-prompt,
+    .practice-answer-body {
+        min-height: 240px;
+        overflow: visible;
+    }
+
+    .practice-editor {
+        flex: none;
+        min-height: 260px;
+        overflow: visible;
+    }
+
+    .practice-result {
+        max-height: none;
+    }
+}
+
+@media (max-width: 900px) {
+    .practice-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+    }
+
+    .practice-work-pos,
+    .practice-sub {
+        display: none;
+    }
+}

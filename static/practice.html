@@ -25,56 +25,69 @@
         </div>
     </header>
 
-    <!-- 主体 -->
+    <!-- 主体：整页平铺工作台（正文不滚，各面板独立滚动） -->
     <main class="container container-practice">
-        <h1 class="page-title">练习闯关</h1>
-        <p class="page-subtitle">C++ 后端知识 · 短题热身 + 项目 Boss 收口</p>
+        <div class="practice-bar">
+            <h1 class="practice-title">练习闯关</h1>
+            <span class="practice-sub">C++ 后端知识 · 短题热身 + 项目 Boss 收口</span>
+            <span class="practice-progress" id="practiceProgress"></span>
+        </div>
 
         <div class="practice-layout">
-            <!-- 左栏：章节列表 -->
+            <!-- 左栏：章节 + 当前章题目（两级树，自身滚动） -->
             <aside class="practice-side">
-                <h2 class="practice-side-title">章节</h2>
+                <div class="practice-side-head"><span>章节</span></div>
                 <div class="practice-chapters" id="chapterList">
                     <div class="loading">加载中...</div>
                 </div>
             </aside>
 
-            <!-- 右栏：题目 + 编辑器 + 反馈 -->
-            <div class="practice-main">
-                <!-- 题目卡片 -->
-                <section class="practice-card" id="questionCard">
-                    <div class="loading">加载中...</div>
-                </section>
+            <!-- 右栏：答题工作台 -->
+            <div class="practice-work">
+                <!-- 题目头（固定在工作台顶部） -->
+                <div class="practice-work-head" id="workHead" hidden></div>
 
-                <!-- 代码编辑器 -->
-                <section class="practice-card" id="editorCard" hidden>
-                    <div class="practice-editor-head">
-                        <span class="practice-editor-title">代码</span>
-                        <span class="practice-editor-lang">C++17</span>
-                    </div>
-                    <textarea id="codeEditor" class="practice-editor" spellcheck="false"
-                        placeholder="在这里编写你的 C++ 代码..."></textarea>
-                    <div class="practice-editor-actions">
-                        <button type="button" class="btn btn-primary" id="submitBtn">提交运行</button>
-                        <button type="button" class="btn btn-secondary" id="resetBtn">重置代码</button>
-                    </div>
-                </section>
+                <!-- 并排主体：题干 | 编辑器·作答 -->
+                <div class="practice-work-body single" id="workBody">
+                    <!-- 题干卡 -->
+                    <section class="practice-card practice-prompt-card" id="questionCard">
+                        <div class="loading">加载中...</div>
+                    </section>
 
-                <!-- 客观题答题区（选择/填空） -->
-                <section class="practice-card" id="answerCard" hidden>
-                    <div id="answerBody"></div>
-                    <div class="practice-editor-actions">
-                        <button type="button" class="btn btn-primary" id="answerSubmitBtn">提交答案</button>
-                    </div>
-                </section>
+                    <!-- 写代码题：编辑器 -->
+                    <section class="practice-card practice-editor-card" id="editorCard" hidden>
+                        <div class="practice-editor-head">
+                            <span class="practice-editor-title">代码</span>
+                            <span class="practice-editor-lang">C++20</span>
+                        </div>
+                        <textarea id="codeEditor" class="practice-editor" spellcheck="false"
+                            placeholder="在这里编写你的 C++ 代码..."></textarea>
+                        <div class="practice-editor-actions">
+                            <button type="button" class="btn btn-primary" id="submitBtn">提交运行</button>
+                            <button type="button" class="btn btn-secondary" id="resetBtn">重置代码</button>
+                        </div>
+                    </section>
 
-                <!-- 反馈区 -->
-                <section class="practice-card practice-result" id="resultCard" hidden>
+                    <!-- 客观题（选择题）：作答区 -->
+                    <section class="practice-card practice-answer-card" id="answerCard" hidden>
+                        <div class="practice-answer-body" id="answerBody"></div>
+                        <div class="practice-editor-actions">
+                            <button type="button" class="btn btn-primary" id="answerSubmitBtn">提交答案</button>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 判定结果条（固定在工作台底部） -->
+                <section class="practice-result" id="resultCard" hidden>
                     <div id="resultBody"></div>
                 </section>
             </div>
         </div>
     </main>
+
+    <footer class="site-footer">
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">冀ICP备2026039047号</a>
+    </footer>
 
     <script src="/js/auth.js"></script>
     <script src="/js/marked.min.js"></script>
@@ -86,9 +99,5 @@
     <script src="/js/header.js"></script>
     <script src="/js/background.js"></script>
     <script src="/js/theme.js"></script>
-
-    <footer class="site-footer">
-        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">冀ICP备2026039047号</a>
-    </footer>
 </body>
 </html>

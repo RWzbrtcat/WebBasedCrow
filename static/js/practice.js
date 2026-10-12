@@ -1,12 +1,15 @@
 // ============================================
 // 练习闯关：前端逻辑
+// 布局：左栏「章节 + 当前章题目」两级树，右栏答题工作台
+//       （题干卡 | 编辑器·作答卡 并排，结果条固定在工作台底部）。
 // 数据全部来自后端接口：
-//   GET /api/practice/chapters        章节列表（按学期分组）
-//   GET /api/practice/exercises?chapter=N  某章题目列表
-//   GET /api/practice/exercise/<id>   单题详情（题干 + 三档脚手架/选项）
-//   POST /api/practice/submit         写代码题：沙箱编译运行判定
-//   POST /api/practice/answer         客观题（选择/填空）：对答案
+//   GET  /api/practice/chapters            章节列表（按学期分组）
+//   GET  /api/practice/exercises?chapter=N 某章题目列表
+//   GET  /api/practice/exercise/<id>       单题详情（题干 + 三档脚手架/选项）
+//   POST /api/practice/submit              写代码题：沙箱编译运行判定
+//   POST /api/practice/answer              客观题（选择/填空）：对答案
 // 题型：choice(选择) / blank(填空) / short(写代码) / boss(项目关)。
+// 「已完成」状态为本地记录（localStorage），无后端依赖，清缓存即重置。
 // 依赖：daily-common.js（esc / showToast / apiRequest / describeFetchError）、
 //       markdown.js（renderMarkdownInto，渲染题干）。
 // ============================================
@@ -19,9 +22,12 @@
     let chapterExercises = [];    // 当前章的题目列表
     let currentExercise = null;   // 当前题目详情（/api/practice/exercise/<id> 返回）
     let currentTier = 'easy';
+    let doneSet = loadDone();     // 本地记录：已通过的题目 id
 
     // ---------- DOM ----------
     const chapterListEl = document.getElementById('chapterList');
+    const workHeadEl = document.getElementById('workHead');
+    const workBodyEl = document.getElementById('workBody');
     const questionCardEl = document.getElementById('questionCard');
     const editorCardEl = document.getElementById('editorCard');
     const codeEditorEl = document.getElementById('codeEditor');
@@ -29,15 +35,57 @@
     const answerBodyEl = document.getElementById('answerBody');
     const resultCardEl = document.getElementById('resultCard');
     const resultBodyEl = document.getElementById('resultBody');
+    const progressEl = document.getElementById('practiceProgress');
     const submitBtn = document.getElementById('submitBtn');
     const resetBtn = document.getElementById('resetBtn');
     const answerSubmitBtn = document.getElementById('answerSubmitBtn');
 
     const TIER_LABELS = { easy: '入门', medium: '进阶', hard: '挑战' };
     const TYPE_BADGES = { choice: '选择', blank: '填空', short: '写代码', boss: 'Boss' };
+    const DONE_KEY = 'practice.done.v1';
 
     function badgeFor(type) {
         return TYPE_BADGES[type] || '写代码';
+    }
+
+    // ---------- 本地完成记录（localStorage） ----------
+    function loadDone() {
+        try {
+            const arr = JSON.parse(localStorage.getItem(DONE_KEY) || '[]');
+            return new Set(Array.isArray(arr) ? arr.map(Number) : []);
+        } catch (e) {
+            return new Set();
+        }
+    }
+
+    function persistDone() {
+        try {
+            localStorage.setItem(DONE_KEY, JSON.stringify(Array.from(doneSet)));
+        } catch (e) { /* 隐私模式等场景忽略 */ }
+    }
+
+    function markDone(id) {
+        const n = Number(id);
+        if (!n || doneSet.has(n)) return;
+        doneSet.add(n);
+        persistDone();
+        updateProgress();
+        renderChapters();
+    }
+
+    // ---------- 进度回读 ----------
+    function totalExercises() {
+        if (!chaptersData) return 0;
+        let n = 0;
+        chaptersData.forEach((sem) => {
+            (sem.chapters || []).forEach((ch) => { n += ch.exercise_count || 0; });
+        });
+        return n;
+    }
+
+    function updateProgress() {
+        if (!progressEl) return;
+        progressEl.textContent = '已完成 ' + doneSet.size + ' / ' + totalExercises();
     }
 
     // ---------- 通用 POST JSON ----------
@@ -55,6 +103,7 @@
         try {
             const data = await apiRequest('/api/practice/chapters');
             chaptersData = data.semesters || [];
+            updateProgress();
             renderChapters();
             autoSelectFirst();
         } catch (e) {
@@ -62,6 +111,7 @@
         }
     }
 
+    // ---------- 渲染左栏：章节 + 当前章题目（两级树） ----------
     function renderChapters() {
         if (!chaptersData) return;
         let html = '';
@@ -69,11 +119,15 @@
             html += '<div class="practice-semester">' + esc(sem.name) + '</div>';
             (sem.chapters || []).forEach((ch) => {
                 const active = ch.id === currentChapter ? ' active' : '';
-                const hasEx = ch.exercise_count > 0 ? '' : ' is-empty';
-                html += '<button type="button" class="practice-chapter' + active + hasEx + '" data-id="' + ch.id + '">' +
+                const empty = ch.exercise_count > 0 ? '' : ' is-empty';
+                html += '<button type="button" class="practice-chapter' + active + empty + '" data-id="' + ch.id + '">' +
                     '<span class="practice-chapter-num">C' + ch.id + '</span>' +
                     '<span class="practice-chapter-title">' + esc(ch.title) + '</span>' +
+                    '<span class="practice-chapter-count">' + (ch.exercise_count || 0) + '</span>' +
                     '</button>';
+                if (ch.id === currentChapter && chapterExercises.length) {
+                    html += renderExerciseList();
+                }
             });
         });
         chapterListEl.innerHTML = html;
@@ -81,20 +135,43 @@
         chapterListEl.querySelectorAll('.practice-chapter').forEach((btn) => {
             btn.addEventListener('click', () => selectChapter(Number(btn.dataset.id)));
         });
+        chapterListEl.querySelectorAll('.practice-ex-item').forEach((btn) => {
+            btn.addEventListener('click', () => selectExercise(Number(btn.dataset.id)));
+        });
+        scrollSideToCurrent();
+    }
+
+    // 当前章题目列表 HTML（每题：状态点 + 题型 + 标题）
+    function renderExerciseList() {
+        return '<div class="practice-ex-list">' + chapterExercises.map((ex) => {
+            const isCur = !!(currentExercise && currentExercise.id === ex.id);
+            const done = doneSet.has(ex.id);
+            const dot = done ? '✓' : (isCur ? '●' : '○');
+            const cls = 'practice-ex-item' + (isCur ? ' current' : '') + (done ? ' done' : '');
+            return '<button type="button" class="' + cls + '" data-id="' + ex.id + '">' +
+                '<span class="practice-ex-dot">' + dot + '</span>' +
+                '<span class="practice-ex-badge">' + esc(badgeFor(ex.type)) + '</span>' +
+                '<span class="practice-ex-title">' + esc(ex.title) + '</span>' +
+                '</button>';
+        }).join('') + '</div>';
+    }
+
+    function scrollSideToCurrent() {
+        const el = chapterListEl.querySelector('.practice-ex-item.current');
+        if (el && el.scrollIntoView) {
+            try { el.scrollIntoView({ block: 'nearest' }); } catch (e) { /* 忽略 */ }
+        }
     }
 
     function autoSelectFirst() {
-        let firstAny = null;
         for (const sem of chaptersData) {
             for (const ch of (sem.chapters || [])) {
-                if (firstAny == null) firstAny = ch.id;
-                if (ch.exercise_count > 0) {
-                    selectChapter(ch.id);
-                    return;
-                }
+                if (ch.exercise_count > 0) { selectChapter(ch.id); return; }
             }
         }
-        if (firstAny != null) selectChapter(firstAny);
+        const first = chaptersData[0] && (chaptersData[0].chapters || [])[0];
+        if (first) selectChapter(first.id);
+        else showIdleState();
     }
 
     // ---------- 选中章节：拉题目列表 ----------
@@ -106,34 +183,17 @@
         try {
             const data = await apiRequest('/api/practice/exercises?chapter=' + id);
             chapterExercises = data.exercises || [];
-            renderExerciseList();
+            renderChapters();
+            if (chapterExercises.length) {
+                // 优先跳到本章第一道未完成的题，全部完成则回到第一题
+                const firstTodo = chapterExercises.find((ex) => !doneSet.has(ex.id)) || chapterExercises[0];
+                selectExercise(firstTodo.id);
+            } else {
+                showEmptyState('本章题目尚未录入。');
+            }
         } catch (e) {
-            renderEmptyChapter(describeFetchError(e));
+            showEmptyState(describeFetchError(e));
         }
-    }
-
-    // ---------- 渲染题目列表 ----------
-    function renderExerciseList() {
-        hidePanels();
-        if (!chapterExercises.length) {
-            renderEmptyChapter('本章题目尚未录入。');
-            return;
-        }
-        const items = chapterExercises.map((ex) => {
-            return '<button type="button" class="practice-exercise-item" data-id="' + ex.id + '">' +
-                '<span class="daily-badge">' + esc(badgeFor(ex.type)) + '</span>' +
-                '<span class="practice-exercise-title">' + esc(ex.title) + '</span>' +
-                '</button>';
-        }).join('');
-        questionCardEl.innerHTML = [
-            '<div class="practice-question-head">',
-            '<h2 class="practice-question-title">选择题目</h2>',
-            '</div>',
-            '<div class="practice-exercise-list">' + items + '</div>',
-        ].join('');
-        questionCardEl.querySelectorAll('.practice-exercise-item').forEach((btn) => {
-            btn.addEventListener('click', () => selectExercise(Number(btn.dataset.id)));
-        });
     }
 
     // ---------- 选中题目：拉详情 ----------
@@ -143,86 +203,145 @@
             currentExercise = data;
             currentTier = 'easy';
             renderQuestion();
+            renderChapters();   // 更新左栏当前题高亮
         } catch (e) {
             showToast(describeFetchError(e), 'error');
         }
     }
 
-    // ---------- 渲染题目详情（按题型分支） ----------
+    // ---------- 工作台布局：双列 / 单列 ----------
+    function setWorkLayout(single) {
+        workBodyEl.classList.toggle('single', !!single);
+    }
+
+    function renderHead(ex) {
+        workHeadEl.hidden = false;
+        workHeadEl.innerHTML =
+            '<span class="practice-badge">' + esc(badgeFor(ex.type)) + '</span>' +
+            '<h2 class="practice-work-title">' + esc(ex.title) + '</h2>' +
+            '<span class="practice-work-pos">' + esc(posText()) + '</span>';
+    }
+
+    function posText() {
+        const total = chapterExercises.length;
+        const idx = chapterExercises.findIndex((e) => currentExercise && e.id === currentExercise.id);
+        if (idx < 0 || !total || currentChapter == null) return '';
+        return 'C' + currentChapter + ' · 第 ' + (idx + 1) + ' / ' + total + ' 题';
+    }
+
+    function renderPromptInto() {
+        const body = document.getElementById('promptBody');
+        if (!body) return;
+        const text = (currentExercise && currentExercise.prompt) || '';
+        if (window.renderMarkdownInto) renderMarkdownInto(body, text);
+        else body.textContent = text;
+    }
+
+    // ---------- 渲染题目（按题型分支） ----------
     function renderQuestion() {
         const ex = currentExercise;
+        if (!ex) { showIdleState(); return; }
         if (ex.type === 'choice') { renderChoice(); return; }
         if (ex.type === 'blank') { renderBlank(); return; }
+        renderCode();
+    }
 
-        // 写代码题（short / boss）
+    // 写代码题（short / boss）：题干 | 编辑器
+    function renderCode() {
+        const ex = currentExercise;
+        setWorkLayout(false);
+        renderHead(ex);
         questionCardEl.innerHTML = [
-            '<div class="practice-question-head">',
-            '<span class="daily-badge">' + esc(badgeFor(ex.type)) + '</span>',
-            '<h2 class="practice-question-title">' + esc(ex.title) + '</h2>',
-            '</div>',
-            '<div class="practice-question-prompt markdown-body" id="promptBody"></div>',
+            '<h3 class="practice-pane-title">题目</h3>',
+            '<div class="practice-prompt markdown-body" id="promptBody"></div>',
             '<div class="practice-tier-bar" id="tierBar"></div>',
         ].join('');
-        const promptBody = document.getElementById('promptBody');
-        if (window.renderMarkdownInto) {
-            renderMarkdownInto(promptBody, ex.prompt || '');
-        } else {
-            promptBody.textContent = ex.prompt || '';
-        }
+        renderPromptInto();
         bindTierBar();
         renderTier(currentTier);
         editorCardEl.hidden = false;
         answerCardEl.hidden = true;
-        resultCardEl.hidden = true;
+        clearResult();
     }
 
-    // ---------- 选择题 ----------
+    // 选择题：题干 | 选项
     function renderChoice() {
         const ex = currentExercise;
+        setWorkLayout(false);
+        renderHead(ex);
         questionCardEl.innerHTML = [
-            '<div class="practice-question-head">',
-            '<span class="daily-badge">' + esc(badgeFor(ex.type)) + '</span>',
-            '<h2 class="practice-question-title">' + esc(ex.title) + '</h2>',
-            '</div>',
-            '<div class="practice-question-prompt markdown-body" id="promptBody"></div>',
+            '<h3 class="practice-pane-title">题目</h3>',
+            '<div class="practice-prompt markdown-body" id="promptBody"></div>',
         ].join('');
-        const promptBody = document.getElementById('promptBody');
-        if (window.renderMarkdownInto) {
-            renderMarkdownInto(promptBody, ex.prompt || '');
-        } else {
-            promptBody.textContent = ex.prompt || '';
-        }
+        renderPromptInto();
 
         let options = [];
         try { options = JSON.parse(ex.options || '[]'); } catch (e) { options = []; }
-        answerBodyEl.innerHTML = '<div class="practice-choice-list">' + options.map((o) => {
-            return '<label class="practice-choice">' +
-                '<input type="radio" name="practiceChoice" value="' + esc(o.label) + '">' +
-                '<span class="practice-choice-label">' + esc(o.label) + '.</span>' +
-                '<span class="practice-choice-text">' + esc(o.text) + '</span>' +
-                '</label>';
-        }).join('') + '</div>';
+        answerBodyEl.innerHTML = '<div class="practice-choice-list">' + options.map((o) =>
+            '<label class="practice-choice">' +
+            '<input type="radio" name="practiceChoice" value="' + esc(o.label) + '">' +
+            '<span class="practice-choice-label">' + esc(o.label) + '.</span>' +
+            '<span class="practice-choice-text">' + esc(o.text) + '</span>' +
+            '</label>').join('') + '</div>';
 
         editorCardEl.hidden = true;
         answerCardEl.hidden = false;
-        resultCardEl.hidden = true;
+        clearResult();
     }
 
-    // ---------- 填空题 ----------
+    // 填空题：单列，题干内嵌输入框 + 底部提交
     function renderBlank() {
         const ex = currentExercise;
+        setWorkLayout(true);
+        renderHead(ex);
+        const codeHtml = esc(ex.prompt || '').replace(/_{3,}/g,
+            '<input type="text" class="practice-blank-input" data-blank spellcheck="false" autocomplete="off">');
         questionCardEl.innerHTML = [
-            '<div class="practice-question-head">',
-            '<span class="daily-badge">' + esc(badgeFor(ex.type)) + '</span>',
-            '<h2 class="practice-question-title">' + esc(ex.title) + '</h2>',
+            '<h3 class="practice-pane-title">题目</h3>',
+            '<div class="practice-prompt"><pre class="practice-blank-code"><code>' + codeHtml + '</code></pre></div>',
+            '<div class="practice-editor-actions">',
+            '<button type="button" class="btn btn-primary" id="blankSubmitBtn">提交答案</button>',
             '</div>',
-            '<pre class="practice-blank-code"><code>' + esc(ex.prompt || '').replace(/_{3,}/g,
-                '<input type="text" class="practice-blank-input" data-blank spellcheck="false" autocomplete="off">') + '</code></pre>',
         ].join('');
-
+        const blankBtn = document.getElementById('blankSubmitBtn');
+        if (blankBtn) blankBtn.addEventListener('click', submit);
         editorCardEl.hidden = true;
         answerCardEl.hidden = true;
+        clearResult();
+    }
+
+    // ---------- 空态 ----------
+    function showIdleState() {
+        setWorkLayout(true);
+        workHeadEl.hidden = true;
+        workHeadEl.innerHTML = '';
+        questionCardEl.innerHTML = [
+            '<h3 class="practice-pane-title">题目</h3>',
+            '<div class="practice-prompt practice-empty">从左侧选择一道题目开始练习。</div>',
+        ].join('');
+        editorCardEl.hidden = true;
+        answerCardEl.hidden = true;
+        clearResult();
+    }
+
+    function showEmptyState(hint) {
+        setWorkLayout(true);
+        workHeadEl.hidden = true;
+        workHeadEl.innerHTML = '';
+        questionCardEl.innerHTML = [
+            '<h3 class="practice-pane-title">题目</h3>',
+            '<div class="practice-prompt practice-empty">' +
+                esc(hint || '本章题目尚未录入。') + '</div>',
+        ].join('');
+        editorCardEl.hidden = true;
+        answerCardEl.hidden = true;
+        clearResult();
+    }
+
+    function clearResult() {
         resultCardEl.hidden = true;
+        resultCardEl.classList.remove('is-pass', 'is-fail');
+        resultBodyEl.innerHTML = '';
     }
 
     // ---------- 难度档位切换（写代码题） ----------
@@ -247,31 +366,13 @@
         const tiers = currentExercise.tiers || {};
         const tier = tiers[tierKey] || {};
         codeEditorEl.value = tier.starter || '';
-        resultCardEl.hidden = true;
+        clearResult();
         const bar = document.getElementById('tierBar');
         if (bar) {
             bar.querySelectorAll('.practice-tier').forEach((btn) => {
                 btn.classList.toggle('active', btn.dataset.tier === tierKey);
             });
         }
-    }
-
-    // ---------- 空章节 / 空状态 ----------
-    function renderEmptyChapter(hint) {
-        hidePanels();
-        questionCardEl.innerHTML = [
-            '<div class="practice-question-head">',
-            '<h2 class="practice-question-title">题目待补充</h2>',
-            '</div>',
-            '<p class="practice-empty-hint">' + esc(hint || '本章题面已设计（见 docs/practice-bank.md），尚未录入题库。') + '</p>',
-        ].join('');
-    }
-
-    function hidePanels() {
-        editorCardEl.hidden = true;
-        answerCardEl.hidden = true;
-        codeEditorEl.value = '';
-        resultCardEl.hidden = true;
     }
 
     // ---------- 事件绑定 ----------
@@ -292,9 +393,15 @@
     // ---------- 提交（按题型分支） ----------
     async function submit() {
         if (!currentExercise) return;
-        if (currentExercise.type === 'choice') return submitChoice();
-        if (currentExercise.type === 'blank') return submitBlank();
-        return submitCode();
+        if (currentExercise.type === 'choice') { submitChoice(); return; }
+        if (currentExercise.type === 'blank') { submitBlank(); return; }
+        submitCode();
+    }
+
+    function showResultLoading(text) {
+        resultCardEl.hidden = false;
+        resultCardEl.classList.remove('is-pass', 'is-fail');
+        resultBodyEl.innerHTML = '<div class="loading">' + esc(text || '判定中...') + '</div>';
     }
 
     // ---------- 客观题：选择 ----------
@@ -304,8 +411,7 @@
             showToast('请先选择一个答案', 'error');
             return;
         }
-        resultCardEl.hidden = false;
-        resultBodyEl.innerHTML = '<div class="loading">判定中...</div>';
+        showResultLoading('判定中...');
         try {
             const data = await postJson('/api/practice/answer', {
                 exercise_id: currentExercise.id,
@@ -325,8 +431,7 @@
             showToast('请填完所有空位', 'error');
             return;
         }
-        resultCardEl.hidden = false;
-        resultBodyEl.innerHTML = '<div class="loading">判定中...</div>';
+        showResultLoading('判定中...');
         try {
             const data = await postJson('/api/practice/answer', {
                 exercise_id: currentExercise.id,
@@ -347,8 +452,7 @@
         }
         submitBtn.disabled = true;
         submitBtn.textContent = '判定中...';
-        resultCardEl.hidden = false;
-        resultBodyEl.innerHTML = '<div class="loading">编译运行中...</div>';
+        showResultLoading('编译运行中...');
 
         try {
             const data = await postJson('/api/practice/submit', {
@@ -365,7 +469,10 @@
         submitBtn.textContent = '提交运行';
     }
 
+    // ---------- 结果渲染 ----------
     function renderJudgeDown() {
+        resultCardEl.classList.remove('is-pass');
+        resultCardEl.classList.add('is-fail');
         resultBodyEl.innerHTML = [
             '<div class="practice-result-head practice-result-fail">',
             '<span class="practice-result-icon">⚠</span>',
@@ -375,30 +482,35 @@
         ].join('');
     }
 
-    // ---------- 客观题结果 ----------
     function renderObjResult(data) {
-        if (data.correct) {
+        if (data && data.correct) {
+            resultCardEl.classList.remove('is-fail');
+            resultCardEl.classList.add('is-pass');
             resultBodyEl.innerHTML = [
                 '<div class="practice-result-head practice-result-pass">',
                 '<span class="practice-result-icon">✓</span>',
                 '<span>回答正确</span>',
                 '</div>',
             ].join('');
+            markDone(currentExercise.id);
             return;
         }
+        resultCardEl.classList.remove('is-pass');
+        resultCardEl.classList.add('is-fail');
         resultBodyEl.innerHTML = [
             '<div class="practice-result-head practice-result-fail">',
             '<span class="practice-result-icon">✗</span>',
-            '<span>' + esc(data.message || '回答错误') + '</span>',
+            '<span>' + esc((data && data.message) || '回答错误') + '</span>',
             '</div>',
         ].join('');
     }
 
-    // ---------- 写代码题结果（后端返回格式） ----------
     function renderResult(result) {
         const status = result.status || (result.success ? 'passed' : 'failed');
 
         if (status === 'passed') {
+            resultCardEl.classList.remove('is-fail');
+            resultCardEl.classList.add('is-pass');
             resultBodyEl.innerHTML = [
                 '<div class="practice-result-head practice-result-pass">',
                 '<span class="practice-result-icon">✓</span>',
@@ -406,8 +518,12 @@
                 '</div>',
                 '<p class="practice-result-note">本档已通关。可尝试更高难度档位。</p>',
             ].join('');
+            markDone(currentExercise.id);
             return;
         }
+
+        resultCardEl.classList.remove('is-pass');
+        resultCardEl.classList.add('is-fail');
 
         if (status === 'compile_error') {
             resultBodyEl.innerHTML = [
