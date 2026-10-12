@@ -3258,3 +3258,40 @@ void DataBase::recordPracticeAttempt(const std::string& ownerToken, int exercise
         sql += " ON DUPLICATE KEY UPDATE attempts = attempts + 1";
     mysql_query(conn_, sql.c_str());
 }
+
+// 回读某匿名访客已通过的题目 id 列表（供前端合并进度用）
+crow::json::wvalue DataBase::getPracticeProgress(const std::string& ownerToken)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    std::vector<crow::json::wvalue> ids;
+    result["success"] = true;
+
+    if (ownerToken.empty())
+    {
+        // 无匿名标识：返回空列表（前端沿用本地记录）
+        result["passed"] = std::move(ids);
+        return result;
+    }
+
+    std::string sql = "SELECT DISTINCT exercise_id FROM practice_progress "
+                      "WHERE passed=1 AND owner_token=" + sqlQuote(conn_, ownerToken);
+    if (mysql_query(conn_, sql.c_str()) == 0)
+    {
+        MYSQL_RES* res = mysql_store_result(conn_);
+        if (res)
+        {
+            MYSQL_ROW row;
+            while ((row = mysql_fetch_row(res)))
+            {
+                ids.push_back(crow::json::wvalue(row[0] ? std::atoi(row[0]) : 0));
+            }
+            mysql_free_result(res);
+        }
+    }
+
+    result["passed"] = std::move(ids);
+    return result;
+}

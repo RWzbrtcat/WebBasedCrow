@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>练习闯关 · v0.4 预览（题目描述 / 题解 标签页） · LazyCat's Blog</title>
+<title>练习闯关 · v0.5 预览（题目描述 / 题解 / 测试结果 标签页） · LazyCat's Blog</title>
 <!-- 直接引用真实样式表：预览即真实 CSS 下的最终效果（样式已并入 style.css） -->
 <link rel="stylesheet" href="static/css/style.css">
 <link rel="stylesheet" href="static/css/highlight.css">
@@ -76,6 +76,9 @@
                                 aria-selected="true" aria-controls="descPane">题目描述</button>
                             <button type="button" class="practice-tab" id="tabSolution" role="tab"
                                 aria-selected="false" aria-controls="solutionPane">题解</button>
+                            <button type="button" class="practice-tab has-result-pass" id="tabResult" role="tab"
+                                aria-selected="false" aria-controls="resultPane">测试结果<i
+                                    class="practice-tab-dot" aria-hidden="true"></i></button>
                         </div>
 
                         <!-- 面板一：题目描述（默认显示） -->
@@ -119,16 +122,19 @@ public:
                             </div>
                         </div>
 
-                        <!-- 测试结果：每次运行/提交后出现，固定在描述卡底部 -->
-                        <section class="practice-result is-pass">
-                            <div class="practice-result-title"><span class="practice-result-icon">✓</span>测试结果</div>
-                            <div class="practice-result-body">
-                                <div class="practice-result-head practice-result-pass">
-                                    <span>通过全部 4 个用例</span>
+                        <!-- 面板三：测试结果（运行/提交后自动切过来） -->
+                        <div class="practice-desc-scroll" id="resultPane" role="tabpanel"
+                            aria-labelledby="tabResult" hidden>
+                            <section class="practice-result is-pass">
+                                <div class="practice-result-body">
+                                    <div class="practice-result-head practice-result-pass">
+                                        <span class="practice-result-icon">✓</span>
+                                        <span>通过全部 4 个用例</span>
+                                    </div>
+                                    <p class="practice-result-note">本档已通关。可尝试更高难度档位。</p>
                                 </div>
-                                <p class="practice-result-note">本档已通关。可尝试更高难度档位。</p>
-                            </div>
-                        </section>
+                            </section>
+                        </div>
                     </section>
 
                     <!-- 右：代码编辑器（IDE 观感：行号槽 + 语法高亮 + 状态栏） -->
@@ -177,21 +183,22 @@ public:
     // 线上分别由 practice.js 的 switchTab() / refreshCodeEditor() 负责
     (function () {
         // ---- 标签切换 ----
-        var desc = document.getElementById('descPane');
-        var sol = document.getElementById('solutionPane');
-        var tabDesc = document.getElementById('tabDesc');
-        var tabSol = document.getElementById('tabSolution');
+        var panes = [
+            { key: 'desc', pane: document.getElementById('descPane'), tab: document.getElementById('tabDesc') },
+            { key: 'solution', pane: document.getElementById('solutionPane'), tab: document.getElementById('tabSolution') },
+            { key: 'result', pane: document.getElementById('resultPane'), tab: document.getElementById('tabResult') }
+        ];
         function show(name) {
-            var isSol = name === 'solution';
-            desc.hidden = isSol;
-            sol.hidden = !isSol;
-            tabDesc.classList.toggle('is-active', !isSol);
-            tabSol.classList.toggle('is-active', isSol);
-            tabDesc.setAttribute('aria-selected', String(!isSol));
-            tabSol.setAttribute('aria-selected', String(isSol));
+            panes.forEach(function (it) {
+                var on = it.key === name;
+                it.pane.hidden = !on;
+                it.tab.classList.toggle('is-active', on);
+                it.tab.setAttribute('aria-selected', String(on));
+            });
         }
-        tabDesc.addEventListener('click', function () { show('desc'); });
-        tabSol.addEventListener('click', function () { show('solution'); });
+        panes.forEach(function (it) {
+            it.tab.addEventListener('click', function () { show(it.key); });
+        });
 
         // ---- 代码编辑器 ----
         var CODE = [

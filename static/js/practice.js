@@ -2,17 +2,19 @@
 // 练习闯关：前端逻辑
 // 布局：左栏「章节 + 当前章题目」两级树，右栏答题工作台
 //       （题目描述卡 | 编辑器·作答卡 并排）。
-//       描述卡内 = 标签栏「题目描述 | 题解」共用一栏（默认题目描述，点题解切换）
-//       + 底部固定「测试结果」条。
+//       描述卡内 = 标签栏「题目描述 | 题解 | 测试结果」共用一栏（默认题目描述，
+//       点标签切换）；运行/提交后自动切到「测试结果」，无结果时显示空态或本题上次结果。
 //       写代码题的编辑器卡 = IDE 观感（行号槽 + C++ 语法高亮叠加层 + 状态栏）。
 // 数据全部来自后端接口：
 //   GET  /api/practice/chapters            章节列表（按学期分组）
 //   GET  /api/practice/exercises?chapter=N 某章题目列表
 //   GET  /api/practice/exercise/<id>       单题详情（题干 + 题解 + 三档脚手架/选项）
+//   GET  /api/practice/progress            服务端进度（按 blog_anon 回读已通过题目 id）
 //   POST /api/practice/submit              写代码题：沙箱编译运行判定
 //   POST /api/practice/answer              客观题（选择/填空）：对答案
 // 题型：choice(选择) / blank(填空) / short(写代码) / boss(项目关)。
-// 「已完成」状态为本地记录（localStorage），无后端依赖，清缓存即重置。
+// 「已完成」状态 = 服务端进度（blog_anon 认领）∪ 本地 localStorage，启动时合并。
+// 「本题上次运行结果」= 本地 localStorage 缓存（practice.last.v1，上限 40 题）。
 // 依赖：daily-common.js（esc / showToast / apiRequest / describeFetchError）、
 //       markdown.js（renderMarkdownInto，渲染题干与题解）、
 //       highlight.min.js（hljs.highlight，编辑器 C++ 语法高亮）。
@@ -27,6 +29,7 @@
     let currentExercise = null;   // 当前题目详情（/api/practice/exercise/<id> 返回）
     let currentTier = 'easy';
     let doneSet = loadDone();     // 本地记录：已通过的题目 id
+    let lastResults = loadLastResults();  // 本地记录：每题最近一次运行结果（{ id: {cls, html} }）
 
     // ---------- DOM ----------
     const chapterListEl = document.getElementById('chapterList');
@@ -39,6 +42,8 @@
     const solutionHostEl = document.getElementById('solutionHost');
     const tabDescEl = document.getElementById('tabDesc');
     const tabSolutionEl = document.getElementById('tabSolution');
+    const tabResultEl = document.getElementById('tabResult');
+    const resultPaneEl = document.getElementById('resultPane');
     const editorCardEl = document.getElementById('editorCard');
     const codeEditorEl = document.getElementById('codeEditor');
     const answerCardEl = document.getElementById('answerCard');
@@ -53,6 +58,8 @@
     const TIER_LABELS = { easy: '入门', medium: '进阶', hard: '挑战' };
     const TYPE_BADGES = { choice: '选择', blank: '填空', short: '写代码', boss: 'Boss' };
     const DONE_KEY = 'practice.done.v1';
+    const LAST_KEY = 'practice.last.v1';   // 每题「上一次运行结果」缓存
+    const LAST_MAX = 40;                    // 最多缓存多少题的最近结果
 
     // 描述卡为「题目描述 | 题解」共用一栏：点击标签切换，默认题目描述。
     // 题解面板为静态节点（见 practice.html），此处不再动态注入宿主。
@@ -84,6 +91,46 @@
         persistDone();
         updateProgress();
         renderChapters();
+    }
+
+    // ---------- 本地：每题最近一次运行结果 ----------
+    function loadLastResults() {
+        try {
+            const obj = JSON.parse(localStorage.getItem(LAST_KEY) || '{}');
+            return (obj && typeof obj === 'object') ? obj : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function persistLastResults() {
+        try {
+            const keys = Object.keys(lastResults);
+            if (keys.length > LAST_MAX) {
+                // 超限：丢弃最早写入的一批（对象键顺序近似插入顺序）
+                keys.slice(0, keys.length - LAST_MAX).forEach((k) => { delete lastResults[k]; });
+            }
+            localStorage.setItem(LAST_KEY, JSON.stringify(lastResults));
+        } catch (e) { /* 配额或隐私模式：忽略，结果仅当次会话有效 */ }
+    }
+
+    // ---------- 服务端进度回读（与本地合并，根治「换环境/丢本地存储就归零」） ----------
+    async function loadProgress() {
+        try {
+            const data = await apiRequest('/api/practice/progress');
+            const ids = (data && data.passed) || [];
+            let changed = false;
+            ids.forEach((id) => {
+                const n = Number(id);
+                if (n && !doneSet.has(n)) { doneSet.add(n); changed = true; }
+            });
+            if (changed) persistDone();
+            updateProgress();
+            renderChapters();
+        } catch (e) {
+            // 进度接口失败不影响主流程：本地记录照常可用
+            console.warn('[practice] 读取服务端进度失败', e);
+        }
     }
 
     // ---------- 进度回读 ----------
@@ -118,6 +165,7 @@
             chaptersData = data.semesters || [];
             updateProgress();
             renderChapters();
+            await loadProgress();   // 合并服务端进度（失败不影响本地记录）
             autoSelectFirst();
         } catch (e) {
             chapterListEl.innerHTML = '<div class="empty-state">' + esc(describeFetchError(e)) + '</div>';
@@ -256,24 +304,28 @@
         if (promptHostEl) promptHostEl.innerHTML = inner;
     }
 
-    // 描述卡「题目描述 | 题解」标签切换（共用一栏，默认题目描述）
+    // 描述卡「题目描述 | 题解 | 测试结果」标签切换（共用一栏，默认题目描述）
+    const TAB_MAP = () => ([
+        { key: 'desc', pane: descPaneEl, tab: tabDescEl },
+        { key: 'solution', pane: solutionPaneEl, tab: tabSolutionEl },
+        { key: 'result', pane: resultPaneEl, tab: tabResultEl },
+    ]);
+
     function switchTab(name) {
-        const isSol = name === 'solution';
-        if (descPaneEl) descPaneEl.hidden = isSol;
-        if (solutionPaneEl) solutionPaneEl.hidden = !isSol;
-        if (tabDescEl) {
-            tabDescEl.classList.toggle('is-active', !isSol);
-            tabDescEl.setAttribute('aria-selected', String(!isSol));
-        }
-        if (tabSolutionEl) {
-            tabSolutionEl.classList.toggle('is-active', isSol);
-            tabSolutionEl.setAttribute('aria-selected', String(isSol));
-        }
+        TAB_MAP().forEach((it) => {
+            const on = it.key === name;
+            if (it.pane) it.pane.hidden = !on;
+            if (it.tab) {
+                it.tab.classList.toggle('is-active', on);
+                it.tab.setAttribute('aria-selected', String(on));
+            }
+        });
     }
 
     function bindTabs() {
         if (tabDescEl) tabDescEl.addEventListener('click', () => switchTab('desc'));
         if (tabSolutionEl) tabSolutionEl.addEventListener('click', () => switchTab('solution'));
+        if (tabResultEl) tabResultEl.addEventListener('click', () => switchTab('result'));
     }
 
     // 题解：填入静态题解面板（无题解时隐藏「题解」标签并给出提示）
@@ -320,7 +372,7 @@
         switchTab('desc');
         editorCardEl.hidden = false;
         answerCardEl.hidden = true;
-        clearResult();
+        restoreLastResult(ex.id);
         // 卡片可见后再刷一次：隐藏时测不到高度，行高补偿会不准
         refreshCodeEditor();
     }
@@ -346,7 +398,7 @@
 
         editorCardEl.hidden = true;
         answerCardEl.hidden = false;
-        clearResult();
+        restoreLastResult(ex.id);
     }
 
     // 填空题：单列，题干内嵌输入框 + 底部提交
@@ -368,7 +420,7 @@
         answerCardEl.hidden = true;
         renderSolution();
         switchTab('desc');
-        clearResult();
+        restoreLastResult(ex.id);
     }
 
     // ---------- 空态 ----------
@@ -401,10 +453,53 @@
         clearResult();
     }
 
-    function clearResult() {
-        resultCardEl.hidden = true;
+    // ---------- 测试结果面板：渲染 / 记忆 / 恢复 ----------
+    function emptyResultHtml() {
+        return '<div class="practice-result-empty">本题还没有运行结果，运行或提交后会显示在这里。</div>';
+    }
+
+    function applyResult(cls, html) {
         resultCardEl.classList.remove('is-pass', 'is-fail');
-        resultBodyEl.innerHTML = '';
+        if (cls) resultCardEl.classList.add(cls);
+        resultBodyEl.innerHTML = html || emptyResultHtml();
+    }
+
+    function updateResultTabDot(cls) {
+        if (!tabResultEl) return;
+        tabResultEl.classList.remove('has-result-pass', 'has-result-fail');
+        if (cls === 'is-pass') tabResultEl.classList.add('has-result-pass');
+        else if (cls === 'is-fail') tabResultEl.classList.add('has-result-fail');
+    }
+
+    // 清空为「空态」（结果面板不再隐藏，切到该标签时显示提示）
+    function clearResult() {
+        applyResult('', emptyResultHtml());
+        updateResultTabDot('');
+    }
+
+    // 打开某题时：优先恢复本题上次运行结果；没有则显示空态（不自动切标签）
+    function restoreLastResult(id) {
+        const r = id ? lastResults[String(id)] : null;
+        if (r && r.html) {
+            applyResult(r.cls, r.html);
+            updateResultTabDot(r.cls);
+        } else {
+            clearResult();
+        }
+    }
+
+    // 提交完成后：记住结果 + 自动切到「测试结果」标签
+    function revealResult() {
+        const id = currentExercise && currentExercise.id;
+        const cls = resultCardEl.classList.contains('is-pass') ? 'is-pass'
+            : (resultCardEl.classList.contains('is-fail') ? 'is-fail' : '');
+        const html = resultBodyEl.innerHTML;
+        if (id && html) {
+            lastResults[String(id)] = { cls: cls, html: html };
+            persistLastResults();
+        }
+        updateResultTabDot(cls);
+        switchTab('result');
     }
 
     // ---------- 难度档位切换（写代码题） ----------
@@ -666,9 +761,9 @@
     }
 
     function showResultLoading(text) {
-        resultCardEl.hidden = false;
         resultCardEl.classList.remove('is-pass', 'is-fail');
         resultBodyEl.innerHTML = '<div class="loading">' + esc(text || '判定中...') + '</div>';
+        switchTab('result');
     }
 
     // ---------- 客观题：选择 ----------
@@ -688,6 +783,7 @@
         } catch (e) {
             renderJudgeDown();
         }
+        revealResult();
     }
 
     // ---------- 客观题：填空 ----------
@@ -708,6 +804,7 @@
         } catch (e) {
             renderJudgeDown();
         }
+        revealResult();
     }
 
     // ---------- 写代码题：沙箱判定 ----------
@@ -731,6 +828,7 @@
         } catch (err) {
             renderJudgeDown();
         }
+        revealResult();
 
         submitBtn.disabled = false;
         submitBtn.textContent = '提交运行';

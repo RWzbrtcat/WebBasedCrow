@@ -5008,3 +5008,62 @@ body.practice-page .site-footer {
         min-height: 340px;
     }
 }
+
+/* ===== 测试结果面板（描述卡第三个标签页） ===== */
+/* 结果不再是独立底栏：并入标签面板，随面板滚动 */
+#resultPane {
+    padding: 16px 20px 20px;
+}
+
+#resultPane .practice-result {
+    flex: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-top: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+    max-height: none;
+    overflow: visible;
+}
+
+#resultPane .practice-result-body {
+    padding: 0;
+}
+
+/* 结果空态：本题还没有运行结果（面板不空白，给一句提示） */
+.practice-result-empty {
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.7;
+    text-align: center;
+}
+
+/* 「测试结果」标签上的状态点：有结果才点亮（通过=绿 / 未过=红） */
+.practice-tab-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity .15s ease, background-color .15s ease;
+    vertical-align: middle;
+}
+
+.practice-tab.has-result-pass .practice-tab-dot {
+    opacity: 1;
+    background: var(--ok);
+}
+
+.practice-tab.has-result-fail .practice-tab-dot {
+    opacity: 1;
+    background: var(--danger, #dc2626);
+}

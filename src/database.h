@@ -95,6 +95,8 @@ public:
     // 记录一次提交：attempts +1；passed 只升不降（一旦通关就保持）
     void recordPracticeAttempt(const std::string& ownerToken, int exerciseId,
                                const std::string& tier, bool passed);
+    // 回读某匿名访客已通过的题目 id 列表（供前端合并进度用）
+    crow::json::wvalue getPracticeProgress(const std::string& ownerToken);
 
     // ===== 配置 =====
     std::string getSetting(const std::string& key);

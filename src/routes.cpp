@@ -1136,6 +1136,13 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
         return res;
     });
 
+    // GET /api/practice/progress - 服务端进度：按 blog_anon 回读已通过的题目 id（公开）
+    CROW_ROUTE(app, "/api/practice/progress").methods("GET"_method)([&db](const crow::request& req){
+        crow::response res(db.getPracticeProgress(getAnonToken(req)));
+        addCorsHeaders(res);
+        return res;
+    });
+
     // POST /api/practice/submit - 提交代码，后端沙箱编译运行判定（公开）。
     // body: { exercise_id, tier, code }。code 为玩家实现的函数（不含 main）。
     // 返回: { success, status, passed, total, message, compile_output?, runtime_output? }
