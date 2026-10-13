@@ -4723,18 +4723,41 @@ body.practice-page .site-footer {
     color: var(--text);
 }
 
+/* 代码块沿用站点深色基调：highlight.css 的 token 色板（Atom One Dark）是为深底设计的，
+   若铺在浅底上，字符串/数字/内置类型等「着重显示的符号」会严重掉对比度甚至看不见 */
 .practice-solution-body pre {
-    margin: 10px 0;
+    margin: 12px 0;
     padding: 12px 14px;
-    background: var(--code-bg, #f6f3ef);
+    background: #1f2328;
+    border: 1px solid #2d323b;
     border-radius: var(--radius-sm);
     overflow-x: auto;
     font-size: 13px;
     line-height: 1.6;
+    color: #e5e7eb;
 }
 
-.practice-solution-body code {
+.practice-solution-body pre code,
+.practice-solution-body pre code.hljs {
+    background: transparent;
+    color: #e5e7eb;
+    padding: 0;
     font-size: 13px;
+}
+
+/* 行内代码（浅底卡片上）：暖橙小胶囊，与正文区分 */
+.practice-solution-body :not(pre) > code {
+    font-size: 12.5px;
+    background: #f3f4f6;
+    color: #c2410c;
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+}
+
+/* 深色代码块内的选区：浅底 + 深字，保证反选后依然可读 */
+.practice-solution-body pre ::selection {
+    background: #fff1e6;
+    color: #7c2d12;
 }
 
 /* 测试结果：紧邻题解、固定在描述卡底部，运行/提交后出现 */
@@ -4903,6 +4926,9 @@ body.practice-page .site-footer {
     white-space: pre;
 }
 
+/* 高亮层在下、输入框在上：原生光标始终可见（不会被上层元素盖住）。
+   反选时由输入框把选区字形重新填成白色（见下方 ::selection），
+   从而得到「白字 + 蓝底」，不再被下层高亮层冲淡 */
 .practice-code-hl {
     z-index: 1;
     overflow: hidden;
@@ -4928,7 +4954,7 @@ body.practice-page .site-footer {
     background: transparent;
     color: transparent;
     -webkit-text-fill-color: transparent;
-    caret-color: #d4d4d4;
+    caret-color: #e8e8e8;
     scrollbar-width: thin;
     scrollbar-color: #3a4048 transparent;
 }
@@ -4939,8 +4965,15 @@ body.practice-page .site-footer {
     opacity: 1;
 }
 
+/* 选区配色对齐 VS Code Dark+（#264F78）。旧值 0.3 透明蓝太淡：
+   选中的范围看不出来，字又被洗白、同样看不清。
+   ⚠ 输入框自身的字是透明的（字形由下层高亮层提供），
+   所以必须显式给 ::selection 写 -webkit-text-fill-color 才能真正改掉选中文字的颜色
+   —— 只写 color 是不生效的（WebKit / Blink 的已知行为） */
 .practice-code-input::selection {
-    background: rgba(97, 174, 238, 0.3);
+    background: #264f78;
+    color: #ffffff;
+    -webkit-text-fill-color: #ffffff;
 }
 
 .practice-code-input::-webkit-scrollbar {

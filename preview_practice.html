@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>练习闯关 · v0.6 预览（VS Code 手感代码编辑器） · LazyCat's Blog</title>
+<title>练习闯关 · v0.7 预览（题解深色代码块 + VS Code 选区） · LazyCat's Blog</title>
 <!-- 直接引用真实样式表：预览即真实 CSS 下的最终效果（样式已并入 style.css） -->
 <link rel="stylesheet" href="static/css/style.css">
 <link rel="stylesheet" href="static/css/highlight.css">
@@ -109,9 +109,9 @@ public:
                             <div class="practice-solution-host">
                                 <div class="practice-solution-body markdown-body">
                                     <p><strong>思路</strong>：移动语义的本质是「偷」资源——把源对象的指针接过来，并把源对象置为安全状态（<code>nullptr</code>），否则两个对象都会在析构时 <code>delete</code> 同一块内存。</p>
-                                    <pre><code>Wrapper(Wrapper&amp;&amp; o) noexcept
+                                    <pre><code class="hljs language-cpp"><span class="hljs-title function_">Wrapper</span>(<span class="hljs-type">Wrapper</span>&amp;&amp; o) <span class="hljs-keyword">noexcept</span>
     : p_(o.p_) {
-    o.p_ = nullptr;   // 关键：源对象置空
+    o.p_ = <span class="hljs-literal">nullptr</span>;   <span class="hljs-comment">// 关键：源对象置空</span>
 }</code></pre>
                                     <p>两个要点：</p>
                                     <ul>

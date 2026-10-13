@@ -193,6 +193,29 @@ assert(css.includes('.practice-code-currentline'), 'style.css 含当前行高亮
         '编辑器 token 为 VS Code Dark+ 色板（#569cd6/#4ec9b0/#6a9955/#ce9178）');
 }
 
+// 3f. 对比度：题解代码块底色 + 编辑器「着重显示」与选区
+console.log('== 对比度：题解代码块底色与编辑器选区 ==');
+{
+    const solFrom = css.indexOf('.practice-solution-body pre {');
+    const solTo = css.indexOf(':not(pre) > code', solFrom);
+    const solPre = solFrom >= 0 && solTo > solFrom ? css.slice(solFrom, solTo) : '';
+    assert(solPre.length > 0, '能定位题解代码块样式');
+    assert(/#1f2328/.test(solPre), '题解代码块用深底 #1f2328（与站点代码块一致）');
+    assert(!/var\(--code-bg/.test(solPre), '题解代码块不再铺浅底（浅底会让 Atom One Dark token 看不清）');
+    assert(/#e5e7eb/.test(solPre), '题解代码块显式声明浅色文字');
+}
+assert(/\.practice-code-input\s*\{[^}]*z-index:\s*2/.test(css), '输入框 z-index:2（原生光标始终可见）');
+assert(/\.practice-code-hl\s*\{[^}]*z-index:\s*1/.test(css),
+    '高亮层 z-index:1（留在输入框之下，不遮挡光标）');
+{
+    const selFrom = css.indexOf('.practice-code-input::selection');
+    const selRule = selFrom >= 0 ? css.slice(selFrom, css.indexOf('}', selFrom)) : '';
+    assert(selRule.length > 0, '能定位编辑器选区样式');
+    assert(/#264f78/.test(selRule), '编辑器选区底色用 VS Code Dark+ 的 #264F78（不再是 0.3 透明蓝）');
+    assert(/-webkit-text-fill-color/.test(selRule),
+        '选区显式声明 -webkit-text-fill-color（textarea 字透明，只写 color 不生效）');
+}
+
 // 4. seed 数据（由 tools/gen_practice_seed.py 生成）
 console.log('== seed_practice.sql ==');
 const seed = readFileSync(resolve(root, 'tools/seed_practice.sql'), 'utf8');
@@ -209,7 +232,17 @@ assert(seed.includes('PREPARE stmt_mig FROM @ddl'), '补列迁移用 information
     assert(solUpserts === 154, '154 题均带题解 upsert（当前 ' + solUpserts + '）');
 }
 assert(seed.includes('practice_progress'), '含进度表');
-assert(!seed.includes('\r'), 'seed 无 CRLF');
+// 换行符：seed 为纯 LF 的真正护栏在生成器（写盘前 assert b'\r' not in raw）。
+// 本机 core.autocrlf=true 会把检出的 LF 还原成 CRLF（git 库里的 blob 仍是纯 LF），
+// 所以这里只断言「无孤立 CR」——孤立的 \r 才会真落进字符串字面量。
+{
+    const gen = readFileSync(resolve(root, 'tools/gen_practice_seed.py'), 'utf8');
+    assert(gen.includes("assert b'\\r' not in raw"), '生成器写盘前断言无 CR（seed LF 的真正护栏）');
+    assert(!/\r(?!\n)/.test(seed), 'seed 不含孤立 CR');
+    if (seed.includes('\r\n')) {
+        console.log('  \u26a0 工作区 seed 检出为 CRLF（core.autocrlf=true）：本机直连导入前先重跑 python tools/gen_practice_seed.py');
+    }
+}
 
 // 5. 导航入口（11 个页面）
 console.log('== 导航入口（11 页面） ==');
