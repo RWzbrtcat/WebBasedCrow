@@ -4586,7 +4586,20 @@ body.practice-page .site-footer {
 }
 
 @media (max-width: 900px) {
-    /* 头部回落两行：品牌 + 答题操作一行，导航居中另起一行 */
+    .practice-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+    }
+
+    .practice-work-pos {
+        display: none;
+    }
+}
+
+/* 头部三栏回落两行只发生在很窄处：练习页头部满宽，
+   「品牌 + 操作 + 导航」三栏到 640px 仍放得下 ⇒ 640px 以上始终保持单行。
+   （选择器带 body 提升优先级，覆盖上方通用胶囊头部的 flex-wrap 规则） */
+@media (max-width: 640px) {
     body.practice-page .site-header-pill .header-inner {
         display: flex;
         flex-wrap: wrap;
@@ -4599,15 +4612,6 @@ body.practice-page .site-footer {
         width: 100%;
         justify-content: center;
         margin-top: 2px;
-    }
-
-    .practice-layout {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 18px;
-    }
-
-    .practice-work-pos {
-        display: none;
     }
 }
 
