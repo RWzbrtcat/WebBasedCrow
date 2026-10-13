@@ -4177,7 +4177,10 @@ body.practice-page .site-header-pill {
     box-shadow: var(--shadow-md);
 }
 
-/* 头部三栏：左品牌 / 中导航 / 右答题操作（对齐 LeetCode 答题页的操作区位置） */
+/* 头部三栏：左品牌 / 中答题操作 / 右导航
+   （答题操作居中，对齐 LeetCode 答题页；导航让到右侧）
+   用显式 grid-column 摆放而**不重排 DOM** —— 保留「品牌→导航→操作」的
+   阅读与 Tab 焦点顺序，只改视觉位置，避免为好看牺牲可访问性 */
 body.practice-page .site-header-pill .header-inner {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -4186,8 +4189,14 @@ body.practice-page .site-header-pill .header-inner {
     padding: 6px 10px 6px 20px;
 }
 
+body.practice-page .site-header-pill .brand {
+    grid-column: 1;
+    justify-self: start;
+}
+
 body.practice-page .site-header-pill .nav {
-    justify-self: center;
+    grid-column: 3;
+    justify-self: end;
 }
 
 /* 答题操作区：「提交运行 / 重置代码」（写代码题）或「提交答案」（客观题），
@@ -4195,7 +4204,8 @@ body.practice-page .site-header-pill .nav {
 .practice-top-actions {
     display: flex;
     align-items: center;
-    justify-self: end;
+    grid-column: 2;
+    justify-self: center;
     gap: 8px;
 }
 

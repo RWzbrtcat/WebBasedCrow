@@ -238,7 +238,11 @@ assert(/syncActions\('code'\)/.test(js) && /syncActions\('objective'\)/.test(js)
     '写代码题 / 客观题 / 空态三种操作区状态均已接入');
 assert(!/blankSubmitBtn/.test(js), '填空题不再自建内联提交按钮');
 assert(/body\.practice-page \.site-header-pill \.header-inner\s*\{[^}]*grid-template-columns:\s*1fr auto 1fr/.test(css),
-    'CSS 头部为「左品牌 / 中导航 / 右操作」三栏网格');
+    'CSS 头部为三栏网格（1fr auto 1fr）');
+assert(/body\.practice-page \.site-header-pill \.nav\s*\{[^}]*grid-column:\s*3/.test(css),
+    '导航置于第 3 列（右侧）');
+assert(/\.practice-top-actions\s*\{[^}]*grid-column:\s*2[^}]*justify-self:\s*center/.test(css),
+    '答题操作置于第 2 列并居中（提交运行 / 重置代码在导航栏中间）');
 assert(css.includes('.practice-top-actions'), 'CSS 含头部操作区样式');
 assert(!/\.practice-bar\s*\{/.test(css), 'CSS 中 .practice-bar 规则已清理');
 assert(/\.practice-layout\s*\{[^}]*grid-template-columns:\s*200px/.test(css), '左栏收窄为 200px、右栏吃满');
