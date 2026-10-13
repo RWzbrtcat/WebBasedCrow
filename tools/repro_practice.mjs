@@ -244,12 +244,14 @@ assert(/body\.practice-page \.site-header-pill \.nav\s*\{[^}]*grid-column:\s*3/.
 assert(/\.practice-top-actions\s*\{[^}]*grid-column:\s*2[^}]*justify-self:\s*center/.test(css),
     '答题操作置于第 2 列并居中（提交运行 / 重置代码在导航栏中间）');
 assert(css.includes('.practice-top-actions'), 'CSS 含头部操作区样式');
-// 头部回落两行只应发生在很窄处（640），否则平板 / 窄窗会被误判成两行
+// 头部「常驻单行」：宽度不足只压缩尺寸，仅极窄（<480）才回落两行
+assert(/body\.practice-page \.site-header-pill \.nav\s*\{[^}]*flex-wrap:\s*nowrap/.test(css),
+    '窄屏下导航强制 nowrap（头部保持单行、导航不被拆行）');
 const hdrFallback = css.search(/body\.practice-page \.site-header-pill \.header-inner\s*\{[^}]*flex-wrap:\s*wrap/);
-assert(hdrFallback > -1, 'CSS 含头部回落两行的规则');
+assert(hdrFallback > -1, 'CSS 含头部回落两行的兜底规则');
 const bpBefore = [...css.slice(0, hdrFallback).matchAll(/@media \(max-width: (\d+)px\)/g)];
 const lastBp = bpBefore.length ? Number(bpBefore[bpBefore.length - 1][1]) : 0;
-assert(lastBp === 640, '头部回落两行的断点为 640px（640 以上保持单行，当前 ' + lastBp + '）');
+assert(lastBp === 480, '头部回落两行仅在 <480px（手机）触发，当前 ' + lastBp + '）');
 assert(!/\.practice-bar\s*\{/.test(css), 'CSS 中 .practice-bar 规则已清理');
 assert(/\.practice-layout\s*\{[^}]*grid-template-columns:\s*200px/.test(css), '左栏收窄为 200px、右栏吃满');
 
