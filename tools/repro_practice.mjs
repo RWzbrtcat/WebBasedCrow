@@ -243,6 +243,13 @@ assert(/body\.practice-page \.site-header-pill \.nav\s*\{[^}]*grid-column:\s*3/.
     '导航置于第 3 列（右侧）');
 assert(/\.practice-top-actions\s*\{[^}]*grid-column:\s*2[^}]*justify-self:\s*center/.test(css),
     '答题操作置于第 2 列并居中（提交运行 / 重置代码在导航栏中间）');
+// 三列必须显式 grid-row:1 —— 否则 Grid 自动排布会因「列号回退」把第三个子项挤到第 2 行
+assert(/body\.practice-page \.site-header-pill \.brand\s*\{[^}]*grid-row:\s*1/.test(css),
+    '品牌 grid-row:1（锁死单行，防自动排布换行）');
+assert(/body\.practice-page \.site-header-pill \.nav\s*\{[^}]*grid-row:\s*1/.test(css),
+    '导航 grid-row:1（锁死单行）');
+assert(/\.practice-top-actions\s*\{[^}]*grid-row:\s*1/.test(css),
+    '答题操作 grid-row:1（锁死单行）');
 assert(css.includes('.practice-top-actions'), 'CSS 含头部操作区样式');
 // 头部「常驻单行」：宽度不足只压缩尺寸，仅极窄（<480）才回落两行
 assert(/body\.practice-page \.site-header-pill \.nav\s*\{[^}]*flex-wrap:\s*nowrap/.test(css),
