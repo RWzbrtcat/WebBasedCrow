@@ -270,6 +270,18 @@
         }
     }
 
+    // ---------- 头部答题操作区：按题型切换按钮 ----------
+    // code      写代码题 → 「提交运行」+「重置代码」
+    // objective 客观题   → 「提交答案」
+    // none      空态     → 三个按钮全隐藏（容器常驻，保证头部三栏网格稳定、导航恒居中）
+    function syncActions(kind) {
+        const isCode = kind === 'code';
+        const isObj = kind === 'objective';
+        if (submitBtn) submitBtn.hidden = !isCode;
+        if (resetBtn) resetBtn.hidden = !isCode;
+        if (answerSubmitBtn) answerSubmitBtn.hidden = !isObj;
+    }
+
     // ---------- 工作台布局：双列 / 单列 ----------
     function setWorkLayout(single) {
         workBodyEl.classList.toggle('single', !!single);
@@ -372,6 +384,7 @@
         switchTab('desc');
         editorCardEl.hidden = false;
         answerCardEl.hidden = true;
+        syncActions('code');
         restoreLastResult(ex.id);
         // 卡片可见后再刷一次：隐藏时测不到高度，行高补偿会不准
         refreshCodeEditor();
@@ -398,26 +411,22 @@
 
         editorCardEl.hidden = true;
         answerCardEl.hidden = false;
+        syncActions('objective');
         restoreLastResult(ex.id);
     }
 
-    // 填空题：单列，题干内嵌输入框 + 底部提交
+    // 填空题：单列，题干内嵌输入框（提交按钮在头部操作区）
     function renderBlank() {
         const ex = currentExercise;
         setWorkLayout(true);
         renderHead(ex);
         const codeHtml = esc(ex.prompt || '').replace(/_{3,}/g,
             '<input type="text" class="practice-blank-input" data-blank spellcheck="false" autocomplete="off">');
-        setPromptHtml([
-            '<div class="practice-prompt"><pre class="practice-blank-code"><code>' + codeHtml + '</code></pre></div>',
-            '<div class="practice-editor-actions">',
-            '<button type="button" class="btn btn-primary" id="blankSubmitBtn">提交答案</button>',
-            '</div>',
-        ].join(''));
-        const blankBtn = document.getElementById('blankSubmitBtn');
-        if (blankBtn) blankBtn.addEventListener('click', submit);
+        setPromptHtml(
+            '<div class="practice-prompt"><pre class="practice-blank-code"><code>' + codeHtml + '</code></pre></div>');
         editorCardEl.hidden = true;
         answerCardEl.hidden = true;
+        syncActions('objective');
         renderSolution();
         switchTab('desc');
         restoreLastResult(ex.id);
@@ -438,6 +447,7 @@
         resetSolution();
         editorCardEl.hidden = true;
         answerCardEl.hidden = true;
+        syncActions('none');
         clearResult();
     }
 
@@ -450,6 +460,7 @@
         resetSolution();
         editorCardEl.hidden = true;
         answerCardEl.hidden = true;
+        syncActions('none');
         clearResult();
     }
 

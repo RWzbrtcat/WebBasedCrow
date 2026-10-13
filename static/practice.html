@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/css/highlight.css">
 </head>
 <body class="practice-page">
-    <!-- 站点头部 -->
+    <!-- 站点头部：左品牌 / 中导航 / 右答题操作（操作随题型切换，见 practice.js syncActions） -->
     <header class="site-header site-header-pill">
         <div class="header-inner">
             <div class="brand">
@@ -18,25 +18,26 @@
                 <a href="/">首页</a>
                 <a href="/daily">每日一题</a>
                 <a href="/practice" class="active">练习闯关</a>
-                <a href="/drafts" data-auth-role="admin" hidden>草稿</a>
-                <a href="/hidden" data-auth-role="admin" hidden>隐藏</a>
-                <a href="/editor" data-auth-role="admin" hidden>创作</a>
             </nav>
+            <!-- 操作区容器常驻（不设 hidden）：保证头部三栏网格始终成立、导航恒居中；
+                 只切换内部按钮（见 practice.js syncActions） -->
+            <div class="practice-top-actions" id="topActions">
+                <button type="button" class="btn btn-primary" id="submitBtn" hidden>提交运行</button>
+                <button type="button" class="btn btn-secondary" id="resetBtn" hidden>重置代码</button>
+                <button type="button" class="btn btn-primary" id="answerSubmitBtn" hidden>提交答案</button>
+            </div>
         </div>
     </header>
 
     <!-- 主体：整页平铺工作台（正文不滚，各面板独立滚动） -->
     <main class="container container-practice">
-        <div class="practice-bar">
-            <h1 class="practice-title">练习闯关</h1>
-            <span class="practice-sub">C++ 后端知识 · 短题热身 + 项目 Boss 收口</span>
-            <span class="practice-progress" id="practiceProgress"></span>
-        </div>
-
         <div class="practice-layout">
-            <!-- 左栏：章节 + 当前章题目（两级树，自身滚动） -->
+            <!-- 左栏：章节 + 当前章题目（两级树，自身滚动；进度并入栏头） -->
             <aside class="practice-side">
-                <div class="practice-side-head"><span>章节</span></div>
+                <div class="practice-side-head">
+                    <span>章节</span>
+                    <span class="practice-progress" id="practiceProgress"></span>
+                </div>
                 <div class="practice-chapters" id="chapterList">
                     <div class="loading">加载中...</div>
                 </div>
@@ -80,12 +81,9 @@
                         </div>
                     </section>
 
-                    <!-- 写代码题：代码编辑器（IDE 观感：行号槽 + 语法高亮 + 状态栏） -->
+                    <!-- 写代码题：代码编辑器（IDE 观感：行号槽 + 语法高亮 + 状态栏）
+                         顶部工具条与底部操作条已上移头部与状态栏，编辑器吃满整卡 -->
                     <section class="practice-card practice-editor-card" id="editorCard" hidden>
-                        <div class="practice-editor-head">
-                            <span class="practice-editor-title">代码</span>
-                            <span class="practice-editor-lang">C++20</span>
-                        </div>
                         <div class="practice-code" id="codeShell">
                             <div class="practice-code-bar">
                                 <span class="practice-code-file"><i class="practice-code-dot" aria-hidden="true"></i>solution.cpp</span>
@@ -107,18 +105,11 @@
                                 <span class="practice-code-status-right">C++20 · 缩进 4 空格 · UTF-8</span>
                             </div>
                         </div>
-                        <div class="practice-editor-actions">
-                            <button type="button" class="btn btn-primary" id="submitBtn">提交运行</button>
-                            <button type="button" class="btn btn-secondary" id="resetBtn">重置代码</button>
-                        </div>
                     </section>
 
-                    <!-- 客观题（选择题）：作答区 -->
+                    <!-- 客观题（选择题）：作答区（提交按钮在头部操作区） -->
                     <section class="practice-card practice-answer-card" id="answerCard" hidden>
                         <div class="practice-answer-body" id="answerBody"></div>
-                        <div class="practice-editor-actions">
-                            <button type="button" class="btn btn-primary" id="answerSubmitBtn">提交答案</button>
-                        </div>
                     </section>
                 </div>
             </div>

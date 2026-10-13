@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>练习闯关 · v0.7 预览（题解深色代码块 + VS Code 选区） · LazyCat's Blog</title>
+<title>练习闯关 · v0.8 预览（头部答题操作条 · 工作台加宽） · LazyCat's Blog</title>
 <!-- 直接引用真实样式表：预览即真实 CSS 下的最终效果（样式已并入 style.css） -->
 <link rel="stylesheet" href="static/css/style.css">
 <link rel="stylesheet" href="static/css/highlight.css">
@@ -29,19 +29,21 @@
                 <a href="#">每日一题</a>
                 <a href="#" class="active">练习闯关</a>
             </nav>
+            <!-- 答题操作区：线上由 practice.js syncActions() 按题型切换 -->
+            <div class="practice-top-actions">
+                <button class="btn btn-primary" type="button">提交运行</button>
+                <button class="btn btn-secondary" type="button">重置代码</button>
+            </div>
         </div>
     </header>
 
     <main class="container container-practice">
-        <div class="practice-bar">
-            <h1 class="practice-title">练习闯关</h1>
-            <span class="practice-sub">C++ 后端知识 · 短题热身 + 项目 Boss 收口</span>
-            <span class="practice-progress">已完成 12 / 154</span>
-        </div>
-
         <div class="practice-layout">
             <aside class="practice-side">
-                <div class="practice-side-head"><span>章节</span></div>
+                <div class="practice-side-head">
+                    <span>章节</span>
+                    <span class="practice-progress">已完成 12 / 154</span>
+                </div>
                 <div class="practice-chapters">
                     <div class="practice-semester">学期二 · 进阶</div>
                     <button class="practice-chapter active" type="button">
@@ -137,12 +139,9 @@ public:
                         </div>
                     </section>
 
-                    <!-- 右：代码编辑器（IDE 观感：行号槽 + 语法高亮 + 状态栏） -->
+                    <!-- 右：代码编辑器（IDE 观感：行号槽 + 语法高亮 + 状态栏）
+                         表头与底部操作条已上移头部，编辑器吃满整卡 -->
                     <section class="practice-card practice-editor-card">
-                        <div class="practice-editor-head">
-                            <span class="practice-editor-title">代码</span>
-                            <span class="practice-editor-lang">C++20</span>
-                        </div>
                         <div class="practice-code">
                             <div class="practice-code-bar">
                                 <span class="practice-code-file"><i class="practice-code-dot" aria-hidden="true"></i>solution.cpp</span>
@@ -163,10 +162,6 @@ public:
                                 <span id="codeStatusPos">行 1，列 1</span>
                                 <span class="practice-code-status-right">C++20 · 缩进 4 空格 · UTF-8</span>
                             </div>
-                        </div>
-                        <div class="practice-editor-actions">
-                            <button class="btn btn-primary" type="button">提交运行</button>
-                            <button class="btn btn-secondary" type="button">重置代码</button>
                         </div>
                     </section>
                 </div>

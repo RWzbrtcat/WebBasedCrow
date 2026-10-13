@@ -3912,29 +3912,8 @@ body.practice-page {
     color: #fff;
 }
 
-/* 编辑器 */
-.practice-editor-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-}
-
-.practice-editor-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text);
-}
-
-.practice-editor-lang {
-    padding: 2px 10px;
-    border-radius: 999px;
-    background: var(--accent-soft);
-    color: var(--accent-dark);
-    font-size: 12px;
-    font-weight: 600;
-}
-
+/* 编辑器（编辑器卡表头已删除：文件条 + 状态栏已有 C++20 信息，不再重复；
+   旧纯 textarea 类 .practice-editor 亦无元素引用，暂留） */
 .practice-editor {
     width: 100%;
     min-height: 340px;
@@ -3955,12 +3934,6 @@ body.practice-page {
     outline: none;
     border-color: var(--accent);
     box-shadow: var(--ring);
-}
-
-.practice-editor-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 14px;
 }
 
 /* 判定结果 */
@@ -4204,60 +4177,71 @@ body.practice-page .site-header-pill {
     box-shadow: var(--shadow-md);
 }
 
+/* 头部三栏：左品牌 / 中导航 / 右答题操作（对齐 LeetCode 答题页的操作区位置） */
+body.practice-page .site-header-pill .header-inner {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 10px 6px 20px;
+}
+
+body.practice-page .site-header-pill .nav {
+    justify-self: center;
+}
+
+/* 答题操作区：「提交运行 / 重置代码」（写代码题）或「提交答案」（客观题），
+   由 practice.js syncActions() 按题型切换 */
+.practice-top-actions {
+    display: flex;
+    align-items: center;
+    justify-self: end;
+    gap: 8px;
+}
+
+.practice-top-actions .btn {
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    line-height: 1.7;
+    white-space: nowrap;
+}
+
 body.practice-page .site-footer {
     flex-shrink: 0;
     padding: 8px 16px 10px;
 }
 
-/* 主体容器：全宽铺满、撑满剩余高度 */
+/* 主体容器：全宽铺满、撑满剩余高度（内边距收紧，纵向让给两个工作面板） */
 .container-practice {
     width: 100%;
     max-width: none;
     margin: 0;
     flex: 1;
     min-height: 0;
-    padding: 8px 22px 12px;
+    padding: 6px 16px 10px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
-/* 紧凑标题条 */
-.practice-bar {
-    flex-shrink: 0;
-    display: flex;
-    align-items: baseline;
-    gap: 14px;
-}
-
-.practice-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-}
-
-.practice-sub {
-    font-size: 13px;
-    color: var(--text-secondary);
-}
-
+/* 进度：并入左栏栏头（原 .practice-bar 标题条已删除，纵向空间让给描述与编辑器） */
 .practice-progress {
-    margin-left: auto;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--accent);
     font-variant-numeric: tabular-nums;
 }
 
-/* 工作区：左栏收窄，右栏吃满 */
+/* 工作区：左栏收窄（220→200），右栏吃满 */
 .practice-layout {
     flex: 1;
     min-height: 0;
     margin: 0;
     display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-columns: 200px minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr);
-    gap: 22px;
+    gap: 16px;
     align-items: stretch;
 }
 
@@ -4377,7 +4361,7 @@ body.practice-page .site-footer {
     min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
     overflow: hidden;
 }
 
@@ -4421,7 +4405,7 @@ body.practice-page .site-footer {
     min-height: 0;
     display: grid;
     grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-    gap: 16px;
+    gap: 14px;
     align-items: stretch;
 }
 
@@ -4477,13 +4461,6 @@ body.practice-page .site-footer {
     border-top: 1px solid var(--border);
 }
 
-/* 编辑器卡 */
-.practice-editor-head {
-    flex-shrink: 0;
-    padding: 13px 20px;
-    border-bottom: 1px solid var(--border);
-}
-
 .practice-editor {
     flex: 1;
     min-height: 0;
@@ -4498,13 +4475,6 @@ body.practice-page .site-footer {
 .practice-editor:focus {
     background: #fffdfb;
     box-shadow: none;
-}
-
-.practice-editor-actions {
-    flex-shrink: 0;
-    margin: 0;
-    padding: 12px 20px;
-    border-top: 1px solid var(--border);
 }
 
 /* 客观题作答区 */
@@ -4570,10 +4540,6 @@ body.practice-page .site-footer {
         padding: 12px 18px 24px;
     }
 
-    .practice-bar {
-        margin-bottom: 12px;
-    }
-
     .practice-layout {
         grid-template-columns: 200px minmax(0, 1fr);
         grid-template-rows: none;
@@ -4610,13 +4576,27 @@ body.practice-page .site-footer {
 }
 
 @media (max-width: 900px) {
+    /* 头部回落两行：品牌 + 答题操作一行，导航居中另起一行 */
+    body.practice-page .site-header-pill .header-inner {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        row-gap: 6px;
+    }
+
+    body.practice-page .site-header-pill .nav {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        margin-top: 2px;
+    }
+
     .practice-layout {
         grid-template-columns: minmax(0, 1fr);
         gap: 18px;
     }
 
-    .practice-work-pos,
-    .practice-sub {
+    .practice-work-pos {
         display: none;
     }
 }

@@ -216,6 +216,33 @@ assert(/\.practice-code-hl\s*\{[^}]*z-index:\s*1/.test(css),
         '选区显式声明 -webkit-text-fill-color（textarea 字透明，只写 color 不生效）');
 }
 
+// 3g. 答题工作台：头部操作区 + 去标题条 + 编辑器吃满
+console.log('== 答题工作台：头部操作区与空间回收 ==');
+assert(html.includes('id="topActions"'), '头部含答题操作区 #topActions');
+{
+    const header = extractDivBlock(html, '<div class="header-inner"');
+    assert(header.includes('id="submitBtn"') && header.includes('id="resetBtn"') && header.includes('id="answerSubmitBtn"'),
+        '提交运行 / 重置代码 / 提交答案 已移入头部操作区');
+    assert(!/data-auth-role="admin"/.test(header), '导航不再挂 草稿 / 隐藏 / 创作（管理入口仍在头像菜单）');
+}
+assert(!html.includes('practice-bar') && !html.includes('practice-title') && !html.includes('practice-sub'),
+    '页面标题条 .practice-bar 已删除');
+{
+    const side = extractDivBlock(html, '<div class="practice-side-head"');
+    assert(side.includes('practiceProgress'), '进度已并入左栏栏头');
+}
+assert(!html.includes('practice-editor-head'), '编辑器卡表头已删（C++20 与状态栏信息重复）');
+assert(!html.includes('practice-editor-actions'), '卡内底部操作条已删（按钮移入头部）');
+assert(js.includes('function syncActions'), 'JS 有头部操作区切换 syncActions');
+assert(/syncActions\('code'\)/.test(js) && /syncActions\('objective'\)/.test(js) && /syncActions\('none'\)/.test(js),
+    '写代码题 / 客观题 / 空态三种操作区状态均已接入');
+assert(!/blankSubmitBtn/.test(js), '填空题不再自建内联提交按钮');
+assert(/body\.practice-page \.site-header-pill \.header-inner\s*\{[^}]*grid-template-columns:\s*1fr auto 1fr/.test(css),
+    'CSS 头部为「左品牌 / 中导航 / 右操作」三栏网格');
+assert(css.includes('.practice-top-actions'), 'CSS 含头部操作区样式');
+assert(!/\.practice-bar\s*\{/.test(css), 'CSS 中 .practice-bar 规则已清理');
+assert(/\.practice-layout\s*\{[^}]*grid-template-columns:\s*200px/.test(css), '左栏收窄为 200px、右栏吃满');
+
 // 4. seed 数据（由 tools/gen_practice_seed.py 生成）
 console.log('== seed_practice.sql ==');
 const seed = readFileSync(resolve(root, 'tools/seed_practice.sql'), 'utf8');
