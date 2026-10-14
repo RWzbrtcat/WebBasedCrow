@@ -237,6 +237,22 @@ assert(js.includes('function syncActions'), 'JS 有头部操作区切换 syncAct
 assert(/syncActions\('code'\)/.test(js) && /syncActions\('objective'\)/.test(js) && /syncActions\('none'\)/.test(js),
     '写代码题 / 客观题 / 空态三种操作区状态均已接入');
 assert(!/blankSubmitBtn/.test(js), '填空题不再自建内联提交按钮');
+
+// 代码草稿持久化（防切题 / 刷新丢代码）
+assert(/DRAFT_KEY = 'practice\.draft\.v1'/.test(js), 'JS 定义草稿存储键 practice.draft.v1');
+['loadDrafts', 'persistDrafts', 'saveDraftNow', 'scheduleSaveDraft', 'flushDraft', 'clearDraft'].forEach((fn) => {
+    assert(js.includes('function ' + fn), '草稿函数 ' + fn + ' 已实现');
+});
+assert(/renderTier[\s\S]{0,400}hasOwnProperty\.call\(drafts, key\)/.test(js),
+    'renderTier 优先恢复草稿，无草稿才用初始代码');
+assert(/resetBtn\.addEventListener[\s\S]{0,300}clearDraft\(currentExercise\.id, currentTier\)/.test(js),
+    '「重置代码」先清除本题本档草稿');
+assert(/selectExercise[\s\S]{0,160}flushDraft\(\)/.test(js), '切题前 flushDraft 落盘旧题草稿');
+assert(/btn\.addEventListener\('click', \(\) => \{\s*flushDraft\(\)/.test(js), '切档位前 flushDraft 落盘');
+assert(/addEventListener\('input'[\s\S]{0,90}scheduleSaveDraft/.test(js), '编辑器输入 → 防抖存草稿');
+// 常量必须在状态初始化之前（否则 loadDone/loadLastResults/loadDrafts 命中 TDZ，本地缓存恒读不出）
+assert(js.indexOf('const DONE_KEY') < js.indexOf('let doneSet = loadDone()'),
+    '存储键常量声明在状态初始化之前（防 TDZ 吞掉本地缓存）');
 assert(/body\.practice-page \.site-header-pill \.header-inner\s*\{[^}]*grid-template-columns:\s*1fr auto 1fr/.test(css),
     'CSS 头部为三栏网格（1fr auto 1fr）');
 assert(/body\.practice-page \.site-header-pill \.nav\s*\{[^}]*grid-column:\s*3/.test(css),

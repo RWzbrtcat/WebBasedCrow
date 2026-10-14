@@ -22,6 +22,20 @@
 (function () {
     'use strict';
 
+    // ---------- 常量 ----------
+    const TIER_LABELS = { easy: '入门', medium: '进阶', hard: '挑战' };
+    const TYPE_BADGES = { choice: '选择', blank: '填空', short: '写代码', boss: 'Boss' };
+    const DONE_KEY = 'practice.done.v1';
+    const LAST_KEY = 'practice.last.v1';    // 每题「上一次运行结果」缓存
+    const LAST_MAX = 40;                    // 最多缓存多少题的最近结果
+    const DRAFT_KEY = 'practice.draft.v1';  // 每题每档「代码草稿」缓存
+    const DRAFT_MAX = 80;                   // 最多缓存多少份草稿
+    const DRAFT_CODE_MAX = 20000;           // 单份草稿字符上限（保护 localStorage 配额）
+    // ⚠ 以上常量必须在下面的状态初始化「之前」声明：loadDone / loadLastResults /
+    //    loadDrafts 都会读取这些 const；若声明在后，读取会命中 TDZ 抛 ReferenceError，
+    //    再被各自的 try/catch 静默吞掉 ⇒ 表现为「本地缓存永远读不出来」。
+    //    （历史遗留坑，本次一并修正：此前本地 doneSet / lastResults 在启动时恒为空。）
+
     // ---------- 状态 ----------
     let chaptersData = null;      // /api/practice/chapters 返回的 semesters
     let currentChapter = null;    // 当前选中章节 id
@@ -30,6 +44,7 @@
     let currentTier = 'easy';
     let doneSet = loadDone();     // 本地记录：已通过的题目 id
     let lastResults = loadLastResults();  // 本地记录：每题最近一次运行结果（{ id: {cls, html} }）
+    let drafts = loadDrafts();    // 本地记录：代码草稿（{ '<id>:<tier>': code }，防切题/刷新丢代码）
 
     // ---------- DOM ----------
     const chapterListEl = document.getElementById('chapterList');
@@ -54,12 +69,6 @@
     const submitBtn = document.getElementById('submitBtn');
     const resetBtn = document.getElementById('resetBtn');
     const answerSubmitBtn = document.getElementById('answerSubmitBtn');
-
-    const TIER_LABELS = { easy: '入门', medium: '进阶', hard: '挑战' };
-    const TYPE_BADGES = { choice: '选择', blank: '填空', short: '写代码', boss: 'Boss' };
-    const DONE_KEY = 'practice.done.v1';
-    const LAST_KEY = 'practice.last.v1';   // 每题「上一次运行结果」缓存
-    const LAST_MAX = 40;                    // 最多缓存多少题的最近结果
 
     // 描述卡为「题目描述 | 题解」共用一栏：点击标签切换，默认题目描述。
     // 题解面板为静态节点（见 practice.html），此处不再动态注入宿主。
@@ -112,6 +121,77 @@
             }
             localStorage.setItem(LAST_KEY, JSON.stringify(lastResults));
         } catch (e) { /* 配额或隐私模式：忽略，结果仅当次会话有效 */ }
+    }
+
+    // ---------- 本地：代码草稿（按「题号:档位」存，根治切题/刷新丢代码） ----------
+    function draftKey(id, tier) {
+        return String(id) + ':' + String(tier || 'easy');
+    }
+
+    function loadDrafts() {
+        try {
+            const obj = JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}');
+            return (obj && typeof obj === 'object') ? obj : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function persistDrafts() {
+        try {
+            const keys = Object.keys(drafts);
+            if (keys.length > DRAFT_MAX) {
+                // 超限：丢弃最早写入的一批（对象键顺序近似插入顺序）
+                keys.slice(0, keys.length - DRAFT_MAX).forEach((k) => { delete drafts[k]; });
+            }
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts));
+        } catch (e) { /* 配额或隐私模式：忽略，草稿仅当次会话有效 */ }
+    }
+
+    // 把编辑器当前内容落盘。与本题本档的初始代码一致时删除草稿（保持存储精简）。
+    function saveDraftNow() {
+        if (!currentExercise || !currentExercise.tiers) return;
+        const tier = currentExercise.tiers[currentTier] || {};
+        const starter = tier.starter || '';
+        const key = draftKey(currentExercise.id, currentTier);
+        const code = codeEditorEl.value;
+        if (code === starter) {
+            if (Object.prototype.hasOwnProperty.call(drafts, key)) {
+                delete drafts[key];
+                persistDrafts();
+            }
+            return;
+        }
+        if (code.length > DRAFT_CODE_MAX) return;   // 过大不存，避免撑爆配额
+        drafts[key] = code;
+        persistDrafts();
+    }
+
+    let draftTimer = null;
+    // 输入防抖：停止输入 400ms 后再落盘，避免逐字符写 localStorage
+    function scheduleSaveDraft() {
+        clearTimeout(draftTimer);
+        draftTimer = setTimeout(saveDraftNow, 400);
+    }
+
+    // 切题 / 切档位 / 页面隐藏前立刻落盘（清掉未触发的防抖）
+    function flushDraft() {
+        if (draftTimer) {
+            clearTimeout(draftTimer);
+            draftTimer = null;
+            saveDraftNow();
+        }
+    }
+
+    // 清除某题某档的草稿（「重置代码」用：回到初始代码，同时丢弃草稿）
+    function clearDraft(id, tier) {
+        const key = draftKey(id, tier);
+        if (Object.prototype.hasOwnProperty.call(drafts, key)) {
+            delete drafts[key];
+            persistDrafts();
+            return true;
+        }
+        return false;
     }
 
     // ---------- 服务端进度回读（与本地合并，根治「换环境/丢本地存储就归零」） ----------
@@ -259,6 +339,7 @@
 
     // ---------- 选中题目：拉详情 ----------
     async function selectExercise(id) {
+        flushDraft();   // 切题前把旧题草稿落盘
         try {
             const data = await apiRequest('/api/practice/exercise/' + id);
             currentExercise = data;
@@ -525,6 +606,7 @@
         }).join('');
         bar.querySelectorAll('.practice-tier').forEach((btn) => {
             btn.addEventListener('click', () => {
+                flushDraft();               // 先把当前档位的编辑落盘，再切档
                 currentTier = btn.dataset.tier;
                 renderTier(currentTier);
             });
@@ -534,7 +616,10 @@
     function renderTier(tierKey) {
         const tiers = currentExercise.tiers || {};
         const tier = tiers[tierKey] || {};
-        codeEditorEl.value = tier.starter || '';
+        const key = draftKey(currentExercise.id, tierKey);
+        // 有草稿则恢复草稿，否则用本题本档的初始代码
+        codeEditorEl.value = Object.prototype.hasOwnProperty.call(drafts, key)
+            ? drafts[key] : (tier.starter || '');
         clearResult();
         const bar = document.getElementById('tierBar');
         if (bar) {
@@ -973,13 +1058,19 @@
         bindTabs();
         submitBtn.addEventListener('click', submit);
         resetBtn.addEventListener('click', () => {
-            if (currentExercise) renderTier(currentTier);
+            if (!currentExercise) return;
+            clearDraft(currentExercise.id, currentTier);   // 重置 = 回到初始代码并丢弃草稿
+            clearTimeout(draftTimer); draftTimer = null;
+            renderTier(currentTier);
         });
         answerSubmitBtn.addEventListener('click', submit);
 
         codeEditorEl.addEventListener('keydown', handleCodeKeydown);
-        codeEditorEl.addEventListener('input', refreshCodeEditor);
+        codeEditorEl.addEventListener('input', () => { refreshCodeEditor(); scheduleSaveDraft(); });
+        codeEditorEl.addEventListener('blur', saveDraftNow);
         codeEditorEl.addEventListener('scroll', syncCodeScroll);
+        // 页面隐藏 / 关闭前落盘（清掉未触发的防抖，防漏存）
+        document.addEventListener('visibilitychange', () => { if (document.hidden) flushDraft(); });
         // 光标移动（方向键 / 点击 / 选择 / 聚焦）→ 状态栏 + 跟随滚动 + 当前行高亮
         ['keyup', 'click', 'select', 'focus'].forEach((ev) => {
             codeEditorEl.addEventListener(ev, onCaretActivity);

@@ -61,7 +61,13 @@ const curLineEl = makeEl('codeCurrentLine');
 els.set('codeCurrentLine', curLineEl);
 
 global.window = global;
-global.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+// 内存版 localStorage（真实读写），用于「代码草稿持久化」的真实行为测试
+const storage = new Map();
+global.localStorage = {
+    getItem: (k) => (storage.has(k) ? storage.get(k) : null),
+    setItem: (k, v) => { storage.set(k, String(v)); },
+    removeItem: (k) => { storage.delete(k); },
+};
 global.location = { search: '', href: 'http://localhost/practice' };
 global.getComputedStyle = () => ({ lineHeight: '20.8px', paddingTop: '12px', paddingBottom: '12px', fontSize: '13px' });
 global.document = {
@@ -74,7 +80,7 @@ global.requestAnimationFrame = (cb) => cb();
 
 // ---------- 读取源码并注入导出钩子（仅在内存中改，不落盘） ----------
 let src = readFileSync(resolve(root, 'static/js/practice.js'), 'utf8');
-const exportHook = 'window.__pe = { autoIndentOnEnter, toggleLineComment, moveLines, smartHome, handleCodeKeydown, applyIndent, lineRange, caretPos, scrollCaretIntoView, updateCurrentLine, syncCodeScroll, setEditor: (v) => { codeEditorEl.value = v; } };';
+const exportHook = 'window.__pe = { autoIndentOnEnter, toggleLineComment, moveLines, smartHome, handleCodeKeydown, applyIndent, lineRange, caretPos, scrollCaretIntoView, updateCurrentLine, syncCodeScroll, setEditor: (v) => { codeEditorEl.value = v; }, draftKey, saveDraftNow, loadDrafts, persistDrafts, clearDraft, getDrafts: () => drafts, setDrafts: (o) => { drafts = o; }, setExercise: (ex, tier) => { currentExercise = ex; currentTier = tier; } };';
 src = src.replace(/\}\)\(\);\s*$/, (m) => '    ' + exportHook + '\n' + m);
 // eslint-disable-next-line no-eval
 eval(src);
@@ -215,6 +221,49 @@ pe.updateCurrentLine();
 const ty = parseFloat(String(curLineEl.style.transform).replace(/[^0-9.\-]/g, ''));
 assert(near(parseFloat(curLineEl.style.height), 20.8), '当前行高度 == 行高');
 assert(near(ty, 12 + 49 * 20.8 - 0), '当前行高亮条随光标定位（' + ty.toFixed(1) + '）');
+
+console.log('== 代码草稿持久化（防切题 / 刷新丢代码） ==');
+eq(pe.draftKey(7, 'easy'), '7:easy', '草稿键 = 题号:档位');
+eq(pe.draftKey(7), '7:easy', '档位缺省 → easy');
+
+pe.setExercise({ id: 7, tiers: { easy: { starter: 'int main(){}' } } }, 'easy');
+codeEditor.value = 'int main(){ /* mine */ }';
+pe.saveDraftNow();
+let raw = JSON.parse(storage.get('practice.draft.v1') || '{}');
+eq(raw['7:easy'], 'int main(){ /* mine */ }', '编辑内容写入草稿存储');
+
+codeEditor.value = 'int main(){}';            // 内容回到初始代码
+pe.saveDraftNow();
+raw = JSON.parse(storage.get('practice.draft.v1') || '{}');
+assert(!Object.prototype.hasOwnProperty.call(raw, '7:easy'), '内容 == 初始代码 → 草稿自动删除（保持精简）');
+
+console.log('== 草稿按「题号:档位」隔离 ==');
+const tiers7 = { easy: { starter: 'A' }, hard: { starter: 'B' } };
+pe.setExercise({ id: 7, tiers: tiers7 }, 'easy');
+codeEditor.value = 'easy-code';
+pe.saveDraftNow();
+pe.setExercise({ id: 7, tiers: tiers7 }, 'hard');
+codeEditor.value = 'hard-code';
+pe.saveDraftNow();
+raw = JSON.parse(storage.get('practice.draft.v1') || '{}');
+eq(raw['7:easy'], 'easy-code', '同一题 easy 档草稿独立保存');
+eq(raw['7:hard'], 'hard-code', '同一题 hard 档草稿独立保存');
+
+console.log('== loadDrafts / clearDraft（重置代码语义） ==');
+storage.set('practice.draft.v1', JSON.stringify({ '9:hard': 'keepme' }));
+eq(pe.loadDrafts()['9:hard'], 'keepme', 'loadDrafts 读回既有草稿');
+pe.setDrafts(pe.loadDrafts());                 // 让模块内存态与存储一致（模拟启动加载）
+eq(pe.clearDraft(9, 'hard'), true, 'clearDraft 命中已存在草稿 → true');
+eq(pe.clearDraft(9, 'hard'), false, '再次 clearDraft → false（幂等）');
+
+console.log('== 草稿数量上限（超限裁剪） ==');
+const many = {};
+for (let i = 0; i < 200; i++) many['x' + i + ':easy'] = 'c' + i;
+pe.setDrafts(many);
+pe.persistDrafts();
+eq(Object.keys(pe.getDrafts()).length, 80, '超限 → 裁剪到 DRAFT_MAX=80 份');
+assert(!Object.prototype.hasOwnProperty.call(pe.getDrafts(), 'x0:easy'), '丢弃最早写入的草稿');
+assert(Object.prototype.hasOwnProperty.call(pe.getDrafts(), 'x199:easy'), '保留最新写入的草稿');
 
 console.log('');
 if (failed === 0) {
