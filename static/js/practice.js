@@ -637,12 +637,14 @@
     const PAIRS = { '(': ')', '[': ']', '{': '}', '"': '"', "'": "'" };
 
     let codeGutterEl = null;
+    let codeGutterInnerEl = null;
     let codeHighlightEl = null;
     let codeStatusPosEl = null;
     let codeCurrentLineEl = null;
 
     function ensureCodeRefs() {
         if (!codeGutterEl) codeGutterEl = document.getElementById('codeGutter');
+        if (!codeGutterInnerEl) codeGutterInnerEl = document.getElementById('codeGutterInner');
         if (!codeHighlightEl) codeHighlightEl = document.getElementById('codeHighlight');
         if (!codeStatusPosEl) codeStatusPosEl = document.getElementById('codeStatusPos');
         if (!codeCurrentLineEl) codeCurrentLineEl = document.getElementById('codeCurrentLine');
@@ -658,20 +660,25 @@
     }
 
     function renderCodeNumbers(code) {
-        if (!codeGutterEl) return;
+        if (!codeGutterInnerEl) return;
         const lines = code.split('\n').length;
         let html = '';
         for (let i = 1; i <= lines; i++) html += '<div>' + i + '</div>';
-        codeGutterEl.innerHTML = html;
+        codeGutterInnerEl.innerHTML = html;
     }
 
+    // 滚动同步：输入框是「唯一滚动源」，高亮层与行号槽用 transform 平移内容跟随。
+    // ⚠ 不能改成给它们设 scrollTop —— 输入框自带滚动条各占 10px 布局空间，而高亮层
+    //    与行号槽是 overflow:hidden（不占），两者滚动范围差 10px；靠近滚动极限时它们
+    //    会被 clamp 停在原位 ⇒ 文字/行号与光标错位（实测第 20 行偏差可达 ~12px）。
+    //    用 transform 平移则完全不存在 clamp 问题。
     function syncCodeScroll() {
+        ensureCodeRefs();
         if (!codeEditorEl) return;
         const top = codeEditorEl.scrollTop;
         const left = codeEditorEl.scrollLeft;
-        if (codeGutterEl) codeGutterEl.scrollTop = top;
-        const pre = codeHighlightEl && codeHighlightEl.parentElement;
-        if (pre) { pre.scrollTop = top; pre.scrollLeft = left; }
+        if (codeHighlightEl) codeHighlightEl.style.transform = 'translate(' + (-left) + 'px,' + (-top) + 'px)';
+        if (codeGutterInnerEl) codeGutterInnerEl.style.transform = 'translateY(' + (-top) + 'px)';
         updateCurrentLine();
     }
 
@@ -732,31 +739,12 @@
         scrollCaretIntoView();
     }
 
-    // 重绘高亮层与行号。textarea 与 <pre> 对「结尾换行」的处理不同，
-    // 用两者 scrollHeight 的差值给高亮层补底部内边距，保证滚动同步不错位（同 editor.js）。
+    // 重绘高亮层与行号。overlay 采用「transform 跟随」方案（见 syncCodeScroll），
+    // 高亮层不再自行滚动，因此无需再给 <pre> 补 paddingBottom 对齐滚动范围。
     function refreshCodeEditor() {
         ensureCodeRefs();
         const text = codeEditorEl.value;
-        if (codeHighlightEl) {
-            codeHighlightEl.innerHTML = text ? highlightCpp(text) : '';
-            const pre = codeHighlightEl.parentElement;
-            if (pre) {
-                pre.style.paddingBottom = '';
-                if (codeGutterEl) codeGutterEl.style.paddingBottom = '';
-                if (text) {
-                    const diff = codeEditorEl.scrollHeight - pre.scrollHeight;
-                    if (diff > 0) {
-                        const prePad = parseFloat(getComputedStyle(pre).paddingBottom) || 0;
-                        pre.style.paddingBottom = (prePad + diff) + 'px';
-                        if (codeGutterEl) {
-                            // 行号槽补同样的高度，滚到底部时行号才不会错位
-                            const gutPad = parseFloat(getComputedStyle(codeGutterEl).paddingBottom) || 0;
-                            codeGutterEl.style.paddingBottom = (gutPad + diff) + 'px';
-                        }
-                    }
-                }
-            }
-        }
+        if (codeHighlightEl) codeHighlightEl.innerHTML = text ? highlightCpp(text) : '';
         renderCodeNumbers(text);
         scrollCaretIntoView();     // 含 syncCodeScroll + 当前行高亮
         updateCodeStatus();

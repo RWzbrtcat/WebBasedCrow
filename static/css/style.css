@@ -4977,6 +4977,15 @@ body.practice-page .site-footer {
     white-space: pre;
     background: transparent;
     color: inherit;
+    /* 高亮层不做二次滚动，靠 JS 用 transform 跟随输入框的 scrollTop/scrollLeft 平移。
+       原因见 syncCodeScroll()：输入框自带滚动条各占 10px，高亮层没有，
+       若靠 scrollTop 同步会在滚动极限处被 clamp ⇒ 文字与光标错位。 */
+    will-change: transform;
+}
+
+/* 行号槽内层：与高亮层同理，用 transform 跟随滚动 */
+.practice-code-gutter-inner {
+    will-change: transform;
 }
 
 .practice-code-input {
@@ -4998,15 +5007,15 @@ body.practice-page .site-footer {
     opacity: 1;
 }
 
-/* 选区配色对齐 VS Code Dark+（#264F78）。旧值 0.3 透明蓝太淡：
-   选中的范围看不出来，字又被洗白、同样看不清。
-   ⚠ 输入框自身的字是透明的（字形由下层高亮层提供），
-   所以必须显式给 ::selection 写 -webkit-text-fill-color 才能真正改掉选中文字的颜色
-   —— 只写 color 是不生效的（WebKit / Blink 的已知行为） */
+/* 选区配色对齐 VS Code Dark+（#264F78）。
+   输入框自身的字是「透明」的，字形由下层高亮层提供。
+   ⚠ 若把 ::selection 的文字填成不透明白色，会把下层高亮层的语法配色（含注释的
+     绿色斜体）整片盖掉 —— 选中注释时会「突然变正体、变白」。这是历史 bug。
+   正解：选区底色用半透明蓝，让下层语法色透出来；文字保持透明，交给高亮层显色。 */
 .practice-code-input::selection {
-    background: #264f78;
-    color: #ffffff;
-    -webkit-text-fill-color: #ffffff;
+    background: rgba(38, 79, 120, 0.55);
+    color: transparent;
+    -webkit-text-fill-color: transparent;
 }
 
 .practice-code-input::-webkit-scrollbar {

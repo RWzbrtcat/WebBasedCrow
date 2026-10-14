@@ -164,6 +164,20 @@ assert(js.includes('handleCodeKeydown'), 'JS 接管编辑器快捷键');
 assert(js.includes('applyIndent') && js.includes('autoIndentOnEnter'), 'Tab 缩进 + Enter 自动缩进');
 assert(js.includes('renderTier(currentTier)') && js.includes("INDENT = '    '"), '切档位后重绘、缩进为 4 空格');
 
+// 3d-2. 滚动同步改用「transform 跟随」——根治高亮层/行号被 clamp 导致的错位
+console.log('== 编辑器滚动同步：transform 跟随（防 clamp 错位）==');
+assert(html.includes('id="codeGutterInner"'), 'HTML 行号槽含可平移内层 codeGutterInner');
+assert(css.includes('.practice-code-gutter-inner'), 'style.css 含行号内层样式');
+assert(js.includes("getElementById('codeGutterInner')"), 'JS 解析行号内层引用');
+{
+    const from = js.indexOf('function syncCodeScroll');
+    const fn = from >= 0 ? js.slice(from, from + 800) : '';
+    assert(fn.length > 0, '能定位 syncCodeScroll');
+    assert(/codeHighlightEl\.style\.transform/.test(fn), 'syncCodeScroll 用 transform 平移高亮层');
+    assert(/codeGutterInnerEl\.style\.transform/.test(fn), 'syncCodeScroll 用 transform 平移行号内层');
+    assert(!/\.scrollTop\s*=/.test(fn), 'syncCodeScroll 不再对高亮层/行号槽设 scrollTop（避免被 clamp）');
+}
+
 // 3e. VS Code 级编辑规则 + 光标跟随滚动
 console.log('== 编辑器：VS Code 编辑规则与光标跟随 ==');
 assert(js.includes('function scrollCaretIntoView'), 'JS 有「光标跟随滚动」scrollCaretIntoView');
@@ -211,9 +225,12 @@ assert(/\.practice-code-hl\s*\{[^}]*z-index:\s*1/.test(css),
     const selFrom = css.indexOf('.practice-code-input::selection');
     const selRule = selFrom >= 0 ? css.slice(selFrom, css.indexOf('}', selFrom)) : '';
     assert(selRule.length > 0, '能定位编辑器选区样式');
-    assert(/#264f78/.test(selRule), '编辑器选区底色用 VS Code Dark+ 的 #264F78（不再是 0.3 透明蓝）');
-    assert(/-webkit-text-fill-color/.test(selRule),
-        '选区显式声明 -webkit-text-fill-color（textarea 字透明，只写 color 不生效）');
+    assert(/rgba\(\s*38\s*,\s*79\s*,\s*120\s*,\s*0?\.\d+\s*\)/.test(selRule),
+        '选区底色为半透明蓝 rgba(38,79,120,α<1)——让下层语法配色透出来');
+    assert(/#ffffff|#fff\b|:\s*white/.test(selRule) === false,
+        '选区不再用不透明白字盖掉语法色（否则选中注释会突变为正体白字）');
+    assert(/-webkit-text-fill-color:\s*transparent/.test(selRule),
+        '选区文字保持透明，字形交给下层高亮层');
 }
 
 // 3g. 答题工作台：头部操作区 + 去标题条 + 编辑器吃满

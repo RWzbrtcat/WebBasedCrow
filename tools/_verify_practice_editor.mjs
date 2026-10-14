@@ -59,8 +59,17 @@ const codeEditor = makeEl('codeEditor');
 els.set('codeEditor', codeEditor);
 const curLineEl = makeEl('codeCurrentLine');
 els.set('codeCurrentLine', curLineEl);
+// 高亮层与行号内层：用于验证「transform 跟随」滚动同步（不再二次滚动）
+const codeHighlightEl = makeEl('codeHighlight');
+els.set('codeHighlight', codeHighlightEl);
+const codeGutterInnerEl = makeEl('codeGutterInner');
+els.set('codeGutterInner', codeGutterInnerEl);
 
 global.window = global;
+// daily-common.js 提供的全局转义函数（真实页面里在 practice.js 之前加载）
+global.esc = (t) => String(t);
+// 最小 hljs 桩：让 highlightCpp 走真实高亮分支（否则会落到 esc 兜底）
+global.hljs = { getLanguage: () => true, highlight: (t) => ({ value: String(t) }) };
 // 内存版 localStorage（真实读写），用于「代码草稿持久化」的真实行为测试
 const storage = new Map();
 global.localStorage = {
@@ -221,6 +230,21 @@ pe.updateCurrentLine();
 const ty = parseFloat(String(curLineEl.style.transform).replace(/[^0-9.\-]/g, ''));
 assert(near(parseFloat(curLineEl.style.height), 20.8), '当前行高度 == 行高');
 assert(near(ty, 12 + 49 * 20.8 - 0), '当前行高亮条随光标定位（' + ty.toFixed(1) + '）');
+
+console.log('== 滚动同步：transform 跟随（高亮层/行号不再二次滚动）==');
+{
+    codeEditor.scrollTop = 0;
+    codeEditor.scrollLeft = 0;
+    pe.syncCodeScroll();
+    eq(codeHighlightEl.style.transform, 'translate(0px,0px)', '未滚动时高亮层 transform 归零');
+    eq(codeGutterInnerEl.style.transform, 'translateY(0px)', '未滚动时行号内层 transform 归零');
+
+    codeEditor.scrollTop = 40;
+    codeEditor.scrollLeft = 25;
+    pe.syncCodeScroll();
+    eq(codeHighlightEl.style.transform, 'translate(-25px,-40px)', '高亮层按 scrollLeft/scrollTop 反向平移');
+    eq(codeGutterInnerEl.style.transform, 'translateY(-40px)', '行号内层按 scrollTop 反向平移');
+}
 
 console.log('== 代码草稿持久化（防切题 / 刷新丢代码） ==');
 eq(pe.draftKey(7, 'easy'), '7:easy', '草稿键 = 题号:档位');
