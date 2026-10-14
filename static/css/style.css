@@ -3774,27 +3774,125 @@ body.practice-page {
     color: var(--text-muted);
 }
 
+/* 学期分组头：整组折叠开关（▾ 展开 / ▸ 折叠）。
+   原为 <div>，改 <button> 后必须显式 font-family: inherit，否则会退回浏览器默认按钮字体 */
 .practice-semester {
-    margin: 10px 4px 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    margin: 10px 0 4px;
+    padding: 4px 6px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    font-family: inherit;
     font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.02em;
     color: var(--text-muted);
+    text-align: left;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.practice-semester:hover {
+    background: var(--bg);
+    color: var(--text-secondary);
 }
 
 .practice-semester:first-child {
     margin-top: 0;
 }
 
+.practice-semester-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.practice-semester-count {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    opacity: 0.7;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 折叠箭头（学期头与章节行共用；已折叠时旋转 90° 指向右） */
+.practice-caret {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 12px;
+    height: 12px;
+    color: currentColor;
+    transition: transform 0.15s ease;
+}
+
+.practice-semester.is-collapsed .practice-caret {
+    transform: rotate(-90deg);
+}
+
+/* 章节行：折叠箭头 + 章节按钮（箭头与选中解耦 ⇒ 可单独折叠而不改当前题） */
+.practice-chapter-row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.practice-chapter-toggle {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.practice-chapter-toggle:hover {
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+}
+
+/* 无题目的章节：箭头占位但不可点 */
+.practice-chapter-toggle.is-leaf {
+    visibility: hidden;
+    cursor: default;
+}
+
+.practice-chapter-row .practice-chapter {
+    flex: 1;
+    min-width: 0;
+}
+
+.practice-chapter-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .practice-chapter {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     width: 100%;
-    padding: 9px 12px;
+    padding: 9px 10px;
     border: 1px solid transparent;
     border-radius: var(--radius-sm);
     background: transparent;
+    font-family: inherit;
     color: var(--text-secondary);
     font-size: 14px;
     line-height: 1.4;

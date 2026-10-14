@@ -31,6 +31,7 @@
     const DRAFT_KEY = 'practice.draft.v1';  // 每题每档「代码草稿」缓存
     const DRAFT_MAX = 80;                   // 最多缓存多少份草稿
     const DRAFT_CODE_MAX = 20000;           // 单份草稿字符上限（保护 localStorage 配额）
+    const TREE_KEY = 'practice.tree.v1';    // 左栏章节树「展开/折叠」状态缓存
     // ⚠ 以上常量必须在下面的状态初始化「之前」声明：loadDone / loadLastResults /
     //    loadDrafts 都会读取这些 const；若声明在后，读取会命中 TDZ 抛 ReferenceError，
     //    再被各自的 try/catch 静默吞掉 ⇒ 表现为「本地缓存永远读不出来」。
@@ -45,6 +46,15 @@
     let doneSet = loadDone();     // 本地记录：已通过的题目 id
     let lastResults = loadLastResults();  // 本地记录：每题最近一次运行结果（{ id: {cls, html} }）
     let drafts = loadDrafts();    // 本地记录：代码草稿（{ '<id>:<tier>': code }，防切题/刷新丢代码）
+
+    // 左栏章节树「展开 / 折叠」状态（可独立展开多个章节，互不影响）：
+    //   openChapters        = 已展开的章节 id 集合
+    //   collapsedSemesters  = 已折叠的学期名集合（默认全展开）
+    //   chapterExercisesCache = { chapterId: [exercises] }，已展开章节直接渲染，免重复拉取
+    const treeCache = loadTreeState();
+    let openChapters = new Set(treeCache.open || []);
+    let collapsedSemesters = new Set(treeCache.collapsed || []);
+    let chapterExercisesCache = {};
 
     // ---------- DOM ----------
     const chapterListEl = document.getElementById('chapterList');
@@ -194,6 +204,25 @@
         return false;
     }
 
+    // ---------- 本地：左栏章节树展开/折叠状态 ----------
+    function loadTreeState() {
+        try {
+            const obj = JSON.parse(localStorage.getItem(TREE_KEY) || '{}');
+            return (obj && typeof obj === 'object') ? obj : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function persistTreeState() {
+        try {
+            localStorage.setItem(TREE_KEY, JSON.stringify({
+                open: Array.from(openChapters),
+                collapsed: Array.from(collapsedSemesters),
+            }));
+        } catch (e) { /* 配额或隐私模式：忽略，折叠状态仅当次会话有效 */ }
+    }
+
     // ---------- 服务端进度回读（与本地合并，根治「换环境/丢本地存储就归零」） ----------
     async function loadProgress() {
         try {
@@ -243,36 +272,79 @@
         try {
             const data = await apiRequest('/api/practice/chapters');
             chaptersData = data.semesters || [];
+            pruneOpenChapters();    // 丢弃已不存在章节的展开状态
             updateProgress();
             renderChapters();
             await loadProgress();   // 合并服务端进度（失败不影响本地记录）
+            await hydrateOpenChapters();   // 预拉取上次展开章节的题目列表（在自动选题之前）
             autoSelectFirst();
         } catch (e) {
             chapterListEl.innerHTML = '<div class="empty-state">' + esc(describeFetchError(e)) + '</div>';
         }
     }
 
-    // ---------- 渲染左栏：章节 + 当前章题目（两级树） ----------
+    // 收起 / 丢弃「已不存在章节」的展开状态（题库改版后本地缓存可能残留旧 id）
+    function pruneOpenChapters() {
+        const valid = new Set();
+        (chaptersData || []).forEach((sem) => (sem.chapters || []).forEach((ch) => valid.add(ch.id)));
+        let changed = false;
+        openChapters.forEach((id) => { if (!valid.has(id)) { openChapters.delete(id); changed = true; } });
+        if (changed) persistTreeState();
+    }
+
+    // 恢复「上次展开的章节」：预拉取题目列表，否则重载后是「展开但空白」的怪状态
+    async function hydrateOpenChapters() {
+        const ids = Array.from(openChapters);
+        await Promise.all(ids.map((id) => ensureChapterExercises(id)));
+    }
+
+    // ---------- 渲染左栏：学期 ▸ 章节 ▸ 题目（可折叠三级树） ----------
+    // 折叠模型：学期可整组折叠；章节各自独立展开/折叠，可同时展开多个，互不影响。
+    //   ▸ 折叠箭头 → 只切换展开/折叠，不改动当前选中题（与资源管理器一致的心智）
+    //   章节标题   → 选中该章（未展开时自动展开并拉取题目列表）
     function renderChapters() {
         if (!chaptersData) return;
         let html = '';
         chaptersData.forEach((sem) => {
-            html += '<div class="practice-semester">' + esc(sem.name) + '</div>';
+            const semClosed = collapsedSemesters.has(sem.name);
+            const semCount = (sem.chapters || []).reduce((n, ch) => n + (ch.exercise_count || 0), 0);
+            html += '<button type="button" class="practice-semester' + (semClosed ? ' is-collapsed' : '') +
+                '" data-sem="' + esc(sem.name) + '" aria-expanded="' + (!semClosed) + '">' +
+                '<span class="practice-caret" aria-hidden="true">' + caretSvg(false) + '</span>' +
+                '<span class="practice-semester-name">' + esc(sem.name) + '</span>' +
+                '<span class="practice-semester-count">' + semCount + '</span>' +
+                '</button>';
+            if (semClosed) return;
             (sem.chapters || []).forEach((ch) => {
                 const active = ch.id === currentChapter ? ' active' : '';
                 const empty = ch.exercise_count > 0 ? '' : ' is-empty';
-                html += '<button type="button" class="practice-chapter' + active + empty + '" data-id="' + ch.id + '">' +
+                const hasKids = ch.exercise_count > 0;
+                const open = hasKids && openChapters.has(ch.id);
+                html += '<div class="practice-chapter-row">' +
+                    '<button type="button" class="practice-chapter-toggle' + (hasKids ? '' : ' is-leaf') +
+                    '" data-id="' + ch.id + '" aria-expanded="' + open +
+                    '" aria-label="' + (open ? '折叠' : '展开') + '本章"' + (hasKids ? '' : ' disabled') + '>' +
+                    caretSvg(!open) +
+                    '</button>' +
+                    '<button type="button" class="practice-chapter' + active + empty + '" data-id="' + ch.id + '">' +
                     '<span class="practice-chapter-num">C' + ch.id + '</span>' +
                     '<span class="practice-chapter-title">' + esc(ch.title) + '</span>' +
                     '<span class="practice-chapter-count">' + (ch.exercise_count || 0) + '</span>' +
-                    '</button>';
-                if (ch.id === currentChapter && chapterExercises.length) {
-                    html += renderExerciseList();
+                    '</button>' +
+                    '</div>';
+                if (open && chapterExercisesCache[ch.id]) {
+                    html += renderExerciseList(chapterExercisesCache[ch.id]);
                 }
             });
         });
         chapterListEl.innerHTML = html;
 
+        chapterListEl.querySelectorAll('.practice-semester').forEach((btn) => {
+            btn.addEventListener('click', () => toggleSemester(btn.dataset.sem));
+        });
+        chapterListEl.querySelectorAll('.practice-chapter-toggle').forEach((btn) => {
+            btn.addEventListener('click', () => toggleChapter(Number(btn.dataset.id)));
+        });
         chapterListEl.querySelectorAll('.practice-chapter').forEach((btn) => {
             btn.addEventListener('click', () => selectChapter(Number(btn.dataset.id)));
         });
@@ -282,9 +354,55 @@
         scrollSideToCurrent();
     }
 
-    // 当前章题目列表 HTML（每题：状态点 + 题型 + 标题）
-    function renderExerciseList() {
-        return '<div class="practice-ex-list">' + chapterExercises.map((ex) => {
+    // 折叠箭头 SVG：down=展开态(▾) / right=折叠态(▸)
+    function caretSvg(collapsed) {
+        const d = collapsed ? 'M6 4l4 4-4 4' : 'M4 6l4 4 4-4';
+        return '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">' +
+            '<path d="' + d + '" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+            'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    }
+
+    // 切换某学期展开/折叠（整组隐藏/显示其下章节）
+    function toggleSemester(name) {
+        if (collapsedSemesters.has(name)) collapsedSemesters.delete(name);
+        else collapsedSemesters.add(name);
+        persistTreeState();
+        renderChapters();
+    }
+
+    // 切换某章节展开/折叠；首次展开时拉取该章题目列表并缓存
+    async function toggleChapter(id) {
+        if (openChapters.has(id)) {
+            openChapters.delete(id);
+            persistTreeState();
+            renderChapters();
+            return;
+        }
+        openChapters.add(id);
+        persistTreeState();
+        renderChapters();
+        await ensureChapterExercises(id);
+    }
+
+    // 拉取并缓存某章题目列表（已缓存则直接重绘；失败给出提示）
+    async function ensureChapterExercises(id) {
+        if (chapterExercisesCache[id]) { renderChapters(); return; }
+        try {
+            const data = await apiRequest('/api/practice/exercises?chapter=' + id);
+            chapterExercisesCache[id] = data.exercises || [];
+            renderChapters();
+        } catch (e) {
+            openChapters.delete(id);   // 拉取失败则收回展开态，避免留空展开
+            persistTreeState();
+            renderChapters();
+            showToast(describeFetchError(e), 'error');
+        }
+    }
+
+    // 章节题目列表 HTML（每题：状态点 + 题型 + 标题）
+    function renderExerciseList(list) {
+        const items = list || [];
+        return '<div class="practice-ex-list">' + items.map((ex) => {
             const isCur = !!(currentExercise && currentExercise.id === ex.id);
             const done = doneSet.has(ex.id);
             const dot = done ? '✓' : (isCur ? '●' : '○');
@@ -315,25 +433,52 @@
         else showIdleState();
     }
 
-    // ---------- 选中章节：拉题目列表 ----------
+    // 某章所属学期名（选中章节时自动展开其学期，保证选中项可见）
+    function semesterOf(id) {
+        for (const sem of (chaptersData || [])) {
+            if ((sem.chapters || []).some((ch) => ch.id === id)) return sem.name;
+        }
+        return null;
+    }
+
+    // ---------- 选中章节：展开该章 + 拉题目列表 ----------
     async function selectChapter(id) {
+        openChapters.add(id);                       // 选中即展开
+        const semName = semesterOf(id);
+        if (semName) collapsedSemesters.delete(semName);   // 所属学期一并展开
+        persistTreeState();
+
+        // 重复点击当前章：只确保展开，不重拉、不跳题（避免打断正在做的题）
+        if (id === currentChapter && (chapterExercises.length || chapterExercisesCache[id])) {
+            renderChapters();
+            return;
+        }
+
         currentChapter = id;
         currentExercise = null;
-        chapterExercises = [];
+        const cached = chapterExercisesCache[id];
+        chapterExercises = cached || [];
         renderChapters();
-        try {
-            const data = await apiRequest('/api/practice/exercises?chapter=' + id);
-            chapterExercises = data.exercises || [];
-            renderChapters();
-            if (chapterExercises.length) {
-                // 优先跳到本章第一道未完成的题，全部完成则回到第一题
-                const firstTodo = chapterExercises.find((ex) => !doneSet.has(ex.id)) || chapterExercises[0];
-                selectExercise(firstTodo.id);
-            } else {
-                showEmptyState('本章题目尚未录入。');
+
+        // 未缓存才请求（缓存来自「上次展开章节」的预拉取或本会话早前访问）
+        if (!cached) {
+            try {
+                const data = await apiRequest('/api/practice/exercises?chapter=' + id);
+                chapterExercises = data.exercises || [];
+                chapterExercisesCache[id] = chapterExercises;
+            } catch (e) {
+                showEmptyState(describeFetchError(e));
+                return;
             }
-        } catch (e) {
-            showEmptyState(describeFetchError(e));
+            renderChapters();
+        }
+
+        if (chapterExercises.length) {
+            // 优先跳到本章第一道未完成的题，全部完成则回到第一题
+            const firstTodo = chapterExercises.find((ex) => !doneSet.has(ex.id)) || chapterExercises[0];
+            selectExercise(firstTodo.id);
+        } else {
+            showEmptyState('本章题目尚未录入。');
         }
     }
 

@@ -270,6 +270,38 @@ assert(/addEventListener\('input'[\s\S]{0,90}scheduleSaveDraft/.test(js), '编�
 // 常量必须在状态初始化之前（否则 loadDone/loadLastResults/loadDrafts 命中 TDZ，本地缓存恒读不出）
 assert(js.indexOf('const DONE_KEY') < js.indexOf('let doneSet = loadDone()'),
     '存储键常量声明在状态初始化之前（防 TDZ 吞掉本地缓存）');
+// 左栏章节树：学期 / 章节可折叠（多开、折叠与选中解耦、状态持久化）
+console.log('== 左栏章节树：可折叠 ==');
+assert(/TREE_KEY = 'practice\.tree\.v1'/.test(js), 'JS 定义章节树折叠状态键 practice.tree.v1');
+assert(js.indexOf('const TREE_KEY') < js.indexOf('loadTreeState()'),
+    'TREE_KEY 声明在 loadTreeState() 调用之前（防 TDZ 吞掉折叠状态）');
+['loadTreeState', 'persistTreeState', 'toggleSemester', 'toggleChapter',
+    'ensureChapterExercises', 'hydrateOpenChapters', 'pruneOpenChapters', 'semesterOf', 'caretSvg'].forEach((fn) => {
+    assert(js.includes('function ' + fn), '章节树函数 ' + fn + ' 已实现');
+});
+assert(/hydrateOpenChapters[\s\S]{0,120}ensureChapterExercises/.test(js),
+    '重载时预拉取上次展开章节的题目（防「展开但空白」）');
+assert(/pruneOpenChapters\(\)[\s\S]{0,80}openChapters\.delete/.test(js) || /!valid\.has\(id\)[\s\S]{0,60}openChapters\.delete/.test(js),
+    '丢弃已不存在章节的展开状态（题库改版后残留 id 自愈）');
+assert(js.includes('openChapters') && js.includes('collapsedSemesters'), '含「展开章节」「折叠学期」两套状态');
+assert(js.includes('chapterExercisesCache'), '已展开章节的题目列表有缓存（多开时不重复拉取）');
+assert(/function renderExerciseList\(list\)/.test(js), 'renderExerciseList 接收列表参数（支持多章同时展开）');
+assert(/open:\s*Array\.from\(openChapters\)/.test(js) && /collapsed:\s*Array\.from\(collapsedSemesters\)/.test(js),
+    'persistTreeState 持久化展开 / 折叠状态');
+assert(/if \(semClosed\) return;/.test(js), '学期折叠时不渲染其下章节');
+assert(/openChapters\.add\(id\)/.test(js), '点击章节标题会加入展开集合（选中即展开）');
+assert(/semesterOf\(id\)/.test(js) && /collapsedSemesters\.delete\(semName\)/.test(js),
+    '选中章节时自动展开其所属学期（保证选中项可见）');
+assert(/class="practice-caret"[^>]*>\s*'\s*\+\s*caretSvg\(false\)/.test(js),
+    '学期头箭头恒为下箭头、折叠方向交给 CSS 旋转（防「右箭头再旋转」变朝上）');
+assert(/practice-chapter-toggle[\s\S]{0,300}aria-expanded/.test(js), '章节折叠箭头输出 aria-expanded');
+assert(/practice-chapter-toggle[\s\S]{0,400}disabled/.test(js), '无题目章节的箭头禁用（is-leaf）');
+assert(css.includes('.practice-chapter-row'), 'CSS 含章节行（箭头 + 标题）容器');
+assert(css.includes('.practice-chapter-toggle'), 'CSS 含章节折叠箭头样式');
+assert(css.includes('.practice-chapter-toggle.is-leaf'), 'CSS 含无题目章节的箭头占位样式');
+assert(css.includes('.practice-semester.is-collapsed .practice-caret'), 'CSS 含学期折叠时箭头旋转');
+assert(/\.practice-semester\s*\{[^}]*font-family:\s*inherit/.test(css), '学期头由 div 改 button 后显式继承字体');
+assert(/\.practice-caret\s*\{[^}]*color:\s*currentColor/.test(css), '折叠箭头用 currentColor（跟随主题文字色）');
 assert(/body\.practice-page \.site-header-pill \.header-inner\s*\{[^}]*grid-template-columns:\s*1fr auto 1fr/.test(css),
     'CSS 头部为三栏网格（1fr auto 1fr）');
 assert(/body\.practice-page \.site-header-pill \.nav\s*\{[^}]*grid-column:\s*3/.test(css),
