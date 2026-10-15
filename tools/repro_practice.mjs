@@ -192,6 +192,27 @@ assert(/e\.key === .\/./.test(js) && /e\.altKey/.test(js) && /ArrowUp/.test(js),
     '注册了 Ctrl+/ 与 Alt+方向键 快捷键');
 assert(js.includes('PAIRS[prev] === next'), 'Enter 在成对括号之间会展开成三行');
 
+// 3e-2. Backspace 智能反缩进 —— 对齐 VS Code getDeleteLeftRange（缩进区内退到上一个制表位）
+console.log('== 编辑器：Backspace 智能反缩进 ==');
+assert(js.includes('function smartBackspace'), 'JS 有缩进区智能反缩进 smartBackspace');
+assert(/INDENT_SIZE\s*=\s*INDENT\.length/.test(js), '缩进宽度由 INDENT.length 派生（供制表位计算）');
+{
+    const from = js.indexOf('function smartBackspace');
+    const fn = from >= 0 ? js.slice(from, from + 1600) : '';
+    assert(fn.length > 0, '能定位 smartBackspace');
+    assert(fn.includes('/^[ \\t]*$/'), 'smartBackspace 判定「光标是否落在缩进区」（行首→光标全为空白）');
+    assert(fn.includes('INDENT_SIZE - (vis % INDENT_SIZE)'), '制表符按可见列展开（tab stop）');
+    assert(fn.includes('vis % INDENT_SIZE) || INDENT_SIZE'), '目标列 = 上一个缩进制表位（prevIndentTabStop 语义）');
+    assert(fn.includes('pos === lineStart'), '行首不接管（交回默认合并上一行）');
+    assert(/selectionStart !== ta\.selectionEnd/.test(fn), '有选区时不接管（整段删除交给默认）');
+}
+{
+    const from = js.indexOf("e.key === 'Backspace'");
+    const seg = from >= 0 ? js.slice(from, from + 900) : '';
+    assert(seg.includes('smartBackspace()'), 'Backspace 分支接入 smartBackspace');
+    assert(/PAIRS\[prev\] === v\[s\]/.test(seg), '成对括号删除仍优先于智能反缩进');
+}
+
 assert(css.includes('.practice-code-gutter'), 'style.css 含行号槽样式');
 assert(css.includes('.practice-code-hl .hljs-keyword'), 'style.css 含编辑器 token 配色');
 assert(css.includes('.practice-code-body:focus-within'), 'style.css 含编辑器聚焦态');

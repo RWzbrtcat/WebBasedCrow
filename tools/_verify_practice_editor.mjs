@@ -89,7 +89,7 @@ global.requestAnimationFrame = (cb) => cb();
 
 // ---------- 读取源码并注入导出钩子（仅在内存中改，不落盘） ----------
 let src = readFileSync(resolve(root, 'static/js/practice.js'), 'utf8');
-const exportHook = 'window.__pe = { autoIndentOnEnter, toggleLineComment, moveLines, smartHome, handleCodeKeydown, applyIndent, lineRange, caretPos, scrollCaretIntoView, updateCurrentLine, syncCodeScroll, setEditor: (v) => { codeEditorEl.value = v; }, draftKey, saveDraftNow, loadDrafts, persistDrafts, clearDraft, getDrafts: () => drafts, setDrafts: (o) => { drafts = o; }, setExercise: (ex, tier) => { currentExercise = ex; currentTier = tier; } };';
+const exportHook = 'window.__pe = { autoIndentOnEnter, toggleLineComment, moveLines, smartHome, smartBackspace, handleCodeKeydown, applyIndent, lineRange, caretPos, scrollCaretIntoView, updateCurrentLine, syncCodeScroll, setEditor: (v) => { codeEditorEl.value = v; }, draftKey, saveDraftNow, loadDrafts, persistDrafts, clearDraft, getDrafts: () => drafts, setDrafts: (o) => { drafts = o; }, setExercise: (ex, tier) => { currentExercise = ex; currentTier = tier; } };';
 src = src.replace(/\}\)\(\);\s*$/, (m) => '    ' + exportHook + '\n' + m);
 // eslint-disable-next-line no-eval
 eval(src);
@@ -204,6 +204,63 @@ pe.applyIndent(false);
 eq(codeEditor.value, '        a\n        b', 'Tab 对多行整块缩进');
 pe.applyIndent(true);
 eq(codeEditor.value, '    a\n    b', 'Shift+Tab 整块反缩进');
+
+console.log('== Backspace 智能反缩进（对齐 VS Code getDeleteLeftRange）==');
+// 制表位上：一次删掉整级缩进
+setValue('    int a;', 4, 4);
+const evB1 = key('Backspace');
+pe.handleCodeKeydown(evB1);
+eq(codeEditor.value, 'int a;', '第 4 列回退 → 一次删掉整级缩进（4 空格）');
+eq(codeEditor.selectionStart, 0, '光标落回行首');
+assert(evB1._pd === true, '缩进区回退时阻止了默认的单字符删除');
+
+// 制表位之间：退到上一个制表位
+setValue('      int a;', 6, 6);
+pe.handleCodeKeydown(key('Backspace'));
+eq(codeEditor.value, '    int a;', '第 6 列回退 → 只删 2 个（回到第 4 列制表位）');
+
+// 深缩进：退一级
+setValue('        int a;', 8, 8);
+pe.handleCodeKeydown(key('Backspace'));
+eq(codeEditor.value, '    int a;', '第 8 列回退 → 退一级（8 → 4）');
+
+// 不规则缩进
+setValue('   int a;', 3, 3);
+pe.handleCodeKeydown(key('Backspace'));
+eq(codeEditor.value, 'int a;', '3 空格缩进 → 一次删光（回到第 0 列）');
+
+// 制表符：按可见列计入制表位
+setValue('\tint a;', 1, 1);
+pe.handleCodeKeydown(key('Backspace'));
+eq(codeEditor.value, 'int a;', 'Tab 缩进 → 一次删掉该制表符');
+
+// 不在缩进区（光标在代码中段）：不接管
+setValue('    int a;', 7, 7);
+const evB2 = key('Backspace');
+pe.handleCodeKeydown(evB2);
+eq(codeEditor.value, '    int a;', '光标在代码中段 → 不接管（值不变，交回浏览器删一格）');
+assert(evB2._pd !== true, '非缩进区不阻止默认行为');
+
+// 行首：不接管（交给默认做「并入上一行」）
+setValue('a;\n    b;', 3, 3);
+const evB3 = key('Backspace');
+pe.handleCodeKeydown(evB3);
+assert(evB3._pd !== true, '行首回退不接管（合并上一行交给浏览器默认）');
+
+// 有选区：不接管（整段删除交给默认）
+setValue('    a', 0, 4);
+const evB4 = key('Backspace');
+pe.handleCodeKeydown(evB4);
+assert(evB4._pd !== true, '有选区时不接管（整段删除交给默认）');
+
+// 成对括号仍优先于智能反缩进（保持既有行为）
+setValue('{}', 1, 1);
+const evB5 = key('Backspace');
+pe.handleCodeKeydown(evB5);
+eq(codeEditor.value, '', '成对括号回退 → 仍连带删除右半边');
+assert(evB5._pd === true, '成对括号删除阻止默认');
+
+pe.setEditor('');
 
 function near(a, b, tol) {
     return Math.abs(a - b) <= (tol === undefined ? 0.01 : tol);

@@ -779,6 +779,7 @@
     // 复用文章编辑器（editor.js）的「透明 textarea 叠在高亮层上」范式：
     // 高亮层与输入框的字体/行高/内边距必须逐像素一致，否则文字与光标会错位。
     const INDENT = '    ';                                   // 4 空格缩进
+    const INDENT_SIZE = INDENT.length;                       // 缩进宽度（= 制表位间距，用于回退格对齐 VS Code）
     const PAIRS = { '(': ')', '[': ']', '{': '}', '"': '"', "'": "'" };
 
     let codeGutterEl = null;
@@ -934,6 +935,46 @@
         ta.selectionStart = Math.max(lineStart, s + deltaFirst);
         ta.selectionEnd = Math.max(ta.selectionStart, e + deltaAll);
         refreshCodeEditor();
+    }
+
+    // Backspace 智能反缩进 —— 对齐 VS Code `getDeleteLeftRange` 的「useTabStops」分支：
+    //   仅当光标落在「缩进区」内（行首 → 首个非空白字符之间），一次退到「上一个缩进制表位」，
+    //   而不是一格一格删空格。4 空格缩进时：
+    //     行首后第 4 列 → 一次删掉整级缩进（4 空格）
+    //     第 6 列 → 只删 2 个（回到第 4 列，即上一个制表位）
+    //     第 1 列（行首）→ 不接管，交给浏览器默认（并到上一行行尾）
+    //   制表符按可见列（tab stop）参与计算，与 VS Code 的 visibleColumnFromColumn 一致。
+    function smartBackspace() {
+        const ta = codeEditorEl;
+        if (ta.selectionStart !== ta.selectionEnd) return false;   // 有选区：整段删除交给默认行为
+        const v = ta.value;
+        const pos = ta.selectionStart;
+        const lineStart = v.lastIndexOf('\n', pos - 1) + 1;
+        if (pos === lineStart) return false;                       // 行首：交给默认（与上一行合并）
+        const before = v.slice(lineStart, pos);                    // 行首 → 光标
+        if (!/^[ \t]*$/.test(before)) return false;                // 含非空白 ⇒ 不在缩进区，交给默认
+
+        // ① 光标可见列（tab 按制表位展开）
+        let vis = 0;
+        for (let i = 0; i < before.length; i++) {
+            vis += before[i] === '\t' ? INDENT_SIZE - (vis % INDENT_SIZE) : 1;
+        }
+        // ② 上一个缩进制表位（VS Code CursorColumns.prevIndentTabStop）
+        const target = vis - ((vis % INDENT_SIZE) || INDENT_SIZE);
+        if (target >= vis) return false;
+        // ③ 可见列 → 字符下标（before 全为空白，逐字符推进可精确落位）
+        let col = 0;
+        let cut = 0;
+        while (cut < before.length && col < target) {
+            col += before[cut] === '\t' ? INDENT_SIZE - (col % INDENT_SIZE) : 1;
+            cut++;
+        }
+        if (col !== target) return false;                          // 未精确落位（异常混排）→ 交给默认
+
+        ta.value = v.slice(0, lineStart + cut) + v.slice(pos);
+        ta.selectionStart = ta.selectionEnd = lineStart + cut;
+        refreshCodeEditor();
+        return true;
     }
 
     // Enter：① 光标夹在一对括号之间 → 展开成三行（VS Code 招牌行为）
@@ -1151,7 +1192,7 @@
             }
         }
 
-        // Backspace：成对括号/引号删左半边时连带右半边
+        // Backspace：① 成对括号/引号删左半边时连带右半边；② 缩进区内智能反缩进（VS Code）
         if (e.key === 'Backspace' && s === en) {
             const prev = v[s - 1];
             if (PAIRS[prev] && PAIRS[prev] === v[s]) {
@@ -1159,7 +1200,10 @@
                 ta.value = v.slice(0, s - 1) + v.slice(s + 1);
                 ta.selectionStart = ta.selectionEnd = s - 1;
                 refreshCodeEditor();
+                return;
             }
+            // 缩进区内：一次退到上一个缩进制表位（不再一格一格删空格）
+            if (smartBackspace()) e.preventDefault();
             return;
         }
 
