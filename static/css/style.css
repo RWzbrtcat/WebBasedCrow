@@ -4951,15 +4951,111 @@ body.practice-page .site-footer {
 /* ===== 写代码题：IDE 观感代码编辑器（行号槽 + 高亮叠加层 + 状态栏） ===== */
 /* 配色沿用站点代码块（.markdown-body pre）的深色基调，保持视觉连续 */
 .practice-code {
+    /* 默认主题 = Dark+（VS Code Dark+）；其余主题由 #codeShell[data-editor-theme=...] 覆盖。
+       所有颜色走变量，便于一套结构切换多套配色。 */
+    --c-bg: #1f2328;
+    --c-bar: #171a1f;
+    --c-border: #2d323b;
+    --c-gutter-bg: #1b1f24;
+    --c-gutter-fg: #4b5563;
+    --c-text: #d4d4d4;
+    --c-caret: #e8e8e8;
+    --c-current: rgba(255, 255, 255, 0.045);
+    --c-sel: rgba(38, 79, 120, 0.55);
+    --c-placeholder: #5c6370;
+    --c-tip: #6b7480;
+    --c-file: #c9cfd8;
+    --c-scroll: #3a4048;
+    --c-focus: rgba(194, 65, 12, 0.55);
+    --c-tok-comment: #6a9955;
+    --c-tok-keyword: #569cd6;
+    --c-tok-type: #4ec9b0;
+    --c-tok-number: #b5cea8;
+    --c-tok-string: #ce9178;
+    --c-tok-function: #dcdcaa;
+    --c-tok-variable: #9cdcfe;
     display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 0;
     margin: 12px 20px;
-    border: 1px solid #2d323b;
+    border: 1px solid var(--c-border);
     border-radius: var(--radius-sm);
-    background: #1f2328;
+    background: var(--c-bg);
     overflow: hidden;
+}
+
+/* 主题切换：Light+ / Solarized Dark / Monokai（仅覆盖颜色变量，结构不变） */
+#codeShell[data-editor-theme="light"] {
+    --c-bg: #ffffff;
+    --c-bar: #f3f3f3;
+    --c-border: #e1e4e8;
+    --c-gutter-bg: #f3f3f3;
+    --c-gutter-fg: #c0c4cc;
+    --c-text: #24292e;
+    --c-caret: #1e1e1e;
+    --c-current: rgba(0, 0, 0, 0.04);
+    --c-sel: rgba(173, 214, 255, 0.6);
+    --c-placeholder: #a0a6ad;
+    --c-tip: #6a737d;
+    --c-file: #24292e;
+    --c-scroll: #d0d7de;
+    --c-focus: rgba(31, 136, 61, 0.55);
+    --c-tok-comment: #6a737d;
+    --c-tok-keyword: #d73a49;
+    --c-tok-type: #e36209;
+    --c-tok-number: #005cc5;
+    --c-tok-string: #032f62;
+    --c-tok-function: #6f42c1;
+    --c-tok-variable: #e36209;
+}
+
+#codeShell[data-editor-theme="solarized"] {
+    --c-bg: #002b36;
+    --c-bar: #073642;
+    --c-border: #073642;
+    --c-gutter-bg: #073642;
+    --c-gutter-fg: #586e75;
+    --c-text: #93a1a1;
+    --c-caret: #eee8d5;
+    --c-current: rgba(147, 161, 161, 0.10);
+    --c-sel: rgba(38, 139, 210, 0.35);
+    --c-placeholder: #586e75;
+    --c-tip: #586e75;
+    --c-file: #93a1a1;
+    --c-scroll: #073642;
+    --c-focus: rgba(38, 139, 210, 0.6);
+    --c-tok-comment: #586e75;
+    --c-tok-keyword: #859900;
+    --c-tok-type: #b58900;
+    --c-tok-number: #2aa198;
+    --c-tok-string: #2aa198;
+    --c-tok-function: #268bd2;
+    --c-tok-variable: #b58900;
+}
+
+#codeShell[data-editor-theme="monokai"] {
+    --c-bg: #272822;
+    --c-bar: #1e1f1b;
+    --c-border: #3e3d32;
+    --c-gutter-bg: #1e1f1b;
+    --c-gutter-fg: #75715e;
+    --c-text: #f8f8f2;
+    --c-caret: #f8f8f2;
+    --c-current: rgba(255, 255, 255, 0.06);
+    --c-sel: rgba(73, 72, 62, 0.99);
+    --c-placeholder: #75715e;
+    --c-tip: #75715e;
+    --c-file: #f8f8f2;
+    --c-scroll: #3e3d32;
+    --c-focus: rgba(249, 38, 114, 0.5);
+    --c-tok-comment: #75715e;
+    --c-tok-keyword: #f92672;
+    --c-tok-type: #66d9ef;
+    --c-tok-number: #ae81ff;
+    --c-tok-string: #e6db74;
+    --c-tok-function: #a6e22e;
+    --c-tok-variable: #f8f8f2;
 }
 
 /* 顶部标签条：文件名 + 运行快捷键提示 */
@@ -4970,10 +5066,17 @@ body.practice-page .site-footer {
     justify-content: space-between;
     gap: 12px;
     padding: 8px 14px;
-    background: #171a1f;
-    border-bottom: 1px solid #2d323b;
+    background: var(--c-bar);
+    border-bottom: 1px solid var(--c-border);
     font-size: 12px;
-    color: #8b94a3;
+    color: var(--c-tip);
+}
+
+.practice-code-bar-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
 }
 
 .practice-code-file {
@@ -4981,7 +5084,7 @@ body.practice-page .site-footer {
     align-items: center;
     gap: 8px;
     font-weight: 600;
-    color: #c9cfd8;
+    color: var(--c-file);
 }
 
 .practice-code-dot {
@@ -4992,7 +5095,50 @@ body.practice-page .site-footer {
 }
 
 .practice-code-tip {
-    color: #6b7480;
+    color: var(--c-tip);
+}
+
+/* 顶栏右侧：编辑器主题选择器（VS Code「颜色主题」下拉的迷你版） */
+.practice-code-theme {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.practice-code-theme-label {
+    color: var(--c-tip);
+    font-size: 11px;
+    user-select: none;
+}
+
+.practice-code-theme-select {
+    appearance: none;
+    -webkit-appearance: none;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.4;
+    padding: 3px 22px 3px 8px;
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-sm);
+    background: var(--c-gutter-bg);
+    color: var(--c-file);
+    cursor: pointer;
+    transition: border-color var(--transition), background var(--transition);
+    /* 下拉箭头（用内联 SVG，跟随当前前景色） */
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%238b94a3' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 7px center;
+}
+
+.practice-code-theme-select:hover {
+    border-color: var(--accent);
+}
+
+.practice-code-theme-select:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--c-focus);
 }
 
 /* 编辑区：左行号槽 + 右（高亮层叠 textarea） */
@@ -5011,9 +5157,9 @@ body.practice-page .site-footer {
     font-family: 'SFMono-Regular', 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
     font-size: 13px;
     line-height: 1.6;
-    color: #4b5563;
-    background: #1b1f24;
-    border-right: 1px solid #2d323b;
+    color: var(--c-gutter-fg);
+    background: var(--c-gutter-bg);
+    border-right: 1px solid var(--c-border);
     overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
@@ -5034,7 +5180,7 @@ body.practice-page .site-footer {
     left: 0;
     right: 0;
     height: 20.8px;
-    background: rgba(255, 255, 255, 0.045);
+    background: var(--c-current);
     pointer-events: none;
     z-index: 0;
     will-change: transform;
@@ -5064,7 +5210,7 @@ body.practice-page .site-footer {
     z-index: 1;
     overflow: hidden;
     pointer-events: none;
-    color: #d4d4d4;
+    color: var(--c-text);
 }
 
 .practice-code-hl code {
@@ -5094,14 +5240,14 @@ body.practice-page .site-footer {
     background: transparent;
     color: transparent;
     -webkit-text-fill-color: transparent;
-    caret-color: #e8e8e8;
+    caret-color: var(--c-caret);
     scrollbar-width: thin;
-    scrollbar-color: #3a4048 transparent;
+    scrollbar-color: var(--c-scroll) transparent;
 }
 
 .practice-code-input::placeholder {
-    color: #5c6370;
-    -webkit-text-fill-color: #5c6370;
+    color: var(--c-placeholder);
+    -webkit-text-fill-color: var(--c-placeholder);
     opacity: 1;
 }
 
@@ -5111,7 +5257,7 @@ body.practice-page .site-footer {
      绿色斜体）整片盖掉 —— 选中注释时会「突然变正体、变白」。这是历史 bug。
    正解：选区底色用半透明蓝，让下层语法色透出来；文字保持透明，交给高亮层显色。 */
 .practice-code-input::selection {
-    background: rgba(38, 79, 120, 0.55);
+    background: var(--c-sel);
     color: transparent;
     -webkit-text-fill-color: transparent;
 }
@@ -5122,7 +5268,7 @@ body.practice-page .site-footer {
 }
 
 .practice-code-input::-webkit-scrollbar-thumb {
-    background: #3a4048;
+    background: var(--c-scroll);
     border-radius: 5px;
 }
 
@@ -5131,7 +5277,7 @@ body.practice-page .site-footer {
 }
 
 .practice-code-body:focus-within {
-    box-shadow: inset 0 0 0 1px rgba(194, 65, 12, 0.55);
+    box-shadow: inset 0 0 0 1px var(--c-focus);
 }
 
 /* 底部状态栏：光标位置 + 语言信息 */
@@ -5142,33 +5288,33 @@ body.practice-page .site-footer {
     justify-content: space-between;
     gap: 12px;
     padding: 6px 14px;
-    background: #171a1f;
-    border-top: 1px solid #2d323b;
+    background: var(--c-bar);
+    border-top: 1px solid var(--c-border);
     font-size: 11.5px;
-    color: #6b7480;
+    color: var(--c-tip);
     font-variant-numeric: tabular-nums;
 }
 
-/* 高亮层内的 C++ token 配色：对齐 VS Code Dark+ 色板 */
+/* 高亮层内的 C++ token 配色：随主题切换（变量见 .practice-code 与各 data-editor-theme） */
 .practice-code-hl .hljs-comment,
-.practice-code-hl .hljs-quote { color: #6a9955; font-style: italic; }
+.practice-code-hl .hljs-quote { color: var(--c-tok-comment); font-style: italic; }
 
 /* 关键字 / 字面量 / 预处理：蓝 */
 .practice-code-hl .hljs-keyword,
 .practice-code-hl .hljs-literal,
 .practice-code-hl .hljs-name,
 .practice-code-hl .hljs-symbol,
-.practice-code-hl .hljs-meta { color: #569cd6; }
+.practice-code-hl .hljs-meta { color: var(--c-tok-keyword); }
 
 /* 类型 / 内置：青绿 */
 .practice-code-hl .hljs-type,
 .practice-code-hl .hljs-built_in,
 .practice-code-hl .hljs-class,
-.practice-code-hl .hljs-title.class_ { color: #4ec9b0; }
+.practice-code-hl .hljs-title.class_ { color: var(--c-tok-type); }
 
 /* 数字：浅绿 */
 .practice-code-hl .hljs-number,
-.practice-code-hl .hljs-bullet { color: #b5cea8; }
+.practice-code-hl .hljs-bullet { color: var(--c-tok-number); }
 
 /* 字符串 / 正则 / 属性：橙棕 */
 .practice-code-hl .hljs-string,
@@ -5177,13 +5323,13 @@ body.practice-page .site-footer {
 .practice-code-hl .hljs-attribute,
 .practice-code-hl .hljs-addition,
 .practice-code-hl .hljs-selector-attr,
-.practice-code-hl .hljs-selector-pseudo { color: #ce9178; }
+.practice-code-hl .hljs-selector-pseudo { color: var(--c-tok-string); }
 
 /* 函数名：黄 */
 .practice-code-hl .hljs-title,
 .practice-code-hl .hljs-title.function_,
 .practice-code-hl .hljs-function .hljs-title,
-.practice-code-hl .hljs-section { color: #dcdcaa; }
+.practice-code-hl .hljs-section { color: var(--c-tok-function); }
 
 /* 变量 / 参数 / 其它辅助 token：浅蓝 */
 .practice-code-hl .hljs-variable,
@@ -5198,7 +5344,7 @@ body.practice-page .site-footer {
 .practice-code-hl .hljs-doctag,
 .practice-code-hl .hljs-formula,
 .practice-code-hl .hljs-subst,
-.practice-code-hl .hljs-deletion { color: #9cdcfe; }
+.practice-code-hl .hljs-deletion { color: var(--c-tok-variable); }
 
 /* 窄屏回落：编辑器不再撑满高度，改固定高度（行号与高亮仍同步滚动） */
 @media (max-width: 1200px) {

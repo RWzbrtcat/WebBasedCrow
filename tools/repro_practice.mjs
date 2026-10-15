@@ -217,15 +217,39 @@ assert(css.includes('.practice-code-gutter'), 'style.css 含行号槽样式');
 assert(css.includes('.practice-code-hl .hljs-keyword'), 'style.css 含编辑器 token 配色');
 assert(css.includes('.practice-code-body:focus-within'), 'style.css 含编辑器聚焦态');
 assert(css.includes('.practice-code-currentline'), 'style.css 含当前行高亮条样式');
-// 配色已从 Atom One Dark 换为 VS Code Dark+：只检查「编辑器配色区块」，避免误判站点代码块
+
+// 3e-2. 代码编辑器主题切换（Dark+ / Light+ / Solarized Dark / Monokai，类似 VS Code「颜色主题」）
+console.log('== 代码编辑器主题切换 ==');
 {
-    const from = css.indexOf('.practice-code-hl .hljs-comment');
-    const to = css.indexOf('#9cdcfe; }', from);
-    const palette = from >= 0 && to > from ? css.slice(from, to) : '';
-    assert(palette.length > 0, '能定位编辑器 token 配色区块');
-    assert(!/#c678dd/.test(palette) && !/#e6c07b/.test(palette), '编辑器 token 已弃用 Atom One Dark 配色');
-    assert(/#569cd6/.test(palette) && /#4ec9b0/.test(palette) && /#6a9955/.test(palette) && /#ce9178/.test(palette),
-        '编辑器 token 为 VS Code Dark+ 色板（#569cd6/#4ec9b0/#6a9955/#ce9178）');
+    assert(html.includes('id="codeTheme"'), 'practice.html 含编辑器主题选择器 #codeTheme');
+    assert(/<option value="dark"[\s\S]*?<option value="light"[\s\S]*?<option value="solarized"[\s\S]*?<option value="monokai"/.test(html),
+        '主题选择器含 4 个选项（dark / light / solarized / monokai）');
+    assert(css.includes('#codeShell[data-editor-theme="light"]')
+        && css.includes('#codeShell[data-editor-theme="solarized"]')
+        && css.includes('#codeShell[data-editor-theme="monokai"]'),
+        'CSS 含 3 套非默认主题覆盖（仅覆盖颜色变量，结构不变）');
+    const codeBlock = css.slice(css.indexOf('.practice-code {'), css.indexOf('/* 顶部标签条'));
+    assert(codeBlock.includes('--c-bg') && codeBlock.includes('--c-tok-keyword'), '编辑器默认色板抽成 CSS 变量（#codeShell 作用域）');
+    assert(/var\(--c-bg\)/.test(css) && /var\(--c-tok-keyword\)/.test(css), '编辑器规则引用 CSS 变量（非硬编码）');
+    assert(/var\(--c-tok-comment\)/.test(css) && /var\(--c-tok-function\)/.test(css), 'token 配色随主题切换');
+}
+assert(js.includes('function applyEditorTheme'), 'JS 有 applyEditorTheme');
+assert(js.includes('function loadEditorTheme') && js.includes('function saveEditorTheme'), 'JS 有主题读取 / 保存');
+assert(js.includes('EDITOR_THEME_KEY'), 'JS 用 localStorage 键持久化主题');
+assert(/codeShellEl\.dataset\.editorTheme/.test(js), 'applyEditorTheme 写 #codeShell[data-editor-theme]');
+assert(js.includes('applyEditorTheme(loadEditorTheme())'), '启动时恢复上次选择的主题');
+assert(/codeThemeSelEl\.addEventListener\('change'/.test(js), '主题选择器 change 事件已接线');
+// 编辑器配色：默认（Dark+）= VS Code Dark+ 色板；token 规则走变量，可被 Light+/Solarized/Monokai 覆盖
+{
+    const defFrom = css.indexOf('.practice-code {');
+    const defTo = css.indexOf('}', defFrom);                 // 默认主题变量块（首个 } 结束变量声明）
+    const defBlock = defFrom >= 0 && defTo > defFrom ? css.slice(defFrom, defTo) : '';
+    assert(defBlock.length > 0, '能定位编辑器默认主题变量块');
+    assert(!/#c678dd/.test(defBlock) && !/#e6c07b/.test(defBlock), '编辑器 token 已弃用 Atom One Dark 配色');
+    assert(/#569cd6/.test(defBlock) && /#4ec9b0/.test(defBlock) && /#6a9955/.test(defBlock) && /#ce9178/.test(defBlock),
+        '默认主题（Dark+）token 为 VS Code Dark+ 色板（#569cd6/#4ec9b0/#6a9955/#ce9178）');
+    assert(css.includes('.practice-code-hl .hljs-keyword') && css.includes('var(--c-tok-keyword)'),
+        '编辑器 token 规则引用变量（可被多套主题覆盖）');
 }
 
 // 3f. 对比度：题解代码块底色 + 编辑器「着重显示」与选区
@@ -246,12 +270,20 @@ assert(/\.practice-code-hl\s*\{[^}]*z-index:\s*1/.test(css),
     const selFrom = css.indexOf('.practice-code-input::selection');
     const selRule = selFrom >= 0 ? css.slice(selFrom, css.indexOf('}', selFrom)) : '';
     assert(selRule.length > 0, '能定位编辑器选区样式');
-    assert(/rgba\(\s*38\s*,\s*79\s*,\s*120\s*,\s*0?\.\d+\s*\)/.test(selRule),
-        '选区底色为半透明蓝 rgba(38,79,120,α<1)——让下层语法配色透出来');
+    assert(/background:\s*var\(--c-sel\)/.test(selRule),
+        '选区底色走变量 var(--c-sel)（Dark+ 默认仍是半透明蓝，可被主题覆盖）');
     assert(/#ffffff|#fff\b|:\s*white/.test(selRule) === false,
-        '选区不再用不透明白字盖掉语法色（否则选中注释会突变为正体白字）');
+        '选区规则不再用不透明白字盖掉语法色（否则选中注释会突变为正体白字）');
     assert(/-webkit-text-fill-color:\s*transparent/.test(selRule),
         '选区文字保持透明，字形交给下层高亮层');
+}
+// Dark+ 默认选区底色仍是半透明蓝：选中注释时让下层绿色斜体透出来（防「选中变白变正体」回潮）
+{
+    const defFrom = css.indexOf('.practice-code {');
+    const defTo = css.indexOf('}', defFrom);
+    const defBlock = defFrom >= 0 && defTo > defFrom ? css.slice(defFrom, defTo) : '';
+    assert(/--c-sel:\s*rgba\(\s*38\s*,\s*79\s*,\s*120\s*,\s*0?\.\d+\s*\)/.test(defBlock),
+        'Dark+ 默认选区底色为半透明蓝 rgba(38,79,120,α<1)——让下层语法配色透出来');
 }
 
 // 3g. 答题工作台：头部操作区 + 去标题条 + 编辑器吃满

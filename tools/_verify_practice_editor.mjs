@@ -27,6 +27,7 @@ function makeEl(id) {
     return {
         id,
         value: '',
+        dataset: {},
         selectionStart: 0,
         selectionEnd: 0,
         scrollTop: 0,
@@ -64,6 +65,11 @@ const codeHighlightEl = makeEl('codeHighlight');
 els.set('codeHighlight', codeHighlightEl);
 const codeGutterInnerEl = makeEl('codeGutterInner');
 els.set('codeGutterInner', codeGutterInnerEl);
+// 编辑器主题：#codeShell（data-editor-theme 切换）+ #codeTheme（<select>）
+const codeShellEl = makeEl('codeShell');
+els.set('codeShell', codeShellEl);
+const codeThemeEl = makeEl('codeTheme');
+els.set('codeTheme', codeThemeEl);
 
 global.window = global;
 // daily-common.js 提供的全局转义函数（真实页面里在 practice.js 之前加载）
@@ -89,7 +95,7 @@ global.requestAnimationFrame = (cb) => cb();
 
 // ---------- 读取源码并注入导出钩子（仅在内存中改，不落盘） ----------
 let src = readFileSync(resolve(root, 'static/js/practice.js'), 'utf8');
-const exportHook = 'window.__pe = { autoIndentOnEnter, toggleLineComment, moveLines, smartHome, smartBackspace, handleCodeKeydown, applyIndent, lineRange, caretPos, scrollCaretIntoView, updateCurrentLine, syncCodeScroll, setEditor: (v) => { codeEditorEl.value = v; }, draftKey, saveDraftNow, loadDrafts, persistDrafts, clearDraft, getDrafts: () => drafts, setDrafts: (o) => { drafts = o; }, setExercise: (ex, tier) => { currentExercise = ex; currentTier = tier; } };';
+const exportHook = 'window.__pe = { autoIndentOnEnter, toggleLineComment, moveLines, smartHome, smartBackspace, handleCodeKeydown, applyIndent, lineRange, caretPos, scrollCaretIntoView, updateCurrentLine, syncCodeScroll, applyEditorTheme, loadEditorTheme, saveEditorTheme, setEditor: (v) => { codeEditorEl.value = v; }, draftKey, saveDraftNow, loadDrafts, persistDrafts, clearDraft, getDrafts: () => drafts, setDrafts: (o) => { drafts = o; }, setExercise: (ex, tier) => { currentExercise = ex; currentTier = tier; } };';
 src = src.replace(/\}\)\(\);\s*$/, (m) => '    ' + exportHook + '\n' + m);
 // eslint-disable-next-line no-eval
 eval(src);
@@ -345,6 +351,20 @@ pe.persistDrafts();
 eq(Object.keys(pe.getDrafts()).length, 80, '超限 → 裁剪到 DRAFT_MAX=80 份');
 assert(!Object.prototype.hasOwnProperty.call(pe.getDrafts(), 'x0:easy'), '丢弃最早写入的草稿');
 assert(Object.prototype.hasOwnProperty.call(pe.getDrafts(), 'x199:easy'), '保留最新写入的草稿');
+
+console.log('== 代码编辑器主题切换（localStorage 持久化） ==');
+pe.applyEditorTheme('light');
+eq(codeShellEl.dataset.editorTheme, 'light', 'applyEditorTheme 把主题写到 #codeShell[data-editor-theme]');
+pe.applyEditorTheme('monokai');
+eq(codeShellEl.dataset.editorTheme, 'monokai', '切换到 Monokai');
+pe.applyEditorTheme('not-a-theme');
+eq(codeShellEl.dataset.editorTheme, 'dark', '非法主题名 → 回退默认 dark');
+pe.applyEditorTheme('solarized');
+pe.saveEditorTheme('solarized');
+eq(pe.loadEditorTheme(), 'solarized', 'saveEditorTheme + loadEditorTheme 可往返');
+eq(codeThemeEl.value, 'solarized', 'applyEditorTheme 同步 <select> 的选中值');
+pe.applyEditorTheme('dark');
+eq(pe.loadEditorTheme(), 'solarized', '仅 applyEditorTheme 不改存储，需 saveEditorTheme 才持久');
 
 console.log('');
 if (failed === 0) {

@@ -86,8 +86,19 @@
                     <section class="practice-card practice-editor-card" id="editorCard" hidden>
                         <div class="practice-code" id="codeShell">
                             <div class="practice-code-bar">
-                                <span class="practice-code-file"><i class="practice-code-dot" aria-hidden="true"></i>solution.cpp</span>
-                                <span class="practice-code-tip">Ctrl / ⌘ + Enter 运行</span>
+                                <div class="practice-code-bar-left">
+                                    <span class="practice-code-file"><i class="practice-code-dot" aria-hidden="true"></i>solution.cpp</span>
+                                    <span class="practice-code-tip">Ctrl / ⌘ + Enter 运行</span>
+                                </div>
+                                <div class="practice-code-theme">
+                                    <label class="practice-code-theme-label" for="codeTheme">主题</label>
+                                    <select id="codeTheme" class="practice-code-theme-select" aria-label="代码编辑器主题">
+                                        <option value="dark">暗黑 +</option>
+                                        <option value="light">浅色 +</option>
+                                        <option value="solarized">Solarized Dark</option>
+                                        <option value="monokai">Monokai</option>
+                                    </select>
+                                </div>
                             </div>
                             <div class="practice-code-main">
                                 <div class="practice-code-gutter" id="codeGutter" aria-hidden="true"><div class="practice-code-gutter-inner" id="codeGutterInner">1</div></div>

@@ -782,18 +782,48 @@
     const INDENT_SIZE = INDENT.length;                       // 缩进宽度（= 制表位间距，用于回退格对齐 VS Code）
     const PAIRS = { '(': ')', '[': ']', '{': '}', '"': '"', "'": "'" };
 
+    // 代码编辑器主题：Dark+ / Light+ / Solarized Dark / Monokai（与 CSS 的 data-editor-theme 对应）
+    const EDITOR_THEME_KEY = 'practice.editorTheme.v1';
+    const EDITOR_THEMES = ['dark', 'light', 'solarized', 'monokai'];
+    const DEFAULT_EDITOR_THEME = 'dark';
+
     let codeGutterEl = null;
     let codeGutterInnerEl = null;
     let codeHighlightEl = null;
     let codeStatusPosEl = null;
     let codeCurrentLineEl = null;
+    let codeShellEl = null;
+    let codeThemeSelEl = null;
 
     function ensureCodeRefs() {
+        if (!codeShellEl) codeShellEl = document.getElementById('codeShell');
+        if (!codeThemeSelEl) codeThemeSelEl = document.getElementById('codeTheme');
         if (!codeGutterEl) codeGutterEl = document.getElementById('codeGutter');
         if (!codeGutterInnerEl) codeGutterInnerEl = document.getElementById('codeGutterInner');
         if (!codeHighlightEl) codeHighlightEl = document.getElementById('codeHighlight');
         if (!codeStatusPosEl) codeStatusPosEl = document.getElementById('codeStatusPos');
         if (!codeCurrentLineEl) codeCurrentLineEl = document.getElementById('codeCurrentLine');
+    }
+
+    // ---------- 代码编辑器主题（localStorage 持久化） ----------
+    function loadEditorTheme() {
+        try {
+            const v = localStorage.getItem(EDITOR_THEME_KEY);
+            return EDITOR_THEMES.includes(v) ? v : DEFAULT_EDITOR_THEME;
+        } catch (e) { return DEFAULT_EDITOR_THEME; }
+    }
+
+    function saveEditorTheme(name) {
+        try { localStorage.setItem(EDITOR_THEME_KEY, name); } catch (e) { /* 隐私模式等：忽略 */ }
+    }
+
+    // 把主题写到 #codeShell[data-editor-theme]，CSS 变量随之切换
+    function applyEditorTheme(name) {
+        ensureCodeRefs();
+        if (!codeShellEl) return;
+        if (!EDITOR_THEMES.includes(name)) name = DEFAULT_EDITOR_THEME;
+        codeShellEl.dataset.editorTheme = name;
+        if (codeThemeSelEl && codeThemeSelEl.value !== name) codeThemeSelEl.value = name;
     }
 
     function highlightCpp(code) {
@@ -1232,6 +1262,14 @@
     // ---------- 事件绑定 ----------
     function bindEvents() {
         ensureCodeRefs();
+        applyEditorTheme(loadEditorTheme());   // 启动时恢复上次选择的编辑器主题
+        if (codeThemeSelEl) {
+            codeThemeSelEl.addEventListener('change', () => {
+                const name = codeThemeSelEl.value;
+                applyEditorTheme(name);
+                saveEditorTheme(name);
+            });
+        }
         bindTabs();
         submitBtn.addEventListener('click', submit);
         resetBtn.addEventListener('click', () => {
