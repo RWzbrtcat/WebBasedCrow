@@ -619,67 +619,30 @@
         refreshCodeEditor();
     }
 
-    // 兜底：当后端未下发 question（旧二进制 / 未重导 seed）时，
-    // 回退到从 prompt 的 // 注释里抽「问题/说明」，避免题目描述整体消失。
-    // 选择：返回问题文字；填空：返回 {question, code}（code 已剥掉 // 注释）。
-    function fallbackFromPrompt(prompt, typ) {
-        const src = (prompt || '');
-        if (typ === 'choice') {
-            const m = src.trim().match(/^```[A-Za-z0-9]*\n([\s\S]*?)\n?```$/);
-            const inner = m ? m[1] : src;
-            const notes = [];
-            for (const line of inner.split('\n')) {
-                const t = line.trim();
-                if (t.startsWith('//')) {
-                    const n = t.replace(/^\s*\/\/\s?/, '').trim();
-                    if (n) notes.push(n);
-                    continue;
-                }
-                const ci = line.indexOf('//');
-                if (ci !== -1) {
-                    const after = line.slice(ci + 2).trim();
-                    if (after) notes.push(after);
-                }
-            }
-            return notes.join(' ');
-        }
-        if (typ === 'blank') {
-            const notes = [];
-            const code = [];
-            for (const line of src.split('\n')) {
-                const t = line.trim();
-                if (t.startsWith('//')) {
-                    const n = t.replace(/^\s*\/\/\s?/, '').trim();
-                    if (n) notes.push(n);
-                    continue;
-                }
-                const ci = line.indexOf('//');
-                if (ci !== -1) {
-                    const before = line.slice(0, ci).replace(/\s+$/, '');
-                    const after = line.slice(ci + 2).trim();
-                    if (after) notes.push(after);
-                    if (before.trim()) code.push(before);
-                } else {
-                    code.push(line);
-                }
-            }
-            return { question: notes.join(' '), code: code.join('\n') };
-        }
-        return typ === 'blank' ? { question: '', code: src } : '';
+    // 剥掉代码里的 // 行注释（保留 /* */ 块注释与 ______ 空位）。
+    // 仅用于「已有独立 question 字段」时，把代码框里的 // 注释清掉，避免描述在代码框里重复出现。
+    // prompt 始终保留原始 // 注释作为兜底——旧后端未下发 question 时，注释天然留在代码框里照样可见。
+    function stripCppComments(src) {
+        return (src || '').split('\n').map((line) => {
+            const ci = line.indexOf('//');
+            return ci === -1 ? line : line.slice(0, ci).replace(/\s+$/, '');
+        }).join('\n').replace(/\n{3,}/g, '\n\n').trim();
     }
 
-    // 选择题：问题(question 字段，缺失则兜底抽 // 注释) + 代码框(prompt 纯代码块) | 选项
+    // 选择题：问题(question 字段) + 代码框(prompt)。
+    // question 缺失时，prompt 里的 // 注释天然留在代码框中，描述不会消失。
     function renderChoice() {
         const ex = currentExercise;
         setWorkLayout(false);
         renderHead(ex);
         setPromptHtml('<div class="practice-prompt markdown-body" id="promptBody"></div>');
         const body = document.getElementById('promptBody');
-        const question = (ex.question || '').trim() || fallbackFromPrompt(ex.prompt, 'choice');
-        const prompt = (ex.prompt || '').trim();
+        const question = (ex.question || '').trim();
+        let prompt = (ex.prompt || '').trim();
+        if (question) prompt = stripCppComments(prompt);   // 有独立问题 → 代码框剥掉 // 注释
         let md = '';
         if (question) md += '**问题：** ' + question + '\n\n';
-        if (prompt) md += prompt;
+        md += prompt;
         if (body) {
             if (window.renderMarkdownInto && md) renderMarkdownInto(body, md);
             else body.textContent = md;
@@ -702,18 +665,15 @@
         restoreLastResult(ex.id);
     }
 
-    // 填空题：说明(question 字段，缺失则兜底抽 // 注释) + 代码框(prompt 纯代码含 ______)
+    // 填空题：说明(question 字段) + 代码框(prompt 含 ______)。
+    // question 缺失时，prompt 里的 // 注释天然留在代码框中，描述不会消失。
     function renderBlank() {
         const ex = currentExercise;
         setWorkLayout(true);
         renderHead(ex);
-        let question = (ex.question || '').trim();
+        const question = (ex.question || '').trim();
         let code = (ex.prompt || '');
-        if (!question) {
-            const fb = fallbackFromPrompt(code, 'blank');
-            question = fb.question;
-            code = fb.code;
-        }
+        if (question) code = stripCppComments(code);   // 有独立说明 → 代码框剥掉 // 注释
         const codeHtml = esc(code).replace(/_{3,}/g,
             '<input type="text" class="practice-blank-input" data-blank spellcheck="false" autocomplete="off">');
         const intro = question ? '<p class="practice-blank-note">' + esc(question) + '</p>' : '';

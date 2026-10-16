@@ -8372,16 +8372,16 @@ def build():
     out.append('-- ---------- 第 3 步：插入题目 ----------')
     for e in EXERCISES:
         typ = e['type']
-        # —— 固化题面：choice/blank 把「问题/说明」落到 question 字段，prompt 只留纯代码 ——
-        # 优先用题目自带的显式 question（用于 prompt 本就无 // 注释说明的题），
-        # 否则用 split_exercise_prompt 从 // 注释里抽取。
+        # —— 固化题面：choice/blank 把「问题/说明」抽到 question 字段（独立展示用）；
+        #    prompt 始终保留原始代码（含 // 注释）作为兜底——避免旧后端未下发 question 时描述消失 ——
+        # 优先用题目自带的显式 question（用于 prompt 本就无 // 注释说明的题）。
         if typ in ('choice', 'blank'):
             explicit_q = e.get('question')
             if explicit_q and explicit_q.strip():
                 question_val = explicit_q.strip()
-                prompt_val = e['prompt']
             else:
-                question_val, prompt_val = split_exercise_prompt(e['prompt'], typ)
+                question_val, _ = split_exercise_prompt(e['prompt'], typ)   # 仅取 question，prompt 用原始值
+            prompt_val = e['prompt']
         else:
             question_val = None          # 写代码题无独立问题字段
             prompt_val = e['prompt']

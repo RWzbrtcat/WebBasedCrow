@@ -1363,7 +1363,7 @@ const int& get() {
     static int x = 42;
     return x;
 }
-auto a = get();
+auto a = get();   // a 的类型是？
 ```', 'a 的类型是？', 1, '[{"label": "A", "text": "const int&"}, {"label": "B", "text": "int&"}, {"label": "C", "text": "int"}, {"label": "D", "text": "const int"}]', '"C"', '**正确答案：C（`int`）**。
 
 `get()` 返回 `const int&`，但 `auto` 会**按值推导**——丢掉引用，也丢掉顶层 `const`，所以 `a` 的类型是 `int`。
@@ -1371,7 +1371,7 @@ auto a = get();
 想让 `a` 保留引用必须写 `auto& a = get();`（此时 `a` 是 `const int&`）。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (12, 1, 'choice', '选择 2 · decltype 的括号陷阱', '```cpp
 int x = 0;
-decltype((x)) y = x;
+decltype((x)) y = x;   // y 的类型是？
 ```', 'y 的类型是？', 2, '[{"label": "A", "text": "int"}, {"label": "B", "text": "int&"}, {"label": "C", "text": "int&&"}, {"label": "D", "text": "const int&"}]', '"B"', '**正确答案：B（`int&`）**。
 
 `decltype` 的规则：对**变量名** `x` 得到声明类型 `int`；但加了括号变成 `(x)` 后，`x` 是「左值表达式」，`decltype` 对左值返回**引用类型** `int&`。
@@ -1380,6 +1380,7 @@ decltype((x)) y = x;
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (13, 1, 'choice', '选择 3 · 范围 for 的值语义', '```cpp
 std::vector<int> v{1, 2, 3};
 for (auto x : v) { x *= 2; }
+// 此时 v 的内容是？
 ```', '此时 v 的内容是？', 3, '[{"label": "A", "text": "{2, 4, 6}"}, {"label": "B", "text": "{1, 2, 3}"}, {"label": "C", "text": "编译错误"}, {"label": "D", "text": "未定义行为"}]', '"B"', '**正确答案：B（`{1, 2, 3}`）**。
 
 `for (auto x : v)` 是**值拷贝**——`x` 是元素的副本，`x *= 2` 只改副本，原容器不变。
@@ -1388,7 +1389,7 @@ for (auto x : v) { x *= 2; }
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (14, 1, 'blank', '填空 1 · nullptr 的类型安全', 'void f(int)   { /* 版本1 */ }
 void f(void*) { /* 版本2 */ }
 
-f(______);', '想调用 void* 版本', 4, NULL, '["nullptr"]', '**应填：`nullptr`**。
+f(______);   // 想调用 void* 版本', '想调用 void* 版本', 4, NULL, '["nullptr"]', '**应填：`nullptr`**。
 
 `f(0)` / `f(NULL)` 都会匹配 `f(int)`（`NULL` 多数实现就是 `0`）。只有 `nullptr` 的类型是 `std::nullptr_t`，能明确匹配 `f(void*)`。
 
@@ -1396,7 +1397,7 @@ f(______);', '想调用 void* 版本', 4, NULL, '["nullptr"]', '**应填：`null
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (15, 1, 'blank', '填空 2 · override 防误写', 'class Base { public: virtual void draw() const; };
 class Derived : public Base {
 public:
-    void draw() const ______;
+    void draw() const ______;   // 填一个关键字
 };', '填一个关键字', 5, NULL, '["override"]', '**应填：`override`**。
 
 `override` 让编译器检查「这个函数确实重写了基类虚函数」。签名一旦不匹配（比如漏了 `const`），会**直接编译报错**，而不是静默变成一个「新函数」。
@@ -1404,9 +1405,9 @@ public:
 不加 `override` 时，`void draw() const` 里漏写 `const` 不会报错，但多态会悄悄失效。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (16, 1, 'blank', '填空 3 · =default / =delete', 'class Handle {
 public:
-    Handle() ________;
-    Handle(const Handle&) ________;
-    Handle& operator=(const Handle&) ________;
+    Handle() ________;                          // 空1：显式默认构造
+    Handle(const Handle&) ________;             // 空2：禁止拷贝构造
+    Handle& operator=(const Handle&) ________;  // 空3：禁止拷贝赋值
 };', '空1：显式默认构造 空2：禁止拷贝构造 空3：禁止拷贝赋值', 6, NULL, '["= default", "= delete", "= delete"]', '**三个空依次填：`= default`、`= delete`、`= delete`**。
 
 - 空 1：`Handle() = default;` —— 显式要求编译器生成默认构造。
@@ -1417,6 +1418,7 @@ public:
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (17, 2, 'choice', '选择 1 · move 之后源对象的状态', '```cpp
 std::vector<int> a{1, 2, 3};
 std::vector<int> b = std::move(a);
+// 关于 a，正确的说法是？
 ```', '关于 a，正确的说法是？', 1, '[{"label": "A", "text": "a 仍是 {1,2,3}，b 是它的拷贝"}, {"label": "B", "text": "a 资源被转移，处于\\"有效但未指定\\"状态（通常空）"}, {"label": "C", "text": "访问 a 是未定义行为"}, {"label": "D", "text": "编译错误"}]', '"B"', '**正确答案：B**。
 
 `std::move` 只是**类型转换**（转成右值引用），本身不搬任何东西；真正搬资源的是随后的移动构造。移动后源对象处于**「有效但未指定」**状态——对 `vector`/`string` 通常是空的，但你**不能假设**它一定是某个值。
@@ -1424,7 +1426,7 @@ std::vector<int> b = std::move(a);
 可以安全地「赋新值或析构」源对象，但别读它原来的内容。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (18, 2, 'choice', '选择 2 · 移动构造的触发（构造 vs 赋值）', '```cpp
 std::string s = "hello";
-std::string t = std::move(s);
+std::string t = std::move(s);   // 这行调用的是？
 ```', '这行调用的是？', 2, '[{"label": "A", "text": "拷贝构造"}, {"label": "B", "text": "移动构造"}, {"label": "C", "text": "拷贝赋值"}, {"label": "D", "text": "移动赋值"}]', '"B"', '**正确答案：B（移动构造）**。
 
 `std::string t = std::move(s);` 是**初始化**，不是赋值——`t` 是新对象，所以调用**移动构造函数**（形参 `std::string&&`）。
@@ -1433,23 +1435,24 @@ std::string t = std::move(s);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (19, 2, 'choice', '选择 3 · RVO / 拷贝省略', '```cpp
 Widget make_widget() {
     Widget w;
-    return w;
+    return w;              // 按值返回局部对象
 }
 Widget x = make_widget();
+// 从 w 到 x，调用几次拷贝/移动构造？
 ```', '按值返回局部对象 从 w 到 x，调用几次拷贝/移动构造？', 3, '[{"label": "A", "text": "至少一次拷贝"}, {"label": "B", "text": "至少一次移动"}, {"label": "C", "text": "零次（拷贝省略）"}, {"label": "D", "text": "取决于编译器"}]', '"C"', '**正确答案：C（零次，拷贝省略）**。
 
 `return w;` 返回局部对象，是 **NRVO（具名返回值优化）**的典型场景；再到 `Widget x = make_widget();` 的初始化，编译器可全程在目标内存里就地构造，理论上是零次拷贝/移动。
 
 C++17 起，**纯右值**（如 `return Widget{};`）的拷贝省略是**强制**的；NRVO 虽非强制，但 `-O2` 下现代编译器基本都做。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (20, 2, 'blank', '填空 1 · std::move', 'std::vector<int> a{1, 2, 3};
-std::vector<int> b = ________(a);', '转移 a 的资源，避免深拷贝', 4, NULL, '["std::move"]', '**应填：`std::move`**。
+std::vector<int> b = ________(a);   // 转移 a 的资源，避免深拷贝', '转移 a 的资源，避免深拷贝', 4, NULL, '["std::move"]', '**应填：`std::move`**。
 
 `std::vector<int> b = std::move(a);` 把 `a` 转成右值引用，触发 `vector` 的**移动构造**——直接接管 `a` 的堆缓冲，不逐元素深拷贝，复杂度 O(1)。
 
 移动后 `a` 通常变空，但属「有效但未指定」，别依赖其内容。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (21, 2, 'blank', '填空 2 · std::forward（完美转发）', 'template <typename T>
 void wrapper(T&& arg) {
-    target(________<T>(arg));
+    target(________<T>(arg));   // 保持 arg 的左值/右值类别
 }', '保持 arg 的左值/右值类别', 5, NULL, '["std::forward"]', '**应填：`std::forward`**。
 
 `wrapper(T&& arg)` 里 `arg` 是**左值**（具名变量都是左值），直接传会丢右值属性。`std::forward<T>(arg)` 用引用折叠还原实参类别：
@@ -1460,7 +1463,7 @@ void wrapper(T&& arg) {
 别写成 `std::move(arg)`——那会把左值也强行变成右值。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (22, 2, 'blank', '填空 3 · 移动构造的 noexcept', 'class Buffer {
 public:
-    Buffer(Buffer&& other) ________;
+    Buffer(Buffer&& other) ________;   // 声明不抛异常
 };', '声明不抛异常', 6, NULL, '["noexcept"]', '**应填：`noexcept`**。
 
 `Buffer(Buffer&& other) noexcept;` 声明移动构造**不抛异常**。
@@ -1473,7 +1476,7 @@ struct Node {
 auto a = std::make_shared<Node>();
 auto b = std::make_shared<Node>();
 a->next = b;
-b->next = a;
+b->next = a;   // a、b 互相引用，会发生什么？
 ```', 'a、b 互相引用，会发生什么？', 1, '[{"label": "A", "text": "离开作用域后自动释放"}, {"label": "B", "text": "a、b 永远无法释放，内存泄漏"}, {"label": "C", "text": "编译错误"}, {"label": "D", "text": "运行时崩溃"}]', '"B"', '**正确答案：B**。
 
 `a->next = b; b->next = a;` 让两个 `shared_ptr` 互相持有，引用计数各为 2。离开作用域时计数只降到 1（对方还持有），谁都到不了 0 ⇒ 两个对象**永不释放，内存泄漏**。
@@ -1481,15 +1484,16 @@ b->next = a;
 修复：把其中一个（或两个）改成 `weak_ptr`，打破环。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (24, 3, 'choice', '选择 2 · unique_ptr 独占所有权', '```cpp
 std::unique_ptr<int> p1 = std::make_unique<int>(42);
-std::unique_ptr<int> p2 = p1;
+std::unique_ptr<int> p2 = p1;   // 这行？
 ```', '这行？', 2, '[{"label": "A", "text": "编译通过，共享所有权"}, {"label": "B", "text": "编译错误，unique_ptr 不可拷贝"}, {"label": "C", "text": "编译通过，p2 拥有、p1 悬空"}, {"label": "D", "text": "运行时错误"}]', '"B"', '**正确答案：B（编译错误）**。
 
 `unique_ptr` 删除了拷贝构造/拷贝赋值——它表达**独占**所有权，不允许两个 `unique_ptr` 指向同一资源。
 
 要转移必须显式移动：`std::unique_ptr<int> p2 = std::move(p1);`（此后 `p1` 为空）。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (25, 3, 'choice', '选择 3 · make_shared 的异常安全', '```cpp
-auto p1 = std::shared_ptr<Widget>(new Widget);
-auto p2 = std::make_shared<Widget>();
+// 哪种写法更好？
+auto p1 = std::shared_ptr<Widget>(new Widget);  // A
+auto p2 = std::make_shared<Widget>();           // B
 ```', '哪种写法更好？ A B', 3, '[{"label": "A", "text": "A 更好"}, {"label": "B", "text": "B 更好，单次分配 + 异常安全"}, {"label": "C", "text": "两者完全等价"}, {"label": "D", "text": "A 有异常安全保证"}]', '"B"', '**正确答案：B（B 更好）**。
 
 `std::make_shared<Widget>()` 把「对象」和「控制块（引用计数）」**一次分配**在连续内存里；而 `shared_ptr<Widget>(new Widget)` 要分配两次。
@@ -1499,11 +1503,11 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, s
 
 `auto sp = std::make_shared<Widget>(args...);` 是创建 `shared_ptr` 的推荐写法——一次分配（对象 + 控制块）+ 异常安全。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (27, 3, 'blank', '填空 2 · weak_ptr 打破循环引用', 'struct Node {
-    std::________<Node> next;
+    std::________<Node> next;   // 用弱引用打破循环引用
 };', '用弱引用打破循环引用', 5, NULL, '["weak_ptr"]', '**应填：`weak_ptr`**。
 
 `std::weak_ptr<Node> next;` 是**非拥有**的弱引用，不增加引用计数。父子/前后节点这类「回指」用 `weak_ptr` 即可打破循环引用，避免内存泄漏。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (28, 3, 'blank', '填空 3 · weak_ptr.lock()', 'std::weak_ptr<int> wp = sp;
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (28, 3, 'blank', '填空 3 · weak_ptr.lock()', 'std::weak_ptr<int> wp = sp;   // sp 是 shared_ptr
 if (auto p = wp.________()) { /* 安全使用 p */ }', 'sp 是 shared_ptr', 6, NULL, '["lock"]', '**应填：`lock`**。
 
 `wp.lock()` 把 `weak_ptr` **临时提升**为 `shared_ptr`：对象仍存活则返回有效 `shared_ptr`（计数 +1），否则返回空。
@@ -1512,10 +1516,10 @@ if (auto p = wp.________()) { /* 安全使用 p */ }', 'sp 是 shared_ptr', 6, N
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (29, 4, 'choice', '选择 1 · 捕获引用悬垂', '```cpp
 std::function<int()> make_counter() {
     int count = 0;
-    return [&]() { return ++count; };
+    return [&]() { return ++count; };   // 返回捕获引用的 lambda
 }
 auto f = make_counter();
-f();
+f();   // 会发生什么？
 ```', '返回捕获引用的 lambda 会发生什么？', 1, '[{"label": "A", "text": "返回 1"}, {"label": "B", "text": "未定义行为（悬垂引用）"}, {"label": "C", "text": "编译错误"}, {"label": "D", "text": "返回 0"}]', '"B"', '**正确答案：B（未定义行为）**。
 
 `[&]` 捕获的是 `count` 的**引用**，而 `count` 是局部变量，`make_counter` 返回后即销毁 ⇒ 引用悬垂。之后再调用 `f()` 访问的是已失效内存，属**未定义行为**。
@@ -1523,6 +1527,7 @@ f();
 修复：按值捕获 + `mutable` —— `[count]() mutable { return ++count; }`。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (30, 4, 'choice', '选择 2 · 泛型 lambda（C++14）', '```cpp
 auto add = [](auto a, auto b) { return a + b; };
+// 这个 lambda 的实质是？
 ```', '这个 lambda 的实质是？', 2, '[{"label": "A", "text": "编译错误，参数不能是 auto"}, {"label": "B", "text": "模板化的函数对象（operator() 是模板）"}, {"label": "C", "text": "只能处理 int"}, {"label": "D", "text": "只能处理同类型"}]', '"B"', '**正确答案：B（模板化的函数对象）**。
 
 `[](auto a, auto b){...}` 是**泛型 lambda**（C++14）：编译器把它编译成一个函数对象，其 `operator()` 是**模板**——每个具体参数类型都会实例化出对应版本。
@@ -1532,7 +1537,7 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, s
 class A {
     int v = 0;
 public:
-    auto get() { return [=]() { return v; }; }
+    auto get() { return [=]() { return v; }; }   // [=] 捕获了什么？
 };
 ```', '[=] 捕获了什么？', 3, '[{"label": "A", "text": "拷贝了 v 的值"}, {"label": "B", "text": "捕获了 this 指针，经 this 访问 v"}, {"label": "C", "text": "编译错误"}, {"label": "D", "text": "未定义行为"}]', '"B"', '**正确答案：B（捕获 this 指针）**。
 
@@ -1540,18 +1545,18 @@ public:
 
 ⚠️ 因此若对象已析构，lambda 里的 `this` 就是悬垂的——异步/延迟回调要格外小心（C++20 可用 `[*this]` 按值拷贝整个对象）。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (32, 4, 'blank', '填空 1 · 按引用捕获', 'int threshold = 10;
-auto pred = [______](int x) { return x > threshold; };', '按引用捕获 threshold', 4, NULL, '["&"]', '**应填：`&`**。
+auto pred = [______](int x) { return x > threshold; };   // 按引用捕获 threshold', '按引用捕获 threshold', 4, NULL, '["&"]', '**应填：`&`**。
 
 `[&]` 按引用捕获所有用到的外部变量；`[&threshold]` 只按引用捕获 `threshold`。语义是「共享、可改」。
 
 注意：按引用捕获要求被捕获对象在 lambda **调用**时仍然存活。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (33, 4, 'blank', '填空 2 · mutable', 'int n = 0;
-auto inc = [n]() ________ { return ++n; };', '让 lambda 能修改按值捕获的 n', 5, NULL, '["mutable"]', '**应填：`mutable`**。
+auto inc = [n]() ________ { return ++n; };   // 让 lambda 能修改按值捕获的 n', '让 lambda 能修改按值捕获的 n', 5, NULL, '["mutable"]', '**应填：`mutable`**。
 
 按值捕获的变量在 lambda 内默认是 **const**，要修改必须加 `mutable`。它让 lambda 的 `operator()` 变成非 const 版本，可修改自己持有的副本。
 
 ⚠️ 改的是**副本**，不影响外部的 `n`。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (34, 4, 'blank', '填空 3 · 泛型 lambda 参数', 'auto twice = [](________ x) { return x * 2; };', '接受任意算术类型', 6, NULL, '["auto"]', '**应填：`auto`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (34, 4, 'blank', '填空 3 · 泛型 lambda 参数', 'auto twice = [](________ x) { return x * 2; };   // 接受任意算术类型', '接受任意算术类型', 6, NULL, '["auto"]', '**应填：`auto`**。
 
 `[](auto x){...}` 是泛型 lambda——参数 `auto` 让 `operator()` 成为模板，可接受任意类型（`int`/`double`…）。
 
@@ -1561,6 +1566,7 @@ template <typename T>
 T sum(T t) { return t; }
 template <typename T, typename... Args>
 T sum(T t, Args... args) { return t + sum(args...); }
+// sum(1, 2, 3, 4) 的结果是？
 ```', 'sum(1, 2, 3, 4) 的结果是？', 1, '[{"label": "A", "text": "10"}, {"label": "B", "text": "编译错误"}, {"label": "C", "text": "只算前两个"}, {"label": "D", "text": "未定义行为"}]', '"A"', '**正确答案：A（10）**。
 
 递归展开：`sum(1,2,3,4) = 1 + sum(2,3,4) = 1+2+sum(3,4) = 1+2+3+sum(4) = 1+2+3+4 = 10`。
@@ -1574,6 +1580,7 @@ auto get_value(T t) {
     else
         return t;
 }
+// 传入 int* 时，else 分支会被编译吗？
 ```', '传入 int* 时，else 分支会被编译吗？', 2, '[{"label": "A", "text": "会，运行时跳过"}, {"label": "B", "text": "不会，编译期丢弃"}, {"label": "C", "text": "编译错误"}, {"label": "D", "text": "取决于优化"}]', '"B"', '**正确答案：B（编译期丢弃）**。
 
 `if constexpr` 的条件在**编译期**求值，为假的分支**不会被实例化/编译**——它直接从生成的代码里消失。
@@ -1582,7 +1589,7 @@ auto get_value(T t) {
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (37, 5, 'choice', '选择 3 · typename 依赖类型', '```cpp
 template <typename T>
 void f(T t) {
-    typename T::value_type x;
+    typename T::value_type x;   // 为什么需要 typename？
 }
 ```', '为什么需要 typename？', 3, '[{"label": "A", "text": "告诉编译器 T::value_type 是类型"}, {"label": "B", "text": "可选，去掉也能编译"}, {"label": "C", "text": "表示运行时多态"}, {"label": "D", "text": "无中生有"}]', '"A"', '**正确答案：A**。
 
@@ -1591,7 +1598,7 @@ void f(T t) {
 `typename` 就是明确告诉编译器：`T::value_type` 是一个**类型名**。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (38, 5, 'blank', '填空 1 · 折叠表达式', 'template <typename... Args>
 auto sum(Args... args) {
-    return (args + ________);
+    return (args + ________);   // 用折叠表达式求和
 }', '用折叠表达式求和', 4, NULL, '["..."]', '**应填：`...`**。
 
 `return (args + ...);` 是 C++17 **折叠表达式**（一元右折叠），把包中所有 `args` 用 `+` 串起来。
@@ -1599,7 +1606,7 @@ auto sum(Args... args) {
 对 `+` 而言空包退化为 `0`；若想显式指定初始值可写 `(0 + ... + args)`。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (39, 5, 'blank', '填空 2 · typename', 'template <typename T>
 void print_first(const T& c) {
-    ________ T::value_type x = c.front();
+    ________ T::value_type x = c.front();   // 声明依赖类型变量
 }', '声明依赖类型变量', 5, NULL, '["typename"]', '**应填：`typename`**。
 
 `typename T::value_type x = c.front();` —— `T::value_type` 是依赖类型，必须用 `typename` 消歧，声明「这是个类型」。
@@ -1619,6 +1626,7 @@ std::optional<int> find_even(const std::vector<int>& v) {
     for (int x : v) if (x % 2 == 0) return x;
     return std::nullopt;
 }
+// find_even({1, 3, 5}) 返回什么？
 ```', 'find_even({1, 3, 5}) 返回什么？', 1, '[{"label": "A", "text": "0"}, {"label": "B", "text": "std::nullopt（无值）"}, {"label": "C", "text": "抛异常"}, {"label": "D", "text": "未定义行为"}]', '"B"', '**正确答案：B（`std::nullopt`）**。
 
 `{1,3,5}` 没有偶数，循环走完后执行 `return std::nullopt;`——`optional<int>` 的「无值」状态。
@@ -1634,17 +1642,17 @@ std::variant<int, double, std::string> v = 42;
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (43, 6, 'choice', '选择 3 · string_view 悬垂', '```cpp
 std::string_view get_view() {
     std::string s = "hello";
-    return s;
+    return s;   // 返回 s 的 string_view
 }
 auto v = get_view();
-std::cout << v;
+std::cout << v;   // 会发生什么？
 ```', '返回 s 的 string_view 会发生什么？', 3, '[{"label": "A", "text": "输出 hello"}, {"label": "B", "text": "悬垂引用，未定义行为"}, {"label": "C", "text": "输出空"}, {"label": "D", "text": "编译错误"}]', '"B"', '**正确答案：B（悬垂，未定义行为）**。
 
 `get_view` 里 `s` 是**局部** `std::string`，函数返回即销毁；返回的 `string_view` 仍指向那块已释放内存 ⇒ 悬垂。之后 `std::cout << v` 读的是失效内存，未定义行为。
 
 修复：返回 `std::string`（拥有），或返回指向**静态存储期**字面量的 view。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (44, 6, 'blank', '填空 1 · optional value_or', 'std::optional<int> o;
-int x = o.________(42);', '无值时给默认值', 4, NULL, '["value_or"]', '**应填：`value_or`**。
+int x = o.________(42);   // 无值时给默认值', '无值时给默认值', 4, NULL, '["value_or"]', '**应填：`value_or`**。
 
 `o.value_or(42)`：`o` 有值则返回其值，无值则返回传入的默认值 `42`。
 
@@ -1656,7 +1664,7 @@ std::________([](auto&& arg){ /* 访问 */ }, v);', '请补全代码：用 std::
 
 相比手动 `if (v.index() == 0)` 再 `get<0>`，`visit` 不会漏掉某个类型分支。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (46, 6, 'blank', '填空 3 · string_view 零拷贝切片', 'std::string_view view = "hello world";
-auto sub = view.________(0, 5);', '取前5个字符，不拷贝', 6, NULL, '["substr"]', '**应填：`substr`**。
+auto sub = view.________(0, 5);   // 取前5个字符，不拷贝', '取前5个字符，不拷贝', 6, NULL, '["substr"]', '**应填：`substr`**。
 
 `view.substr(0, 5)` 返回 `"hello"` 的 `string_view`——只调整「指针 + 长度」，**零拷贝**。
 
@@ -1664,19 +1672,23 @@ auto sub = view.________(0, 5);', '取前5个字符，不拷贝', 6, NULL, '["su
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (47, 7, 'choice', '选择 1 · 迭代器失效', '```cpp
 std::vector<int> v{1, 2, 3};
 for (auto it = v.begin(); it != v.end(); ++it) {
-    if (*it == 2) v.erase(it);
+    if (*it == 2) v.erase(it);   // 会发生什么？
 }
 ```', '会发生什么？', 1, '[{"label": "A", "text": "正常删除 2"}, {"label": "B", "text": "未定义行为（迭代器失效）"}, {"label": "C", "text": "编译错误"}, {"label": "D", "text": "删除所有元素"}]', '"B"', '**正确答案：B（未定义行为）**。
 
 `vector::erase` 会让被删位置**及其之后**的所有迭代器失效。`v.erase(it)` 后循环又执行 `++it`，操作的是已失效迭代器 ⇒ 未定义行为。
 
 修复用 erase-remove 惯用法：`v.erase(std::remove_if(...), v.end())`。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (48, 7, 'choice', '选择 2 · map vs unordered_map', '', '需要按键有序遍历的场景，选哪个？', 2, '[{"label": "A", "text": "unordered_map"}, {"label": "B", "text": "map"}, {"label": "C", "text": "vector"}, {"label": "D", "text": "list"}]', '"B"', '**正确答案：B（`map`）**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (48, 7, 'choice', '选择 2 · map vs unordered_map', '```cpp
+// 需要按键有序遍历的场景，选哪个？
+```', '需要按键有序遍历的场景，选哪个？', 2, '[{"label": "A", "text": "unordered_map"}, {"label": "B", "text": "map"}, {"label": "C", "text": "vector"}, {"label": "D", "text": "list"}]', '"B"', '**正确答案：B（`map`）**。
 
 `map` 底层红黑树，**按键有序**，遍历即升序——需要「按 key 排序遍历」时选它。
 
 `unordered_map` 是哈希表，均摊 O(1) 查找更快，但**遍历顺序无定义**（与插入顺序、哈希都无关）。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (49, 7, 'choice', '选择 3 · erase-remove 惯用法', '', '删除 vector 中所有值为 2 的元素，正确写法是？', 3, '[{"label": "A", "text": "循环里逐个 erase"}, {"label": "B", "text": "v.erase(std::remove(begin, end, 2), end)"}, {"label": "C", "text": "std::remove 直接删"}, {"label": "D", "text": "v.clear()"}]', '"B"', '**正确答案：B**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (49, 7, 'choice', '选择 3 · erase-remove 惯用法', '```cpp
+// 删除 vector 中所有值为 2 的元素，正确写法是？
+```', '删除 vector 中所有值为 2 的元素，正确写法是？', 3, '[{"label": "A", "text": "循环里逐个 erase"}, {"label": "B", "text": "v.erase(std::remove(begin, end, 2), end)"}, {"label": "C", "text": "std::remove 直接删"}, {"label": "D", "text": "v.clear()"}]', '"B"', '**正确答案：B**。
 
 `v.erase(std::remove(v.begin(), v.end(), 2), v.end())` —— `std::remove` 把**不为 2** 的元素前移、返回新逻辑末尾，`erase` 再删掉尾部的「残留」。
 
@@ -1686,12 +1698,12 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, s
         return std::hash<int>()(p.x) ^ (std::hash<int>()(p.y) << 1);
     }
 };
-std::________<Point, int, Hash> m;', '用自定义哈希的哈希表', 4, NULL, '["unordered_map"]', '**应填：`unordered_map`**。
+std::________<Point, int, Hash> m;   // 用自定义哈希的哈希表', '用自定义哈希的哈希表', 4, NULL, '["unordered_map"]', '**应填：`unordered_map`**。
 
 `std::unordered_map<Point, int, Hash> m;` —— 第三个模板参数是**自定义哈希**；`Point` 作 key 时标准库没有它的哈希，必须自己提供。
 
 注意 `unordered_map` 的 key 还需支持 `==` 比较（用于哈希冲突时的相等判断）。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (51, 7, 'blank', '填空 2 · 自定义比较器', 'std::________<int, std::greater<int>> s;', '降序集合', 5, NULL, '["set"]', '**应填：`set`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (51, 7, 'blank', '填空 2 · 自定义比较器', 'std::________<int, std::greater<int>> s;   // 降序集合', '降序集合', 5, NULL, '["set"]', '**应填：`set`**。
 
 `std::set<int, std::greater<int>>` —— 第二个模板参数是**比较器**，`greater<int>` 让元素按降序排列。
 
@@ -1704,24 +1716,28 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, s
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (53, 8, 'choice', '选择 1 · 流状态检查', '```cpp
 ifstream f("a.txt");
 if (f) { /* 打开成功 */ }
+// if (f) 检查的是什么？
 ```', 'if (f) 检查的是什么？', 1, '[{"label": "A", "text": "文件是否为空"}, {"label": "B", "text": "流状态是否 good（无 fail/bad）"}, {"label": "C", "text": "eof 是否到达"}, {"label": "D", "text": "文件是否存在"}]', '"B"', '**正确答案：B（流状态 good）**。
 
 `ifstream` 对象在布尔上下文里被转换为「流状态是否正常」——即 `!fail() && !bad()`。打开失败时流进入 fail 状态，`if (f)` 为假。
 
 注意：它检查的是**流状态**，不是「文件是否为空」「是否到 EOF」「文件是否存在」（后三者是流状态的**结果**，但 `if(f)` 本身只测状态）。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (54, 8, 'choice', '选择 2 · 二进制 vs 文本', '', '写 int 到文件，要避免平台差异和截断，应该用？', 2, '[{"label": "A", "text": "文本模式 <<"}, {"label": "B", "text": "二进制模式 write"}, {"label": "C", "text": "都行"}, {"label": "D", "text": "无中生有"}]', '"B"', '**正确答案：B（二进制模式 write）**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (54, 8, 'choice', '选择 2 · 二进制 vs 文本', '```cpp
+// 写 int 到文件，要避免平台差异和截断，应该用？
+```', '写 int 到文件，要避免平台差异和截断，应该用？', 2, '[{"label": "A", "text": "文本模式 <<"}, {"label": "B", "text": "二进制模式 write"}, {"label": "C", "text": "都行"}, {"label": "D", "text": "无中生有"}]', '"B"', '**正确答案：B（二进制模式 write）**。
 
 文本模式的 `<<` 会做格式化，且平台相关的换行翻译（Windows 把 `\\n` 变 `\\r\\n`）会让字节数与预期不符，读回时错位。
 
 要「按内存原样」存取 `int`，用 `std::ios::binary` + `write`/`read` 原始字节。跨平台严谨做法还要固定字节序（大小端），这里是同一平台读写。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (55, 8, 'choice', '选择 3 · 读取循环惯用法', '```cpp
 while (f >> x) { /* ... */ }
+// 这个循环什么时候结束？
 ```', '这个循环什么时候结束？', 3, '[{"label": "A", "text": "读到 eof 或格式失败"}, {"label": "B", "text": "读到换行"}, {"label": "C", "text": "死循环"}, {"label": "D", "text": "读满 buffer"}]', '"A"', '**正确答案：A（读到 eof 或格式失败）**。
 
 `while (f >> x) { ... }` 里 `f >> x` 返回流引用，其布尔值反映**本次提取是否成功**：到达 EOF 或遇到不符合目标类型的字符时，流进入 fail 状态 ⇒ 循环结束。
 
 这是 C++ 读取循环的标准写法——把「读取」和「判断成败」合成一个表达式，避免读完才判 EOF 导致多读一次。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (56, 8, 'blank', '填空 1 · 追加模式', 'std::ofstream f("a.txt", std::ios::________);', '追加模式', 4, NULL, '["app"]', '**应填：`app`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (56, 8, 'blank', '填空 1 · 追加模式', 'std::ofstream f("a.txt", std::ios::________);   // 追加模式', '追加模式', 4, NULL, '["app"]', '**应填：`app`**。
 
 `std::ofstream f("a.txt", std::ios::app);` —— `app`（append）模式在文件末尾追加，**不截断**原内容。默认的 `out` 模式会清空文件。
 
@@ -1733,110 +1749,129 @@ while (std::________(f, line)) { /* 逐行读 */ }', '请补全代码：用 std:
 `while (std::getline(f, line)) { ... }` 每次读一整行（不含行尾换行）到 `line`，读到 EOF 时返回流进入 fail 状态、循环结束。
 
 `std::getline` 是「按行读取」的标准方式，比 `>>` 更适合含空格的整行文本。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (58, 8, 'blank', '填空 3 · filesystem 命名空间', 'namespace fs = std::________;', 'C++17 文件系统', 6, NULL, '["filesystem"]', '**应填：`filesystem`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (58, 8, 'blank', '填空 3 · filesystem 命名空间', 'namespace fs = std::________;   // C++17 文件系统', 'C++17 文件系统', 6, NULL, '["filesystem"]', '**应填：`filesystem`**。
 
 `namespace fs = std::filesystem;` —— C++17 引入的文件系统库，提供路径拼接、遍历目录、判断存在、创建/删除目录、文件大小等能力。
 
 有时还需链接 `-lstdc++fs`（老编译器），较新的 GCC/Clang 已并入标准库。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (59, 9, 'choice', '选择 1 · 数据竞争', '```cpp
 int counter = 0;
+// 多线程同时 counter++，会发生什么？
 ```', '多线程同时 counter++，会发生什么？', 1, '[{"label": "A", "text": "结果一定正确"}, {"label": "B", "text": "数据竞争，结果未定义"}, {"label": "C", "text": "编译错误"}, {"label": "D", "text": "线程安全"}]', '"B"', '**正确答案：B（数据竞争，结果未定义）**。
 
 `counter++` 不是原子操作——它被拆成「读 → 加 1 → 写回」三步。两个线程交错执行时可能互相覆盖，最终值**小于**期望，甚至行为未定义。
 
 修复：用 `std::atomic<int>` 或 `std::mutex` 保护。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (60, 9, 'choice', '选择 2 · 锁顺序死锁', '', '线程1: lock(a); lock(b); 线程2: lock(b); lock(a); 会发生什么？', 2, '[{"label": "A", "text": "正常运行"}, {"label": "B", "text": "可能死锁（锁顺序不一致）"}, {"label": "C", "text": "一定死锁"}, {"label": "D", "text": "编译错误"}]', '"B"', '**正确答案：B（可能死锁）**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (60, 9, 'choice', '选择 2 · 锁顺序死锁', '```cpp
+// 线程1: lock(a); lock(b);
+// 线程2: lock(b); lock(a);
+// 会发生什么？
+```', '线程1: lock(a); lock(b); 线程2: lock(b); lock(a); 会发生什么？', 2, '[{"label": "A", "text": "正常运行"}, {"label": "B", "text": "可能死锁（锁顺序不一致）"}, {"label": "C", "text": "一定死锁"}, {"label": "D", "text": "编译错误"}]', '"B"', '**正确答案：B（可能死锁）**。
 
 线程 1 拿 `a` 等 `b`，线程 2 拿 `b` 等 `a` —— 若两边刚好各持一把再申请另一把，就形成**循环等待**，互相卡死。
 
 修复：**所有线程按同一顺序加锁**（如都用 `a`→`b`），或用 `std::lock` 一次锁住多把。这是死锁四条件里的「循环等待」，打破其一即可。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (61, 9, 'choice', '选择 3 · atomic vs mutex', '', '单变量的简单自增，用哪个最轻量？', 3, '[{"label": "A", "text": "mutex"}, {"label": "B", "text": "std::atomic"}, {"label": "C", "text": "无锁裸变量"}, {"label": "D", "text": "都行"}]', '"B"', '**正确答案：B（`std::atomic`）**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (61, 9, 'choice', '选择 3 · atomic vs mutex', '```cpp
+// 单变量的简单自增，用哪个最轻量？
+```', '单变量的简单自增，用哪个最轻量？', 3, '[{"label": "A", "text": "mutex"}, {"label": "B", "text": "std::atomic"}, {"label": "C", "text": "无锁裸变量"}, {"label": "D", "text": "都行"}]', '"B"', '**正确答案：B（`std::atomic`）**。
 
 对单个变量的简单自增，`std::atomic<int>` 用硬件原子指令实现，无需加锁、无上下文切换开销——比 `mutex` 轻量得多。
 
 裸 `int` 会数据竞争。选型原则：单变量原子操作用 `atomic`；要保护「多步不变量」再用 `mutex`。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (62, 9, 'blank', '填空 1 · 锁守卫', 'std::mutex m;
 {
-    std::________<std::mutex> lock(m);
+    std::________<std::mutex> lock(m);   // RAII 自动加解锁
 }', 'RAII 自动加解锁', 4, NULL, '["lock_guard"]', '**应填：`lock_guard`**。
 
 `std::lock_guard<std::mutex> lock(m);` 构造时加锁、离开作用域时自动解锁（RAII）。即使临界区里抛异常也能正确解锁。
 
 需要手动 `unlock`/`lock` 或用条件变量时，改用 `std::unique_lock`。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (63, 9, 'blank', '填空 2 · condition_variable 谓词等待', 'std::unique_lock<std::mutex> lock(m);
-cv.________(lock, []{ return ready; });', '带谓词，防虚假唤醒', 5, NULL, '["wait"]', '**应填：`wait`**。
+cv.________(lock, []{ return ready; });   // 带谓词，防虚假唤醒', '带谓词，防虚假唤醒', 5, NULL, '["wait"]', '**应填：`wait`**。
 
 `cv.wait(lock, 谓词)` 先检查谓词，为假才阻塞；被唤醒后**再次检查谓词**。这种「带谓词的等待」能防止**虚假唤醒**导致的错误。
 
 醒来时保证谓词为真、且持有锁。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (64, 9, 'blank', '填空 3 · 原子计数器', 'std::________<int> counter{0};', '原子计数器', 6, NULL, '["atomic"]', '**应填：`atomic`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (64, 9, 'blank', '填空 3 · 原子计数器', 'std::________<int> counter{0};   // 原子计数器', '原子计数器', 6, NULL, '["atomic"]', '**应填：`atomic`**。
 
 `std::atomic<int> counter{0};` 的读、写、自增都是原子操作，多线程下无需加锁。
 
 相比 `mutex`，`atomic` 更轻（无系统调用），适合计数器、标志位等单变量场景。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (65, 10, 'choice', '选择 1 · TCP vs UDP', '', '需要可靠有序传输，选哪个？', 1, '[{"label": "A", "text": "UDP"}, {"label": "B", "text": "TCP"}, {"label": "C", "text": "都行"}, {"label": "D", "text": "无中生有"}]', '"B"', '**正确答案：B（TCP）**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (65, 10, 'choice', '选择 1 · TCP vs UDP', '```cpp
+// 需要可靠有序传输，选哪个？
+```', '需要可靠有序传输，选哪个？', 1, '[{"label": "A", "text": "UDP"}, {"label": "B", "text": "TCP"}, {"label": "C", "text": "都行"}, {"label": "D", "text": "无中生有"}]', '"B"', '**正确答案：B（TCP）**。
 
 TCP 提供**可靠、有序、面向连接**的字节流：丢包重传、乱序重排、拥塞控制都由协议栈保证。
 
 UDP 是「发出去就不管」的数据报，快但不可靠、不保证顺序。要「可靠有序」选 TCP；要低延迟、可容忍丢包（如音视频、游戏帧同步）才考虑 UDP。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (66, 10, 'choice', '选择 2 · TCP 粘包', '', '期望接收 100 字节，一次 recv 可能返回？', 2, '[{"label": "A", "text": "一定 100 字节"}, {"label": "B", "text": "任意 1-100 字节（TCP 是字节流）"}, {"label": "C", "text": "一定 0 字节"}, {"label": "D", "text": "超过 100 字节"}]', '"B"', '**正确答案：B（任意 1–100 字节）**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (66, 10, 'choice', '选择 2 · TCP 粘包', '```cpp
+// 期望接收 100 字节，一次 recv 可能返回？
+```', '期望接收 100 字节，一次 recv 可能返回？', 2, '[{"label": "A", "text": "一定 100 字节"}, {"label": "B", "text": "任意 1-100 字节（TCP 是字节流）"}, {"label": "C", "text": "一定 0 字节"}, {"label": "D", "text": "超过 100 字节"}]', '"B"', '**正确答案：B（任意 1–100 字节）**。
 
 TCP 是**字节流**，没有消息边界。`recv(fd, buf, 100)` 可能只返回 1 字节、也可能返回 100 字节——取决于内核缓冲和对端发送节奏。
 
 这就是「**粘包/拆包**」的根源。应用层必须自己定协议（如长度前缀）来切分消息，不能假设「一次 recv = 一条消息」。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (67, 10, 'choice', '选择 3 · 字节序', '', '网络传输多字节整数，要解决什么问题？', 3, '[{"label": "A", "text": "大小端字节序转换"}, {"label": "B", "text": "字符编码"}, {"label": "C", "text": "数据压缩"}, {"label": "D", "text": "数据加密"}]', '"A"', '**正确答案：A（大小端字节序转换）**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (67, 10, 'choice', '选择 3 · 字节序', '```cpp
+// 网络传输多字节整数，要解决什么问题？
+```', '网络传输多字节整数，要解决什么问题？', 3, '[{"label": "A", "text": "大小端字节序转换"}, {"label": "B", "text": "字符编码"}, {"label": "C", "text": "数据压缩"}, {"label": "D", "text": "数据加密"}]', '"A"', '**正确答案：A（大小端字节序转换）**。
 
 不同 CPU 存储多字节整数的字节序不同（x86 是小端，网络协议约定是**大端**）。直接发 `int` 的原始字节，对端可能解析出错误的数。
 
 用 `htons`/`htonl`（主机→网络）与 `ntohs`/`ntohl`（网络→主机）做转换，保证跨平台一致。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (68, 10, 'blank', '填空 1 · 创建 socket', 'int fd = ________(AF_INET, SOCK_STREAM, 0);', 'TCP socket', 4, NULL, '["socket"]', '**应填：`socket`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (68, 10, 'blank', '填空 1 · 创建 socket', 'int fd = ________(AF_INET, SOCK_STREAM, 0);   // TCP socket', 'TCP socket', 4, NULL, '["socket"]', '**应填：`socket`**。
 
 `int fd = socket(AF_INET, SOCK_STREAM, 0);` —— `AF_INET` 是 IPv4，`SOCK_STREAM` 是 TCP（面向字节流），返回文件描述符 `fd`。
 
 失败返回 -1。UDP 用 `SOCK_DGRAM`。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (69, 10, 'blank', '填空 2 · 字节序转换', 'uint16_t p = ________(port);', '主机序转网络序（端口）', 5, NULL, '["htons"]', '**应填：`htons`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (69, 10, 'blank', '填空 2 · 字节序转换', 'uint16_t p = ________(port);   // 主机序转网络序（端口）', '主机序转网络序（端口）', 5, NULL, '["htons"]', '**应填：`htons`**。
 
 `uint16_t p = htons(port);` —— 「host to network short」：把 16 位端口从主机字节序转成网络字节序（大端）。
 
 `htons` 用于 16 位（端口），`htonl` 用于 32 位（IPv4 地址）。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (70, 10, 'blank', '填空 3 · 开始监听', '________(fd, 128);', '开始监听', 6, NULL, '["listen"]', '**应填：`listen`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (70, 10, 'blank', '填空 3 · 开始监听', '________(fd, 128);   // 开始监听', '开始监听', 6, NULL, '["listen"]', '**应填：`listen`**。
 
 `listen(fd, 128);` —— 把 socket 转为被动监听状态，第二个参数是**连接队列（backlog）**上限。
 
 之后用 `accept` 取出已建立的连接。顺序：`socket → bind → listen → accept`。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (71, 11, 'choice', '选择 1 · SQL 注入', '', '拼接 SQL 字符串构造查询，主要风险是？', 1, '[{"label": "A", "text": "性能差"}, {"label": "B", "text": "SQL 注入"}, {"label": "C", "text": "语法错误"}, {"label": "D", "text": "连接泄漏"}]', '"B"', '**正确答案：B（SQL 注入）**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (71, 11, 'choice', '选择 1 · SQL 注入', '```cpp
+// 拼接 SQL 字符串构造查询，主要风险是？
+```', '拼接 SQL 字符串构造查询，主要风险是？', 1, '[{"label": "A", "text": "性能差"}, {"label": "B", "text": "SQL 注入"}, {"label": "C", "text": "语法错误"}, {"label": "D", "text": "连接泄漏"}]', '"B"', '**正确答案：B（SQL 注入）**。
 
 把用户输入直接拼进 SQL 字符串，攻击者可构造 `'' OR ''1''=''1`、`''; DROP TABLE ...` 之类输入，篡改查询语义、窃取或破坏数据。
 
 防御：**参数化查询**（预处理语句，`?` 占位符）——让数据与 SQL 结构分离，输入永远不被当代码执行。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (72, 11, 'choice', '选择 2 · 事务', '', '一组操作要么全成功要么全回滚，用什么保证？', 2, '[{"label": "A", "text": "事务"}, {"label": "B", "text": "索引"}, {"label": "C", "text": "连接池"}, {"label": "D", "text": "缓存"}]', '"A"', '**正确答案：A（事务）**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (72, 11, 'choice', '选择 2 · 事务', '```cpp
+// 一组操作要么全成功要么全回滚，用什么保证？
+```', '一组操作要么全成功要么全回滚，用什么保证？', 2, '[{"label": "A", "text": "事务"}, {"label": "B", "text": "索引"}, {"label": "C", "text": "连接池"}, {"label": "D", "text": "缓存"}]', '"A"', '**正确答案：A（事务）**。
 
 事务提供 **ACID**：一组操作要么全部成功（commit）、要么全部回滚（rollback），保证原子性。
 
 典型场景：转账——扣款与加款必须同生共死；只用普通语句写，中途失败会留下「半边账」。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (73, 11, 'choice', '选择 3 · 连接池', '', '连接池主要解决什么问题？', 3, '[{"label": "A", "text": "频繁建立/销毁连接的开销"}, {"label": "B", "text": "SQL 优化"}, {"label": "C", "text": "数据安全"}, {"label": "D", "text": "索引维护"}]', '"A"', '**正确答案：A（频繁建立/销毁连接的开销）**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (73, 11, 'choice', '选择 3 · 连接池', '```cpp
+// 连接池主要解决什么问题？
+```', '连接池主要解决什么问题？', 3, '[{"label": "A", "text": "频繁建立/销毁连接的开销"}, {"label": "B", "text": "SQL 优化"}, {"label": "C", "text": "数据安全"}, {"label": "D", "text": "索引维护"}]', '"A"', '**正确答案：A（频繁建立/销毁连接的开销）**。
 
 建立数据库连接要 TCP 握手 + 认证，开销大且耗时。连接池预先建好一批连接**复用**，用完归还而非关闭，显著提升吞吐、降低延迟。
 
 它同时能限制并发连接数，起到保护数据库的作用。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (74, 11, 'blank', '填空 1 · 预处理占位符', 'std::string sql = "SELECT * FROM t WHERE id = ________";', '用预处理语句防注入，占位符写在这里', 4, NULL, '["?"]', '**应填：`?`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (74, 11, 'blank', '填空 1 · 预处理占位符', 'std::string sql = "SELECT * FROM t WHERE id = ________";   // 用预处理语句防注入，占位符写在这里', '用预处理语句防注入，占位符写在这里', 4, NULL, '["?"]', '**应填：`?`**。
 
 `?` 是预处理语句的**位置占位符**。`prepare("... WHERE id = ?")` 只编译一次 SQL 结构，再用 `bind`/`execute` 传入参数——数据不参与 SQL 解析，从根本上杜绝注入。
 
 （不同驱动也有 `:name` 命名占位符，但 `?` 最通用。）', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (75, 11, 'blank', '填空 2 · 提交事务', 'conn.________();', '提交事务', 5, NULL, '["commit"]', '**应填：`commit`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (75, 11, 'blank', '填空 2 · 提交事务', 'conn.________();   // 提交事务', '提交事务', 5, NULL, '["commit"]', '**应填：`commit`**。
 
 `conn.commit();` 提交当前事务——把本次事务内的所有改动**永久写入**数据库。
 
 提交前若出错则用 `rollback` 撤销，二者是事务的两种终局。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (76, 11, 'blank', '填空 3 · 回滚事务', 'conn.________();', '回滚事务', 6, NULL, '["rollback"]', '**应填：`rollback`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (76, 11, 'blank', '填空 3 · 回滚事务', 'conn.________();   // 回滚事务', '回滚事务', 6, NULL, '["rollback"]', '**应填：`rollback`**。
 
 `conn.rollback();` 回滚当前事务——把本次事务内的所有改动**全部撤销**，回到事务开始前的状态。
 
 典型用法：捕获异常后 rollback，保证不留下「半完成」的脏数据。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (77, 12, 'choice', '选择 1 · constexpr 函数编译期求值', '```cpp
 constexpr int square(int x) { return x * x; }
-int arr[square(3)];
+int arr[square(3)];   // 数组大小是？
 ```', '数组大小是？', 1, '[{"label": "A", "text": "9"}, {"label": "B", "text": "编译错误"}, {"label": "C", "text": "运行时求值"}, {"label": "D", "text": "未定义"}]', '"A"', '**正确答案：A（9）**。
 
 `constexpr int square(int)` 在**常量表达式上下文**里编译期求值，所以 `square(3)` 就是编译期常量 `9`，可直接当数组大小。
@@ -1845,28 +1880,30 @@ int arr[square(3)];
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (78, 12, 'choice', '选择 2 · consteval 强制编译期', '```cpp
 consteval int f(int x) { return x; }
 int y = 5;
-int z = f(y);
+int z = f(y);   // 这行？
 ```', '这行？', 2, '[{"label": "A", "text": "编译错误（consteval 必须编译期调用）"}, {"label": "B", "text": "正常，运行时调用"}, {"label": "C", "text": "未定义"}, {"label": "D", "text": "返回 5"}]', '"A"', '**正确答案：A（编译错误）**。
 
 `consteval`（C++20）声明的是「**立即函数**」：**每一次调用都必须在编译期求值**。`f(y)` 里的 `y` 是运行时变量，无法编译期取值 ⇒ 编译错误。
 
 对比 `constexpr`：后者「能编译期就编译期，否则运行期」；`consteval` 强制编译期，不满足即报错。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (79, 12, 'choice', '选择 3 · constinit', '', 'constinit 的作用是？', 3, '[{"label": "A", "text": "保证编译期初始化，避免静态初始化顺序问题"}, {"label": "B", "text": "让变量不可变"}, {"label": "C", "text": "让变量线程安全"}, {"label": "D", "text": "让变量堆分配"}]', '"A"', '**正确答案：A**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (79, 12, 'choice', '选择 3 · constinit', '```cpp
+// constinit 的作用是？
+```', 'constinit 的作用是？', 3, '[{"label": "A", "text": "保证编译期初始化，避免静态初始化顺序问题"}, {"label": "B", "text": "让变量不可变"}, {"label": "C", "text": "让变量线程安全"}, {"label": "D", "text": "让变量堆分配"}]', '"A"', '**正确答案：A**。
 
 `constinit`（C++20）要求变量**在编译期完成初始化**，否则编译报错。它用来消除「**静态初始化顺序问题**」（SIOF）：不同编译单元的全局对象初始化顺序不确定，constinit 能让关键全局量提前、确定地初始化好。
 
 注意：`constinit` 只约束**初始化时机**，不表示变量不可变（那是 `const`）。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (80, 12, 'blank', '填空 1 · constexpr', '________ int square(int x) { return x * x; }', '编译期可求值的函数', 4, NULL, '["constexpr"]', '**应填：`constexpr`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (80, 12, 'blank', '填空 1 · constexpr', '________ int square(int x) { return x * x; }   // 编译期可求值的函数', '编译期可求值的函数', 4, NULL, '["constexpr"]', '**应填：`constexpr`**。
 
 `constexpr int square(int x) { return x * x; }` 声明函数**可用于常量表达式**——既能在编译期求值，也能运行期调用。
 
 它是 C++11 起的核心编译期计算工具。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (81, 12, 'blank', '填空 2 · consteval', '________ int f(int x) { return x * 2; }', '只能在编译期调用', 5, NULL, '["consteval"]', '**应填：`consteval`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (81, 12, 'blank', '填空 2 · consteval', '________ int f(int x) { return x * 2; }   // 只能在编译期调用', '只能在编译期调用', 5, NULL, '["consteval"]', '**应填：`consteval`**。
 
 `consteval int f(int x) { return x * 2; }`（C++20）声明**立即函数**：每次调用都必须在编译期求值，否则编译错误。
 
 适合「只能编译期用」的场景（如生成编译期常量、模板参数）。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (82, 12, 'blank', '填空 3 · constinit', '________ int g = 42;', '保证编译期初始化', 6, NULL, '["constinit"]', '**应填：`constinit`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (82, 12, 'blank', '填空 3 · constinit', '________ int g = 42;   // 保证编译期初始化', '保证编译期初始化', 6, NULL, '["constinit"]', '**应填：`constinit`**。
 
 `constinit int g = 42;`（C++20）保证 `g` 在**编译期完成初始化**，从而避免运行时初始化顺序问题；但 `g` 仍可变。
 
@@ -1878,7 +1915,7 @@ concept Numeric = std::is_arithmetic_v<T>;
 template <Numeric T>
 T add(T a, T b) { return a + b; }
 
-add("a", "b");
+add("a", "b");   // 传入字符串会？
 ```', '传入字符串会？', 1, '[{"label": "A", "text": "编译错误（不满足 Numeric 约束）"}, {"label": "B", "text": "运行时错误"}, {"label": "C", "text": "正常返回 \\"ab\\""}, {"label": "D", "text": "未定义"}]', '"A"', '**正确答案：A（编译错误）**。
 
 `add` 被 concept `Numeric`（要求 `std::is_arithmetic_v<T>`）约束，而 `const char*` 不是算术类型 ⇒ 不满足约束 ⇒ `add("a","b")` 无法实例化，**编译错误**。
@@ -1886,24 +1923,27 @@ add("a", "b");
 这正是 concept 的价值：把「类型不合适」的错误提前、并给出可读提示，而不是长篇模板报错。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (84, 13, 'choice', '选择 2 · ranges 惰性求值', '```cpp
 auto r = v | std::views::filter(f) | std::views::transform(g);
+// 这行会立即执行 filter/transform 吗？
 ```', '这行会立即执行 filter/transform 吗？', 2, '[{"label": "A", "text": "会立即执行"}, {"label": "B", "text": "不会，惰性求值，遍历时才计算"}, {"label": "C", "text": "取决于编译器"}, {"label": "D", "text": "编译错误"}]', '"B"', '**正确答案：B（惰性求值）**。
 
 `v | views::filter(f) | views::transform(g)` 只是**构建视图（view）**，不立即计算；只有真正**遍历**它（如构造 `vector`、`for` 循环）时，元素才逐个经过 filter/transform 计算。
 
 好处：零中间容器、可组合、可在 `take` 等短路操作下提前结束。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (85, 13, 'choice', '选择 3 · 协程三关键字', '', 'co_yield 的作用是？', 3, '[{"label": "A", "text": "挂起并产出一个值，之后可恢复"}, {"label": "B", "text": "终止协程"}, {"label": "C", "text": "等待异步操作"}, {"label": "D", "text": "无中生有"}]', '"A"', '**正确答案：A**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (85, 13, 'choice', '选择 3 · 协程三关键字', '```cpp
+// co_yield 的作用是？
+```', 'co_yield 的作用是？', 3, '[{"label": "A", "text": "挂起并产出一个值，之后可恢复"}, {"label": "B", "text": "终止协程"}, {"label": "C", "text": "等待异步操作"}, {"label": "D", "text": "无中生有"}]', '"A"', '**正确答案：A**。
 
 `co_yield` 在协程里**产出一个值并挂起**，把控制权交回调用方；下次恢复时从挂起点继续。它是「生成器（generator）」的核心——可按需惰性产出序列，而不是一次算完。
 
 同族关键字：`co_await`（等待异步操作）、`co_return`（结束协程并返回）。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (86, 13, 'blank', '填空 1 · concept 定义', 'template <typename T>
-________ Numeric = std::is_arithmetic_v<T>;', '定义一个约束', 4, NULL, '["concept"]', '**应填：`concept`**。
+________ Numeric = std::is_arithmetic_v<T>;   // 定义一个约束', '定义一个约束', 4, NULL, '["concept"]', '**应填：`concept`**。
 
 `template <typename T> concept Numeric = std::is_arithmetic_v<T>;` 定义一个命名约束，之后可写 `template <Numeric T>` 或 `requires Numeric<T>` 来使用。
 
 concept 让模板约束可复用、可组合、可读，替代了以往 `enable_if` 那套晦涩写法。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (87, 13, 'blank', '填空 2 · requires 子句', 'template <typename T>
-________ std::integral<T>
+________ std::integral<T>   // 约束 T 是整数类型
 void f(T t);', '约束 T 是整数类型', 5, NULL, '["requires"]', '**应填：`requires`**。
 
 `template <typename T> requires std::integral<T> void f(T t);` —— `requires` 子句给模板加约束，只有满足 `std::integral<T>` 的类型才能实例化 `f`。
@@ -1911,40 +1951,47 @@ void f(T t);', '约束 T 是整数类型', 5, NULL, '["requires"]', '**应填：
 也可写成简写形式 `template <std::integral T> void f(T t);`，语义等价。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (88, 13, 'blank', '填空 3 · co_yield', 'generator<int> gen() {
     for (int i = 0; i < 3; ++i)
-        ________ i;
+        ________ i;   // 协程生成器里产出值的关键字
 }', '协程生成器里产出值的关键字', 6, NULL, '["co_yield"]', '**应填：`co_yield`**。
 
 协程生成器里用 `co_yield value;` **产出一个值并挂起**，调用方取到值后可再次恢复执行。
 
 它是三种协程关键字之一（`co_await` / `co_yield` / `co_return`），常用于惰性序列、异步流。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (89, 14, 'choice', '选择 1 · module vs include', '', 'module 相比 #include 的优势是？', 1, '[{"label": "A", "text": "编译隔离，避免宏污染和重复解析"}, {"label": "B", "text": "运行更快"}, {"label": "C", "text": "无需编译"}, {"label": "D", "text": "无中生有"}]', '"A"', '**正确答案：A（编译隔离）**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (89, 14, 'choice', '选择 1 · module vs include', '```cpp
+// module 相比 #include 的优势是？
+```', 'module 相比 #include 的优势是？', 1, '[{"label": "A", "text": "编译隔离，避免宏污染和重复解析"}, {"label": "B", "text": "运行更快"}, {"label": "C", "text": "无需编译"}, {"label": "D", "text": "无中生有"}]', '"A"', '**正确答案：A（编译隔离）**。
 
 `module`（C++20）把接口与实现分离、只在导入处**编译一次**并缓存，带来：避免头文件被反复解析、**宏不泄漏**（模块不传播宏）、符号可见性明确。
 
 它主要解决的是**编译期问题**（编译速度、隔离性），而非运行速度。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (90, 14, 'choice', '选择 2 · ODR 单一定义规则', '', '同一个非 inline 函数在多个编译单元被定义，会导致？', 2, '[{"label": "A", "text": "链接错误（多重定义）"}, {"label": "B", "text": "自动去重"}, {"label": "C", "text": "运行时错误"}, {"label": "D", "text": "无影响"}]', '"A"', '**正确答案：A（链接错误：多重定义）**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (90, 14, 'choice', '选择 2 · ODR 单一定义规则', '```cpp
+// 同一个非 inline 函数在多个编译单元被定义，会导致？
+```', '同一个非 inline 函数在多个编译单元被定义，会导致？', 2, '[{"label": "A", "text": "链接错误（多重定义）"}, {"label": "B", "text": "自动去重"}, {"label": "C", "text": "运行时错误"}, {"label": "D", "text": "无影响"}]', '"A"', '**正确答案：A（链接错误：多重定义）**。
 
 C++ 的 **ODR（单一定义规则）** 要求：同一非 `inline` 函数在**整个程序**中只能有一个定义。若多个编译单元各自定义了同名非 inline 函数，链接器会报「multiple definition」。
 
 修复：把定义放到**一个** `.cpp`，其余用声明；或加 `inline`；或（C++17）用 `inline` 变量 / 匿名命名空间限制作用域。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (91, 14, 'choice', '选择 3 · 头文件保护', '', '防止头文件重复包含的惯用法？', 3, '[{"label": "A", "text": "include guard 或 #pragma once"}, {"label": "B", "text": "extern"}, {"label": "C", "text": "static"}, {"label": "D", "text": "inline"}]', '"A"', '**正确答案：A（include guard 或 #pragma once）**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (91, 14, 'choice', '选择 3 · 头文件保护', '```cpp
+// 防止头文件重复包含的惯用法？
+```', '防止头文件重复包含的惯用法？', 3, '[{"label": "A", "text": "include guard 或 #pragma once"}, {"label": "B", "text": "extern"}, {"label": "C", "text": "static"}, {"label": "D", "text": "inline"}]', '"A"', '**正确答案：A（include guard 或 #pragma once）**。
 
 经典做法是 **include guard**：`#ifndef FOO_H / #define FOO_H / ... / #endif`；现代编译器普遍支持更简洁的 **`#pragma once`**。
 
 两者都防止**同一编译单元内**头文件被重复展开导致的重定义错误。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (92, 14, 'blank', '填空 1 · 导出模块', '________ module math;', '声明模块接口', 4, NULL, '["export"]', '**应填：`export`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (92, 14, 'blank', '填空 1 · 导出模块', '________ module math;   // 声明模块接口', '声明模块接口', 4, NULL, '["export"]', '**应填：`export`**。
 
 `export module math;` 声明模块 `math` 的**接口**；想导出的实体写 `export int add(int,int);`，未 `export` 的默认只在模块内部可见。
 
 这是 C++20 模块的关键字（注意与旧标准里被废弃的 `export` 模板用法无关）。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (93, 14, 'blank', '填空 2 · 导入模块', '________ math;', '导入模块', 5, NULL, '["import"]', '**应填：`import`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (93, 14, 'blank', '填空 2 · 导入模块', '________ math;   // 导入模块', '导入模块', 5, NULL, '["import"]', '**应填：`import`**。
 
 `import math;` 导入模块，即可使用其导出实体。相比 `#include`，导入不展开源码、不传播宏、编译更快。
 
 `import` 也是「消费」模块的唯一方式——模块之间同样用 `import` 组合。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (94, 14, 'blank', '填空 3 · include guard 结尾', '#ifndef FOO_H
 #define FOO_H
-________', '... 结尾', 6, NULL, '["#endif"]', '**应填：`#endif`**。
+// ...
+________   // 结尾', '... 结尾', 6, NULL, '["#endif"]', '**应填：`#endif`**。
 
 include guard 以 `#endif` 收尾：
 
