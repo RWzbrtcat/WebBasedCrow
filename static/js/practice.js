@@ -619,14 +619,63 @@
         refreshCodeEditor();
     }
 
-    // 选择题：问题(question 字段) + 代码框(prompt 纯代码块) | 选项
+    // 兜底：当后端未下发 question（旧二进制 / 未重导 seed）时，
+    // 回退到从 prompt 的 // 注释里抽「问题/说明」，避免题目描述整体消失。
+    // 选择：返回问题文字；填空：返回 {question, code}（code 已剥掉 // 注释）。
+    function fallbackFromPrompt(prompt, typ) {
+        const src = (prompt || '');
+        if (typ === 'choice') {
+            const m = src.trim().match(/^```[A-Za-z0-9]*\n([\s\S]*?)\n?```$/);
+            const inner = m ? m[1] : src;
+            const notes = [];
+            for (const line of inner.split('\n')) {
+                const t = line.trim();
+                if (t.startsWith('//')) {
+                    const n = t.replace(/^\s*\/\/\s?/, '').trim();
+                    if (n) notes.push(n);
+                    continue;
+                }
+                const ci = line.indexOf('//');
+                if (ci !== -1) {
+                    const after = line.slice(ci + 2).trim();
+                    if (after) notes.push(after);
+                }
+            }
+            return notes.join(' ');
+        }
+        if (typ === 'blank') {
+            const notes = [];
+            const code = [];
+            for (const line of src.split('\n')) {
+                const t = line.trim();
+                if (t.startsWith('//')) {
+                    const n = t.replace(/^\s*\/\/\s?/, '').trim();
+                    if (n) notes.push(n);
+                    continue;
+                }
+                const ci = line.indexOf('//');
+                if (ci !== -1) {
+                    const before = line.slice(0, ci).replace(/\s+$/, '');
+                    const after = line.slice(ci + 2).trim();
+                    if (after) notes.push(after);
+                    if (before.trim()) code.push(before);
+                } else {
+                    code.push(line);
+                }
+            }
+            return { question: notes.join(' '), code: code.join('\n') };
+        }
+        return typ === 'blank' ? { question: '', code: src } : '';
+    }
+
+    // 选择题：问题(question 字段，缺失则兜底抽 // 注释) + 代码框(prompt 纯代码块) | 选项
     function renderChoice() {
         const ex = currentExercise;
         setWorkLayout(false);
         renderHead(ex);
         setPromptHtml('<div class="practice-prompt markdown-body" id="promptBody"></div>');
         const body = document.getElementById('promptBody');
-        const question = (ex.question || '').trim();
+        const question = (ex.question || '').trim() || fallbackFromPrompt(ex.prompt, 'choice');
         const prompt = (ex.prompt || '').trim();
         let md = '';
         if (question) md += '**问题：** ' + question + '\n\n';
@@ -653,13 +702,18 @@
         restoreLastResult(ex.id);
     }
 
-    // 填空题：说明(question 字段) + 代码框(prompt 纯代码含 ______)
+    // 填空题：说明(question 字段，缺失则兜底抽 // 注释) + 代码框(prompt 纯代码含 ______)
     function renderBlank() {
         const ex = currentExercise;
         setWorkLayout(true);
         renderHead(ex);
-        const question = (ex.question || '').trim();
-        const code = (ex.prompt || '');
+        let question = (ex.question || '').trim();
+        let code = (ex.prompt || '');
+        if (!question) {
+            const fb = fallbackFromPrompt(code, 'blank');
+            question = fb.question;
+            code = fb.code;
+        }
         const codeHtml = esc(code).replace(/_{3,}/g,
             '<input type="text" class="practice-blank-input" data-blank spellcheck="false" autocomplete="off">');
         const intro = question ? '<p class="practice-blank-note">' + esc(question) + '</p>' : '';
