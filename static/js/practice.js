@@ -528,84 +528,13 @@
         return 'C' + currentChapter + ' · 第 ' + (idx + 1) + ' / ' + total + ' 题';
     }
 
-    // 去掉一行开头的 // 注释符，返回纯文字（用于把"问题/说明"从代码框里抽出来）
-    function stripComment(line) {
-        return line.replace(/^\s*\/\/\s?/, '').trim();
-    }
-
-    // 从一组代码行里抽出"问题/说明"注释：
-    //   · 开头连续的整行 // 注释
-    //   · 结尾连续的整行 // 注释
-    //   · 最后一行"代码 // 说明"的内联注释（选择题/填空题常见）
-    // 返回抽出的注释文字与剩余代码行的下标区间（行本身可能被原地改掉内联注释）。
-    function splitNoteLines(lines) {
-        const notes = [];
-        let i = 0;
-        while (i < lines.length && /^\s*\/\//.test(lines[i])) { notes.push(stripComment(lines[i])); i++; }
-        let j = lines.length - 1;
-        while (j >= i && /^\s*\/\//.test(lines[j])) { notes.unshift(stripComment(lines[j])); j--; }
-        if (i <= j) {
-            const last = lines[j];
-            const ci = last.indexOf('//');
-            if (ci !== -1) {
-                const after = last.slice(ci + 2).trim();
-                if (after) {
-                    notes.push(after);
-                    lines[j] = last.slice(0, ci).replace(/\s+$/, '');
-                }
-            }
-        }
-        return { notes: notes.filter(Boolean), start: i, end: j };
-    }
-
-    // 填空题：题干整段放在代码框里，描述往往以 // 注释（整行或行尾内联）散落在各空位旁。
-    // 这里把所有 // 注释抽到代码框外的正文，代码（含 ____ 空位）留在代码框中。
-    function extractBlankNotes(src) {
-        const rawLines = (src || '').split('\n');
-        const notes = [];
-        const codeLines = [];
-        for (const line of rawLines) {
-            const trimmed = line.trim();
-            if (trimmed.startsWith('//')) {            // 整行注释 → 全部抽出，不进代码
-                const t = stripComment(line);
-                if (t) notes.push(t);
-                continue;
-            }
-            const ci = line.indexOf('//');
-            if (ci !== -1) {                            // 行尾内联注释 → 抽注释、留代码
-                const before = line.slice(0, ci).replace(/\s+$/, '');
-                const after = line.slice(ci + 2).trim();
-                if (after) notes.push(after);
-                if (before.trim()) codeLines.push(before);
-            } else {
-                codeLines.push(line);
-            }
-        }
-        return { notes: notes.filter(Boolean), code: codeLines.join('\n') };
-    }
-
-    // 选择题：题干原本整段是一个代码框，真正的"问题"往往埋在 // 注释里（整行或行尾内联）。
-    // 这里把注释抽到代码框上方，用 **问题：** 加粗标记；代码单独留在代码框里。
-    // 满足"题目描述除代码外，问题不在代码框中出现，可用其他符号标记"。
-    function liftObjectiveQuestion(prompt) {
-        const s = (prompt || '').trim();
-        const m = s.match(/^```[A-Za-z0-9]*\n([\s\S]*?)\n?```$/);
-        if (!m) return prompt;
-        const lines = m[1].replace(/\s+$/, '').split('\n');
-        const { notes, start, end } = splitNoteLines(lines);
-        if (!notes.length) return prompt;
-        const question = '**问题：** ' + notes.join(' ');
-        const body = lines.slice(start, end + 1).join('\n').trim();
-        return body ? (question + '\n\n```cpp\n' + body + '\n```') : question;
-    }
-
+    // 题目描述渲染：直接渲染 prompt（写代码题=需求 markdown；选择题=纯代码块；填空题=纯代码）。
+    // 选择题/填空题的「问题/说明」已由生成阶段固化到 question 字段，渲染时由 renderChoice/renderBlank 负责，
+    // 这里不再解析 // 注释。
     function renderPromptInto() {
         const body = document.getElementById('promptBody');
         if (!body) return;
-        let text = (currentExercise && currentExercise.prompt) || '';
-        if (currentExercise && currentExercise.type === 'choice') {
-            text = liftObjectiveQuestion(text);
-        }
+        const text = (currentExercise && currentExercise.prompt) || '';
         if (window.renderMarkdownInto) renderMarkdownInto(body, text);
         else body.textContent = text;
     }
@@ -690,13 +619,22 @@
         refreshCodeEditor();
     }
 
-    // 选择题：题干 | 选项
+    // 选择题：问题(question 字段) + 代码框(prompt 纯代码块) | 选项
     function renderChoice() {
         const ex = currentExercise;
         setWorkLayout(false);
         renderHead(ex);
         setPromptHtml('<div class="practice-prompt markdown-body" id="promptBody"></div>');
-        renderPromptInto();
+        const body = document.getElementById('promptBody');
+        const question = (ex.question || '').trim();
+        const prompt = (ex.prompt || '').trim();
+        let md = '';
+        if (question) md += '**问题：** ' + question + '\n\n';
+        if (prompt) md += prompt;
+        if (body) {
+            if (window.renderMarkdownInto && md) renderMarkdownInto(body, md);
+            else body.textContent = md;
+        }
         renderSolution();
         switchTab('desc');
 
@@ -715,17 +653,16 @@
         restoreLastResult(ex.id);
     }
 
-    // 填空题：单列，题干内嵌输入框（提交按钮在头部操作区）
+    // 填空题：说明(question 字段) + 代码框(prompt 纯代码含 ______)
     function renderBlank() {
         const ex = currentExercise;
         setWorkLayout(true);
         renderHead(ex);
-        // 把散落在各空位的 // 说明注释（含整行与行尾内联）从代码框里抽出来，
-        // 放到代码框外的正文里；代码（含 ____ 空位）仍留在代码框中。
-        const { notes, code } = extractBlankNotes(ex.prompt || '');
+        const question = (ex.question || '').trim();
+        const code = (ex.prompt || '');
         const codeHtml = esc(code).replace(/_{3,}/g,
             '<input type="text" class="practice-blank-input" data-blank spellcheck="false" autocomplete="off">');
-        const intro = notes.length ? '<p class="practice-blank-note">' + esc(notes.join(' ')) + '</p>' : '';
+        const intro = question ? '<p class="practice-blank-note">' + esc(question) + '</p>' : '';
         setPromptHtml(
             '<div class="practice-prompt">' + intro + '<pre class="practice-blank-code"><code>' + codeHtml + '</code></pre></div>');
         editorCardEl.hidden = true;

@@ -2145,8 +2145,7 @@ cv.________(lock, []{ return ready; });   // 带谓词，防虚假唤醒''',
         'type': 'blank',
         'title': '填空 1 · 预处理占位符',
         'sort_order': 4,
-        'prompt': '''// 用预处理语句防注入，占位符是 ________
-// stmt = conn.prepare("SELECT * FROM t WHERE id = ?");''',
+        'prompt': '''std::string sql = "SELECT * FROM t WHERE id = ________";   // 用预处理语句防注入，占位符写在这里''',
         'answer': ['?'],
     },
     {
@@ -2335,7 +2334,10 @@ void f(T t);''',
         'type': 'blank',
         'title': '填空 3 · co_yield',
         'sort_order': 6,
-        'prompt': '''// 协程生成器里产出值的关键字是 ________''',
+        'prompt': '''generator<int> gen() {
+    for (int i = 0; i < 3; ++i)
+        ________ i;   // 协程生成器里产出值的关键字
+}''',
         'answer': ['co_yield'],
     },
     # ================= C14 客观题（id 89-94） =================
@@ -8152,7 +8154,8 @@ CREATE TABLE IF NOT EXISTS practice_exercises(
     chapter_id INT NOT NULL COMMENT '所属章节',
     type VARCHAR(10) NOT NULL DEFAULT 'short' COMMENT 'choice/blank/short/boss',
     title VARCHAR(256) NOT NULL COMMENT '题目标题',
-    prompt TEXT NOT NULL COMMENT '题干：写代码=需求(markdown)；选择=题干(markdown)；填空=代码骨架(含______)',
+    prompt TEXT NOT NULL COMMENT '题干：写代码=需求(markdown)；选择=纯代码(markdown)；填空=代码骨架(含______)',
+    question TEXT NULL COMMENT '题目问题/说明(选择题=问题；填空题=说明；代码框外展示)',
     sort_order INT NOT NULL DEFAULT 0 COMMENT '章内排序',
     options TEXT NULL COMMENT '选择题选项JSON(非选择题为NULL)',
     answer TEXT NULL COMMENT '选择=正确label(JSON字符串)；填空=答案数组(JSON)；写代码=NULL',
@@ -8191,11 +8194,68 @@ def sql_or_null(s):
     return sql_literal(s)
 
 
+# ---------- 固化题面：把「问题/说明」从 // 注释抽到 question 字段 ----------
+import re as _re
+
+def _strip_comment(line):
+    """去掉一行开头的 // 注释符，返回纯文字（用于把问题/说明从代码框里抽出来）。"""
+    return _re.sub(r'^\s*//\s?', '', line).strip()
+
+def _extract_blank_notes(src):
+    """抽所有 // 注释（整行与行内），代码保留（用于固化 choice/blank 的「问题/说明」）。"""
+    notes = []
+    code = []
+    for line in (src or '').split('\n'):
+        t = line.strip()
+        if t.startswith('//'):
+            n = _strip_comment(line)
+            if n:
+                notes.append(n)
+            continue
+        ci = line.find('//')
+        if ci != -1:
+            before = line[:ci].rstrip()
+            after = line[ci + 2:].strip()
+            if after:
+                notes.append(after)
+            if before.strip():
+                code.append(before)
+        else:
+            code.append(line)
+    return [n for n in notes if n], code
+
+def split_exercise_prompt(prompt, typ):
+    """固化题面：把 choice/blank 的「问题/说明」从 // 注释抽到 question 字段，prompt 只剩纯代码。
+    返回 (question, cleaned_prompt)。
+    - choice：去 ```cpp 围栏 -> 抽所有 // 注释（开头/行内）→ 重新包围栏（无代码则清空 prompt）。
+    - blank：抽所有 // 注释，prompt 保留纯代码（含 ______）。
+    - short/boss：原样返回（question 由调用方置 None）。
+    """
+    if typ == 'choice':
+        raw = (prompt or '').strip()
+        m = _re.match(r'^```[A-Za-z0-9]*\n([\s\S]*?)\n?```$', raw)
+        inner = m.group(1).rstrip('\n') if m else raw
+        notes, code = _extract_blank_notes(inner)
+        if not notes:
+            return '', prompt
+        code_text = '\n'.join(code).rstrip()
+        cleaned = ('```cpp\n' + code_text + '\n```') if code_text.strip() else ''
+        return ' '.join(notes), cleaned
+    if typ == 'blank':
+        notes, code = _extract_blank_notes(prompt)
+        if not notes:
+            return '', prompt
+        return ' '.join(notes), '\n'.join(code).rstrip()
+    return '', prompt
+
+
 # 旧表补列迁移：CREATE TABLE IF NOT EXISTS 只对「不存在的表」建表，**无法给已有表加列**；
 # 所以表结构新增列时，必须在这里补一条幂等迁移（与 src/database.cpp 的 columnExists 迁移对应）。
 COLUMN_MIGRATIONS = [
     ('practice_exercises', 'solution',
      "TEXT NULL COMMENT '题解(思路+参考实现+要点，markdown)' AFTER answer"),
+    ('practice_exercises', 'question',
+     "TEXT NULL COMMENT '题目问题/说明(选择题=问题,填空题=说明)' AFTER prompt"),
 ]
 
 
@@ -8306,6 +8366,12 @@ def build():
     out.append('-- ---------- 第 3 步：插入题目 ----------')
     for e in EXERCISES:
         typ = e['type']
+        # —— 固化题面：choice/blank 把 // 注释里的「问题/说明」抽到 question，prompt 只留纯代码 ——
+        if typ in ('choice', 'blank'):
+            question_val, prompt_val = split_exercise_prompt(e['prompt'], typ)
+        else:
+            question_val = None          # 写代码题无独立问题字段
+            prompt_val = e['prompt']
         # options / answer 序列化为 JSON；None -> NULL
         options_val = json.dumps(e['options'], ensure_ascii=False) if e.get('options') else None
         answer_val = e.get('answer')
@@ -8323,16 +8389,16 @@ def build():
 
         out.append(
             'INSERT INTO practice_exercises '
-            '(id, chapter_id, type, title, prompt, sort_order, options, answer, solution, '
+            '(id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, '
             'starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES ('
             f'{e["id"]}, {e["chapter_id"]}, {sql_literal(typ)}, {sql_literal(e["title"])}, '
-            f'{sql_literal(e["prompt"])}, {e["sort_order"]}, '
+            f'{sql_literal(prompt_val)}, {sql_or_null(question_val)}, {e["sort_order"]}, '
             f'{sql_or_null(options_val)}, {sql_or_null(answer_val)}, {sql_or_null(solution_val)}, '
             f'{sql_literal(starter_easy)}, {sql_literal(starter_medium)}, '
             f'{sql_literal(starter_hard)}, {sql_or_null(test_driver)}, '
             f'{total_cases}, {time_limit_ms}, 1) '
             'ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), '
-            'title=VALUES(title), prompt=VALUES(prompt), sort_order=VALUES(sort_order), '
+            'title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), '
             'options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), '
             'starter_easy=VALUES(starter_easy), '
             'starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), '

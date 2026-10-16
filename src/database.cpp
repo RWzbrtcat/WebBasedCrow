@@ -576,6 +576,15 @@ void DataBase::initTable()
             throw std::runtime_error(std::string("补充 solution 列失败：") + mysql_error(conn_));
         }
     }
+    // 旧表迁移：补 question（题目问题/说明）列
+    if (!columnExists("practice_exercises", "question"))
+    {
+        const char* alterQuestion = "ALTER TABLE practice_exercises ADD COLUMN question TEXT NULL COMMENT '题目问题/说明(选择题=问题,填空题=说明)' AFTER prompt";
+        if (mysql_query(conn_, alterQuestion) != 0)
+        {
+            throw std::runtime_error(std::string("补充 question 列失败：") + mysql_error(conn_));
+        }
+    }
     // 旧表 test_driver 是 NOT NULL，客观题需存 NULL；MODIFY 为可空（幂等，重复执行无害）
     {
         const char* alterDriver = "ALTER TABLE practice_exercises MODIFY COLUMN test_driver TEXT NULL COMMENT '隐藏测试驱动(写代码题,含main)'";
@@ -3133,7 +3142,7 @@ crow::json::wvalue DataBase::getPracticeExercise(int id)
 
     crow::json::wvalue result;
 
-    std::string sql = "SELECT id, chapter_id, type, title, prompt, options, starter_easy, starter_medium, starter_hard, solution "
+    std::string sql = "SELECT id, chapter_id, type, title, prompt, question, options, starter_easy, starter_medium, starter_hard, solution "
                       "FROM practice_exercises WHERE status=1 AND id=" + std::to_string(id);
     if (mysql_query(conn_, sql.c_str()) != 0)
     {
@@ -3162,23 +3171,25 @@ crow::json::wvalue DataBase::getPracticeExercise(int id)
     result["type"] = row[2] ? row[2] : "";
     result["title"] = row[3] ? row[3] : "";
     result["prompt"] = row[4] ? row[4] : "";
+    // 选择题/填空题的「问题/说明」（代码框外展示，生成阶段已从 // 注释固化）
+    if (row[5]) result["question"] = row[5];
     // 选择题下发选项（不含答案）；客观题不返回 answer，判定在服务端做
-    if (row[5]) result["options"] = row[5];
+    if (row[6]) result["options"] = row[6];
     // 题解（公开下发，前端折叠展示）
-    if (row[9]) result["solution"] = row[9];
+    if (row[10]) result["solution"] = row[10];
 
     crow::json::wvalue tiers;
     crow::json::wvalue easy;
     easy["label"] = "入门";
-    easy["starter"] = row[6] ? row[6] : "";
+    easy["starter"] = row[7] ? row[7] : "";
     tiers["easy"] = std::move(easy);
     crow::json::wvalue medium;
     medium["label"] = "进阶";
-    medium["starter"] = row[7] ? row[7] : "";
+    medium["starter"] = row[8] ? row[8] : "";
     tiers["medium"] = std::move(medium);
     crow::json::wvalue hard;
     hard["label"] = "挑战";
-    hard["starter"] = row[8] ? row[8] : "";
+    hard["starter"] = row[9] ? row[9] : "";
     tiers["hard"] = std::move(hard);
     result["tiers"] = std::move(tiers);
 
