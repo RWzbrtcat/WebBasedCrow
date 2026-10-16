@@ -399,7 +399,9 @@
         }
     }
 
-    // 章节题目列表 HTML（每题：状态点 + 题型 + 标题）
+    // 章节题目列表 HTML（每题：状态点 + 标题）
+    // 注：不再显示「选择/填空/短题/Boss」题型徽章——徽章占位会挤压标题导致标题看不见；
+    //     题型在工作台头部徽章与题目内容里已能区分。title 属性供窄栏截断时悬停查看全称。
     function renderExerciseList(list) {
         const items = list || [];
         return '<div class="practice-ex-list">' + items.map((ex) => {
@@ -407,9 +409,8 @@
             const done = doneSet.has(ex.id);
             const dot = done ? '✓' : (isCur ? '●' : '○');
             const cls = 'practice-ex-item' + (isCur ? ' current' : '') + (done ? ' done' : '');
-            return '<button type="button" class="' + cls + '" data-id="' + ex.id + '">' +
+            return '<button type="button" class="' + cls + '" data-id="' + ex.id + '" title="' + esc(ex.title) + '">' +
                 '<span class="practice-ex-dot">' + dot + '</span>' +
-                '<span class="practice-ex-badge">' + esc(badgeFor(ex.type)) + '</span>' +
                 '<span class="practice-ex-title">' + esc(ex.title) + '</span>' +
                 '</button>';
         }).join('') + '</div>';

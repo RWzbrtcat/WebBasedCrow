@@ -4409,12 +4409,13 @@ body.practice-page .site-footer {
     color: var(--accent);
 }
 
-/* 左栏题目列表（当前章展开）：相对章节再缩进一级，并加左侧引导线 */
+/* 左栏题目列表（当前章展开）：相对章节再缩进一级，并加左侧引导线
+   注：侧栏仅 200px，缩进过大会把题目标题挤没，这里收窄到 20px 保留层级感即可 */
 .practice-ex-list {
     display: flex;
     flex-direction: column;
     gap: 1px;
-    margin: 2px 0 8px 36px;
+    margin: 2px 0 8px 20px;
     padding-left: 8px;
     border-left: 2px solid var(--border);
 }
@@ -4467,22 +4468,18 @@ body.practice-page .site-footer {
     opacity: 1;
 }
 
-.practice-ex-badge {
-    flex-shrink: 0;
-    padding: 1px 6px;
-    border-radius: 5px;
-    background: var(--accent-soft);
-    color: var(--accent-dark);
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1.6;
-}
-
+/* 题目标题占满剩余宽度（题型徽章已移除，不再挤压标题）
+   200px 侧栏放不下整行长标题（最长 32 字）⇒ 最多两行 + 省略号，悬停 title 看全称 */
 .practice-ex-title {
+    flex: 1 1 auto;
     min-width: 0;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
 }
 
 /* 右栏工作台 */
