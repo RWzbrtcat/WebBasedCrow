@@ -423,13 +423,14 @@
     }
 
     function autoSelectFirst() {
+        // reveal:false —— 自动载入首题到工作区，但不展开左栏章节（章节默认折叠，点击才展开）
         for (const sem of chaptersData) {
             for (const ch of (sem.chapters || [])) {
-                if (ch.exercise_count > 0) { selectChapter(ch.id); return; }
+                if (ch.exercise_count > 0) { selectChapter(ch.id, { reveal: false }); return; }
             }
         }
         const first = chaptersData[0] && (chaptersData[0].chapters || [])[0];
-        if (first) selectChapter(first.id);
+        if (first) selectChapter(first.id, { reveal: false });
         else showIdleState();
     }
 
@@ -441,12 +442,17 @@
         return null;
     }
 
-    // ---------- 选中章节：展开该章 + 拉题目列表 ----------
-    async function selectChapter(id) {
-        openChapters.add(id);                       // 选中即展开
-        const semName = semesterOf(id);
-        if (semName) collapsedSemesters.delete(semName);   // 所属学期一并展开
-        persistTreeState();
+    // ---------- 选中章节：拉题目列表 ----------
+    // opts.reveal（默认 true）：点击章节标题时展开该章并展开所属分组；
+    //   首次自动选题用 reveal:false —— 只把题目载入工作区，左栏具体章节保持默认折叠。
+    async function selectChapter(id, opts) {
+        const reveal = !opts || opts.reveal !== false;
+        if (reveal) {
+            openChapters.add(id);                       // 选中即展开
+            const semName = semesterOf(id);
+            if (semName) collapsedSemesters.delete(semName);   // 所属学期一并展开
+            persistTreeState();
+        }
 
         // 重复点击当前章：只确保展开，不重拉、不跳题（避免打断正在做的题）
         if (id === currentChapter && (chapterExercises.length || chapterExercisesCache[id])) {
@@ -515,10 +521,41 @@
 
     function renderHead(ex) {
         workHeadEl.hidden = false;
+        const prevId = neighborExerciseId(-1);
+        const nextId = neighborExerciseId(1);
         workHeadEl.innerHTML =
+            '<div class="practice-nav" role="group" aria-label="切题">' +
+            '<button type="button" class="practice-nav-btn" id="prevExBtn" title="上一题" aria-label="上一题"' +
+            (prevId == null ? ' disabled' : '') + '>' + navChevronSvg(-1) + '</button>' +
+            '<button type="button" class="practice-nav-btn" id="nextExBtn" title="下一题" aria-label="下一题"' +
+            (nextId == null ? ' disabled' : '') + '>' + navChevronSvg(1) + '</button>' +
+            '</div>' +
             '<span class="practice-badge">' + esc(badgeFor(ex.type)) + '</span>' +
             '<h2 class="practice-work-title">' + esc(ex.title) + '</h2>' +
             '<span class="practice-work-pos">' + esc(posText()) + '</span>';
+
+        const prevBtn = document.getElementById('prevExBtn');
+        const nextBtn = document.getElementById('nextExBtn');
+        if (prevBtn && prevId != null) prevBtn.addEventListener('click', () => selectExercise(prevId));
+        if (nextBtn && nextId != null) nextBtn.addEventListener('click', () => selectExercise(nextId));
+    }
+
+    // 本章内相邻题目的 id（dir=-1 上一题 / dir=1 下一题；越界返回 null）
+    function neighborExerciseId(dir) {
+        const total = chapterExercises.length;
+        const idx = chapterExercises.findIndex((e) => currentExercise && e.id === currentExercise.id);
+        if (idx < 0) return null;
+        const j = idx + dir;
+        if (j < 0 || j >= total) return null;
+        return chapterExercises[j].id;
+    }
+
+    // 切题箭头 SVG：dir=-1 → '‹'，dir=1 → '›'
+    function navChevronSvg(dir) {
+        const d = dir < 0 ? 'M10 4l-4 4 4 4' : 'M6 4l4 4-4 4';
+        return '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">' +
+            '<path d="' + d + '" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+            'stroke-linecap="round" stroke-linejoin="round"/></svg>';
     }
 
     function posText() {

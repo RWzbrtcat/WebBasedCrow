@@ -4504,6 +4504,49 @@ body.practice-page .site-footer {
     min-height: 28px;
 }
 
+/* 上一题 / 下一题：题目头最左侧的切题按钮（LeetCode 式） */
+.practice-nav {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.practice-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.practice-nav-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+}
+
+.practice-nav-btn:active:not(:disabled) {
+    transform: scale(0.94);
+}
+
+.practice-nav-btn:disabled {
+    opacity: 0.38;
+    cursor: default;
+}
+
+/* 题目头与切题按钮之间留一条细分隔，视觉上分组 */
+.practice-nav + .practice-badge {
+    margin-left: 2px;
+}
+
 .practice-badge {
     flex-shrink: 0;
     padding: 2px 9px;
