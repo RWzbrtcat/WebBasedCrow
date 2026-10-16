@@ -619,30 +619,46 @@
         refreshCodeEditor();
     }
 
-    // 剥掉代码里的 // 行注释（保留 /* */ 块注释与 ______ 空位）。
-    // 仅用于「已有独立 question 字段」时，把代码框里的 // 注释清掉，避免描述在代码框里重复出现。
-    // prompt 始终保留原始 // 注释作为兜底——旧后端未下发 question 时，注释天然留在代码框里照样可见。
-    function stripCppComments(src) {
-        return (src || '').split('\n').map((line) => {
+    // 代码框里的 // 注释就是「问题/说明」——把它抽到代码框外展示，
+    // 同时在代码框里**原地留一个 ◀ 标记**，指向问题所在的那一行。
+    //（保留 /* */ 块注释与 ______ 空位不动。）
+    // 返回 { question: 抽出的文字, code: 代码（注释已替换为 ◀ 标记） }。
+    const PROMPT_MARKER = '◀';
+    function splitPromptNotes(prompt, typ) {
+        let src = prompt || '';
+        if (typ === 'choice') {
+            const m = src.trim().match(/^```[A-Za-z0-9]*\n([\s\S]*?)\n?```$/);
+            if (m) src = m[1].replace(/\s+$/, '');
+        }
+        const notes = [];
+        const codeLines = [];
+        for (const line of src.split('\n')) {
             const ci = line.indexOf('//');
-            return ci === -1 ? line : line.slice(0, ci).replace(/\s+$/, '');
-        }).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+            if (ci === -1) { codeLines.push(line); continue; }
+            const before = line.slice(0, ci).replace(/\s+$/, '');
+            const after = line.slice(ci + 2).trim();
+            if (after) notes.push(after);
+            // 有代码的行：注释抽走，原地留 ◀ 标记指向该行
+            if (before.trim()) codeLines.push(before + '  // ' + PROMPT_MARKER);
+            // 整行注释（无代码）：纯说明，抽走后不留标记行
+        }
+        let code = codeLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+        if (typ === 'choice' && code) code = '```cpp\n' + code + '\n```';
+        return { question: notes.join(' '), code: code };
     }
 
-    // 选择题：问题(question 字段) + 代码框(prompt)。
-    // question 缺失时，prompt 里的 // 注释天然留在代码框中，描述不会消失。
+    // 选择题：问题(question 字段，缺失则从 prompt 的 // 注释抽) + 代码框(注释处留 ◀ 标记)
     function renderChoice() {
         const ex = currentExercise;
         setWorkLayout(false);
         renderHead(ex);
         setPromptHtml('<div class="practice-prompt markdown-body" id="promptBody"></div>');
         const body = document.getElementById('promptBody');
-        const question = (ex.question || '').trim();
-        let prompt = (ex.prompt || '').trim();
-        if (question) prompt = stripCppComments(prompt);   // 有独立问题 → 代码框剥掉 // 注释
+        const split = splitPromptNotes(ex.prompt, 'choice');
+        const question = (ex.question || '').trim() || split.question;
         let md = '';
         if (question) md += '**问题：** ' + question + '\n\n';
-        md += prompt;
+        md += split.code;
         if (body) {
             if (window.renderMarkdownInto && md) renderMarkdownInto(body, md);
             else body.textContent = md;
@@ -665,16 +681,14 @@
         restoreLastResult(ex.id);
     }
 
-    // 填空题：说明(question 字段) + 代码框(prompt 含 ______)。
-    // question 缺失时，prompt 里的 // 注释天然留在代码框中，描述不会消失。
+    // 填空题：说明(question 字段，缺失则从 prompt 的 // 注释抽) + 代码框(注释处留 ◀ 标记，空位 ______ 变输入框)
     function renderBlank() {
         const ex = currentExercise;
         setWorkLayout(true);
         renderHead(ex);
-        const question = (ex.question || '').trim();
-        let code = (ex.prompt || '');
-        if (question) code = stripCppComments(code);   // 有独立说明 → 代码框剥掉 // 注释
-        const codeHtml = esc(code).replace(/_{3,}/g,
+        const split = splitPromptNotes(ex.prompt, 'blank');
+        const question = (ex.question || '').trim() || split.question;
+        const codeHtml = esc(split.code).replace(/_{3,}/g,
             '<input type="text" class="practice-blank-input" data-blank spellcheck="false" autocomplete="off">');
         const intro = question ? '<p class="practice-blank-note">' + esc(question) + '</p>' : '';
         setPromptHtml(
