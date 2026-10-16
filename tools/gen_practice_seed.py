@@ -1443,6 +1443,7 @@ auto p2 = std::make_shared<Widget>();           // B
         'title': '填空 1 · make_shared',
         'sort_order': 4,
         'prompt': '''auto sp = std::________<Widget>(/* 构造参数 */);''',
+        'question': '请补全代码：用 std::make_shared 创建指向 Widget 的 shared_ptr（自动管理引用计数）。',
         'answer': ['make_shared'],
     },
     {
@@ -1658,6 +1659,7 @@ void f(T t) {
     if ________ (std::is_integral_v<T>) { /* 整数路径 */ }
     else { /* 其他路径 */ }
 }''',
+        'question': '请补全代码：用编译期 if（if constexpr）对整型与非整型走不同分支。',
         'answer': ['constexpr'],
     },
     # ================= C6 客观题（id 41-46） =================
@@ -1691,6 +1693,7 @@ std::optional<int> find_even(const std::vector<int>& v) {
         'prompt': '''```cpp
 std::variant<int, double, std::string> v = 42;
 ```''',
+        'question': '关于上面这段 std::variant 代码，下列说法正确的是？',
         'options': [
             {'label': 'A', 'text': 'v 是裸 union，同内存存三种'},
             {'label': 'B', 'text': 'v 是类型安全联合，当前持有 int'},
@@ -1739,6 +1742,7 @@ int x = o.________(42);   // 无值时给默认值''',
         'sort_order': 5,
         'prompt': '''std::variant<int, std::string> v = "hi";
 std::________([](auto&& arg){ /* 访问 */ }, v);''',
+        'question': '请补全代码：用 std::visit 对 variant 当前持有的类型进行访问。',
         'answer': ['visit'],
     },
     {
@@ -1836,6 +1840,7 @@ std::________<Point, int, Hash> m;   // 用自定义哈希的哈希表''',
         'title': '填空 3 · 算法 find_if',
         'sort_order': 6,
         'prompt': '''auto it = std::________(v.begin(), v.end(), [](int x){ return x > 10; });''',
+        'question': '请补全代码：用算法查找第一个大于 10 的元素（返回迭代器）。',
         'answer': ['find_if'],
     },
     # ================= C8 客观题（id 53-58） =================
@@ -1911,6 +1916,7 @@ while (f >> x) { /* ... */ }
         'prompt': '''std::ifstream f("a.txt");
 std::string line;
 while (std::________(f, line)) { /* 逐行读 */ }''',
+        'question': '请补全代码：用 std::getline 从文件流逐行读取到 line。',
         'answer': ['getline'],
     },
     {
@@ -8366,9 +8372,16 @@ def build():
     out.append('-- ---------- 第 3 步：插入题目 ----------')
     for e in EXERCISES:
         typ = e['type']
-        # —— 固化题面：choice/blank 把 // 注释里的「问题/说明」抽到 question，prompt 只留纯代码 ——
+        # —— 固化题面：choice/blank 把「问题/说明」落到 question 字段，prompt 只留纯代码 ——
+        # 优先用题目自带的显式 question（用于 prompt 本就无 // 注释说明的题），
+        # 否则用 split_exercise_prompt 从 // 注释里抽取。
         if typ in ('choice', 'blank'):
-            question_val, prompt_val = split_exercise_prompt(e['prompt'], typ)
+            explicit_q = e.get('question')
+            if explicit_q and explicit_q.strip():
+                question_val = explicit_q.strip()
+                prompt_val = e['prompt']
+            else:
+                question_val, prompt_val = split_exercise_prompt(e['prompt'], typ)
         else:
             question_val = None          # 写代码题无独立问题字段
             prompt_val = e['prompt']

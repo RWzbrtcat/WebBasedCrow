@@ -1495,7 +1495,7 @@ auto p2 = std::make_shared<Widget>();
 `std::make_shared<Widget>()` 把「对象」和「控制块（引用计数）」**一次分配**在连续内存里；而 `shared_ptr<Widget>(new Widget)` 要分配两次。
 
 更关键是**异常安全**：`f(shared_ptr<Widget>(new Widget), g())` 中若 `new Widget` 成功而 `g()` 抛异常，`shared_ptr` 尚未构造 ⇒ 对象泄漏；`make_shared` 没有这个窗口。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (26, 3, 'blank', '填空 1 · make_shared', 'auto sp = std::________<Widget>(/* 构造参数 */);', NULL, 4, NULL, '["make_shared"]', '**应填：`make_shared`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (26, 3, 'blank', '填空 1 · make_shared', 'auto sp = std::________<Widget>(/* 构造参数 */);', '请补全代码：用 std::make_shared 创建指向 Widget 的 shared_ptr（自动管理引用计数）。', 4, NULL, '["make_shared"]', '**应填：`make_shared`**。
 
 `auto sp = std::make_shared<Widget>(args...);` 是创建 `shared_ptr` 的推荐写法——一次分配（对象 + 控制块）+ 异常安全。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (27, 3, 'blank', '填空 2 · weak_ptr 打破循环引用', 'struct Node {
@@ -1609,7 +1609,7 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, s
 void f(T t) {
     if ________ (std::is_integral_v<T>) { /* 整数路径 */ }
     else { /* 其他路径 */ }
-}', NULL, 6, NULL, '["constexpr"]', '**应填：`constexpr`**。
+}', '请补全代码：用编译期 if（if constexpr）对整型与非整型走不同分支。', 6, NULL, '["constexpr"]', '**应填：`constexpr`**。
 
 `if constexpr (std::is_integral_v<T>) { ... } else { ... }` —— 条件在编译期求值，只有命中的分支会被编译，另一支被丢弃。
 
@@ -1626,7 +1626,7 @@ std::optional<int> find_even(const std::vector<int>& v) {
 调用方应这样用：`if (auto r = find_even(v)) { 用 *r } else { 处理没找到 }`。注意**别**用 `*r` 直接解引用空 optional（未定义行为）。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (42, 6, 'choice', '选择 2 · variant vs union', '```cpp
 std::variant<int, double, std::string> v = 42;
-```', NULL, 2, '[{"label": "A", "text": "v 是裸 union，同内存存三种"}, {"label": "B", "text": "v 是类型安全联合，当前持有 int"}, {"label": "C", "text": "v 同时持有三种值"}, {"label": "D", "text": "编译错误"}]', '"B"', '**正确答案：B（类型安全联合）**。
+```', '关于上面这段 std::variant 代码，下列说法正确的是？', 2, '[{"label": "A", "text": "v 是裸 union，同内存存三种"}, {"label": "B", "text": "v 是类型安全联合，当前持有 int"}, {"label": "C", "text": "v 同时持有三种值"}, {"label": "D", "text": "编译错误"}]', '"B"', '**正确答案：B（类型安全联合）**。
 
 `std::variant` 与裸 `union` 不同：它**记得自己当前持有哪个类型**，访问时通过 `std::visit` 或 `std::get` 做类型检查——访问到错误类型会抛 `std::bad_variant_access`，而不是像 `union` 那样静默读到垃圾。
 
@@ -1650,7 +1650,7 @@ int x = o.________(42);', '无值时给默认值', 4, NULL, '["value_or"]', '**�
 
 它比 `o ? *o : 42` 更简洁，且不会在无值时抛异常（区别于 `*o` 和 `o.value()`）。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (45, 6, 'blank', '填空 2 · variant 访问', 'std::variant<int, std::string> v = "hi";
-std::________([](auto&& arg){ /* 访问 */ }, v);', NULL, 5, NULL, '["visit"]', '**应填：`visit`**。
+std::________([](auto&& arg){ /* 访问 */ }, v);', '请补全代码：用 std::visit 对 variant 当前持有的类型进行访问。', 5, NULL, '["visit"]', '**应填：`visit`**。
 
 `std::visit(回调, v)` 按 `variant` **当前持有的类型**调用回调（通常配合泛型 lambda）。这是访问 `variant` 的类型安全入口。
 
@@ -1696,7 +1696,7 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, s
 `std::set<int, std::greater<int>>` —— 第二个模板参数是**比较器**，`greater<int>` 让元素按降序排列。
 
 `set` 自动去重且有序；换个比较器就能改成降序，容器类型本身不变。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (52, 7, 'blank', '填空 3 · 算法 find_if', 'auto it = std::________(v.begin(), v.end(), [](int x){ return x > 10; });', NULL, 6, NULL, '["find_if"]', '**应填：`find_if`**。
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (52, 7, 'blank', '填空 3 · 算法 find_if', 'auto it = std::________(v.begin(), v.end(), [](int x){ return x > 10; });', '请补全代码：用算法查找第一个大于 10 的元素（返回迭代器）。', 6, NULL, '["find_if"]', '**应填：`find_if`**。
 
 `std::find_if(v.begin(), v.end(), 谓词)` 返回**第一个**满足谓词的元素迭代器；都满足则返回 `end()`。
 
@@ -1728,7 +1728,7 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, s
 （若文件不存在，`app` 会创建它。）', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (57, 8, 'blank', '填空 2 · 逐行读取', 'std::ifstream f("a.txt");
 std::string line;
-while (std::________(f, line)) { /* 逐行读 */ }', NULL, 5, NULL, '["getline"]', '**应填：`getline`**。
+while (std::________(f, line)) { /* 逐行读 */ }', '请补全代码：用 std::getline 从文件流逐行读取到 line。', 5, NULL, '["getline"]', '**应填：`getline`**。
 
 `while (std::getline(f, line)) { ... }` 每次读一整行（不含行尾换行）到 `line`，读到 EOF 时返回流进入 fail 状态、循环结束。
 

@@ -133,3 +133,68 @@ curl -s -X POST http://localhost:8080/api/practice/submit \
 5. 数据库题（C11）的临时 schema 隔离方案。
 6. 提交限流（代码提交是重操作，防滥用）。
 7. 编译超时 / 内存上限按真实题压测定值（当前 10s / 512MB 为暂定）。
+
+## 7. 题库数据 / 结构变更后的重导流程（运维备忘）
+
+**适用场景**：改了下面任意一项，都需要按本流程让线上生效——
+- 题库**数据**变更：`tools/seed_practice.sql`（如章节改名「第一学期→第一章节」、题面固化）。
+- 题库**结构**变更：`practice_exercises` 等表新增列（如 `question`）。
+- **C++ 代码**变更：`src/database.cpp`（详情查询、建表/迁移）。
+
+> 前端 `static/` 是运行时直读、**无需重新编译**，但必须保证服务器部署目录是最新（git pull 覆盖）。
+
+### 7.1 完整顺序（关键：编译+重启 必须在 重导 之前）
+
+```bash
+# —— 本地（开发机）——
+git push origin dev-game
+
+# —— 服务器 ——
+cd <项目目录>
+git pull origin dev-game          # 拉取最新代码（含 static/ 前端、src/ 后端、tools/ 题库）
+
+# 1) 编译（若 CMakeLists.txt 有改动，先 cmake -B build 再 build）
+cmake --build build
+
+# 2) 重启（服务启动时自动执行 initTable：
+#    · 旧表缺列则用 ALTER 补列，例如 question 列就是这一步加上的
+#    · 三张表若不存在则自动建表）
+sudo systemctl restart blog.service
+
+# 3) 重导题库（必须在重启之后！此时 question 列已存在，INSERT 才不会报 Unknown column）
+mysql -u root -p blogdb < tools/seed_practice.sql
+```
+
+### 7.2 为什么顺序不能反
+
+`tools/seed_practice.sql` 的 `INSERT` 是**显式列出 `question` 列**的 upsert。若服务器还在跑**旧二进制**（没有 `question` 列），重导会直接报：
+
+```
+ERROR 1054 (42S22): Unknown column 'question' in 'field list'
+```
+
+而 `question` 列由 `src/database.cpp` 的 `columnExists + ALTER` 迁移在**服务启动**时补齐。所以必须先 `cmake --build build` + `restart`，让迁移跑完、列存在，再导数据。
+
+### 7.3 验证导入结果
+
+```bash
+# 章节名已更新为「第一/二/三章节」
+mysql -u root -p blogdb -e "SELECT id, semester FROM practice_chapters ORDER BY id;"
+
+# 题面固化：抽查某道固化题带有 question（例如 id 14 是空白+说明）
+mysql -u root -p blogdb -e "SELECT id, LEFT(question,40) FROM practice_exercises WHERE id IN (14,42) AND question IS NOT NULL;"
+```
+
+### 7.4 库名说明
+
+默认库名 `blogdb`（见 `src/main.cpp` 的 `envStr("MYSQL_DB", "blogdb")`）。若服务器用环境变量 `MYSQL_DB` 指定了别的库名，上面所有 `blogdb` 处替换为实际库名即可。
+
+### 7.5 最小重导（仅数据、无结构/代码变更）
+
+若只是 `seed_practice.sql` 数据变了、**没有**改表结构也没有改 C++ 代码：可跳过编译，但**仍需重启一次**让线上拿到最新 `static/` 前端（前端是运行时直读），然后直接导库：
+
+```bash
+git pull origin dev-game
+sudo systemctl restart blog.service   # 让前端 static/ 生效（即使没改 C++）
+mysql -u root -p blogdb < tools/seed_practice.sql
+```
