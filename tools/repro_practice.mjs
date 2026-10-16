@@ -455,5 +455,20 @@ assert(dbc.includes('result["solution"]'), '详情结果带 solution 字段');
 assert(dbc.includes('getPracticeProgress'), 'database.cpp 实现 getPracticeProgress');
 assert(/FROM practice_progress[\s\S]{0,120}passed=1/.test(dbc), '进度回读查 practice_progress 且只取 passed=1');
 
+// 8. 左栏列表展示约定（无题型徽章 / 剥题型前缀 / 章节完成度 / 两行标题）
+// 背景：侧栏曾只有 200px，题型徽章 + 无 flex 增长的标题把题目标题挤到不可见（见 089eefe）。
+console.log('== 左栏列表展示约定 ==');
+assert(js.includes('function displayTitle'), 'practice.js 有 displayTitle（剥离标题里的题型前缀）');
+assert(/renderExerciseList[\s\S]{0,700}displayTitle\(ex\.title\)/.test(js), '题目列表标题走 displayTitle');
+assert(/practice-work-title[\s\S]{0,60}displayTitle\(ex\.title\)/.test(js), '工作台标题同走 displayTitle');
+assert(js.includes('function chapterCountHtml'), 'practice.js 有 chapterCountHtml（章节完成度计数）');
+assert(js.includes('has-done'), '已完成章节计数带 has-done 标记');
+assert(!js.includes('practice-ex-badge'), '题目项不再渲染题型徽章（徽章会挤压标题）');
+assert(css.includes('grid-template-columns: 224px'), '左栏默认 224px（题目标题需要宽度，≤1200 回落 200px）');
+assert(css.includes('.practice-chapter-count.has-done'), 'style.css 定义 .practice-chapter-count.has-done');
+assert(/\.practice-ex-title[\s\S]{0,220}-webkit-line-clamp:\s*2/.test(css), '题目标题最多两行 + 省略号');
+assert(/\.practice-chapter-title[\s\S]{0,260}-webkit-line-clamp:\s*2/.test(css), '章节标题最多两行 + 省略号');
+assert(/\.practice-ex-title[\s\S]{0,120}flex:\s*1 1 auto/.test(css), '题目标题占满剩余宽度（不再被压到 0 宽）');
+
 console.log(failed === 0 ? '\n\u5168\u90e8\u901a\u8fc7 \u2713' : '\n' + failed + ' \u9879\u5931\u8d25 \u2717');
 process.exit(failed === 0 ? 0 : 1);

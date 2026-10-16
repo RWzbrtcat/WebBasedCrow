@@ -3877,11 +3877,18 @@ body.practice-page {
     min-width: 0;
 }
 
+/* 章节标题：与题目列表同一套视觉语言——占满剩余宽度、最多两行（224px 栏内可完整显示
+   「移动语义与完美转发」这类 9 字标题，之前单行会被截成「移动语义与完…」） */
 .practice-chapter-title {
+    flex: 1 1 auto;
     min-width: 0;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
 }
 
 .practice-chapter {
@@ -4367,7 +4374,8 @@ body.practice-page .site-footer {
     min-height: 0;
     margin: 0;
     display: grid;
-    grid-template-columns: 200px minmax(0, 1fr);
+    /* 侧栏 224px：题目标题需要宽度（最长 24 字两行可放下）；≤1200 窄屏回落 200px */
+    grid-template-columns: 224px minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr);
     gap: 16px;
     align-items: stretch;
@@ -4405,19 +4413,25 @@ body.practice-page .site-footer {
     font-variant-numeric: tabular-nums;
 }
 
+/* 已完成过的章节：计数显示「已完成/总数」并染成功色（激活态的 accent 优先，见下条特异性更高） */
+.practice-chapter-count.has-done {
+    color: var(--ok);
+}
+
 .practice-chapter.active .practice-chapter-count {
     color: var(--accent);
 }
 
 /* 左栏题目列表（当前章展开）：相对章节再缩进一级，并加左侧引导线
-   注：侧栏仅 200px，缩进过大会把题目标题挤没，这里收窄到 20px 保留层级感即可 */
+   注：侧栏 224px，缩进过大会把题目标题挤没，这里收窄到 20px 保留层级感即可；
+   引导线用 1px 淡色，只做视觉从属提示，不与标题抢注意力 */
 .practice-ex-list {
     display: flex;
     flex-direction: column;
     gap: 1px;
     margin: 2px 0 8px 20px;
     padding-left: 8px;
-    border-left: 2px solid var(--border);
+    border-left: 1px solid var(--border);
 }
 
 .practice-ex-item {
@@ -4439,6 +4453,7 @@ body.practice-page .site-footer {
 
 .practice-ex-item:hover {
     background: var(--bg);
+    color: var(--text);
 }
 
 .practice-ex-item.current {
@@ -4555,6 +4570,10 @@ body.practice-page .site-footer {
 }
 
 .practice-work-title {
+    min-width: 0;                   /* 允许在 flex 头里收缩，避免长标题把右侧定位挤出视野 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 1.15rem;
     font-weight: 700;
     color: var(--text);

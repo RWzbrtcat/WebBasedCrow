@@ -87,6 +87,29 @@
         return TYPE_BADGES[type] || '写代码';
     }
 
+    // 题目标题里带的题型前缀（「选择 2 · 」「短题 3 · 」「Boss · 」）与相邻的题型徽章重复，
+    // 而且左栏只有 224px 宽，前缀会吃掉近一半标题宽度 ⇒ 展示时剥掉，只留正题名。
+    // 题库 154 条标题全部带此前缀（生成器 title 约定）；剥不到或剥空则原样返回，避免标题消失。
+    function displayTitle(title) {
+        const t = (title || '').trim();
+        const stripped = t.replace(/^(选择|填空|短题|写代码|Boss)\s*\d*\s*[·•・.]\s*/, '').trim();
+        return stripped || t;
+    }
+
+    // 章节右侧计数：已拉取过题目列表的章节显示「已完成 / 总数」（做过题才有意义），
+    // 未访问过的章节只有题数（题目 id 未知，算不出完成度）。
+    function chapterCountHtml(ch) {
+        const list = chapterExercisesCache[ch.id];
+        const total = (ch.exercise_count || 0);
+        if (list && list.length) {
+            const done = list.filter((ex) => doneSet.has(ex.id)).length;
+            return '<span class="practice-chapter-count' + (done ? ' has-done' : '') +
+                '" title="已完成 ' + done + ' / ' + list.length + ' 题">' +
+                done + '/' + list.length + '</span>';
+        }
+        return '<span class="practice-chapter-count" title="本章 ' + total + ' 题">' + total + '</span>';
+    }
+
     // ---------- 本地完成记录（localStorage） ----------
     function loadDone() {
         try {
@@ -329,7 +352,7 @@
                     '<button type="button" class="practice-chapter' + active + empty + '" data-id="' + ch.id + '">' +
                     '<span class="practice-chapter-num">C' + ch.id + '</span>' +
                     '<span class="practice-chapter-title">' + esc(ch.title) + '</span>' +
-                    '<span class="practice-chapter-count">' + (ch.exercise_count || 0) + '</span>' +
+                    chapterCountHtml(ch) +
                     '</button>' +
                     '</div>';
                 if (open && chapterExercisesCache[ch.id]) {
@@ -400,7 +423,7 @@
     }
 
     // 章节题目列表 HTML（每题：状态点 + 标题）
-    // 注：不再显示「选择/填空/短题/Boss」题型徽章——徽章占位会挤压标题导致标题看不见；
+    // 注：不显示「选择/填空/短题/Boss」题型徽章——徽章占位会挤压标题导致标题看不见；
     //     题型在工作台头部徽章与题目内容里已能区分。title 属性供窄栏截断时悬停查看全称。
     function renderExerciseList(list) {
         const items = list || [];
@@ -408,10 +431,11 @@
             const isCur = !!(currentExercise && currentExercise.id === ex.id);
             const done = doneSet.has(ex.id);
             const dot = done ? '✓' : (isCur ? '●' : '○');
+            const name = displayTitle(ex.title);
             const cls = 'practice-ex-item' + (isCur ? ' current' : '') + (done ? ' done' : '');
-            return '<button type="button" class="' + cls + '" data-id="' + ex.id + '" title="' + esc(ex.title) + '">' +
+            return '<button type="button" class="' + cls + '" data-id="' + ex.id + '" title="' + esc(name) + '">' +
                 '<span class="practice-ex-dot">' + dot + '</span>' +
-                '<span class="practice-ex-title">' + esc(ex.title) + '</span>' +
+                '<span class="practice-ex-title">' + esc(name) + '</span>' +
                 '</button>';
         }).join('') + '</div>';
     }
@@ -532,7 +556,7 @@
             (nextId == null ? ' disabled' : '') + '>' + navChevronSvg(1) + '</button>' +
             '</div>' +
             '<span class="practice-badge">' + esc(badgeFor(ex.type)) + '</span>' +
-            '<h2 class="practice-work-title">' + esc(ex.title) + '</h2>' +
+            '<h2 class="practice-work-title">' + esc(displayTitle(ex.title)) + '</h2>' +
             '<span class="practice-work-pos">' + esc(posText()) + '</span>';
 
         const prevBtn = document.getElementById('prevExBtn');
