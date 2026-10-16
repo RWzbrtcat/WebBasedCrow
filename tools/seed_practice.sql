@@ -10,7 +10,7 @@ SET NAMES utf8mb4;
 -- ---------- 第 1 步：确保三张表存在 ----------
 CREATE TABLE IF NOT EXISTS practice_chapters(
     id INT AUTO_INCREMENT PRIMARY KEY,
-    semester VARCHAR(50) NOT NULL DEFAULT '' COMMENT '学期分组',
+    semester VARCHAR(50) NOT NULL DEFAULT '' COMMENT '章节分组',
     title VARCHAR(128) NOT NULL COMMENT '章节标题',
     sort_order INT NOT NULL DEFAULT 0 COMMENT '排序',
     status TINYINT NOT NULL DEFAULT 1 COMMENT '0草稿/1发布'
@@ -64,20 +64,20 @@ EXECUTE stmt_mig;
 DEALLOCATE PREPARE stmt_mig;
 
 -- ---------- 第 2 步：插入 14 个章节 ----------
-INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (1, '第一学期 · 语言地基', '现代语法糖', 1, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
-INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (2, '第一学期 · 语言地基', '移动语义与完美转发', 2, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
-INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (3, '第一学期 · 语言地基', '智能指针与 RAII', 3, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
-INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (4, '第一学期 · 语言地基', 'Lambda 与函数式', 4, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
-INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (5, '第一学期 · 语言地基', '模板与元编程基础', 5, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
-INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (6, '第一学期 · 语言地基', '现代工具类型', 6, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
-INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (7, '第二学期 · 后端应用', 'STL 容器与算法', 7, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
-INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (8, '第二学期 · 后端应用', '文件操作与流', 8, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
-INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (9, '第二学期 · 后端应用', '多线程与并发', 9, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
-INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (10, '第二学期 · 后端应用', '网络编程', 10, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
-INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (11, '第二学期 · 后端应用', '数据库交互', 11, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
-INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (12, '第三学期 · 进阶工程', 'constexpr 与编译期计算', 12, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
-INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (13, '第三学期 · 进阶工程', 'C++20 高级特性', 13, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
-INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (14, '第三学期 · 进阶工程', '模块与工程实践', 14, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
+INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (1, '第一章节 · 语言地基', '现代语法糖', 1, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
+INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (2, '第一章节 · 语言地基', '移动语义与完美转发', 2, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
+INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (3, '第一章节 · 语言地基', '智能指针与 RAII', 3, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
+INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (4, '第一章节 · 语言地基', 'Lambda 与函数式', 4, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
+INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (5, '第一章节 · 语言地基', '模板与元编程基础', 5, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
+INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (6, '第一章节 · 语言地基', '现代工具类型', 6, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
+INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (7, '第二章节 · 后端应用', 'STL 容器与算法', 7, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
+INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (8, '第二章节 · 后端应用', '文件操作与流', 8, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
+INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (9, '第二章节 · 后端应用', '多线程与并发', 9, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
+INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (10, '第二章节 · 后端应用', '网络编程', 10, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
+INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (11, '第二章节 · 后端应用', '数据库交互', 11, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
+INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (12, '第三章节 · 进阶工程', 'constexpr 与编译期计算', 12, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
+INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (13, '第三章节 · 进阶工程', 'C++20 高级特性', 13, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
+INSERT INTO practice_chapters (id, semester, title, sort_order, status) VALUES (14, '第三章节 · 进阶工程', '模块与工程实践', 14, 1) ON DUPLICATE KEY UPDATE semester=VALUES(semester), title=VALUES(title), sort_order=VALUES(sort_order), status=VALUES(status);
 
 -- ---------- 第 3 步：插入题目 ----------
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (1, 1, 'short', '短题 1 · auto 与 decltype 推导', '实现两个函数，验证 `auto` 的类型推导规则：

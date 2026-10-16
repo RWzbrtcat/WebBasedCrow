@@ -3842,6 +3842,7 @@ body.practice-page {
     display: flex;
     align-items: center;
     gap: 2px;
+    padding-left: 12px;   /* 相对学期缩进一级，体现层级 */
 }
 
 .practice-chapter-toggle {
@@ -4211,6 +4212,18 @@ body.practice-page {
     white-space: pre;
 }
 
+/* 填空题：从代码框里抽出来的"任务说明"（正文，不在代码框中） */
+.practice-blank-note {
+    margin: 0 0 12px;
+    padding: 8px 12px;
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
 .practice-blank-input {
     display: inline-block;
     width: 150px;
@@ -4396,12 +4409,14 @@ body.practice-page .site-footer {
     color: var(--accent);
 }
 
-/* 左栏题目列表（当前章展开） */
+/* 左栏题目列表（当前章展开）：相对章节再缩进一级，并加左侧引导线 */
 .practice-ex-list {
     display: flex;
     flex-direction: column;
     gap: 1px;
-    margin: 2px 0 6px;
+    margin: 2px 0 8px 36px;
+    padding-left: 8px;
+    border-left: 2px solid var(--border);
 }
 
 .practice-ex-item {
@@ -4409,7 +4424,7 @@ body.practice-page .site-footer {
     align-items: center;
     gap: 9px;
     width: 100%;
-    padding: 7px 10px 7px 14px;
+    padding: 7px 10px 7px 10px;
     border: 1px solid transparent;
     border-radius: var(--radius-sm);
     background: transparent;
