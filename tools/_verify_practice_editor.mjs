@@ -38,7 +38,13 @@ function makeEl(id) {
         disabled: false,
         innerHTML: '',
         textContent: '',
-        style: {},
+        // 真实 CSSStyleDeclaration 的最小桩：--c-fs 这类自定义属性靠 setProperty 写入
+        style: {
+            _vars: {},
+            setProperty(k, v) { this._vars[k] = String(v); },
+            getPropertyValue(k) { return this._vars[k] || ''; },
+            removeProperty(k) { delete this._vars[k]; },
+        },
         classList: {
             add: (c) => classes.add(c),
             remove: (c) => classes.delete(c),
@@ -70,6 +76,13 @@ const codeShellEl = makeEl('codeShell');
 els.set('codeShell', codeShellEl);
 const codeThemeEl = makeEl('codeTheme');
 els.set('codeTheme', codeThemeEl);
+// 代码字号：#codeFontVal（数值显示）+ #codeFontDown / #codeFontUp（步进按钮）
+const codeFontValEl = makeEl('codeFontVal');
+els.set('codeFontVal', codeFontValEl);
+const codeFontDownEl = makeEl('codeFontDown');
+els.set('codeFontDown', codeFontDownEl);
+const codeFontUpEl = makeEl('codeFontUp');
+els.set('codeFontUp', codeFontUpEl);
 
 global.window = global;
 // daily-common.js 提供的全局转义函数（真实页面里在 practice.js 之前加载）
@@ -84,7 +97,15 @@ global.localStorage = {
     removeItem: (k) => { storage.delete(k); },
 };
 global.location = { search: '', href: 'http://localhost/practice' };
-global.getComputedStyle = () => ({ lineHeight: '20.8px', paddingTop: '12px', paddingBottom: '12px', fontSize: '13px' });
+global.getComputedStyle = (el) => {
+    // 行高 = 字号 × 1.6（CSS 里 line-height: var(--c-lh)）。
+    // --c-fs 由 applyEditorFontSize 内联写到 #codeShell，编辑器元素继承它 ⇒ 桩从 codeShell 读，
+    // 这样「改字号 → 行高随之变化」的链路在无浏览器环境里也能真实断言。
+    const own = el && el.style && typeof el.style.getPropertyValue === 'function'
+        ? el.style.getPropertyValue('--c-fs') : '';
+    const fs = parseFloat(own || (codeShellEl.style.getPropertyValue('--c-fs') || '')) || 13;
+    return { lineHeight: (fs * 1.6) + 'px', paddingTop: '12px', paddingBottom: '12px', fontSize: fs + 'px' };
+};
 global.document = {
     getElementById: (id) => els.get(id) || null,
     addEventListener() {},
@@ -95,7 +116,7 @@ global.requestAnimationFrame = (cb) => cb();
 
 // ---------- 读取源码并注入导出钩子（仅在内存中改，不落盘） ----------
 let src = readFileSync(resolve(root, 'static/js/practice.js'), 'utf8');
-const exportHook = 'window.__pe = { autoIndentOnEnter, toggleLineComment, moveLines, smartHome, smartBackspace, handleCodeKeydown, applyIndent, lineRange, caretPos, scrollCaretIntoView, updateCurrentLine, syncCodeScroll, applyEditorTheme, loadEditorTheme, saveEditorTheme, setEditor: (v) => { codeEditorEl.value = v; }, draftKey, saveDraftNow, loadDrafts, persistDrafts, clearDraft, getDrafts: () => drafts, setDrafts: (o) => { drafts = o; }, setExercise: (ex, tier) => { currentExercise = ex; currentTier = tier; } };';
+const exportHook = 'window.__pe = { autoIndentOnEnter, toggleLineComment, moveLines, smartHome, smartBackspace, handleCodeKeydown, applyIndent, lineRange, caretPos, scrollCaretIntoView, updateCurrentLine, syncCodeScroll, applyEditorTheme, loadEditorTheme, saveEditorTheme, applyEditorFontSize, loadEditorFontSize, saveEditorFontSize, stepEditorFontSize, clampEditorFontSize, getEditorFontSize: () => editorFontSize, codeLineHeight, setEditor: (v) => { codeEditorEl.value = v; }, draftKey, saveDraftNow, loadDrafts, persistDrafts, clearDraft, getDrafts: () => drafts, setDrafts: (o) => { drafts = o; }, setExercise: (ex, tier) => { currentExercise = ex; currentTier = tier; } };';
 src = src.replace(/\}\)\(\);\s*$/, (m) => '    ' + exportHook + '\n' + m);
 // eslint-disable-next-line no-eval
 eval(src);
@@ -365,6 +386,44 @@ eq(pe.loadEditorTheme(), 'solarized', 'saveEditorTheme + loadEditorTheme 可往�
 eq(codeThemeEl.value, 'solarized', 'applyEditorTheme 同步 <select> 的选中值');
 pe.applyEditorTheme('dark');
 eq(pe.loadEditorTheme(), 'solarized', '仅 applyEditorTheme 不改存储，需 saveEditorTheme 才持久');
+
+console.log('== 代码编辑器字号（A− / A+ 步进 + 持久化 + 行高联动） ==');
+storage.delete('practice.editorFontSize.v1');
+eq(pe.loadEditorFontSize(), 13, '无存储记录 → 默认 13px');
+eq(pe.applyEditorFontSize(16), 16, 'applyEditorFontSize 返回生效字号');
+eq(codeShellEl.style.getPropertyValue('--c-fs'), '16px', '字号写到 #codeShell 的 --c-fs 变量');
+eq(codeFontValEl.textContent, '16', '顶栏数值同步显示');
+if (near(pe.codeLineHeight(), 25.6)) assert(true, '行高随字号联动（16 × 1.6 = 25.6）');
+else assert(false, '行高随字号联动（期望 25.6，实际 ' + pe.codeLineHeight() + '）');
+eq(pe.getEditorFontSize(), 16, '模块内当前字号同步');
+eq(codeFontDownEl.disabled, false, '未到下限 → A− 可用');
+eq(codeFontUpEl.disabled, false, '未到上限 → A+ 可用');
+
+eq(pe.applyEditorFontSize(99), 20, '超过上限 → 夹到 20');
+eq(codeFontUpEl.disabled, true, '到上限 → A+ 置灰');
+eq(pe.applyEditorFontSize(-5), 11, '低于下限 → 夹到 11');
+eq(codeFontDownEl.disabled, true, '到下限 → A− 置灰');
+eq(pe.clampEditorFontSize('x'), 13, '非法值 → 回退默认 13');
+
+pe.applyEditorFontSize(13);
+eq(pe.stepEditorFontSize(1), 14, 'A+ → 14');
+eq(storage.get('practice.editorFontSize.v1'), '14', '步进后写入 localStorage');
+eq(pe.stepEditorFontSize(-1), 13, 'A− → 回到 13');
+eq(pe.stepEditorFontSize(-1), 12, '可连续步进（无「回弹」）');
+storage.set('practice.editorFontSize.v1', 'abc');
+eq(pe.loadEditorFontSize(), 13, '存储值非法 → 回退默认 13');
+storage.set('practice.editorFontSize.v1', '18');
+eq(pe.loadEditorFontSize(), 18, '存储值合法 → 读回 18');
+storage.delete('practice.editorFontSize.v1');
+
+// 当前行高亮条高度也随字号走（否则大字体会出现「高亮条比行窄」）
+pe.applyEditorFontSize(20);
+codeEditor.scrollTop = 0;
+setValue(LINES, line50Start, line50Start);
+pe.updateCurrentLine();
+if (near(parseFloat(curLineEl.style.height), 32)) assert(true, '当前行高亮条高度跟随字号（20 × 1.6 = 32）');
+else assert(false, '当前行高亮条高度跟随字号（期望 32，实际 ' + curLineEl.style.height + '）');
+pe.applyEditorFontSize(13);
 
 console.log('');
 if (failed === 0) {

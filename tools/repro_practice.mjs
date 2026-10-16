@@ -252,6 +252,39 @@ assert(/codeThemeSelEl\.addEventListener\('change'/.test(js), '主题选择器 c
         '编辑器 token 规则引用变量（可被多套主题覆盖）');
 }
 
+// 3e-3. 代码字号可调（顶栏 A− / A+ 步进，Ctrl / ⌘ + 滚轮缩放）
+console.log('== 代码字号可调 ==');
+{
+    assert(html.includes('id="codeFontVal"') && html.includes('id="codeFontDown"') && html.includes('id="codeFontUp"'),
+        'practice.html 含字号控件（数值 + A− / A+）');
+    assert(html.includes('class="practice-code-tools"') && html.includes('class="practice-code-font"'),
+        '字号与主题控件同处顶栏右侧容器');
+    // 字号必须走 CSS 变量：三层（行号槽 / 高亮层 / 输入框）共用，才不会错位
+    const fb = css.slice(css.indexOf('.practice-code {'), css.indexOf('/* 顶部标签条'));
+    assert(/--c-fs:\s*13px/.test(fb) && /--c-lh:\s*1\.6/.test(fb), '编辑器字号 / 行高抽成变量 --c-fs / --c-lh');
+    assert(/\.practice-code-gutter\s*\{[\s\S]*?font-size:\s*var\(--c-fs\)/.test(css), '行号槽字号走变量');
+    assert(/\.practice-code-hl,\s*\n\.practice-code-input\s*\{[\s\S]*?font-size:\s*var\(--c-fs\)/.test(css),
+        '高亮层与输入框字号走同一变量（逐像素一致的前提）');
+    assert(/\.practice-code-currentline\s*\{[\s\S]*?height:\s*calc\(var\(--c-fs\) \* var\(--c-lh\)\)/.test(css),
+        '当前行高亮条高度由字号变量算出');
+    assert(css.includes('.practice-code-font-btn') && css.includes('.practice-code-font-val'), 'CSS 含字号控件样式');
+    assert(/\.practice-code-font-btn:disabled/.test(css), '到上/下限时按钮置灰');
+}
+{
+    assert(js.includes('function applyEditorFontSize'), 'JS 有 applyEditorFontSize');
+    assert(js.includes('function stepEditorFontSize'), 'JS 有 stepEditorFontSize（步进）');
+    assert(js.includes('function loadEditorFontSize') && js.includes('function saveEditorFontSize'), 'JS 有字号读取 / 保存');
+    assert(js.includes('EDITOR_FONT_KEY'), 'JS 用 localStorage 键持久化字号');
+    assert(/setProperty\('--c-fs'/.test(js), 'applyEditorFontSize 写 --c-fs 到 #codeShell');
+    assert(/EDITOR_FONT_MIN\s*=\s*11[\s\S]{0,80}EDITOR_FONT_MAX\s*=\s*20/.test(js), '字号范围 11–20px');
+    assert(js.includes('applyEditorFontSize(loadEditorFontSize())'), '启动时恢复上次选择的字号');
+    assert(/codeFontDownEl\.addEventListener\('click'/.test(js) && /codeFontUpEl\.addEventListener\('click'/.test(js),
+        'A− / A+ 点击已接线');
+    assert(/addEventListener\('wheel'/.test(js) && /e\.ctrlKey && !e\.metaKey|!e\.ctrlKey && !e\.metaKey/.test(js)
+        && /passive:\s*false/.test(js), 'Ctrl / ⌘ + 滚轮缩放已接线（且阻止浏览器整页缩放）');
+    assert(/codeFontValEl\.textContent\s*=\s*String\(size\)/.test(js), '字号变化时顶栏数值同步刷新');
+}
+
 // 3f. 对比度：题解代码块底色 + 编辑器「着重显示」与选区
 console.log('== 对比度：题解代码块底色与编辑器选区 ==');
 {

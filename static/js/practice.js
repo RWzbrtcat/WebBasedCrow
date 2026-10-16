@@ -892,6 +892,13 @@
     const EDITOR_THEMES = ['dark', 'light', 'solarized', 'monokai'];
     const DEFAULT_EDITOR_THEME = 'dark';
 
+    // 代码字号：A− / A+ 步进（Ctrl / ⌘ + 滚轮亦可），写 CSS 变量 --c-fs ⇒
+    // 高亮层 / 行号槽 / 输入框三者共用同一变量，改字号不会让三者错位。
+    const EDITOR_FONT_KEY = 'practice.editorFontSize.v1';
+    const EDITOR_FONT_MIN = 11;
+    const EDITOR_FONT_MAX = 20;
+    const DEFAULT_EDITOR_FONT = 13;
+
     let codeGutterEl = null;
     let codeGutterInnerEl = null;
     let codeHighlightEl = null;
@@ -899,6 +906,11 @@
     let codeCurrentLineEl = null;
     let codeShellEl = null;
     let codeThemeSelEl = null;
+    let codeFontValEl = null;
+    let codeFontDownEl = null;
+    let codeFontUpEl = null;
+    // 当前字号（px）。初始值取默认值，启动时由 applyEditorFontSize(loadEditorFontSize()) 覆盖。
+    let editorFontSize = DEFAULT_EDITOR_FONT;
 
     function ensureCodeRefs() {
         if (!codeShellEl) codeShellEl = document.getElementById('codeShell');
@@ -908,6 +920,9 @@
         if (!codeHighlightEl) codeHighlightEl = document.getElementById('codeHighlight');
         if (!codeStatusPosEl) codeStatusPosEl = document.getElementById('codeStatusPos');
         if (!codeCurrentLineEl) codeCurrentLineEl = document.getElementById('codeCurrentLine');
+        if (!codeFontValEl) codeFontValEl = document.getElementById('codeFontVal');
+        if (!codeFontDownEl) codeFontDownEl = document.getElementById('codeFontDown');
+        if (!codeFontUpEl) codeFontUpEl = document.getElementById('codeFontUp');
     }
 
     // ---------- 代码编辑器主题（localStorage 持久化） ----------
@@ -929,6 +944,49 @@
         if (!EDITOR_THEMES.includes(name)) name = DEFAULT_EDITOR_THEME;
         codeShellEl.dataset.editorTheme = name;
         if (codeThemeSelEl && codeThemeSelEl.value !== name) codeThemeSelEl.value = name;
+    }
+
+    // ---------- 代码编辑器字号（localStorage 持久化） ----------
+    function clampEditorFontSize(px) {
+        const n = Math.round(Number(px));
+        if (!Number.isFinite(n)) return DEFAULT_EDITOR_FONT;
+        return Math.min(EDITOR_FONT_MAX, Math.max(EDITOR_FONT_MIN, n));
+    }
+
+    function loadEditorFontSize() {
+        try {
+            const raw = localStorage.getItem(EDITOR_FONT_KEY);
+            const n = parseInt(raw, 10);
+            return Number.isFinite(n) ? clampEditorFontSize(n) : DEFAULT_EDITOR_FONT;
+        } catch (e) { return DEFAULT_EDITOR_FONT; }
+    }
+
+    function saveEditorFontSize(px) {
+        try { localStorage.setItem(EDITOR_FONT_KEY, String(clampEditorFontSize(px))); } catch (e) { /* 隐私模式等：忽略 */ }
+    }
+
+    // 写 --c-fs 到 #codeShell（内联样式优先级高于 .practice-code 的声明）：
+    // 高亮层、行号槽、输入框、当前行条全部读这个变量 ⇒ 一次改，四处同步。
+    function applyEditorFontSize(px) {
+        ensureCodeRefs();
+        const size = clampEditorFontSize(px);
+        editorFontSize = size;
+        if (codeShellEl && codeShellEl.style && codeShellEl.style.setProperty) {
+            codeShellEl.style.setProperty('--c-fs', size + 'px');
+        }
+        if (codeFontValEl) codeFontValEl.textContent = String(size);
+        if (codeFontDownEl) codeFontDownEl.disabled = size <= EDITOR_FONT_MIN;
+        if (codeFontUpEl) codeFontUpEl.disabled = size >= EDITOR_FONT_MAX;
+        // 行高随字号变（1.6 倍），当前行条与滚动同步都要按新行高重算
+        if (codeEditorEl) refreshCodeEditor();
+        return size;
+    }
+
+    function stepEditorFontSize(delta) {
+        const before = editorFontSize;
+        const next = applyEditorFontSize(before + delta);
+        if (next !== before) saveEditorFontSize(next);
+        return next;
     }
 
     function highlightCpp(code) {
@@ -1368,12 +1426,23 @@
     function bindEvents() {
         ensureCodeRefs();
         applyEditorTheme(loadEditorTheme());   // 启动时恢复上次选择的编辑器主题
+        applyEditorFontSize(loadEditorFontSize());   // 启动时恢复上次的代码字号
         if (codeThemeSelEl) {
             codeThemeSelEl.addEventListener('change', () => {
                 const name = codeThemeSelEl.value;
                 applyEditorTheme(name);
                 saveEditorTheme(name);
             });
+        }
+        // 字号步进：A− / A+ 按钮；编辑器内 Ctrl / ⌘ + 滚轮快速缩放
+        if (codeFontDownEl) codeFontDownEl.addEventListener('click', () => stepEditorFontSize(-1));
+        if (codeFontUpEl) codeFontUpEl.addEventListener('click', () => stepEditorFontSize(1));
+        if (codeShellEl) {
+            codeShellEl.addEventListener('wheel', (e) => {
+                if (!e.ctrlKey && !e.metaKey) return;   // 普通滚动不动字号
+                e.preventDefault();                     // 拦住浏览器整页缩放
+                stepEditorFontSize(e.deltaY < 0 ? 1 : -1);
+            }, { passive: false });
         }
         bindTabs();
         submitBtn.addEventListener('click', submit);

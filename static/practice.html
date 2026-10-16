@@ -90,14 +90,28 @@
                                     <span class="practice-code-file"><i class="practice-code-dot" aria-hidden="true"></i>solution.cpp</span>
                                     <span class="practice-code-tip">Ctrl / ⌘ + Enter 运行</span>
                                 </div>
-                                <div class="practice-code-theme">
-                                    <label class="practice-code-theme-label" for="codeTheme">主题</label>
-                                    <select id="codeTheme" class="practice-code-theme-select" aria-label="代码编辑器主题">
-                                        <option value="dark">暗黑 +</option>
-                                        <option value="light">浅色 +</option>
-                                        <option value="solarized">Solarized Dark</option>
-                                        <option value="monokai">Monokai</option>
-                                    </select>
+                                <div class="practice-code-tools">
+                                    <div class="practice-code-theme">
+                                        <label class="practice-code-theme-label" for="codeTheme">主题</label>
+                                        <select id="codeTheme" class="practice-code-theme-select" aria-label="代码编辑器主题">
+                                            <option value="dark">暗黑 +</option>
+                                            <option value="light">浅色 +</option>
+                                            <option value="solarized">Solarized Dark</option>
+                                            <option value="monokai">Monokai</option>
+                                        </select>
+                                    </div>
+                                    <!-- 代码字号：A− / A+ 步进（Ctrl / ⌘ + 滚轮也可缩放），localStorage 持久化 -->
+                                    <div class="practice-code-font" id="codeFont" role="group" aria-label="代码字号">
+                                        <span class="practice-code-theme-label" aria-hidden="true">字号</span>
+                                        <button type="button" class="practice-code-font-btn" id="codeFontDown"
+                                            title="减小字号（Ctrl / ⌘ + 滚轮向下）" aria-label="减小代码字号">A<span
+                                                class="practice-code-font-sign">−</span></button>
+                                        <output class="practice-code-font-val" id="codeFontVal"
+                                            title="当前代码字号（px）" aria-live="polite">13</output>
+                                        <button type="button" class="practice-code-font-btn" id="codeFontUp"
+                                            title="增大字号（Ctrl / ⌘ + 滚轮向上）" aria-label="增大代码字号">A<span
+                                                class="practice-code-font-sign">+</span></button>
+                                    </div>
                                 </div>
                             </div>
                             <div class="practice-code-main">

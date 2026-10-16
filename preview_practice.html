@@ -142,10 +142,31 @@ public:
                     <!-- 右：代码编辑器（IDE 观感：行号槽 + 语法高亮 + 状态栏）
                          表头与底部操作条已上移头部，编辑器吃满整卡 -->
                     <section class="practice-card practice-editor-card">
-                        <div class="practice-code">
+                        <div class="practice-code" id="codeShell">
                             <div class="practice-code-bar">
-                                <span class="practice-code-file"><i class="practice-code-dot" aria-hidden="true"></i>solution.cpp</span>
-                                <span class="practice-code-tip">可在编辑器里直接试输入 · Ctrl / ⌘ + Enter 运行</span>
+                                <div class="practice-code-bar-left">
+                                    <span class="practice-code-file"><i class="practice-code-dot" aria-hidden="true"></i>solution.cpp</span>
+                                    <span class="practice-code-tip">可在编辑器里直接试输入 · Ctrl / ⌘ + Enter 运行</span>
+                                </div>
+                                <div class="practice-code-tools">
+                                    <div class="practice-code-theme">
+                                        <label class="practice-code-theme-label" for="codeTheme">主题</label>
+                                        <select id="codeTheme" class="practice-code-theme-select" aria-label="代码编辑器主题">
+                                            <option value="dark">暗黑 +</option>
+                                            <option value="light">浅色 +</option>
+                                            <option value="solarized">Solarized Dark</option>
+                                            <option value="monokai">Monokai</option>
+                                        </select>
+                                    </div>
+                                    <div class="practice-code-font">
+                                        <span class="practice-code-theme-label" aria-hidden="true">字号</span>
+                                        <button type="button" class="practice-code-font-btn" id="codeFontDown"
+                                            aria-label="减小代码字号">A−</button>
+                                        <output class="practice-code-font-val" id="codeFontVal">13</output>
+                                        <button type="button" class="practice-code-font-btn" id="codeFontUp"
+                                            aria-label="增大代码字号">A+</button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="practice-code-main">
                                 <div class="practice-code-gutter" id="codeGutter" aria-hidden="true">1</div>
@@ -224,8 +245,14 @@ public:
         var cur = document.getElementById('codeCurrentLine');
         var statusPos = document.getElementById('codeStatusPos');
         var pre = hl.parentElement;
+        var shell = document.getElementById('codeShell');
         var INDENT = '    ';
-        var LH = 20.8;
+
+        // 字号（--c-fs）由顶栏 A− / A+ 控制：行高必须动态读计算值，否则大字体会错位
+        function lh() {
+            var v = parseFloat(getComputedStyle(ta).lineHeight);
+            return v || 20.8;
+        }
 
         function escHtml(s) {
             return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -247,15 +274,17 @@ public:
         }
         function followCaret() {
             if (!ta.clientHeight) return;
-            var yTop = 12 + (lineNo() - 1) * LH;
-            var yBot = yTop + LH;
+            var line = lh();
+            var yTop = 12 + (lineNo() - 1) * line;
+            var yBot = yTop + line;
             if (yTop < ta.scrollTop) ta.scrollTop = yTop;
             else if (yBot > ta.scrollTop + ta.clientHeight) ta.scrollTop = yBot - ta.clientHeight;
             sync();
         }
         function updateCurLine() {
-            var y = 12 + (lineNo() - 1) * LH - ta.scrollTop;
-            cur.style.height = LH + 'px';
+            var line = lh();
+            var y = 12 + (lineNo() - 1) * line - ta.scrollTop;
+            cur.style.height = line + 'px';
             cur.style.transform = 'translateY(' + y + 'px)';
             var before = ta.value.slice(0, ta.selectionStart);
             var col = ta.selectionStart - (before.lastIndexOf('\n') + 1) + 1;
@@ -309,6 +338,38 @@ public:
                 refresh();
             }
         });
+
+        // 编辑器主题与代码字号：与真实页同一套约定（data-editor-theme + --c-fs 变量）
+        var THEMES = ['dark', 'light', 'solarized', 'monokai'];
+        var FS_MIN = 11, FS_MAX = 20, fs = 13;
+        var themeSel = document.getElementById('codeTheme');
+        var fsVal = document.getElementById('codeFontVal');
+        var fsUp = document.getElementById('codeFontUp');
+        var fsDown = document.getElementById('codeFontDown');
+
+        function applyTheme(name) {
+            if (THEMES.indexOf(name) < 0) name = 'dark';
+            shell.dataset.editorTheme = name;
+            themeSel.value = name;
+        }
+        function applyFontSize(px) {
+            fs = Math.min(FS_MAX, Math.max(FS_MIN, Math.round(px)));
+            shell.style.setProperty('--c-fs', fs + 'px');
+            fsVal.textContent = String(fs);
+            fsDown.disabled = fs <= FS_MIN;
+            fsUp.disabled = fs >= FS_MAX;
+            refresh();
+        }
+        themeSel.addEventListener('change', function () { applyTheme(themeSel.value); });
+        fsDown.addEventListener('click', function () { applyFontSize(fs - 1); });
+        fsUp.addEventListener('click', function () { applyFontSize(fs + 1); });
+        shell.addEventListener('wheel', function (e) {
+            if (!e.ctrlKey && !e.metaKey) return;
+            e.preventDefault();
+            applyFontSize(fs + (e.deltaY < 0 ? 1 : -1));
+        }, { passive: false });
+        applyTheme('dark');
+        applyFontSize(fs);
     })();
     </script>
 </body>
