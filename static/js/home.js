@@ -34,12 +34,18 @@
     async function loadRecentPosts() {
         const host = document.getElementById('dashPostList');
         if (!host) return;
+        const foot = document.getElementById('dashPostsFoot');
         try {
             const data = await getJSON(API + '/posts');
             const posts = (data.posts || []).filter((p) => p.status !== 'draft');
             posts.sort((a, b) => timeValue(b.updated_at || b.created_at) - timeValue(a.updated_at || a.created_at));
 
             const top = posts.slice(0, 5);
+            if (foot) {
+                foot.textContent = posts.length
+                    ? '共 ' + posts.length + ' 篇 · 最近更新 ' + fmtDate(posts[0].updated_at || posts[0].created_at)
+                    : '';
+            }
             if (!top.length) {
                 host.innerHTML = '<li class="dash-empty">还没有文章</li>';
                 return;
@@ -98,6 +104,7 @@
         const metaEl = document.getElementById('dashPracticeMeta');
         const barEl = document.getElementById('dashPracticeBar');
         const textEl = document.getElementById('dashPracticeText');
+        const pctEl = document.getElementById('dashPracticePct');
         if (!metaEl) return;
 
         try {
@@ -121,7 +128,8 @@
 
             metaEl.textContent = chapters + ' 章 · ' + total + ' 题';
             barEl.style.width = pct + '%';
-            textEl.textContent = '已完成 ' + done + ' / ' + total + ' 题 · ' + pct + '%';
+            textEl.textContent = '已完成 ' + done + ' / ' + total + ' 题';
+            if (pctEl) pctEl.innerHTML = pct + '<small>%</small>';
         } catch (e) {
             console.warn('[home] 练习进度加载失败', e);
             metaEl.textContent = '点击进入';
