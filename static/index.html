@@ -29,48 +29,55 @@
         </div>
     </header>
 
-    <!-- 主体 -->
+    <!-- 主体：三栏 Dashboard（左=最近文章 / 右上=每日一题 / 右下=练习闯关） -->
     <main class="container container-home">
-        <div class="home-main">
-            <h1 class="page-title" id="pageTitle">全部文章</h1>
-            <p class="page-subtitle">记录技术 · 分享生活</p>
-
-            <!-- 顶部双层筛选条：第一层专栏，第二层主题 -->
-            <div class="filter-bar">
-                <div class="filter-row" id="topicTabs"></div>
-                <div class="filter-row filter-row-theme" id="themeTabs" hidden></div>
-            </div>
-
-            <div class="topic-add" id="topicAdd" hidden>
-                <input type="text" id="topicAddInput" placeholder="新专栏名称" maxlength="100">
-                <button type="button" class="btn btn-primary" id="topicAddConfirm">添加</button>
-                <button type="button" class="btn btn-secondary" id="topicAddCancel">取消</button>
-            </div>
-
-            <!-- 每日一题：今日题目，答案点开才显示 -->
-            <section class="home-daily" id="homeDaily" hidden>
-                <div class="daily-card-head">
-                    <span class="daily-badge">每日一题</span>
-                    <span class="daily-date" id="homeDailyDate"></span>
-                    <span class="daily-meta" id="homeDailyMeta"></span>
+        <div class="home-dashboard">
+            <!-- 左栏：最近修改的文章 -->
+            <section class="dash-card dash-posts" aria-labelledby="dashPostsTitle">
+                <div class="dash-head">
+                    <h2 class="dash-title" id="dashPostsTitle">最近更新</h2>
+                    <a class="dash-more" href="/posts">全部文章 <span aria-hidden="true">→</span></a>
                 </div>
-                <p class="home-daily-question" id="homeDailyQuestion"></p>
-                <div class="home-daily-actions">
-                    <button type="button" class="btn btn-primary" id="homeDailyReveal">查看答案</button>
-                    <a class="btn btn-secondary" href="/daily">进入每日一题</a>
-                    <span class="daily-streak" id="homeDailyStreak"></span>
-                </div>
-                <div class="daily-answer" id="homeDailyAnswer" hidden></div>
+                <ul class="dash-post-list" id="dashPostList">
+                    <li class="dash-loading">加载中…</li>
+                </ul>
             </section>
 
-            <div id="postList" class="post-list">
-                <div class="loading">加载中...</div>
+            <!-- 右栏：上下两卡 -->
+            <div class="dash-col-side">
+                <!-- 每日一题：整卡进入每日一题页 -->
+                <a class="dash-card dash-daily" href="/daily">
+                    <div class="dash-card-top">
+                        <span class="dash-eyebrow">每日一题</span>
+                        <span class="dash-date" id="dashDailyDate"></span>
+                    </div>
+                    <p class="dash-daily-q" id="dashDailyQuestion">加载中…</p>
+                    <div class="dash-card-foot">
+                        <span class="dash-meta" id="dashDailyMeta"></span>
+                        <span class="dash-streak" id="dashDailyStreak"></span>
+                    </div>
+                </a>
+
+                <!-- 练习闯关：整卡进入练习页 -->
+                <a class="dash-card dash-practice" href="/practice">
+                    <div class="dash-card-top">
+                        <span class="dash-eyebrow">练习闯关</span>
+                        <span class="dash-meta" id="dashPracticeMeta">加载中…</span>
+                    </div>
+                    <div class="dash-progress">
+                        <div class="dash-progress-bar"><span id="dashPracticeBar"></span></div>
+                        <span class="dash-progress-text" id="dashPracticeText"></span>
+                    </div>
+                    <div class="dash-card-foot">
+                        <span class="dash-hint">继续刷题 →</span>
+                    </div>
+                </a>
             </div>
         </div>
     </main>
 
     <script src="/js/auth.js"></script>
-    <script src="/js/list.js"></script>
+    <script src="/js/home.js"></script>
     <script src="/js/header.js"></script>
     <script src="/js/background.js"></script>
     <script src="/js/theme.js"></script>

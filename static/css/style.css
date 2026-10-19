@@ -5603,3 +5603,322 @@ body.practice-page .site-footer {
     opacity: 1;
     background: var(--danger, #dc2626);
 }
+
+/* ============================================================
+   首页 Dashboard：深色 + 灵动岛
+   作用域限定 body.home-page，其余页面保持浅色；
+   文章列表页 /posts 沿用原浅色布局，只需对齐导航宽度。
+   ============================================================ */
+body.posts-page {
+    --header-width: 1060px;
+}
+
+body.home-page {
+    --bg: #0a0a0c;
+    --surface: #141416;
+    --text: #ececf0;
+    --text-secondary: #a0a0a8;
+    --text-muted: #6c6c75;
+    --border: #232328;
+    --accent: #f97316;
+    --accent-dark: #fb923c;
+    --accent-soft: rgba(249, 115, 22, 0.14);
+    --card-bg: #17171a;
+    --card-border: #2a2a30;
+    --nav-bg: rgba(18, 18, 21, 0.72);
+    --danger: #f87171;
+    --danger-soft: rgba(248, 113, 113, 0.14);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.55);
+    /* 强制纯黑底：覆盖 background.js 可能设置的背景图 */
+    background: var(--bg) !important;
+    color: var(--text);
+}
+
+/* 深色滚动条与选区 */
+body.home-page ::-webkit-scrollbar-thumb {
+    background: #2a2a30;
+}
+body.home-page ::-webkit-scrollbar-thumb:hover {
+    background: #3a3a42;
+}
+body.home-page ::selection {
+    background: rgba(249, 115, 22, 0.35);
+    color: #ffffff;
+}
+
+/* 深色毛玻璃导航（滚动后） */
+body.home-page .site-header-pill.scrolled {
+    background: rgba(18, 18, 21, 0.72);
+    border-color: rgba(255, 255, 255, 0.07);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- 三栏网格 ---------- */
+.home-dashboard {
+    display: grid;
+    grid-template-columns: minmax(0, 1.62fr) minmax(300px, 1fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.dash-col-side {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+}
+
+/* ---------- 卡片（灵动岛质感：圆角 + 细边 + 顶部内高光） ---------- */
+.dash-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 22px 24px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+a.dash-card {
+    display: block;
+    color: inherit;
+    transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+a.dash-card:hover {
+    border-color: var(--card-border);
+    transform: translateY(-2px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 16px 36px rgba(0, 0, 0, 0.5);
+}
+
+.dash-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.dash-title {
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text);
+}
+
+.dash-more {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    transition: color var(--transition);
+}
+
+.dash-more:hover {
+    color: var(--accent);
+}
+
+/* ---------- 最近文章列表 ---------- */
+.dash-post-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.dash-post-item + .dash-post-item {
+    border-top: 1px solid var(--border);
+}
+
+.dash-post-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 2px;
+    transition: padding-left var(--transition);
+}
+
+.dash-post-link:hover {
+    padding-left: 8px;
+}
+
+.dash-post-title {
+    min-width: 0;
+    font-size: 0.96rem;
+    font-weight: 600;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color var(--transition);
+}
+
+.dash-post-link:hover .dash-post-title {
+    color: var(--accent);
+}
+
+.dash-post-side {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.dash-tag {
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(249, 115, 22, 0.18);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.dash-post-date {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.dash-empty,
+.dash-loading {
+    padding: 20px 2px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* ---------- 每日一题 / 练习闯关 ---------- */
+.dash-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.dash-eyebrow {
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.dash-date,
+.dash-meta {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.dash-daily-q {
+    display: -webkit-box;
+    margin: 0 0 16px;
+    overflow: hidden;
+    color: var(--text);
+    font-family: var(--serif);
+    font-size: 1rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+}
+
+.dash-card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.dash-streak {
+    color: var(--accent);
+    font-size: 0.78rem;
+}
+
+.dash-hint {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    transition: color var(--transition);
+}
+
+a.dash-card:hover .dash-hint {
+    color: var(--accent);
+}
+
+/* ---------- 练习进度条 ---------- */
+.dash-progress {
+    margin: 4px 0 14px;
+}
+
+.dash-progress-bar {
+    height: 6px;
+    border-radius: 999px;
+    background: #1f1f24;
+    overflow: hidden;
+}
+
+.dash-progress-bar > span {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), #fb923c);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dash-progress-text {
+    display: inline-block;
+    margin-top: 8px;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 首页容器 / 页脚 ---------- */
+body.home-page .container-home {
+    padding-top: 28px;
+}
+
+body.home-page .site-footer,
+body.home-page .site-footer a {
+    color: var(--text-muted);
+}
+
+body.home-page .site-footer a:hover {
+    color: var(--text-secondary);
+}
+
+/* ---------- 响应式（必须排在被覆盖规则之后） ---------- */
+@media (max-width: 980px) {
+    .home-dashboard {
+        grid-template-columns: 1fr;
+    }
+    .dash-col-side {
+        flex-direction: row;
+    }
+    .dash-col-side > .dash-card {
+        flex: 1 1 0;
+    }
+}
+
+@media (max-width: 720px) {
+    .dash-col-side {
+        flex-direction: column;
+    }
+    .dash-card {
+        padding: 18px;
+        border-radius: 16px;
+    }
+    .dash-post-link {
+        gap: 10px;
+    }
+    .dash-post-title {
+        display: -webkit-box;
+        white-space: normal;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+}
