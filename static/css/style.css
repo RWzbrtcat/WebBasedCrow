@@ -2716,7 +2716,7 @@ input[readonly] {
 }
 
 /* 首页双栏布局较宽，导航胶囊随内容宽度对齐 */
-.home-page {
+.dash-page {
     --header-width: 1060px;
 }
 
@@ -5606,15 +5606,15 @@ body.practice-page .site-footer {
 
 /* ============================================================
    首页 Dashboard：深空科技感 · 一屏三岛
-   作用域限定 body.home-page，其余页面保持原浅色；
+   作用域限定 body.dash-page，其余页面保持原浅色；
    文章列表页 /posts 只需对齐导航宽度。
    三岛配色：文章=天青 / 每日一题=紫罗兰 / 练习闯关=薄荷
    ============================================================ */
-body.posts-page {
+body.list-page {
     --header-width: 1060px;
 }
 
-body.home-page {
+body.dash-page {
     --bg: #05070d;
     --surface: #0b0f19;
     --text: #e8edf7;
@@ -5643,7 +5643,7 @@ body.home-page {
 }
 
 /* ---------- 背景：三团极光 + 网格 ---------- */
-body.home-page::before {
+body.dash-page::before {
     content: "";
     position: fixed;
     inset: -10%;
@@ -5657,7 +5657,7 @@ body.home-page::before {
     animation: homeAurora 38s ease-in-out infinite alternate;
 }
 
-body.home-page::after {
+body.dash-page::after {
     content: "";
     position: fixed;
     inset: 0;
@@ -5677,36 +5677,36 @@ body.home-page::after {
 }
 
 /* 内容层压在背景之上（不能笼统写 > *，否则会把 sticky 导航改成 relative） */
-body.home-page > main,
-body.home-page > footer {
+body.dash-page > main,
+body.dash-page > footer {
     position: relative;
     z-index: 1;
 }
 
 /* 深色滚动条与选区 */
-body.home-page ::-webkit-scrollbar {
+body.dash-page ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
 }
-body.home-page ::-webkit-scrollbar-thumb {
+body.dash-page ::-webkit-scrollbar-thumb {
     background: rgba(120, 165, 220, 0.22);
     border-radius: 999px;
 }
-body.home-page ::-webkit-scrollbar-thumb:hover {
+body.dash-page ::-webkit-scrollbar-thumb:hover {
     background: rgba(120, 165, 220, 0.36);
 }
-body.home-page ::selection {
+body.dash-page ::selection {
     background: rgba(56, 189, 248, 0.32);
     color: #ffffff;
 }
 
 /* ---------- 导航：常驻玻璃胶囊 ---------- */
-body.home-page .site-header {
+body.dash-page .site-header {
     background: transparent;
     border-bottom-color: transparent;
 }
 
-body.home-page .site-header-pill {
+body.dash-page .site-header-pill {
     background: rgba(9, 13, 22, 0.55);
     border-color: rgba(120, 170, 230, 0.14);
     border-radius: 999px;
@@ -5717,7 +5717,7 @@ body.home-page .site-header-pill {
         0 12px 32px -20px rgba(0, 0, 0, 0.9);
 }
 
-body.home-page .site-header-pill.scrolled {
+body.dash-page .site-header-pill.scrolled {
     background: rgba(9, 13, 22, 0.80);
     border-color: rgba(120, 170, 230, 0.22);
     box-shadow:
@@ -5725,23 +5725,23 @@ body.home-page .site-header-pill.scrolled {
         0 16px 42px -22px rgba(0, 0, 0, 0.95);
 }
 
-body.home-page .site-header-pill .site-title {
+body.dash-page .site-header-pill .site-title {
     color: #eaf2ff;
     letter-spacing: 0.01em;
 }
 
-body.home-page .nav a,
-body.home-page .nav .nav-create-toggle {
+body.dash-page .nav a,
+body.dash-page .nav .nav-create-toggle {
     color: var(--text-secondary);
 }
 
-body.home-page .nav a:hover,
-body.home-page .nav .nav-create-toggle:hover {
+body.dash-page .nav a:hover,
+body.dash-page .nav .nav-create-toggle:hover {
     color: #ffffff;
     background: rgba(255, 255, 255, 0.07);
 }
 
-body.home-page .nav a.active {
+body.dash-page .nav a.active {
     color: #04121c;
     background: linear-gradient(180deg, #7dd3fc, #38bdf8);
     border-color: transparent;
@@ -5749,7 +5749,7 @@ body.home-page .nav a.active {
 }
 
 /* ---------- 布局：铺满一屏 ---------- */
-body.home-page .container-home {
+body.dash-page .container-home {
     width: min(1840px, calc(100vw - 44px));
     max-width: none;
     margin: 0 auto;
@@ -6231,12 +6231,12 @@ a.dash-card:hover .dash-hint {
 }
 
 /* ---------- 页脚 ---------- */
-body.home-page .site-footer,
-body.home-page .site-footer a {
+body.dash-page .site-footer,
+body.dash-page .site-footer a {
     color: var(--text-muted);
 }
 
-body.home-page .site-footer a:hover {
+body.dash-page .site-footer a:hover {
     color: var(--text-secondary);
 }
 
@@ -6262,42 +6262,42 @@ body.home-page .site-footer a:hover {
 }
 
 @media (max-width: 720px) {
-    body.home-page {
+    body.dash-page {
         --header-width: calc(100vw - 24px);
     }
 
-    body.home-page .container-home {
+    body.dash-page .container-home {
         width: calc(100vw - 24px);
         padding-top: 8px;
     }
 
     /* 窄屏导航：收窄内距 + 可横向滑动，避免撑破视口 */
-    body.home-page .site-header-pill {
+    body.dash-page .site-header-pill {
         width: calc(100vw - 24px);
     }
 
-    body.home-page .site-header-pill .header-inner {
+    body.dash-page .site-header-pill .header-inner {
         padding: 5px 6px 5px 14px;
         gap: 8px;
     }
 
-    body.home-page .site-header-pill .site-title {
+    body.dash-page .site-header-pill .site-title {
         font-size: 1.02rem;
     }
 
-    body.home-page .nav {
+    body.dash-page .nav {
         gap: 2px;
         min-width: 0;
         overflow-x: auto;
         scrollbar-width: none;
     }
 
-    body.home-page .nav::-webkit-scrollbar {
+    body.dash-page .nav::-webkit-scrollbar {
         display: none;
     }
 
-    body.home-page .nav a,
-    body.home-page .nav .nav-create-toggle {
+    body.dash-page .nav a,
+    body.dash-page .nav .nav-create-toggle {
         padding: 6px 9px;
         font-size: 0.84rem;
     }
@@ -6350,7 +6350,7 @@ body.home-page .site-footer a:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    body.home-page::before {
+    body.dash-page::before {
         animation: none;
     }
 
