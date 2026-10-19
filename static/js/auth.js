@@ -82,11 +82,6 @@ function renderNavAvatar(data, authed) {
         profileItem.href = '/profile';
         profileItem.textContent = '个人资料';
 
-        // 站点概览：三岛 Dashboard（首页已改为文章列表，概览入口收在此处）
-        const overviewItem = document.createElement('a');
-        overviewItem.href = '/posts';
-        overviewItem.textContent = '站点概览';
-
         // 个性化：更换背景 / 更换样式（原独立「个性化」按钮并入头像菜单）
         const bgItem = document.createElement('button');
         bgItem.type = 'button';
@@ -103,7 +98,6 @@ function renderNavAvatar(data, authed) {
         logoutItem.textContent = '退出';
 
         menu.appendChild(profileItem);
-        menu.appendChild(overviewItem);
         menu.appendChild(bgItem);
         menu.appendChild(themeItem);
 

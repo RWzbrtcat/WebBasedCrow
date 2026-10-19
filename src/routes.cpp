@@ -990,12 +990,12 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
 
     // ========== 静态文件服务 ==========
 
-    // 根路径返回首页：文章列表（专栏/主题筛选 + 全部文章）
+    // 根路径返回首页：深色 Dashboard（最近更新 / 每日一题 / 练习闯关）
     CROW_ROUTE(app, "/")([staticDir](){
         return htmlResponse(readFile(staticDir + "/index.html"));
     });
 
-    // 站点概览（深色 Dashboard：最近更新 / 每日一题 / 练习闯关）
+    // 文章列表页（专栏/主题筛选 + 每日一题卡片 + 全部文章）
     CROW_ROUTE(app, "/posts")([staticDir](){
         return htmlResponse(readFile(staticDir + "/posts.html"));
     });
