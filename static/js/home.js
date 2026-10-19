@@ -100,39 +100,63 @@
     }
 
     // ---------- 右下：练习闯关进度 ----------
-    async function loadPractice() {
-        const metaEl = document.getElementById('dashPracticeMeta');
+    // 进度属于个人数据：未登录一律显示 0（不请求服务端进度），登录后才展示自己的完成情况。
+    let authCache = null;
+    async function isAuthed() {
+        if (authCache !== null) return authCache;
+        try {
+            authCache = await (window.__blogAuthPromise || fetch(API + '/auth').then((r) => r.json()))
+                .then((d) => !!(d && d.authed));
+        } catch (e) {
+            authCache = false;
+        }
+        return authCache;
+    }
+
+    function renderPracticeProgress(done, total) {
         const barEl = document.getElementById('dashPracticeBar');
         const textEl = document.getElementById('dashPracticeText');
         const pctEl = document.getElementById('dashPracticePct');
+        const pct = total ? Math.round((done / total) * 100) : 0;
+        if (barEl) barEl.style.width = pct + '%';
+        if (textEl) textEl.textContent = '已完成 ' + done + ' / ' + total + ' 题';
+        if (pctEl) pctEl.innerHTML = pct + '<small>%</small>';
+    }
+
+    async function loadPractice() {
+        const metaEl = document.getElementById('dashPracticeMeta');
         if (!metaEl) return;
 
+        // 章节规模是公开信息，始终展示
+        let chapters = 0;
+        let total = 0;
         try {
-            const [chRes, progRes] = await Promise.all([
-                getJSON(API + '/practice/chapters'),
-                getJSON(API + '/practice/progress').catch(() => ({ passed: [] }))
-            ]);
-
-            let chapters = 0;
-            let total = 0;
+            const chRes = await getJSON(API + '/practice/chapters');
             (chRes.semesters || []).forEach((sem) => {
                 (sem.chapters || []).forEach((ch) => {
                     chapters += 1;
                     total += Number(ch.exercise_count) || 0;
                 });
             });
-
-            const passed = (progRes && progRes.passed) || [];
-            const done = Math.min(passed.length, total);
-            const pct = total ? Math.round((done / total) * 100) : 0;
-
             metaEl.textContent = chapters + ' 章 · ' + total + ' 题';
-            barEl.style.width = pct + '%';
-            textEl.textContent = '已完成 ' + done + ' / ' + total + ' 题';
-            if (pctEl) pctEl.innerHTML = pct + '<small>%</small>';
+        } catch (e) {
+            console.warn('[home] 章节列表加载失败', e);
+            metaEl.textContent = '点击进入';
+        }
+
+        // 先落一个确定值，避免等待登录态期间显示 "—"
+        renderPracticeProgress(0, total);
+
+        // 未登录：固定 0，且不去取任何人的刷题记录
+        if (!(await isAuthed())) return;
+
+        try {
+            const progRes = await getJSON(API + '/practice/progress').catch(() => ({ passed: [] }));
+            const passed = (progRes && progRes.passed) || [];
+            renderPracticeProgress(Math.min(passed.length, total), total);
         } catch (e) {
             console.warn('[home] 练习进度加载失败', e);
-            metaEl.textContent = '点击进入';
+            renderPracticeProgress(0, total);
         }
     }
 

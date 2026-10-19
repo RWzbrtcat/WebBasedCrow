@@ -5,28 +5,28 @@
 // 其中「管理员」仅主管理员（站长）可见。
 // ============================================
 
+// 登录态只查一次：脚本解析时发起，供本文件与其他脚本（首页 Dashboard 等）复用
+const AUTH_PROMISE = fetch('/api/auth')
+    .then((r) => r.json())
+    .catch(() => null);
+window.__blogAuthPromise = AUTH_PROMISE;
+
 document.addEventListener('DOMContentLoaded', () => {
     bindCreateDropdown();
     highlightCreateDropdown();
 
-    fetch('/api/auth')
-        .then((r) => r.json())
-        .then((data) => {
-            const authed = !!(data && data.authed);
-            const isMain = !!(data && data.is_main);
-            document.querySelectorAll('[data-auth-role="admin"]').forEach((el) => {
-                el.hidden = !authed;
-            });
-            document.querySelectorAll('[data-auth-role="main"]').forEach((el) => {
-                el.hidden = !isMain;
-            });
-            renderNavAvatar(data, authed);
-        })
-        .catch(() => {
-            // 无法获取登录态时，默认隐藏需要登录的入口，避免向陌生人泄露
-            document.querySelectorAll('[data-auth-role="admin"], [data-auth-role="main"]').forEach((el) => { el.hidden = true; });
-            hideNavAvatar();
+    AUTH_PROMISE.then((data) => {
+        const authed = !!(data && data.authed);
+        const isMain = !!(data && data.is_main);
+        document.querySelectorAll('[data-auth-role="admin"]').forEach((el) => {
+            el.hidden = !authed;
         });
+        document.querySelectorAll('[data-auth-role="main"]').forEach((el) => {
+            el.hidden = !isMain;
+        });
+        // 拿不到登录态（data 为 null）时同样按未登录处理，避免向陌生人泄露入口
+        renderNavAvatar(data, authed);
+    });
 });
 
 // 在导航栏末尾渲染「头像 + 下拉菜单」：
@@ -152,13 +152,6 @@ function renderNavAvatar(data, authed) {
     } else {
         avatar.replaceChildren(defaultAvatarSvg());
     }
-}
-
-function hideNavAvatar() {
-    const nav = document.querySelector('.site-header .nav');
-    if (!nav) return;
-    const wrap = nav.querySelector('.nav-avatar-wrap');
-    if (wrap) wrap.hidden = true;
 }
 
 // 收起所有头像菜单；skip(wrap) 返回 true 的跳过
