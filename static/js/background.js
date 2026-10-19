@@ -1,5 +1,5 @@
 // ============================================
-// 站点背景图：加载背景 + 提供更换背景入口（由个性化下拉调用）
+// 站点背景图：加载背景 + 提供更换背景入口（由头像下拉菜单调用）
 // ============================================
 (function () {
     const API_BASE = '/api';
@@ -98,7 +98,7 @@
         return fileInput;
     }
 
-    // 暴露给个性化下拉调用
+    // 暴露给头像下拉菜单调用
     window.__blogPersonalize = window.__blogPersonalize || {};
     window.__blogPersonalize.changeBackground = function () {
         ensureFileInput().click();

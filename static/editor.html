@@ -18,9 +18,14 @@
                 <a href="/">首页</a>
                 <a href="/daily">每日一题</a>
                 <a href="/practice">练习闯关</a>
-                <a href="/drafts">草稿</a>
-                <a href="/hidden">隐藏</a>
-                <a href="/editor" class="active">创作</a>
+                <div class="nav-dropdown nav-create" data-auth-role="admin" hidden>
+                    <button type="button" class="nav-create-toggle" aria-haspopup="true" aria-expanded="false">创作<span class="nav-dropdown-caret"></span></button>
+                    <div class="nav-dropdown-menu" hidden>
+                        <a class="nav-dropdown-item" href="/editor">写文章</a>
+                        <a class="nav-dropdown-item" href="/drafts">草稿</a>
+                        <a class="nav-dropdown-item" href="/hidden">隐藏</a>
+                    </div>
+                </div>
             </nav>
         </div>
     </header>

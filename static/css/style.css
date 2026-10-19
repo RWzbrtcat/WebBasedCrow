@@ -232,7 +232,8 @@ html {
     gap: 2px;
 }
 
-.nav-avatar-menu a {
+.nav-avatar-menu a,
+.nav-avatar-menu .nav-avatar-menu-item {
     display: flex;
     align-items: center;
     padding: 8px 12px;
@@ -243,12 +244,22 @@ html {
     transition: background 0.15s, color 0.15s;
 }
 
-.nav-avatar-menu a:hover {
+.nav-avatar-menu .nav-avatar-menu-item {
+    width: 100%;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.nav-avatar-menu a:hover,
+.nav-avatar-menu .nav-avatar-menu-item:hover {
     background: var(--accent-soft);
     color: var(--accent-dark);
 }
 
-.nav .personalize-btn {
+.nav .nav-create-toggle {
     background: transparent;
     border: 1px solid transparent;
     color: var(--text);
@@ -263,13 +274,25 @@ html {
     transition: all var(--transition);
 }
 
-.nav .personalize-btn:hover {
+.nav .nav-create-toggle:hover {
     background: var(--accent-soft);
     color: var(--accent);
 }
 
+.nav .nav-create-toggle.active {
+    color: #fff;
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
 .nav-dropdown {
     position: relative;
+}
+
+/* 「创作」下拉菜单向左对齐按钮（头像/个性化菜单默认右对齐） */
+.nav-create .nav-dropdown-menu {
+    left: 0;
+    right: auto;
 }
 
 .nav-dropdown-caret {
@@ -1771,7 +1794,7 @@ body.post-page .markdown-body h6 {
         gap: 2px;
     }
     .site-header.site-header-pill .nav a,
-    .site-header.site-header-pill .nav .personalize-btn {
+    .site-header.site-header-pill .nav .nav-create-toggle {
         padding: 5px 9px;
         font-size: 0.85rem;
     }

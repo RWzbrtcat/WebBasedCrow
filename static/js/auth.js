@@ -6,6 +6,9 @@
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
+    bindCreateDropdown();
+    highlightCreateDropdown();
+
     fetch('/api/auth')
         .then((r) => r.json())
         .then((data) => {
@@ -61,6 +64,15 @@ function renderNavAvatar(data, authed) {
 
     // 下拉菜单
     let menu = wrap.querySelector('.nav-avatar-menu');
+
+    // 收起头像菜单
+    const closeMenu = () => {
+        if (menu && !menu.hidden) {
+            menu.hidden = true;
+            avatar.setAttribute('aria-expanded', 'false');
+        }
+    };
+
     if (!menu) {
         menu = document.createElement('div');
         menu.className = 'nav-avatar-menu';
@@ -70,11 +82,24 @@ function renderNavAvatar(data, authed) {
         profileItem.href = '/profile';
         profileItem.textContent = '个人资料';
 
+        // 个性化：更换背景 / 更换样式（原独立「个性化」按钮并入头像菜单）
+        const bgItem = document.createElement('button');
+        bgItem.type = 'button';
+        bgItem.className = 'nav-avatar-menu-item';
+        bgItem.textContent = '更换背景';
+
+        const themeItem = document.createElement('button');
+        themeItem.type = 'button';
+        themeItem.className = 'nav-avatar-menu-item';
+        themeItem.textContent = '更换样式';
+
         const logoutItem = document.createElement('a');
         logoutItem.href = '/logout';
         logoutItem.textContent = '退出';
 
         menu.appendChild(profileItem);
+        menu.appendChild(bgItem);
+        menu.appendChild(themeItem);
 
         // 管理员入口：仅主管理员（站长）可见
         if (data && data.is_main) {
@@ -86,6 +111,17 @@ function renderNavAvatar(data, authed) {
 
         menu.appendChild(logoutItem);
         wrap.appendChild(menu);
+
+        bgItem.addEventListener('click', () => {
+            closeMenu();
+            const fn = window.__blogPersonalize && window.__blogPersonalize.changeBackground;
+            if (fn) fn();
+        });
+        themeItem.addEventListener('click', () => {
+            closeMenu();
+            const fn = window.__blogPersonalize && window.__blogPersonalize.changeTheme;
+            if (fn) fn();
+        });
     }
 
     // 绑定点击切换（仅一次）
@@ -94,6 +130,8 @@ function renderNavAvatar(data, authed) {
         avatar.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
+            // 打开头像菜单时收起「创作」下拉，避免两个下拉同时展开
+            closeCreateDropdowns();
             const willOpen = menu.hidden;
             menu.hidden = !menu.hidden;
             avatar.setAttribute('aria-expanded', String(willOpen));
@@ -123,10 +161,10 @@ function hideNavAvatar() {
     if (wrap) wrap.hidden = true;
 }
 
-// 点击头像菜单以外的区域时收起菜单
-document.addEventListener('click', (e) => {
+// 收起所有头像菜单；skip(wrap) 返回 true 的跳过
+function closeAvatarMenus(skip) {
     document.querySelectorAll('.nav-avatar-wrap').forEach((wrap) => {
-        if (wrap.hidden || wrap.contains(e.target)) return;
+        if (wrap.hidden || (typeof skip === 'function' && skip(wrap))) return;
         const menu = wrap.querySelector('.nav-avatar-menu');
         const avatar = wrap.querySelector('.nav-avatar');
         if (menu && !menu.hidden) {
@@ -134,6 +172,26 @@ document.addEventListener('click', (e) => {
             avatar.setAttribute('aria-expanded', 'false');
         }
     });
+}
+
+// 收起所有「创作」下拉；skip(wrap) 返回 true 的跳过
+function closeCreateDropdowns(skip) {
+    document.querySelectorAll('.nav-create').forEach((wrap) => {
+        if (wrap.hidden || (typeof skip === 'function' && skip(wrap))) return;
+        const menu = wrap.querySelector('.nav-dropdown-menu');
+        const toggle = wrap.querySelector('.nav-create-toggle');
+        if (menu && !menu.hidden) {
+            menu.hidden = true;
+            wrap.classList.remove('open');
+            toggle.setAttribute('aria-expanded', 'false');
+        }
+    });
+}
+
+// 点击下拉以外的区域时收起全部（点击所在下拉内部则跳过）
+document.addEventListener('click', (e) => {
+    closeAvatarMenus((wrap) => wrap.contains(e.target));
+    closeCreateDropdowns((wrap) => wrap.contains(e.target));
 });
 
 // 默认的灰色人形占位图标（Material Design person）
@@ -146,4 +204,35 @@ function defaultAvatarSvg() {
     path.setAttribute('d', 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z');
     svg.appendChild(path);
     return svg;
+}
+
+// ============================================
+// 「创作」下拉（写文章 / 草稿 / 隐藏）：切换展开
+// ============================================
+function bindCreateDropdown() {
+    document.querySelectorAll('.nav-create').forEach((wrap) => {
+        const toggle = wrap.querySelector('.nav-create-toggle');
+        const menu = wrap.querySelector('.nav-dropdown-menu');
+        if (!toggle || !menu || toggle.dataset.bound) return;
+        toggle.dataset.bound = '1';
+
+        toggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // 打开「创作」下拉时收起头像菜单，避免两个下拉同时展开
+            closeAvatarMenus();
+            const willOpen = menu.hidden;
+            menu.hidden = !willOpen;
+            wrap.classList.toggle('open', willOpen);
+            toggle.setAttribute('aria-expanded', String(willOpen));
+        });
+    });
+}
+
+// 当前处于「写文章 / 草稿 / 隐藏」任一页时，点亮「创作」下拉按钮
+function highlightCreateDropdown() {
+    const active = ['/drafts', '/hidden', '/editor'].includes(window.location.pathname);
+    document.querySelectorAll('.nav-create-toggle').forEach((btn) => {
+        btn.classList.toggle('active', active);
+    });
 }
