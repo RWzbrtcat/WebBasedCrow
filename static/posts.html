@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文章 · LazyCat's Blog</title>
+    <title>全部文章 · LazyCat's Blog</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="posts-page">
@@ -14,7 +14,7 @@
                 <a class="site-title" href="/">LazyCat</a>
             </div>
             <nav class="nav">
-                <a href="/">首页</a>
+                <a href="/" class="active">首页</a>
                 <a href="/daily">每日一题</a>
                 <a href="/practice">练习闯关</a>
                 <div class="nav-dropdown nav-create" data-auth-role="admin" hidden>
@@ -29,7 +29,7 @@
         </div>
     </header>
 
-    <!-- 主体：全部文章列表（原首页列表，含专栏/主题筛选） -->
+    <!-- 主体：全部文章列表（与改版前的首页文章列表保持一致） -->
     <main class="container container-home">
         <div class="home-main">
             <h1 class="page-title" id="pageTitle">全部文章</h1>
@@ -46,6 +46,22 @@
                 <button type="button" class="btn btn-primary" id="topicAddConfirm">添加</button>
                 <button type="button" class="btn btn-secondary" id="topicAddCancel">取消</button>
             </div>
+
+            <!-- 每日一题：今日题目，答案点开才显示 -->
+            <section class="home-daily" id="homeDaily" hidden>
+                <div class="daily-card-head">
+                    <span class="daily-badge">每日一题</span>
+                    <span class="daily-date" id="homeDailyDate"></span>
+                    <span class="daily-meta" id="homeDailyMeta"></span>
+                </div>
+                <p class="home-daily-question" id="homeDailyQuestion"></p>
+                <div class="home-daily-actions">
+                    <button type="button" class="btn btn-primary" id="homeDailyReveal">查看答案</button>
+                    <a class="btn btn-secondary" href="/daily">进入每日一题</a>
+                    <span class="daily-streak" id="homeDailyStreak"></span>
+                </div>
+                <div class="daily-answer" id="homeDailyAnswer" hidden></div>
+            </section>
 
             <div id="postList" class="post-list">
                 <div class="loading">加载中...</div>
