@@ -2340,17 +2340,24 @@ int DataBase::ensureDailyQuestion(const std::string& date)
 
     const size_t startIdx = static_cast<size_t>((dayIndex / n) % static_cast<long>(pool.size()));
 
-    // 5. 防重兜底：轮转的映射依赖「当前的分类集合」（dayIndex % n 与 dayIndex / n），
-    //    所以题库一旦增删分类或改名，整个映射就会整体错位，可能算出与前几天相同的题。
-    //    实测踩过：题库从 46 道扩到 500 道（分类 5 → 8）后，新旧映射恰好都落到
-    //    MySQL 分类里 id 最小的那道，连续两天同一题。
-    //    这里在类内从原位置向后线性探测，跳过最近 7 天已经排过的题；
-    //    池子比窗口还小时必然无解，就保持原位置那一题（不阻塞出题）。
-    //    只查 d < date 的历史，所以不会受「今天已写库」影响，同一天多次调用结果一致。
-    std::set<int> recent;
+    // 5. 类内去重：从该分类里挑「还没出过」的题。
+    //
+    //    不能只避让「最近 N 天」——这是踩过的坑。轮转对同一分类是每 n 天前进一道，
+    //    所以「顺延一位」抢到的恰好是**下一轮**要用的那道：
+    //      10-11 (dayIndex 2) 本该 pool[0]=11，与 10-10 重复 → 顺延成 pool[1]=12；
+    //      10-19 (dayIndex 10 = 2+8) 本来就该取 pool[1]=12 → 8 天后原地撞车。
+    //    窗口调到 8 天也没用，只要顺延，就一定侵占未来某一天。
+    //
+    //    所以改成「排除该分类下所有排过的题」，从 startIdx 起找第一道没出过的：
+    //    同类在一轮（题数 × n 天）之内绝不重复，也不再依赖 dayIndex/n 精确对齐
+    //    —— 题库增删分类不会打乱已出题的记录。
+    //    题太少的分类排完一轮后无解，退回原来的轮转位置（不阻塞出题）。
+    //    只查 d < date 的历史，所以不受「今天已写库」影响，同一天多次调用结果一致。
+    std::set<int> used;
     {
-        std::string sql = "SELECT question_id FROM daily_questions WHERE d < " + sqlQuote(conn_, date) +
-                          " ORDER BY d DESC LIMIT 7";
+        std::string sql = "SELECT dq.question_id FROM daily_questions dq "
+                          "JOIN questions q ON q.id=dq.question_id "
+                          "WHERE dq.d < " + sqlQuote(conn_, date) + " AND q.category=" + sqlQuote(conn_, category);
         if (mysql_query(conn_, sql.c_str()) == 0)
         {
             MYSQL_RES* res = mysql_store_result(conn_);
@@ -2359,7 +2366,7 @@ int DataBase::ensureDailyQuestion(const std::string& date)
                 MYSQL_ROW row;
                 while ((row = mysql_fetch_row(res)))
                 {
-                    if (row[0]) recent.insert(std::atoi(row[0]));
+                    if (row[0]) used.insert(std::atoi(row[0]));
                 }
                 mysql_free_result(res);
             }
@@ -2370,7 +2377,7 @@ int DataBase::ensureDailyQuestion(const std::string& date)
     for (size_t step = 0; step < pool.size(); ++step)
     {
         const int candidate = pool[(startIdx + step) % pool.size()];
-        if (recent.find(candidate) == recent.end())
+        if (used.find(candidate) == used.end())
         {
             picked = candidate;
             break;
