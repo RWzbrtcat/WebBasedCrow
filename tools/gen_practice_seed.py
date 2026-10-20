@@ -1849,7 +1849,7 @@ std::________<Point, int, Hash> m;   // 用自定义哈希的哈希表''',
         'id': 155,
         'chapter_id': 7,
         'type': 'choice',
-        'title': '选择 7 · 哪个不失效',
+        'title': '选择 4 · 哪个不失效',
         'sort_order': 7,
         'prompt': '''```cpp
 // 已有迭代器 it 指向容器中某个元素，下列哪个操作之后 it 仍然有效？
@@ -1866,7 +1866,7 @@ std::________<Point, int, Hash> m;   // 用自定义哈希的哈希表''',
         'id': 156,
         'chapter_id': 7,
         'type': 'choice',
-        'title': '选择 8 · 引用也会悬垂',
+        'title': '选择 5 · 引用也会悬垂',
         'sort_order': 8,
         'prompt': '''```cpp
 std::vector<int> v{1, 2, 3};
@@ -1888,7 +1888,7 @@ r = 99;
         'id': 157,
         'chapter_id': 7,
         'type': 'choice',
-        'title': '选择 9 · 迭代器死了，元素还活着',
+        'title': '选择 6 · 迭代器死了，元素还活着',
         'sort_order': 9,
         'prompt': '''```cpp
 // 哪个操作会让「迭代器失效」，但「指向元素的引用/指针仍然有效」？
@@ -1905,7 +1905,7 @@ r = 99;
         'id': 158,
         'chapter_id': 7,
         'type': 'choice',
-        'title': '选择 10 · 换成 list 就安全吗',
+        'title': '选择 7 · 换成 list 就安全吗',
         'sort_order': 10,
         'prompt': '''```cpp
 std::list<int> c{1, 2, 3};
@@ -1926,7 +1926,7 @@ for (auto it = c.begin(); it != c.end(); ++it) {
         'id': 159,
         'chapter_id': 7,
         'type': 'choice',
-        'title': '选择 11 · 换容器后静默越界',
+        'title': '选择 8 · 换容器后静默越界',
         'sort_order': 11,
         'prompt': '''```cpp
 void feed(const int* p, std::size_t n);
@@ -1947,7 +1947,7 @@ feed(&d[0], d.size());   // 会怎样？
         'id': 160,
         'chapter_id': 7,
         'type': 'choice',
-        'title': '选择 12 · 跑一千次都没崩',
+        'title': '选择 9 · 跑一千次都没崩',
         'sort_order': 12,
         'prompt': '''```cpp
 // 一段含未定义行为的代码在 CI 上连续跑了 1000 次、全部通过：可以据此认为它是安全的吗？
@@ -2008,11 +2008,178 @@ void mini_vector<T>::grow(std::size_t need) {
         'answer': [['move_if_noexcept'], ['~T', '~T()'], ['delete']],
     },
     {
+        'id': 167,
+        'chapter_id': 7,
+        'type': 'short',
+        'title': '实现 1 · mini_vector：扩容四步',
+        'sort_order': 15,
+        'prompt': '实现简化版动态数组 `mini_vector<T>`（**不许借用任何标准容器**，内存自己管）：\n\n'
+                  '- `size()` / `capacity()` / `empty()`\n'
+                  '- `void reserve(std::size_t n)`：容量不足才重新分配，并把已有元素**搬移**过去\n'
+                  '- `void push_back(const T& v)`：满了先扩容，容量翻倍（起点按 1 算）\n'
+                  '- `operator[]` 的 const / 非 const 两个版本；`begin()` / `end()` 返回 `T*`\n'
+                  '- 析构：**逐个**销毁元素，再放掉原始内存\n\n'
+                  '> 收口：阅读 1 里那四步——新开一块、搬元素、销毁旧元素、放掉旧内存——本次由你自己写。\n'
+                  '> 写对之后你会亲眼看到：**扩容后 `&v[0]` 变了**，这就是迭代器失效的物理原因。',
+        'starter_easy': r'''#include <cstddef>
+#include <new>
+#include <utility>
+
+template <class T>
+class mini_vector {
+    T*          data_ = nullptr;
+    std::size_t size_ = 0;
+    std::size_t cap_  = 0;
+
+public:
+    mini_vector() = default;
+
+    ~mini_vector() {
+        // TODO: 逐个调用元素析构，再放掉原始内存
+    }
+
+    std::size_t size() const     { return size_; }
+    std::size_t capacity() const { return cap_; }
+    bool        empty() const    { return size_ == 0; }
+
+    void reserve(std::size_t n) {
+        if (n <= cap_) return;
+
+        // 第一步：申请原始内存。不要用 new T[n] —— 那会构造 n 个元素，
+        //         size 与 capacity 就分不开了。
+        //   T* fresh = static_cast<T*>(::operator new(n * sizeof(T)));
+
+        // 第二步：把旧元素搬过去（这是构造，不是赋值）
+
+        // 第三步：逐个销毁旧元素
+
+        // 第四步：只归还内存，然后更新 data_ 与 cap_
+    }
+
+    void push_back(const T& v) {
+        // TODO: size_ == cap_ 时先 reserve(cap_ ? cap_ * 2 : 1)；
+        //       再在 data_ + size_ 的位置构造 v，然后 ++size_
+    }
+
+    T&       operator[](std::size_t i)       { return data_[i]; }
+    const T& operator[](std::size_t i) const { return data_[i]; }
+
+    T* begin() { return data_; }
+    T* end()   { return data_ + size_; }
+
+    mini_vector(const mini_vector&) = delete;
+    mini_vector& operator=(const mini_vector&) = delete;
+};
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_medium': r'''#include <cstddef>
+#include <new>
+#include <utility>
+
+// 实现 mini_vector<T>：reserve / push_back / operator[] / begin / end / 析构。
+// 要点：原始内存 + placement new；扩容时搬移完元素必须销毁旧元素；
+//       析构函数要逐个销毁元素后再归还内存。
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_hard': r'''#include <cstddef>
+#include <new>
+
+// 需求：手写动态数组（自动翻倍扩容、随机访问、析构不泄漏）。
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'test_driver': r'''#include <cstdio>
+#include <cstddef>
+
+struct Tracked {   // 能数清「当前有多少个对象活着」
+    static int alive;
+    int v;
+    Tracked() : v(0) { ++alive; }
+    explicit Tracked(int x) : v(x) { ++alive; }
+    Tracked(const Tracked& o) : v(o.v) { ++alive; }
+    Tracked(Tracked&& o) noexcept : v(o.v) { ++alive; }
+    Tracked& operator=(const Tracked& o) { v = o.v; return *this; }
+    Tracked& operator=(Tracked&& o) noexcept { v = o.v; return *this; }
+    ~Tracked() { --alive; }
+};
+int Tracked::alive = 0;
+
+int main() {
+    int fail = 0;
+
+    {   // 1 起点：空容器
+        mini_vector<int> v;
+        if (v.size() != 0 || v.capacity() != 0 || !v.empty()) {
+            std::printf("FAIL: 空容器应为 size=0 / capacity=0 / empty()=true\n"); ++fail;
+        }
+    }
+
+    {   // 2 反复扩容后元素不丢、不错位
+        mini_vector<int> v;
+        for (int i = 0; i < 50; ++i) v.push_back(i * 3);
+        if (v.size() != 50) { std::printf("FAIL: push_back 50 次后 size 应为 50\n"); ++fail; }
+        if (v.capacity() < v.size()) { std::printf("FAIL: capacity 不能小于 size\n"); ++fail; }
+        int bad = 0;
+        for (int i = 0; i < 50; ++i) if (v[i] != i * 3) { bad = i + 1; break; }
+        if (bad) { std::printf("FAIL: 第 %d 个元素在扩容后错位，旧元素没搬过去\n", bad); ++fail; }
+        int seen = 0;
+        for (auto it = v.begin(); it != v.end(); ++it) ++seen;
+        if (seen != 50) { std::printf("FAIL: begin()..end() 应能遍历 50 个元素\n"); ++fail; }
+    }
+
+    {   // 3 容量满了必须重新分配 —— 迭代器失效的物理原因
+        mini_vector<int> v;
+        v.reserve(2);
+        v.push_back(7);
+        v.push_back(8);
+        const int* p0 = &v[0];
+        v.push_back(9);
+        if (&v[0] == p0) { std::printf("FAIL: 容量满后 push_back 必须重新分配，&v[0] 应该变\n"); ++fail; }
+        if (v[0] != 7 || v[2] != 9) { std::printf("FAIL: 扩容后元素顺序错了\n"); ++fail; }
+    }
+
+    {   // 4 reserve 只借地，不造元素
+        mini_vector<int> v;
+        v.reserve(8);
+        if (v.capacity() < 8) { std::printf("FAIL: reserve(8) 后 capacity 应 >= 8\n"); ++fail; }
+        if (v.size() != 0) { std::printf("FAIL: reserve 不应改变 size\n"); ++fail; }
+        v.push_back(1);
+        const int* p0 = &v[0];
+        for (int i = 0; i < 7; ++i) v.push_back(i);
+        if (&v[0] != p0) { std::printf("FAIL: reserve(8) 之内再 push 7 次不应重新分配\n"); ++fail; }
+    }
+
+    {   // 5 构造与析构配平
+        Tracked::alive = 0;
+        {
+            mini_vector<Tracked> v;
+            for (int i = 0; i < 20; ++i) v.push_back(Tracked(i));
+            if (Tracked::alive != 20) {
+                std::printf("FAIL: 容器内应恰好有 20 个存活元素，实际 %d（旧元素没销毁？空槽也构造了对象？）\n",
+                            Tracked::alive); ++fail;
+            }
+            if (v[19].v != 19) { std::printf("FAIL: 元素搬移后值错了\n"); ++fail; }
+        }
+        if (Tracked::alive != 0) {
+            std::printf("FAIL: 析构后仍有 %d 个元素存活，说明没逐个销毁\n", Tracked::alive); ++fail;
+        }
+    }
+
+    if (fail == 0) std::printf("PASS\n");
+    return fail;
+}
+''',
+        'total_cases': 13,
+        'time_limit_ms': 2000,
+    },
+    {
         'id': 163,
         'chapter_id': 7,
         'type': 'blank',
         'title': '阅读 2 · list 只改指针',
-        'sort_order': 15,
+        'sort_order': 16,
         'keep_notes': True,
         'question': '补全 ① ②。想清楚：为什么 `insert` 之后，原本指向**其他节点**的迭代器一个都没失效？',
         'prompt': r'''// 简化版 list：带哨兵的双向链表
@@ -2049,11 +2216,222 @@ public:
         'answer': [['pos->prev'], ['after']],
     },
     {
+        'id': 168,
+        'chapter_id': 7,
+        'type': 'short',
+        'title': '实现 2 · mini_list：只改指针',
+        'sort_order': 17,
+        'prompt': '用**哨兵节点**实现简化版双向链表 `mini_list<T>`（不许借用任何标准容器）：\n\n'
+                  '- `size()` / `empty()`\n'
+                  '- `void push_back(const T& v)` / `void push_front(const T& v)`\n'
+                  '- 迭代器：`begin()`（首元素）、`end()`（哨兵），支持 `*it` / `++it` / `==` `!=`\n'
+                  '- `iterator insert(iterator pos, const T& v)`：在 pos **之前**插入，返回新元素的迭代器\n'
+                  '- `iterator erase(iterator pos)`：删除 pos，返回**下一个**元素的迭代器\n'
+                  '- 析构：释放所有节点\n\n'
+                  '> 收口：`insert` / `erase` 只改指针，**节点地址不变** ⇒ 指向其他节点的迭代器与引用全部继续有效。\n'
+                  '> 阅读 2 里那句「list 上换成 erase 也还是 UB」，这一关你会明白 UB 只是「用了失效的迭代器」，'
+                  '而**没用到的迭代器一个都没坏**。',
+        'starter_easy': r'''#include <cstddef>
+
+template <class T>
+class mini_list {
+    struct node {
+        T     value;
+        node* prev;
+        node* next;
+        node() : value(), prev(this), next(this) {}
+        explicit node(const T& v) : value(v), prev(nullptr), next(nullptr) {}
+    };
+
+    node        head_;   // 哨兵：head_.next 是首元素，head_.prev 是尾元素
+    std::size_t size_ = 0;
+
+public:
+    class iterator {
+    public:
+        // ⚠️ p_ 只能是 public：C++ 里内嵌类能访问外层类的私有成员，反过来不行。
+        //    insert / erase 要用到 pos 里的指针，所以这里必须放开。
+        node* p_;
+        explicit iterator(node* p) : p_(p) {}
+        T& operator*() const { return p_->value; }
+        iterator& operator++() { p_ = p_->next; return *this; }
+        bool operator!=(const iterator& o) const { return p_ != o.p_; }
+        bool operator==(const iterator& o) const { return p_ == o.p_; }
+    };
+
+    mini_list() = default;
+
+    ~mini_list() {
+        // TODO: 从 head_.next 开始逐个 delete，直到转回 &head_
+    }
+
+    std::size_t size() const { return size_; }
+    bool        empty() const { return size_ == 0; }
+    iterator begin() { return iterator(head_.next); }
+    iterator end()   { return iterator(&head_); }
+
+    // 在 pos 之前插入，返回新节点；只改 4 个指针
+    iterator insert(iterator pos, const T& v) {
+        // TODO: node* cur = pos.p_; 新节点挂在 cur->prev 与 cur 之间
+        //       别忘了 ++size_
+        return pos;
+    }
+
+    // 删除 pos，返回下一个（这就是「边遍历边删」能成立的原因）
+    iterator erase(iterator pos) {
+        // TODO: 摘链、delete、--size_；注意不能 delete 哨兵
+        return pos;
+    }
+
+    void push_back(const T& v)  { insert(end(), v); }
+    void push_front(const T& v) { insert(begin(), v); }
+
+    mini_list(const mini_list&) = delete;
+    mini_list& operator=(const mini_list&) = delete;
+};
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_medium': r'''#include <cstddef>
+
+// 实现 mini_list<T>（哨兵双向链表）：push_back / push_front / insert / erase /
+// begin / end / size / 析构。
+// 要点：insert 在 pos 之前插入，只改指针（旧节点地址不变）；
+//       erase 必须返回下一个迭代器；析构要 delete 掉每个节点。
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_hard': r'''#include <cstddef>
+
+// 需求：手写双向链表（两端插入、任意位置插入与删除、迭代器遍历、析构不泄漏）。
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'test_driver': r'''#include <cstdio>
+#include <cstddef>
+
+struct Tracked {   // 能数清「当前有多少个对象活着」
+    static int alive;
+    int v;
+    Tracked() : v(0) { ++alive; }
+    explicit Tracked(int x) : v(x) { ++alive; }
+    Tracked(const Tracked& o) : v(o.v) { ++alive; }
+    Tracked(Tracked&& o) noexcept : v(o.v) { ++alive; }
+    Tracked& operator=(const Tracked& o) { v = o.v; return *this; }
+    Tracked& operator=(Tracked&& o) noexcept { v = o.v; return *this; }
+    ~Tracked() { --alive; }
+};
+int Tracked::alive = 0;
+
+static int collect(mini_list<int>& l, int* out, int cap) {
+    int n = 0;
+    for (auto it = l.begin(); it != l.end(); ++it) {
+        if (n < cap) out[n] = *it;
+        ++n;
+    }
+    return n;
+}
+
+int main() {
+    int fail = 0;
+
+    {   // 1 空链表
+        mini_list<int> l;
+        if (l.size() != 0 || !l.empty()) {
+            std::printf("FAIL: 空链表应 size=0 且 empty()=true\n"); ++fail;
+        }
+        if (l.begin() != l.end()) { std::printf("FAIL: 空链表的 begin() 应等于 end()\n"); ++fail; }
+    }
+
+    {   // 2 尾插 + 遍历
+        mini_list<int> l;
+        for (int i = 1; i <= 4; ++i) l.push_back(i);
+        int buf[8];
+        int n = collect(l, buf, 8);
+        if (n != 4) { std::printf("FAIL: push_back 4 次后应能遍历到 4 个元素\n"); ++fail; }
+        if (n == 4 && (buf[0] != 1 || buf[3] != 4)) { std::printf("FAIL: 尾插顺序错了\n"); ++fail; }
+        if (l.size() != 4) { std::printf("FAIL: push_back 4 次后 size 应为 4\n"); ++fail; }
+    }
+
+    {   // 3 两端插
+        mini_list<int> l;
+        l.push_back(2);
+        l.push_front(1);
+        l.push_back(3);
+        int buf[8];
+        int n = collect(l, buf, 8);
+        if (!(n == 3 && buf[0] == 1 && buf[1] == 2 && buf[2] == 3)) {
+            std::printf("FAIL: push_front / push_back 之后顺序应为 1 2 3\n"); ++fail;
+        }
+    }
+
+    {   // 4 中间插入只改指针：原迭代器必须继续有效
+        mini_list<int> l;
+        l.push_back(1);
+        l.push_back(3);
+        auto it = l.begin();
+        ++it;                       // 指向 3
+        int* p = &*it;
+        l.insert(it, 2);            // 在 3 之前插入 2
+        if (&*it != p) { std::printf("FAIL: insert 之后原迭代器失效了，节点被搬走了\n"); ++fail; }
+        int buf[8];
+        int n = collect(l, buf, 8);
+        if (!(n == 3 && buf[0] == 1 && buf[1] == 2 && buf[2] == 3)) {
+            std::printf("FAIL: 中间插入后顺序应为 1 2 3\n"); ++fail;
+        }
+    }
+
+    {   // 5 insert(end(), v) 等价于尾插
+        mini_list<int> l;
+        l.push_back(1);
+        l.insert(l.end(), 2);
+        int buf[8];
+        int n = collect(l, buf, 8);
+        if (!(n == 2 && buf[0] == 1 && buf[1] == 2)) {
+            std::printf("FAIL: insert(end(), v) 应插到尾部\n"); ++fail;
+        }
+    }
+
+    {   // 6 erase 返回下一个：边遍历边删才成立
+        mini_list<int> l;
+        for (int i = 1; i <= 6; ++i) l.push_back(i);
+        for (auto it = l.begin(); it != l.end(); ) {
+            if (*it % 2 == 0) it = l.erase(it);
+            else              ++it;
+        }
+        int buf[8];
+        int n = collect(l, buf, 8);
+        if (!(n == 3 && buf[0] == 1 && buf[1] == 3 && buf[2] == 5)) {
+            std::printf("FAIL: 删掉偶数后应剩 1 3 5，erase 必须返回下一个迭代器\n"); ++fail;
+        }
+        if (l.size() != 3) { std::printf("FAIL: 删除后 size 应为 3\n"); ++fail; }
+    }
+
+    {   // 7 析构：节点里的元素要被销毁
+        Tracked::alive = 0;
+        {
+            mini_list<Tracked> l;
+            for (int i = 0; i < 5; ++i) l.push_back(Tracked(i));
+            if (l.size() != 5) { std::printf("FAIL: 5 次 push_back 后 size 应为 5\n"); ++fail; }
+        }
+        if (Tracked::alive != 0) {
+            std::printf("FAIL: 析构后仍有 %d 个元素存活，节点没 delete 完\n", Tracked::alive); ++fail;
+        }
+    }
+
+    if (fail == 0) std::printf("PASS\n");
+    return fail;
+}
+''',
+        'total_cases': 13,
+        'time_limit_ms': 2000,
+    },
+    {
         'id': 164,
         'chapter_id': 7,
         'type': 'blank',
         'title': '阅读 3 · unordered_map 的桶',
-        'sort_order': 16,
+        'sort_order': 18,
         'keep_notes': True,
         'question': '补全 ① ②。注意 `rehash` 里到底换掉了什么：为什么它能让迭代器全失效，却一个节点都不搬？',
         'prompt': r'''// 简化版 unordered_map：链地址法（数组 + 单链表）
@@ -2098,11 +2476,195 @@ public:
         'answer': [['buckets_.size()', 'bucket_count()'], ['next']],
     },
     {
+        'id': 169,
+        'chapter_id': 7,
+        'type': 'short',
+        'title': '实现 3 · mini_unordered_map：链地址法',
+        'sort_order': 19,
+        'prompt': '用**链地址法**实现简化版哈希表 `mini_unordered_map<K, V>`'
+                  '（每个桶挂一条单向链表，不许借用任何标准容器）：\n\n'
+                  '- `size()` / `bucket_count()` / `load_factor()`\n'
+                  '- `V& operator[](const K& key)`：不存在则插入 `V{}`\n'
+                  '- `void insert(const K& key, const V& val)`：已存在则**覆盖**，不新增\n'
+                  '- `V* find(const K& key)`：找不到返回 `nullptr`\n'
+                  '- `bool erase(const K& key)`：删掉返回 true，没找到返回 false\n'
+                  '- 扩容规则：`size() > bucket_count()` 时桶数**翻倍**，'
+                  '且**只把已有节点重新挂到新桶上，不重新创建节点**\n\n'
+                  '> 收口：阅读 3 里 `rehash` 换掉的只是「桶数组」，节点一个都没搬——\n'
+                  '> 所以迭代器（记着桶位置）全废，而引用/指针（指着节点）全都还活着。这一关你自己验证一遍。',
+        'starter_easy': r'''#include <cstddef>
+#include <functional>
+
+template <class K, class V>
+class mini_unordered_map {
+    struct node {
+        K     key;
+        V     value;
+        node* next;
+        node(const K& k, const V& v) : key(k), value(v), next(nullptr) {}
+    };
+
+    node**      buckets_ = nullptr;   // buckets_[i] 是第 i 个桶的链表头
+    std::size_t bucketCount_ = 8;
+    std::size_t size_ = 0;
+
+    std::size_t bucket_of(const K& key) const {
+        return std::hash<K>{}(key) % bucketCount_;
+    }
+
+public:
+    mini_unordered_map() {
+        // TODO: 分配 bucketCount_ 个 node*，全部置 nullptr
+    }
+
+    ~mini_unordered_map() {
+        // TODO: 每个桶的链表逐个 delete，最后 delete[] buckets_
+    }
+
+    std::size_t size() const         { return size_; }
+    std::size_t bucket_count() const { return bucketCount_; }
+    double      load_factor() const {
+        return static_cast<double>(size_) / static_cast<double>(bucketCount_);
+    }
+
+    V& operator[](const K& key) {
+        // TODO: 桶里找到就返回 value；找不到就 new 一个 node(key, V{}) 头插进桶，再返回
+    }
+
+    void insert(const K& key, const V& val) {
+        // TODO: 已存在则只覆盖 value；否则头插进 bucket_of(key) 这个桶，++size_，
+        //       然后若 size_ > bucketCount_ 就 rehash（桶数翻倍、只重挂指针）
+    }
+
+    V* find(const K& key) {
+        // TODO: 遍历 bucket_of(key) 那条链
+        return nullptr;
+    }
+
+    bool erase(const K& key) {
+        // TODO: 从链上摘掉；注意要删的可能正好是链表头
+        return false;
+    }
+
+    mini_unordered_map(const mini_unordered_map&) = delete;
+    mini_unordered_map& operator=(const mini_unordered_map&) = delete;
+};
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_medium': r'''#include <cstddef>
+#include <functional>
+
+// 实现 mini_unordered_map<K, V>（链地址法）：operator[] / insert / find / erase /
+// size / bucket_count / load_factor / 析构。
+// 要点：冲突用链表串；size 超过桶数就翻倍扩容；
+//       扩容时只把已有节点重新挂到新桶，不要重建节点（否则引用会失效）。
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_hard': r'''#include <cstddef>
+#include <functional>
+
+// 需求：手写哈希表（链地址法、自动扩容、增删查、析构不泄漏）。
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'test_driver': r'''#include <cstdio>
+#include <cstddef>
+
+int main() {
+    int fail = 0;
+
+    {   // 1 空表
+        mini_unordered_map<int, int> m;
+        if (m.size() != 0) { std::printf("FAIL: 空表 size 应为 0\n"); ++fail; }
+        if (m.bucket_count() < 1) { std::printf("FAIL: 桶数至少应为 1\n"); ++fail; }
+        if (m.find(1) != nullptr) { std::printf("FAIL: 空表 find 应返回 nullptr\n"); ++fail; }
+    }
+
+    {   // 2 insert / find / 覆盖
+        mini_unordered_map<int, int> m;
+        m.insert(1, 10);
+        m.insert(2, 20);
+        m.insert(1, 11);
+        if (m.size() != 2) { std::printf("FAIL: 重复 insert 同一个 key 不应增加 size\n"); ++fail; }
+        int* p = m.find(1);
+        if (p == nullptr || *p != 11) { std::printf("FAIL: 重复 insert 应覆盖旧值\n"); ++fail; }
+        if (m.find(99) != nullptr) { std::printf("FAIL: 不存在的 key 应返回 nullptr\n"); ++fail; }
+    }
+
+    {   // 3 operator[] 不存在则插入默认值
+        mini_unordered_map<int, int> m;
+        m[5] = 50;
+        if (m.size() != 1) { std::printf("FAIL: operator[] 写入后 size 应为 1\n"); ++fail; }
+        if (m[5] != 50) { std::printf("FAIL: operator[] 读回的值不对\n"); ++fail; }
+        int v = m[6];
+        if (v != 0) { std::printf("FAIL: operator[] 遇到缺失的 key 应插入默认值 V{}\n"); ++fail; }
+        if (m.size() != 2) { std::printf("FAIL: operator[] 读缺失的 key 也应把它插进去\n"); ++fail; }
+    }
+
+    {   // 4 500 个键必然挤进同一个桶 —— 冲突链必须串对
+        mini_unordered_map<int, int> m;
+        for (int i = 0; i < 500; ++i) m.insert(i, i * 2);
+        if (m.size() != 500) { std::printf("FAIL: 插入 500 个不同 key 后 size 应为 500\n"); ++fail; }
+        int badKey = -1;
+        for (int i = 0; i < 500; ++i) {
+            int* p = m.find(i);
+            if (p == nullptr || *p != i * 2) { badKey = i; break; }
+        }
+        if (badKey >= 0) { std::printf("FAIL: key=%d 查不回来，冲突链没串好\n", badKey); ++fail; }
+        if (m.load_factor() > 1.0) {
+            std::printf("FAIL: 装填因子超过 1，size > bucket_count 时应翻倍扩容\n"); ++fail;
+        }
+    }
+
+    {   // 5 rehash 只重挂桶里的指针，节点不许搬家
+        mini_unordered_map<int, int> m;
+        m.insert(7, 70);
+        int* p = m.find(7);
+        std::size_t before = m.bucket_count();
+        for (int i = 0; i < 200; ++i) m.insert(1000 + i, i);
+        if (m.bucket_count() <= before) { std::printf("FAIL: 插入 200 个键后桶数应增长\n"); ++fail; }
+        if (m.find(7) != p) { std::printf("FAIL: rehash 后节点地址变了，应只重挂指针不重建节点\n"); ++fail; }
+        if (p == nullptr || *p != 70) { std::printf("FAIL: rehash 之后旧值丢了\n"); ++fail; }
+    }
+
+    {   // 6 erase：存在的、不存在的
+        mini_unordered_map<int, int> m;
+        for (int i = 0; i < 40; ++i) m.insert(i, i);
+        if (!m.erase(20)) { std::printf("FAIL: erase 存在的 key 应返回 true\n"); ++fail; }
+        if (m.find(20) != nullptr) { std::printf("FAIL: erase 之后不应再找到该 key\n"); ++fail; }
+        if (m.size() != 39) { std::printf("FAIL: erase 之后 size 应减 1\n"); ++fail; }
+        if (m.erase(20)) { std::printf("FAIL: erase 不存在的 key 应返回 false\n"); ++fail; }
+        if (m.size() != 39) { std::printf("FAIL: 删除失败不应改变 size\n"); ++fail; }
+    }
+
+    {   // 7 逐个删空（覆盖「删的正好是链表头」），删空后还能继续用
+        mini_unordered_map<int, int> m;
+        for (int i = 0; i < 60; ++i) m.insert(i, i);
+        int badKey = -1;
+        for (int i = 0; i < 60; ++i) if (!m.erase(i)) { badKey = i; break; }
+        if (badKey >= 0) { std::printf("FAIL: 逐个删除时 key=%d 删不掉\n", badKey); ++fail; }
+        if (m.size() != 0) { std::printf("FAIL: 全部删除后 size 应为 0\n"); ++fail; }
+        m.insert(1, 1);
+        if (m.size() != 1 || m.find(1) == nullptr) {
+            std::printf("FAIL: 删空之后应还能继续插入查找\n"); ++fail;
+        }
+    }
+
+    if (fail == 0) std::printf("PASS\n");
+    return fail;
+}
+''',
+        'total_cases': 24,
+        'time_limit_ms': 2000,
+    },
+    {
         'id': 165,
         'chapter_id': 7,
         'type': 'blank',
         'title': '阅读 4 · 红黑树旋转与 ++it',
-        'sort_order': 17,
+        'sort_order': 20,
         'keep_notes': True,
         'question': '补全 ① ② ③。想清楚：左旋之后，x 与 y 的父子关系是怎么换过来的？',
         'prompt': r'''// 简化版红黑树（map 的底层）：只看左旋与中序后继
@@ -2140,7 +2702,7 @@ node* next_node(node* n) {
         'chapter_id': 7,
         'type': 'blank',
         'title': '阅读 5 · deque 的分段连续',
-        'sort_order': 18,
+        'sort_order': 21,
         'keep_notes': True,
         'question': '补全 ① ②。想清楚：为什么拿 `&d[0]` 当「连续数组」的首地址用会出事？',
         'prompt': r'''// 简化版 deque：中控器 + 定长块
@@ -3980,7 +4542,7 @@ int main() {
         'chapter_id': 7,
         'type': 'short',
         'title': '短题 1 · 容器选型：set 去重排序',
-        'sort_order': 19,
+        'sort_order': 22,
         'prompt': '实现 `std::vector<int> unique_sorted(const std::vector<int>& v)`：\n'
                   '用 `std::set` 去重并按升序排序。\n\n'
                   '> 考点：容器选型——set 自带去重 + 有序。',
@@ -4030,7 +4592,7 @@ int main() {
         'chapter_id': 7,
         'type': 'short',
         'title': '短题 2 · 迭代器失效修复',
-        'sort_order': 20,
+        'sort_order': 23,
         'prompt': '`remove_even` 要删除 `v` 中所有偶数。下面的实现能编译、多数情况下也"看起来对"，'
                   '但它有 bug。找出问题并修复（提示：注意循环体里容器本身发生了变化）。\n\n'
                   '> 考点：遍历过程中修改容器 ⇒ 迭代器失效。',
@@ -4083,7 +4645,7 @@ int main() {
         'chapter_id': 7,
         'type': 'short',
         'title': '短题 3 · 自定义比较器：降序 set',
-        'sort_order': 21,
+        'sort_order': 24,
         'prompt': '实现 `std::set<int, std::greater<int>> make_desc_set(const std::vector<int>& v)`：\n'
                   '返回一个降序排列的 set。\n\n'
                   '> 考点：自定义比较器（std::greater）改变容器排序。',
@@ -4137,7 +4699,7 @@ int main() {
         'chapter_id': 7,
         'type': 'short',
         'title': '短题 4 · 算法组合：过滤 + 变换',
-        'sort_order': 22,
+        'sort_order': 25,
         'prompt': '实现 `std::vector<int> filter_and_double(const std::vector<int>& v)`：\n'
                   '先过滤出正数，再把每个正数翻倍。可用 `std::copy_if` + `std::transform`，或手写。\n\n'
                   '> 考点：算法组合完成数据流水线。',
@@ -4187,7 +4749,7 @@ int main() {
         'chapter_id': 7,
         'type': 'boss',
         'title': 'Boss · LRU 缓存',
-        'sort_order': 23,
+        'sort_order': 26,
         'prompt': '实现一个 LRU（最近最少使用）缓存 `LRUCache`：\n\n'
                   '- `LRUCache(int capacity)`：构造，容量 capacity\n'
                   '- `int get(int key)`：存在则返回值并标记为最近使用，否则返回 -1\n'
@@ -8670,6 +9232,105 @@ for (auto it = v.begin(); it != v.end(); ) {
 | 插入后老迭代器仍有效 | 否 | 否 | 是 |
 
 **可迁移规则**：需要"连续内存"时只有 `vector` / `array` / `string` 三个选项。deque 的 `operator[]` 返回引用，取地址当然合法——**合法不等于连续**，这个坑编译期查不出来。''',
+
+    167: '''**核心只有一句话**：`::operator new` 借来的是**字节**，不是**对象**。构造和析构都得你自己点名。
+
+**扩容四步**（少一步就出问题）：
+
+```cpp
+void reserve(std::size_t n) {
+    if (n <= cap_) return;
+    T* fresh = static_cast<T*>(::operator new(n * sizeof(T)));   // ① 原始内存
+
+    for (std::size_t i = 0; i < size_; ++i)                      // ② 搬过去（构造）
+        new (fresh + i) T(std::move_if_noexcept(data_[i]));
+
+    for (std::size_t i = 0; i < size_; ++i) data_[i].~T();        // ③ 销毁旧元素
+    ::operator delete(data_);                                    // ④ 只归还字节
+
+    data_ = fresh;
+    cap_  = n;
+}
+```
+
+**三个最容易错的地方**：
+
+1. **用 `new T[n]` 拿内存**：它会构造 n 个元素，于是"容量"里全是活对象——测试里 `Tracked::alive` 会等于 capacity 而不是 size。这就是 `size` 与 `capacity` 在实现层面为什么必须分开：一个数"活了几个"，一个数"能放几个"。
+2. **只 `delete[]` 不逐个析构**：`::operator delete` 不调析构函数，元素里持有的资源（`string` 的堆内存、文件句柄）全部泄漏。
+3. **搬运用赋值而不是构造**：目标位置上是未初始化的字节，只能 placement new，不能 `fresh[i] = data_[i]`。
+
+**`move_if_noexcept` 是干什么的**：T 的移动构造是 `noexcept` 时才真移动，否则退化成拷贝。理由很硬——移动途中抛异常，源对象已经被改了一半又没搬成功，原容器就废了；拷贝失败则源对象完好，可以直接把异常抛给调用者。`vector` 因此能给出**强异常保证**。
+
+**这一关真正想让你记住的**：`&v[0]` 在扩容后变了。所有指向旧 buffer 的迭代器、指针、引用，从 `::operator delete` 那一行起就全部指向已释放内存——入门那几道「迭代器失效」的选择题，失效的**物理原因就是你刚刚亲手写下的这四步**。''',
+
+    168: '''**核心只有一句话**：节点地址从生到死不变，变的只是谁指向谁。
+
+**insert 只改 4 个指针**（`pos` 指向的节点叫 `cur`）：
+
+```cpp
+node* n = new node(v);
+n->prev = cur->prev;         // ① 新节点接上前驱
+n->next = cur;               // ② 新节点接上后继
+cur->prev->next = n;         // ③ 前驱改指向新节点
+cur->prev = n;               // ④ 后继改指向新节点
+++size_;
+return iterator(n);
+```
+
+因为只改指针，**其他节点的地址一个字节都没动** ⇒ 指向它们的迭代器、指针、引用继续有效。这就是阅读 2 那道题的实测版。
+
+**哨兵节点的价值**：把「空表插入」「头部插入」「尾部插入」「末尾删除」四种边界统一成一种——所有位置都有一个合法的前驱和后继，`insert` 再也不用写 `if (pos == head)` 的特判。真实实现（libstdc++）用「基类节点 + 派生节点」来避免给哨兵构造一个 `T`；这里的教学版直接在哨兵里放了个默认构造的 `T`，所以测试里 `Tracked` 的存活数会多 1 个，出了作用域又归 0。
+
+**erase 为什么必须返回下一个**：`erase(pos)` 里那个节点已经被 `delete` 了，`pos` 自己就是野指针。除了返回 `next`，没有别的办法安全地继续遍历——这就是「边遍历边删」在 list 上唯一正确的写法。反过来，`vector::erase` 返回的也是下一个，但**它同时让后面所有迭代器失效**，所以同样的写法在 vector 上照样是 UB。
+
+**顺便回答阅读 2 留下的疑问**：为什么这题在 list 上"能跑"？因为删掉的节点内存还没被复用，`it->next` 读到的还是旧值。换一次分配器、加一层 ASan，或者让别的代码先占那块内存，立刻就炸。**能跑通是运气，不是正确性。**''',
+
+    169: '''**核心只有一句话**：`rehash` 换的是「桶数组」，不是「节点」。
+
+**桶与链**：
+
+```cpp
+node**      buckets_;                 // 桶数组：每个槽存一个链表头
+std::size_t bucketCount_, size_;
+
+std::size_t bucket_of(const K& k) const {
+    return std::hash<K>{}(k) % bucketCount_;   // 取模落到某个桶
+}
+```
+
+500 个键塞进 512 个桶，按鸽巢原理**冲突是必然的**，不是"偶尔发生"。冲突了就挂到同一个桶的链上，查找时先算桶号、再在链上顺序比——所以最坏情况是 O(链长)，这也解释了为什么装填因子一旦超过 1 就必须扩容：链变长，查找就退化成链表。
+
+**rehash 只重挂指针**（这是本题的重点）：
+
+```cpp
+void rehash(std::size_t newCount) {
+    node** fresh = new node*[newCount]();      // 新桶数组，全空
+    for (std::size_t i = 0; i < bucketCount_; ++i) {
+        node* p = buckets_[i];
+        while (p) {
+            node* next = p->next;              // 先存住，下面要改 p->next
+            std::size_t b = std::hash<K>{}(p->key) % newCount;
+            p->next = fresh[b];                // 头插到新桶
+            fresh[b] = p;
+            p = next;
+        }
+    }
+    delete[] buckets_;                         // 只删桶数组，节点一个都不动
+    buckets_ = fresh;
+    bucketCount_ = newCount;
+}
+```
+
+**于是「迭代器失效、引用不失效」这个反直觉结论就有了物理依据**：
+
+| 东西 | 里面存的是什么 | rehash 之后 |
+|---|---|---|
+| 引用 / 指针 / `V*` | 直接指向**节点** | 节点没搬 ⇒ **仍然有效** |
+| 迭代器 | 指向**节点** + 记着**属于哪个桶** | 桶号全变了 ⇒ **失效** |
+
+标准库的迭代器还要靠"桶号"做 `++`（走到链尾要跳到下一个非空桶），所以桶一变它就废了；引用只认节点地址，自然毫发无伤。**入门那道「迭代器死了、元素还活着」的选择题，答案就写在你刚写的这个 while 循环里。**
+
+**erase 的坑**：要删的节点可能正好是链表头，此时必须改 `buckets_[b]` 而不是改前驱的 `next`。漏掉这个分支，链头就永远删不掉。''',
 }
 
 # ---------- 三张表 DDL（与 src/database.cpp initTable 保持一致） ----------

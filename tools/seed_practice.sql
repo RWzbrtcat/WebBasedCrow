@@ -1730,7 +1730,7 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, k
 `std::find_if(v.begin(), v.end(), 谓词)` 返回**第一个**满足谓词的元素迭代器；都满足则返回 `end()`。
 
 用前一定判 `it != v.end()` 再解引用，否则是未定义行为。要找「所有」满足的用 `copy_if`，找「个数」用 `count_if`。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (155, 7, 'choice', '选择 7 · 哪个不失效', '```cpp
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (155, 7, 'choice', '选择 4 · 哪个不失效', '```cpp
 // 已有迭代器 it 指向容器中某个元素，下列哪个操作之后 it 仍然有效？
 ```', '已有迭代器 it 指向容器中某个元素，下列哪个操作之后 it 仍然有效？', 0, 7, '[{"label": "A", "text": "vector::push_back，且触发了重新分配"}, {"label": "B", "text": "list::insert(pos, x)，插入点在另一个位置"}, {"label": "C", "text": "vector::erase(v.begin())"}, {"label": "D", "text": "unordered_map::insert，触发了 rehash"}]', '"B"', '**正确答案：B（`list::insert` 到别处）。**
 
@@ -1744,7 +1744,7 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, k
 | `unordered_map` 触发 rehash | 全失效 | 仍有效 | 桶数组重建，节点本身没动 |
 
 **可迁移规则**：`list` / `map` / `set` 这类**节点容器**，插入不动已有节点；`vector` / `deque` / `unordered_*` 这类**连续或按桶组织**的容器，结构一变就要重新获取句柄。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (156, 7, 'choice', '选择 8 · 引用也会悬垂', '```cpp
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (156, 7, 'choice', '选择 5 · 引用也会悬垂', '```cpp
 std::vector<int> v{1, 2, 3};
 v.reserve(3);
 int& r = v[0];
@@ -1764,7 +1764,7 @@ r = 99;
 **可迁移规则**：只要容器可能重新分配（`push_back` / `resize` / `reserve` / `insert`），跨越该操作保存的**任何**句柄——迭代器、引用、指针——都必须在操作之后重新获取。
 
 顺带一句：标准规定 `vector` 扩容会让所有引用、指针、迭代器失效，而 `deque::push_front` 和 `unordered_map` 的 rehash **不**失效引用——见下一题。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (157, 7, 'choice', '选择 9 · 迭代器死了，元素还活着', '```cpp
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (157, 7, 'choice', '选择 6 · 迭代器死了，元素还活着', '```cpp
 // 哪个操作会让「迭代器失效」，但「指向元素的引用/指针仍然有效」？
 ```', '哪个操作会让「迭代器失效」，但「指向元素的引用/指针仍然有效」？', 0, 9, '[{"label": "A", "text": "vector::push_back 触发重新分配"}, {"label": "B", "text": "deque::push_front"}, {"label": "C", "text": "list::erase(被删的那个元素)"}, {"label": "D", "text": "vector::erase(中间某个元素)"}]', '"B"', '**正确答案：B（`deque::push_front`）。**
 
@@ -1780,7 +1780,7 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, k
 关键一句：**迭代器失效 ≠ 元素失效**。失效的是"指向元素的方式"，不是元素本身。
 
 **可迁移规则**：判断危险时先问"对象搬家了没 / 被销毁了没"，再问"迭代器还能不能用"。`deque` 和 `unordered_map` 就是"句柄死了、对象还活着"的两个经典反例。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (158, 7, 'choice', '选择 10 · 换成 list 就安全吗', '```cpp
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (158, 7, 'choice', '选择 7 · 换成 list 就安全吗', '```cpp
 std::list<int> c{1, 2, 3};
 for (auto it = c.begin(); it != c.end(); ++it) {
     if (*it == 2) c.erase(it);
@@ -1803,7 +1803,7 @@ for (auto it = c.begin(); it != c.end(); ) {
 ```
 
 `list` / `map` / `set` 的 `erase` 从 C++11 起都返回下一个迭代器。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (159, 7, 'choice', '选择 11 · 换容器后静默越界', '```cpp
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (159, 7, 'choice', '选择 8 · 换容器后静默越界', '```cpp
 void feed(const int* p, std::size_t n);
 
 std::deque<int> d{1, 2, 3};
@@ -1820,7 +1820,7 @@ feed(&d[0], d.size());   // 会怎样？
 - 内存连续（能安全 `data()` / `&c[0]` 交给 C API）：只有 `vector`、`array`、`string`
 
 要把 `deque` 喂给 C 接口，只能先拷进一个 `vector`。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (160, 7, 'choice', '选择 12 · 跑一千次都没崩', '```cpp
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (160, 7, 'choice', '选择 9 · 跑一千次都没崩', '```cpp
 // 一段含未定义行为的代码在 CI 上连续跑了 1000 次、全部通过：可以据此认为它是安全的吗？
 ```', '一段含未定义行为的代码在 CI 上连续跑了 1000 次、全部通过：可以据此认为它是安全的吗？', 0, 12, '[{"label": "A", "text": "可以：1000 次全过，出错概率可以忽略"}, {"label": "B", "text": "不可以：它的表现依赖内存布局、分配器状态与优化等级，要用 ASan/UBSan 这类工具才算验证"}, {"label": "C", "text": "不可以：把编译优化关掉，再跑 1000 次就行"}, {"label": "D", "text": "可以：只要 Debug 和 Release 都跑过"}]', '"B"', '**正确答案：B —— 不能用"跑过多少次"来验证。**
 
@@ -1898,6 +1898,190 @@ void mini_vector<T>::grow(std::size_t need) {
 旧内存被 `::operator delete` 归还之后，之前保存的迭代器 / 引用 / 指针指向的是一块**已经不属于你的内存**。「选择 8」「选择 9」问的"为什么失效"，答案就在这三行里。
 
 **可迁移规则**：写自己的容器时，「构造 / 析构 / 释放内存」是三件独立的事，漏掉任何一件都是 UB，而且通常不会立刻报错。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (167, 7, 'short', '实现 1 · mini_vector：扩容四步', '实现简化版动态数组 `mini_vector<T>`（**不许借用任何标准容器**，内存自己管）：
+
+- `size()` / `capacity()` / `empty()`
+- `void reserve(std::size_t n)`：容量不足才重新分配，并把已有元素**搬移**过去
+- `void push_back(const T& v)`：满了先扩容，容量翻倍（起点按 1 算）
+- `operator[]` 的 const / 非 const 两个版本；`begin()` / `end()` 返回 `T*`
+- 析构：**逐个**销毁元素，再放掉原始内存
+
+> 收口：阅读 1 里那四步——新开一块、搬元素、销毁旧元素、放掉旧内存——本次由你自己写。
+> 写对之后你会亲眼看到：**扩容后 `&v[0]` 变了**，这就是迭代器失效的物理原因。', NULL, 0, 15, NULL, NULL, '**核心只有一句话**：`::operator new` 借来的是**字节**，不是**对象**。构造和析构都得你自己点名。
+
+**扩容四步**（少一步就出问题）：
+
+```cpp
+void reserve(std::size_t n) {
+    if (n <= cap_) return;
+    T* fresh = static_cast<T*>(::operator new(n * sizeof(T)));   // ① 原始内存
+
+    for (std::size_t i = 0; i < size_; ++i)                      // ② 搬过去（构造）
+        new (fresh + i) T(std::move_if_noexcept(data_[i]));
+
+    for (std::size_t i = 0; i < size_; ++i) data_[i].~T();        // ③ 销毁旧元素
+    ::operator delete(data_);                                    // ④ 只归还字节
+
+    data_ = fresh;
+    cap_  = n;
+}
+```
+
+**三个最容易错的地方**：
+
+1. **用 `new T[n]` 拿内存**：它会构造 n 个元素，于是"容量"里全是活对象——测试里 `Tracked::alive` 会等于 capacity 而不是 size。这就是 `size` 与 `capacity` 在实现层面为什么必须分开：一个数"活了几个"，一个数"能放几个"。
+2. **只 `delete[]` 不逐个析构**：`::operator delete` 不调析构函数，元素里持有的资源（`string` 的堆内存、文件句柄）全部泄漏。
+3. **搬运用赋值而不是构造**：目标位置上是未初始化的字节，只能 placement new，不能 `fresh[i] = data_[i]`。
+
+**`move_if_noexcept` 是干什么的**：T 的移动构造是 `noexcept` 时才真移动，否则退化成拷贝。理由很硬——移动途中抛异常，源对象已经被改了一半又没搬成功，原容器就废了；拷贝失败则源对象完好，可以直接把异常抛给调用者。`vector` 因此能给出**强异常保证**。
+
+**这一关真正想让你记住的**：`&v[0]` 在扩容后变了。所有指向旧 buffer 的迭代器、指针、引用，从 `::operator delete` 那一行起就全部指向已释放内存——入门那几道「迭代器失效」的选择题，失效的**物理原因就是你刚刚亲手写下的这四步**。', '#include <cstddef>
+#include <new>
+#include <utility>
+
+template <class T>
+class mini_vector {
+    T*          data_ = nullptr;
+    std::size_t size_ = 0;
+    std::size_t cap_  = 0;
+
+public:
+    mini_vector() = default;
+
+    ~mini_vector() {
+        // TODO: 逐个调用元素析构，再放掉原始内存
+    }
+
+    std::size_t size() const     { return size_; }
+    std::size_t capacity() const { return cap_; }
+    bool        empty() const    { return size_ == 0; }
+
+    void reserve(std::size_t n) {
+        if (n <= cap_) return;
+
+        // 第一步：申请原始内存。不要用 new T[n] —— 那会构造 n 个元素，
+        //         size 与 capacity 就分不开了。
+        //   T* fresh = static_cast<T*>(::operator new(n * sizeof(T)));
+
+        // 第二步：把旧元素搬过去（这是构造，不是赋值）
+
+        // 第三步：逐个销毁旧元素
+
+        // 第四步：只归还内存，然后更新 data_ 与 cap_
+    }
+
+    void push_back(const T& v) {
+        // TODO: size_ == cap_ 时先 reserve(cap_ ? cap_ * 2 : 1)；
+        //       再在 data_ + size_ 的位置构造 v，然后 ++size_
+    }
+
+    T&       operator[](std::size_t i)       { return data_[i]; }
+    const T& operator[](std::size_t i) const { return data_[i]; }
+
+    T* begin() { return data_; }
+    T* end()   { return data_ + size_; }
+
+    mini_vector(const mini_vector&) = delete;
+    mini_vector& operator=(const mini_vector&) = delete;
+};
+
+// 只实现，不要写 main（隐藏测试会提供）
+', '#include <cstddef>
+#include <new>
+#include <utility>
+
+// 实现 mini_vector<T>：reserve / push_back / operator[] / begin / end / 析构。
+// 要点：原始内存 + placement new；扩容时搬移完元素必须销毁旧元素；
+//       析构函数要逐个销毁元素后再归还内存。
+
+// 只实现，不要写 main（隐藏测试会提供）
+', '#include <cstddef>
+#include <new>
+
+// 需求：手写动态数组（自动翻倍扩容、随机访问、析构不泄漏）。
+
+// 只实现，不要写 main（隐藏测试会提供）
+', '#include <cstdio>
+#include <cstddef>
+
+struct Tracked {   // 能数清「当前有多少个对象活着」
+    static int alive;
+    int v;
+    Tracked() : v(0) { ++alive; }
+    explicit Tracked(int x) : v(x) { ++alive; }
+    Tracked(const Tracked& o) : v(o.v) { ++alive; }
+    Tracked(Tracked&& o) noexcept : v(o.v) { ++alive; }
+    Tracked& operator=(const Tracked& o) { v = o.v; return *this; }
+    Tracked& operator=(Tracked&& o) noexcept { v = o.v; return *this; }
+    ~Tracked() { --alive; }
+};
+int Tracked::alive = 0;
+
+int main() {
+    int fail = 0;
+
+    {   // 1 起点：空容器
+        mini_vector<int> v;
+        if (v.size() != 0 || v.capacity() != 0 || !v.empty()) {
+            std::printf("FAIL: 空容器应为 size=0 / capacity=0 / empty()=true\\n"); ++fail;
+        }
+    }
+
+    {   // 2 反复扩容后元素不丢、不错位
+        mini_vector<int> v;
+        for (int i = 0; i < 50; ++i) v.push_back(i * 3);
+        if (v.size() != 50) { std::printf("FAIL: push_back 50 次后 size 应为 50\\n"); ++fail; }
+        if (v.capacity() < v.size()) { std::printf("FAIL: capacity 不能小于 size\\n"); ++fail; }
+        int bad = 0;
+        for (int i = 0; i < 50; ++i) if (v[i] != i * 3) { bad = i + 1; break; }
+        if (bad) { std::printf("FAIL: 第 %d 个元素在扩容后错位，旧元素没搬过去\\n", bad); ++fail; }
+        int seen = 0;
+        for (auto it = v.begin(); it != v.end(); ++it) ++seen;
+        if (seen != 50) { std::printf("FAIL: begin()..end() 应能遍历 50 个元素\\n"); ++fail; }
+    }
+
+    {   // 3 容量满了必须重新分配 —— 迭代器失效的物理原因
+        mini_vector<int> v;
+        v.reserve(2);
+        v.push_back(7);
+        v.push_back(8);
+        const int* p0 = &v[0];
+        v.push_back(9);
+        if (&v[0] == p0) { std::printf("FAIL: 容量满后 push_back 必须重新分配，&v[0] 应该变\\n"); ++fail; }
+        if (v[0] != 7 || v[2] != 9) { std::printf("FAIL: 扩容后元素顺序错了\\n"); ++fail; }
+    }
+
+    {   // 4 reserve 只借地，不造元素
+        mini_vector<int> v;
+        v.reserve(8);
+        if (v.capacity() < 8) { std::printf("FAIL: reserve(8) 后 capacity 应 >= 8\\n"); ++fail; }
+        if (v.size() != 0) { std::printf("FAIL: reserve 不应改变 size\\n"); ++fail; }
+        v.push_back(1);
+        const int* p0 = &v[0];
+        for (int i = 0; i < 7; ++i) v.push_back(i);
+        if (&v[0] != p0) { std::printf("FAIL: reserve(8) 之内再 push 7 次不应重新分配\\n"); ++fail; }
+    }
+
+    {   // 5 构造与析构配平
+        Tracked::alive = 0;
+        {
+            mini_vector<Tracked> v;
+            for (int i = 0; i < 20; ++i) v.push_back(Tracked(i));
+            if (Tracked::alive != 20) {
+                std::printf("FAIL: 容器内应恰好有 20 个存活元素，实际 %d（旧元素没销毁？空槽也构造了对象？）\\n",
+                            Tracked::alive); ++fail;
+            }
+            if (v[19].v != 19) { std::printf("FAIL: 元素搬移后值错了\\n"); ++fail; }
+        }
+        if (Tracked::alive != 0) {
+            std::printf("FAIL: 析构后仍有 %d 个元素存活，说明没逐个销毁\\n", Tracked::alive); ++fail;
+        }
+    }
+
+    if (fail == 0) std::printf("PASS\\n");
+    return fail;
+}
+', 13, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (163, 7, 'blank', '阅读 2 · list 只改指针', '// 简化版 list：带哨兵的双向链表
 template <class T>
 class mini_list {
@@ -1928,7 +2112,7 @@ public:
         --size_;
         return ______;                        // ② 循环要靠它续接
     }
-};', '补全 ① ②。想清楚：为什么 `insert` 之后，原本指向**其他节点**的迭代器一个都没失效？', 1, 15, NULL, '[["pos->prev"], ["after"]]', '**答案**：① `pos->prev` ② `after`。
+};', '补全 ① ②。想清楚：为什么 `insert` 之后，原本指向**其他节点**的迭代器一个都没失效？', 1, 16, NULL, '[["pos->prev"], ["after"]]', '**答案**：① `pos->prev` ② `after`。
 
 **① 新节点的前驱是谁？**
 `new node{prev, next, value}` 按声明顺序初始化，第一个字段就是 `prev`。新节点要插在 `pos` 之前，它的前驱自然是 `pos->prev`。
@@ -1944,6 +2128,225 @@ public:
 对比 vector：扩容把元素搬到新内存、旧对象销毁 ⇒ 地址变了、对象也没了，所以全废。
 
 **可迁移规则**：节点容器的"稳"来自**地址稳定**，连续容器的"脆"来自**会搬家**。判断失效时先问一句"这次操作会不会搬动已有元素"。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (168, 7, 'short', '实现 2 · mini_list：只改指针', '用**哨兵节点**实现简化版双向链表 `mini_list<T>`（不许借用任何标准容器）：
+
+- `size()` / `empty()`
+- `void push_back(const T& v)` / `void push_front(const T& v)`
+- 迭代器：`begin()`（首元素）、`end()`（哨兵），支持 `*it` / `++it` / `==` `!=`
+- `iterator insert(iterator pos, const T& v)`：在 pos **之前**插入，返回新元素的迭代器
+- `iterator erase(iterator pos)`：删除 pos，返回**下一个**元素的迭代器
+- 析构：释放所有节点
+
+> 收口：`insert` / `erase` 只改指针，**节点地址不变** ⇒ 指向其他节点的迭代器与引用全部继续有效。
+> 阅读 2 里那句「list 上换成 erase 也还是 UB」，这一关你会明白 UB 只是「用了失效的迭代器」，而**没用到的迭代器一个都没坏**。', NULL, 0, 17, NULL, NULL, '**核心只有一句话**：节点地址从生到死不变，变的只是谁指向谁。
+
+**insert 只改 4 个指针**（`pos` 指向的节点叫 `cur`）：
+
+```cpp
+node* n = new node(v);
+n->prev = cur->prev;         // ① 新节点接上前驱
+n->next = cur;               // ② 新节点接上后继
+cur->prev->next = n;         // ③ 前驱改指向新节点
+cur->prev = n;               // ④ 后继改指向新节点
+++size_;
+return iterator(n);
+```
+
+因为只改指针，**其他节点的地址一个字节都没动** ⇒ 指向它们的迭代器、指针、引用继续有效。这就是阅读 2 那道题的实测版。
+
+**哨兵节点的价值**：把「空表插入」「头部插入」「尾部插入」「末尾删除」四种边界统一成一种——所有位置都有一个合法的前驱和后继，`insert` 再也不用写 `if (pos == head)` 的特判。真实实现（libstdc++）用「基类节点 + 派生节点」来避免给哨兵构造一个 `T`；这里的教学版直接在哨兵里放了个默认构造的 `T`，所以测试里 `Tracked` 的存活数会多 1 个，出了作用域又归 0。
+
+**erase 为什么必须返回下一个**：`erase(pos)` 里那个节点已经被 `delete` 了，`pos` 自己就是野指针。除了返回 `next`，没有别的办法安全地继续遍历——这就是「边遍历边删」在 list 上唯一正确的写法。反过来，`vector::erase` 返回的也是下一个，但**它同时让后面所有迭代器失效**，所以同样的写法在 vector 上照样是 UB。
+
+**顺便回答阅读 2 留下的疑问**：为什么这题在 list 上"能跑"？因为删掉的节点内存还没被复用，`it->next` 读到的还是旧值。换一次分配器、加一层 ASan，或者让别的代码先占那块内存，立刻就炸。**能跑通是运气，不是正确性。**', '#include <cstddef>
+
+template <class T>
+class mini_list {
+    struct node {
+        T     value;
+        node* prev;
+        node* next;
+        node() : value(), prev(this), next(this) {}
+        explicit node(const T& v) : value(v), prev(nullptr), next(nullptr) {}
+    };
+
+    node        head_;   // 哨兵：head_.next 是首元素，head_.prev 是尾元素
+    std::size_t size_ = 0;
+
+public:
+    class iterator {
+    public:
+        // ⚠️ p_ 只能是 public：C++ 里内嵌类能访问外层类的私有成员，反过来不行。
+        //    insert / erase 要用到 pos 里的指针，所以这里必须放开。
+        node* p_;
+        explicit iterator(node* p) : p_(p) {}
+        T& operator*() const { return p_->value; }
+        iterator& operator++() { p_ = p_->next; return *this; }
+        bool operator!=(const iterator& o) const { return p_ != o.p_; }
+        bool operator==(const iterator& o) const { return p_ == o.p_; }
+    };
+
+    mini_list() = default;
+
+    ~mini_list() {
+        // TODO: 从 head_.next 开始逐个 delete，直到转回 &head_
+    }
+
+    std::size_t size() const { return size_; }
+    bool        empty() const { return size_ == 0; }
+    iterator begin() { return iterator(head_.next); }
+    iterator end()   { return iterator(&head_); }
+
+    // 在 pos 之前插入，返回新节点；只改 4 个指针
+    iterator insert(iterator pos, const T& v) {
+        // TODO: node* cur = pos.p_; 新节点挂在 cur->prev 与 cur 之间
+        //       别忘了 ++size_
+        return pos;
+    }
+
+    // 删除 pos，返回下一个（这就是「边遍历边删」能成立的原因）
+    iterator erase(iterator pos) {
+        // TODO: 摘链、delete、--size_；注意不能 delete 哨兵
+        return pos;
+    }
+
+    void push_back(const T& v)  { insert(end(), v); }
+    void push_front(const T& v) { insert(begin(), v); }
+
+    mini_list(const mini_list&) = delete;
+    mini_list& operator=(const mini_list&) = delete;
+};
+
+// 只实现，不要写 main（隐藏测试会提供）
+', '#include <cstddef>
+
+// 实现 mini_list<T>（哨兵双向链表）：push_back / push_front / insert / erase /
+// begin / end / size / 析构。
+// 要点：insert 在 pos 之前插入，只改指针（旧节点地址不变）；
+//       erase 必须返回下一个迭代器；析构要 delete 掉每个节点。
+
+// 只实现，不要写 main（隐藏测试会提供）
+', '#include <cstddef>
+
+// 需求：手写双向链表（两端插入、任意位置插入与删除、迭代器遍历、析构不泄漏）。
+
+// 只实现，不要写 main（隐藏测试会提供）
+', '#include <cstdio>
+#include <cstddef>
+
+struct Tracked {   // 能数清「当前有多少个对象活着」
+    static int alive;
+    int v;
+    Tracked() : v(0) { ++alive; }
+    explicit Tracked(int x) : v(x) { ++alive; }
+    Tracked(const Tracked& o) : v(o.v) { ++alive; }
+    Tracked(Tracked&& o) noexcept : v(o.v) { ++alive; }
+    Tracked& operator=(const Tracked& o) { v = o.v; return *this; }
+    Tracked& operator=(Tracked&& o) noexcept { v = o.v; return *this; }
+    ~Tracked() { --alive; }
+};
+int Tracked::alive = 0;
+
+static int collect(mini_list<int>& l, int* out, int cap) {
+    int n = 0;
+    for (auto it = l.begin(); it != l.end(); ++it) {
+        if (n < cap) out[n] = *it;
+        ++n;
+    }
+    return n;
+}
+
+int main() {
+    int fail = 0;
+
+    {   // 1 空链表
+        mini_list<int> l;
+        if (l.size() != 0 || !l.empty()) {
+            std::printf("FAIL: 空链表应 size=0 且 empty()=true\\n"); ++fail;
+        }
+        if (l.begin() != l.end()) { std::printf("FAIL: 空链表的 begin() 应等于 end()\\n"); ++fail; }
+    }
+
+    {   // 2 尾插 + 遍历
+        mini_list<int> l;
+        for (int i = 1; i <= 4; ++i) l.push_back(i);
+        int buf[8];
+        int n = collect(l, buf, 8);
+        if (n != 4) { std::printf("FAIL: push_back 4 次后应能遍历到 4 个元素\\n"); ++fail; }
+        if (n == 4 && (buf[0] != 1 || buf[3] != 4)) { std::printf("FAIL: 尾插顺序错了\\n"); ++fail; }
+        if (l.size() != 4) { std::printf("FAIL: push_back 4 次后 size 应为 4\\n"); ++fail; }
+    }
+
+    {   // 3 两端插
+        mini_list<int> l;
+        l.push_back(2);
+        l.push_front(1);
+        l.push_back(3);
+        int buf[8];
+        int n = collect(l, buf, 8);
+        if (!(n == 3 && buf[0] == 1 && buf[1] == 2 && buf[2] == 3)) {
+            std::printf("FAIL: push_front / push_back 之后顺序应为 1 2 3\\n"); ++fail;
+        }
+    }
+
+    {   // 4 中间插入只改指针：原迭代器必须继续有效
+        mini_list<int> l;
+        l.push_back(1);
+        l.push_back(3);
+        auto it = l.begin();
+        ++it;                       // 指向 3
+        int* p = &*it;
+        l.insert(it, 2);            // 在 3 之前插入 2
+        if (&*it != p) { std::printf("FAIL: insert 之后原迭代器失效了，节点被搬走了\\n"); ++fail; }
+        int buf[8];
+        int n = collect(l, buf, 8);
+        if (!(n == 3 && buf[0] == 1 && buf[1] == 2 && buf[2] == 3)) {
+            std::printf("FAIL: 中间插入后顺序应为 1 2 3\\n"); ++fail;
+        }
+    }
+
+    {   // 5 insert(end(), v) 等价于尾插
+        mini_list<int> l;
+        l.push_back(1);
+        l.insert(l.end(), 2);
+        int buf[8];
+        int n = collect(l, buf, 8);
+        if (!(n == 2 && buf[0] == 1 && buf[1] == 2)) {
+            std::printf("FAIL: insert(end(), v) 应插到尾部\\n"); ++fail;
+        }
+    }
+
+    {   // 6 erase 返回下一个：边遍历边删才成立
+        mini_list<int> l;
+        for (int i = 1; i <= 6; ++i) l.push_back(i);
+        for (auto it = l.begin(); it != l.end(); ) {
+            if (*it % 2 == 0) it = l.erase(it);
+            else              ++it;
+        }
+        int buf[8];
+        int n = collect(l, buf, 8);
+        if (!(n == 3 && buf[0] == 1 && buf[1] == 3 && buf[2] == 5)) {
+            std::printf("FAIL: 删掉偶数后应剩 1 3 5，erase 必须返回下一个迭代器\\n"); ++fail;
+        }
+        if (l.size() != 3) { std::printf("FAIL: 删除后 size 应为 3\\n"); ++fail; }
+    }
+
+    {   // 7 析构：节点里的元素要被销毁
+        Tracked::alive = 0;
+        {
+            mini_list<Tracked> l;
+            for (int i = 0; i < 5; ++i) l.push_back(Tracked(i));
+            if (l.size() != 5) { std::printf("FAIL: 5 次 push_back 后 size 应为 5\\n"); ++fail; }
+        }
+        if (Tracked::alive != 0) {
+            std::printf("FAIL: 析构后仍有 %d 个元素存活，节点没 delete 完\\n", Tracked::alive); ++fail;
+        }
+    }
+
+    if (fail == 0) std::printf("PASS\\n");
+    return fail;
+}
+', 13, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (164, 7, 'blank', '阅读 3 · unordered_map 的桶', '// 简化版 unordered_map：链地址法（数组 + 单链表）
 template <class K, class V>
 class mini_umap {
@@ -1982,7 +2385,7 @@ public:
 
         buckets_.swap(fresh);   // ③ 只换桶数组，节点还留在原来的地址上
     }
-};', '补全 ① ②。注意 `rehash` 里到底换掉了什么：为什么它能让迭代器全失效，却一个节点都不搬？', 1, 16, NULL, '[["buckets_.size()", "bucket_count()"], ["next"]]', '**答案**：① `buckets_.size()`（写 `bucket_count()` 也对）② `next`。
+};', '补全 ① ②。注意 `rehash` 里到底换掉了什么：为什么它能让迭代器全失效，却一个节点都不搬？', 1, 18, NULL, '[["buckets_.size()", "bucket_count()"], ["next"]]', '**答案**：① `buckets_.size()`（写 `bucket_count()` 也对）② `next`。
 
 **① 桶下标的本质**是 `hash(key) % 桶数`。取模保证结果落在 `[0, 桶数)`，这就是"桶"。同一个 key 每次算出来必须一样，否则 `insert` 存进去、`find` 就找不回来了——自定义哈希写成依赖时间/随机数，就是这种事故。
 
@@ -1999,6 +2402,222 @@ public:
 这正是「选择 9」那条反直觉规则的源码级解释。
 
 **可迁移规则**：`unordered_map` 的 rehash 是"重排索引、不搬对象"，`vector` 的扩容是"搬对象、换地址"。失效范围不同，根子就在这里。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (169, 7, 'short', '实现 3 · mini_unordered_map：链地址法', '用**链地址法**实现简化版哈希表 `mini_unordered_map<K, V>`（每个桶挂一条单向链表，不许借用任何标准容器）：
+
+- `size()` / `bucket_count()` / `load_factor()`
+- `V& operator[](const K& key)`：不存在则插入 `V{}`
+- `void insert(const K& key, const V& val)`：已存在则**覆盖**，不新增
+- `V* find(const K& key)`：找不到返回 `nullptr`
+- `bool erase(const K& key)`：删掉返回 true，没找到返回 false
+- 扩容规则：`size() > bucket_count()` 时桶数**翻倍**，且**只把已有节点重新挂到新桶上，不重新创建节点**
+
+> 收口：阅读 3 里 `rehash` 换掉的只是「桶数组」，节点一个都没搬——
+> 所以迭代器（记着桶位置）全废，而引用/指针（指着节点）全都还活着。这一关你自己验证一遍。', NULL, 0, 19, NULL, NULL, '**核心只有一句话**：`rehash` 换的是「桶数组」，不是「节点」。
+
+**桶与链**：
+
+```cpp
+node**      buckets_;                 // 桶数组：每个槽存一个链表头
+std::size_t bucketCount_, size_;
+
+std::size_t bucket_of(const K& k) const {
+    return std::hash<K>{}(k) % bucketCount_;   // 取模落到某个桶
+}
+```
+
+500 个键塞进 512 个桶，按鸽巢原理**冲突是必然的**，不是"偶尔发生"。冲突了就挂到同一个桶的链上，查找时先算桶号、再在链上顺序比——所以最坏情况是 O(链长)，这也解释了为什么装填因子一旦超过 1 就必须扩容：链变长，查找就退化成链表。
+
+**rehash 只重挂指针**（这是本题的重点）：
+
+```cpp
+void rehash(std::size_t newCount) {
+    node** fresh = new node*[newCount]();      // 新桶数组，全空
+    for (std::size_t i = 0; i < bucketCount_; ++i) {
+        node* p = buckets_[i];
+        while (p) {
+            node* next = p->next;              // 先存住，下面要改 p->next
+            std::size_t b = std::hash<K>{}(p->key) % newCount;
+            p->next = fresh[b];                // 头插到新桶
+            fresh[b] = p;
+            p = next;
+        }
+    }
+    delete[] buckets_;                         // 只删桶数组，节点一个都不动
+    buckets_ = fresh;
+    bucketCount_ = newCount;
+}
+```
+
+**于是「迭代器失效、引用不失效」这个反直觉结论就有了物理依据**：
+
+| 东西 | 里面存的是什么 | rehash 之后 |
+|---|---|---|
+| 引用 / 指针 / `V*` | 直接指向**节点** | 节点没搬 ⇒ **仍然有效** |
+| 迭代器 | 指向**节点** + 记着**属于哪个桶** | 桶号全变了 ⇒ **失效** |
+
+标准库的迭代器还要靠"桶号"做 `++`（走到链尾要跳到下一个非空桶），所以桶一变它就废了；引用只认节点地址，自然毫发无伤。**入门那道「迭代器死了、元素还活着」的选择题，答案就写在你刚写的这个 while 循环里。**
+
+**erase 的坑**：要删的节点可能正好是链表头，此时必须改 `buckets_[b]` 而不是改前驱的 `next`。漏掉这个分支，链头就永远删不掉。', '#include <cstddef>
+#include <functional>
+
+template <class K, class V>
+class mini_unordered_map {
+    struct node {
+        K     key;
+        V     value;
+        node* next;
+        node(const K& k, const V& v) : key(k), value(v), next(nullptr) {}
+    };
+
+    node**      buckets_ = nullptr;   // buckets_[i] 是第 i 个桶的链表头
+    std::size_t bucketCount_ = 8;
+    std::size_t size_ = 0;
+
+    std::size_t bucket_of(const K& key) const {
+        return std::hash<K>{}(key) % bucketCount_;
+    }
+
+public:
+    mini_unordered_map() {
+        // TODO: 分配 bucketCount_ 个 node*，全部置 nullptr
+    }
+
+    ~mini_unordered_map() {
+        // TODO: 每个桶的链表逐个 delete，最后 delete[] buckets_
+    }
+
+    std::size_t size() const         { return size_; }
+    std::size_t bucket_count() const { return bucketCount_; }
+    double      load_factor() const {
+        return static_cast<double>(size_) / static_cast<double>(bucketCount_);
+    }
+
+    V& operator[](const K& key) {
+        // TODO: 桶里找到就返回 value；找不到就 new 一个 node(key, V{}) 头插进桶，再返回
+    }
+
+    void insert(const K& key, const V& val) {
+        // TODO: 已存在则只覆盖 value；否则头插进 bucket_of(key) 这个桶，++size_，
+        //       然后若 size_ > bucketCount_ 就 rehash（桶数翻倍、只重挂指针）
+    }
+
+    V* find(const K& key) {
+        // TODO: 遍历 bucket_of(key) 那条链
+        return nullptr;
+    }
+
+    bool erase(const K& key) {
+        // TODO: 从链上摘掉；注意要删的可能正好是链表头
+        return false;
+    }
+
+    mini_unordered_map(const mini_unordered_map&) = delete;
+    mini_unordered_map& operator=(const mini_unordered_map&) = delete;
+};
+
+// 只实现，不要写 main（隐藏测试会提供）
+', '#include <cstddef>
+#include <functional>
+
+// 实现 mini_unordered_map<K, V>（链地址法）：operator[] / insert / find / erase /
+// size / bucket_count / load_factor / 析构。
+// 要点：冲突用链表串；size 超过桶数就翻倍扩容；
+//       扩容时只把已有节点重新挂到新桶，不要重建节点（否则引用会失效）。
+
+// 只实现，不要写 main（隐藏测试会提供）
+', '#include <cstddef>
+#include <functional>
+
+// 需求：手写哈希表（链地址法、自动扩容、增删查、析构不泄漏）。
+
+// 只实现，不要写 main（隐藏测试会提供）
+', '#include <cstdio>
+#include <cstddef>
+
+int main() {
+    int fail = 0;
+
+    {   // 1 空表
+        mini_unordered_map<int, int> m;
+        if (m.size() != 0) { std::printf("FAIL: 空表 size 应为 0\\n"); ++fail; }
+        if (m.bucket_count() < 1) { std::printf("FAIL: 桶数至少应为 1\\n"); ++fail; }
+        if (m.find(1) != nullptr) { std::printf("FAIL: 空表 find 应返回 nullptr\\n"); ++fail; }
+    }
+
+    {   // 2 insert / find / 覆盖
+        mini_unordered_map<int, int> m;
+        m.insert(1, 10);
+        m.insert(2, 20);
+        m.insert(1, 11);
+        if (m.size() != 2) { std::printf("FAIL: 重复 insert 同一个 key 不应增加 size\\n"); ++fail; }
+        int* p = m.find(1);
+        if (p == nullptr || *p != 11) { std::printf("FAIL: 重复 insert 应覆盖旧值\\n"); ++fail; }
+        if (m.find(99) != nullptr) { std::printf("FAIL: 不存在的 key 应返回 nullptr\\n"); ++fail; }
+    }
+
+    {   // 3 operator[] 不存在则插入默认值
+        mini_unordered_map<int, int> m;
+        m[5] = 50;
+        if (m.size() != 1) { std::printf("FAIL: operator[] 写入后 size 应为 1\\n"); ++fail; }
+        if (m[5] != 50) { std::printf("FAIL: operator[] 读回的值不对\\n"); ++fail; }
+        int v = m[6];
+        if (v != 0) { std::printf("FAIL: operator[] 遇到缺失的 key 应插入默认值 V{}\\n"); ++fail; }
+        if (m.size() != 2) { std::printf("FAIL: operator[] 读缺失的 key 也应把它插进去\\n"); ++fail; }
+    }
+
+    {   // 4 500 个键必然挤进同一个桶 —— 冲突链必须串对
+        mini_unordered_map<int, int> m;
+        for (int i = 0; i < 500; ++i) m.insert(i, i * 2);
+        if (m.size() != 500) { std::printf("FAIL: 插入 500 个不同 key 后 size 应为 500\\n"); ++fail; }
+        int badKey = -1;
+        for (int i = 0; i < 500; ++i) {
+            int* p = m.find(i);
+            if (p == nullptr || *p != i * 2) { badKey = i; break; }
+        }
+        if (badKey >= 0) { std::printf("FAIL: key=%d 查不回来，冲突链没串好\\n", badKey); ++fail; }
+        if (m.load_factor() > 1.0) {
+            std::printf("FAIL: 装填因子超过 1，size > bucket_count 时应翻倍扩容\\n"); ++fail;
+        }
+    }
+
+    {   // 5 rehash 只重挂桶里的指针，节点不许搬家
+        mini_unordered_map<int, int> m;
+        m.insert(7, 70);
+        int* p = m.find(7);
+        std::size_t before = m.bucket_count();
+        for (int i = 0; i < 200; ++i) m.insert(1000 + i, i);
+        if (m.bucket_count() <= before) { std::printf("FAIL: 插入 200 个键后桶数应增长\\n"); ++fail; }
+        if (m.find(7) != p) { std::printf("FAIL: rehash 后节点地址变了，应只重挂指针不重建节点\\n"); ++fail; }
+        if (p == nullptr || *p != 70) { std::printf("FAIL: rehash 之后旧值丢了\\n"); ++fail; }
+    }
+
+    {   // 6 erase：存在的、不存在的
+        mini_unordered_map<int, int> m;
+        for (int i = 0; i < 40; ++i) m.insert(i, i);
+        if (!m.erase(20)) { std::printf("FAIL: erase 存在的 key 应返回 true\\n"); ++fail; }
+        if (m.find(20) != nullptr) { std::printf("FAIL: erase 之后不应再找到该 key\\n"); ++fail; }
+        if (m.size() != 39) { std::printf("FAIL: erase 之后 size 应减 1\\n"); ++fail; }
+        if (m.erase(20)) { std::printf("FAIL: erase 不存在的 key 应返回 false\\n"); ++fail; }
+        if (m.size() != 39) { std::printf("FAIL: 删除失败不应改变 size\\n"); ++fail; }
+    }
+
+    {   // 7 逐个删空（覆盖「删的正好是链表头」），删空后还能继续用
+        mini_unordered_map<int, int> m;
+        for (int i = 0; i < 60; ++i) m.insert(i, i);
+        int badKey = -1;
+        for (int i = 0; i < 60; ++i) if (!m.erase(i)) { badKey = i; break; }
+        if (badKey >= 0) { std::printf("FAIL: 逐个删除时 key=%d 删不掉\\n", badKey); ++fail; }
+        if (m.size() != 0) { std::printf("FAIL: 全部删除后 size 应为 0\\n"); ++fail; }
+        m.insert(1, 1);
+        if (m.size() != 1 || m.find(1) == nullptr) {
+            std::printf("FAIL: 删空之后应还能继续插入查找\\n"); ++fail;
+        }
+    }
+
+    if (fail == 0) std::printf("PASS\\n");
+    return fail;
+}
+', 24, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (165, 7, 'blank', '阅读 4 · 红黑树旋转与 ++it', '// 简化版红黑树（map 的底层）：只看左旋与中序后继
 // 左旋：把 x 的右孩子 y 提上来，x 降为 y 的左孩子
 void rotate_left(node* x) {
@@ -2026,7 +2645,7 @@ node* next_node(node* n) {
     // 没有右子树：往上找「第一个把我当左孩子的祖先」
     while (n->parent && n == n->parent->right) n = n->parent;
     return n->parent;
-}', '补全 ① ② ③。想清楚：左旋之后，x 与 y 的父子关系是怎么换过来的？', 1, 17, NULL, '[["left"], ["y"], ["right"]]', '**答案**：① `left` ② `y` ③ `right`。
+}', '补全 ① ② ③。想清楚：左旋之后，x 与 y 的父子关系是怎么换过来的？', 1, 20, NULL, '[["left"], ["y"], ["right"]]', '**答案**：① `left` ② `y` ③ `right`。
 
 **左旋三步**（拿张纸画一遍最快）：
 
@@ -2061,7 +2680,7 @@ class mini_deque {
         std::size_t pos = offset_ + i;
         return map_[head_ + pos / ______][pos % kBlock];
     }
-};', '补全 ① ②。想清楚：为什么拿 `&d[0]` 当「连续数组」的首地址用会出事？', 1, 18, NULL, '[["sizeof(T)"], ["kBlock"]]', '**答案**：① `sizeof(T)` ② `kBlock`。
+};', '补全 ① ②。想清楚：为什么拿 `&d[0]` 当「连续数组」的首地址用会出事？', 1, 21, NULL, '[["sizeof(T)"], ["kBlock"]]', '**答案**：① `sizeof(T)` ② `kBlock`。
 
 **① 块大小按什么切**：按字节数切，`512 / sizeof(T)` 个元素。`T` 大块里就少放几个，`T` 小块里多放几个。⚠️ 这个 512 是 libstdc++ 的选择，**不是标准要求**，MSVC 和 libc++ 取值都不同——所以这一空答 `sizeof(T)` 才是唯一稳妥的（问的是"按什么切"，不是"切多少字节"）。
 
@@ -3685,7 +4304,7 @@ int main() {
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (115, 7, 'short', '短题 1 · 容器选型：set 去重排序', '实现 `std::vector<int> unique_sorted(const std::vector<int>& v)`：
 用 `std::set` 去重并按升序排序。
 
-> 考点：容器选型——set 自带去重 + 有序。', NULL, 0, 19, NULL, NULL, '**思路**：`std::set` 自动去重 + 升序，构造后拷回 `vector`。
+> 考点：容器选型——set 自带去重 + 有序。', NULL, 0, 22, NULL, NULL, '**思路**：`std::set` 自动去重 + 升序，构造后拷回 `vector`。
 
 **参考实现**
 ```cpp
@@ -3734,7 +4353,7 @@ int main() {
 ', 1, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (116, 7, 'short', '短题 2 · 迭代器失效修复', '`remove_even` 要删除 `v` 中所有偶数。下面的实现能编译、多数情况下也"看起来对"，但它有 bug。找出问题并修复（提示：注意循环体里容器本身发生了变化）。
 
-> 考点：遍历过程中修改容器 ⇒ 迭代器失效。', NULL, 0, 20, NULL, NULL, '**思路**：`std::remove_if` 把要保留的元素前移、返回新的逻辑末尾，再 `erase` 掉尾部。别在循环里逐个 erase。
+> 考点：遍历过程中修改容器 ⇒ 迭代器失效。', NULL, 0, 23, NULL, NULL, '**思路**：`std::remove_if` 把要保留的元素前移、返回新的逻辑末尾，再 `erase` 掉尾部。别在循环里逐个 erase。
 
 **参考实现**
 ```cpp
@@ -3788,7 +4407,7 @@ int main() {
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (117, 7, 'short', '短题 3 · 自定义比较器：降序 set', '实现 `std::set<int, std::greater<int>> make_desc_set(const std::vector<int>& v)`：
 返回一个降序排列的 set。
 
-> 考点：自定义比较器（std::greater）改变容器排序。', NULL, 0, 21, NULL, NULL, '**思路**：`std::set<int, std::greater<int>>` 用 `greater` 当比较器，遍历即为降序。
+> 考点：自定义比较器（std::greater）改变容器排序。', NULL, 0, 24, NULL, NULL, '**思路**：`std::set<int, std::greater<int>>` 用 `greater` 当比较器，遍历即为降序。
 
 **参考实现**
 ```cpp
@@ -3841,7 +4460,7 @@ int main() {
 INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (118, 7, 'short', '短题 4 · 算法组合：过滤 + 变换', '实现 `std::vector<int> filter_and_double(const std::vector<int>& v)`：
 先过滤出正数，再把每个正数翻倍。可用 `std::copy_if` + `std::transform`，或手写。
 
-> 考点：算法组合完成数据流水线。', NULL, 0, 22, NULL, NULL, '**思路**：先 `copy_if` 保留正数，再 `transform` 翻倍。
+> 考点：算法组合完成数据流水线。', NULL, 0, 25, NULL, NULL, '**思路**：先 `copy_if` 保留正数，再 `transform` 翻倍。
 
 **参考实现**
 ```cpp
@@ -3898,7 +4517,7 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, k
 - `int get(int key)`：存在则返回值并标记为最近使用，否则返回 -1
 - `void put(int key, int value)`：插入/更新；容量满时淘汰最久未使用的
 
-> 收口：list（有序）+ unordered_map（O(1) 查找），跨容器组合。', NULL, 0, 23, NULL, NULL, '**思路**：`list` 维护使用顺序（头最新、尾最旧），`unordered_map` 记录 key → list 迭代器，实现 O(1) 查找与移动。
+> 收口：list（有序）+ unordered_map（O(1) 查找），跨容器组合。', NULL, 0, 26, NULL, NULL, '**思路**：`list` 维护使用顺序（头最新、尾最旧），`unordered_map` 记录 key → list 迭代器，实现 O(1) 查找与移动。
 
 **参考实现**
 ```cpp
