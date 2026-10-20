@@ -419,14 +419,15 @@ const seed = readFileSync(resolve(root, 'tools/seed_practice.sql'), 'utf8');
 const chapterInserts = (seed.match(/INSERT INTO practice_chapters/g) || []).length;
 assert(chapterInserts === 14, '14 个章节');
 const exerciseInserts = (seed.match(/INSERT INTO practice_exercises/g) || []).length;
-assert(exerciseInserts === 154, '应为 154 道题（当前 ' + exerciseInserts + '）');
+assert(exerciseInserts >= 154, '题目数不应少于 154 道（当前 ' + exerciseInserts + '）');
 assert(!/INSERT IGNORE/.test(seed), 'seed 不应再有 INSERT IGNORE（已改 upsert）');
 assert(/solution\s+TEXT/.test(seed), 'seed 建表含 solution（题解）列');
 assert(seed.includes('ADD COLUMN solution'), 'seed 含 solution 幂等补列迁移（老库自愈，防 1054）');
 assert(seed.includes('PREPARE stmt_mig FROM @ddl'), '补列迁移用 information_schema + PREPARE 动态执行');
 {
     const solUpserts = (seed.match(/solution=VALUES\(solution\)/g) || []).length;
-    assert(solUpserts === 154, '154 题均带题解 upsert（当前 ' + solUpserts + '）');
+    assert(solUpserts === exerciseInserts,
+        '每题都要带题解 upsert（题 ' + exerciseInserts + ' / 题解 ' + solUpserts + '）');
 }
 assert(seed.includes('practice_progress'), '含进度表');
 // 换行符：seed 为纯 LF 的真正护栏在生成器（写盘前 assert b'\r' not in raw）。

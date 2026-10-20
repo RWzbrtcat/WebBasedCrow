@@ -1765,16 +1765,17 @@ auto sub = view.________(0, 5);   // 取前5个字符，不拷贝''',
         'prompt': '''```cpp
 std::vector<int> v{1, 2, 3};
 for (auto it = v.begin(); it != v.end(); ++it) {
-    if (*it == 2) v.erase(it);   // 会发生什么？
+    if (*it == 2) v.erase(it);
 }
+// 循环结束后，v 的内容是？
 ```''',
         'options': [
-            {'label': 'A', 'text': '正常删除 2'},
-            {'label': 'B', 'text': '未定义行为（迭代器失效）'},
-            {'label': 'C', 'text': '编译错误'},
-            {'label': 'D', 'text': '删除所有元素'},
+            {'label': 'A', 'text': 'v == {1, 3}'},
+            {'label': 'B', 'text': 'v == {1, 2, 3}（什么也没删掉）'},
+            {'label': 'C', 'text': 'v == {1}（2 后面的元素一起没了）'},
+            {'label': 'D', 'text': '无法确定：可能崩溃，也可能恰好是上面任意一种'},
         ],
-        'answer': 'B',
+        'answer': 'D',
     },
     {
         'id': 48,
@@ -1842,6 +1843,136 @@ std::________<Point, int, Hash> m;   // 用自定义哈希的哈希表''',
         'prompt': '''auto it = std::________(v.begin(), v.end(), [](int x){ return x > 10; });''',
         'question': '请补全代码：用算法查找第一个大于 10 的元素（返回迭代器）。',
         'answer': ['find_if'],
+    },
+    # ================= C7 新增题（id 155-161）：反判别 + 失效五连 =================
+    {
+        'id': 155,
+        'chapter_id': 7,
+        'type': 'choice',
+        'title': '选择 7 · 哪个不失效',
+        'sort_order': 7,
+        'prompt': '''```cpp
+// 已有迭代器 it 指向容器中某个元素，下列哪个操作之后 it 仍然有效？
+```''',
+        'options': [
+            {'label': 'A', 'text': 'vector::push_back，且触发了重新分配'},
+            {'label': 'B', 'text': 'list::insert(pos, x)，插入点在另一个位置'},
+            {'label': 'C', 'text': 'vector::erase(v.begin())'},
+            {'label': 'D', 'text': 'unordered_map::insert，触发了 rehash'},
+        ],
+        'answer': 'B',
+    },
+    {
+        'id': 156,
+        'chapter_id': 7,
+        'type': 'choice',
+        'title': '选择 8 · 引用也会悬垂',
+        'sort_order': 8,
+        'prompt': '''```cpp
+std::vector<int> v{1, 2, 3};
+v.reserve(3);
+int& r = v[0];
+v.push_back(4);
+r = 99;
+```''',
+        'question': '`reserve(3)` 之后容量正好是 3，所以 `push_back(4)` 必然重新分配内存。执行完之后 `v[0]` 是多少？',
+        'options': [
+            {'label': 'A', 'text': '99 —— r 是 v[0] 的别名，改的就是它'},
+            {'label': 'B', 'text': '1 —— 写进了已被释放的旧内存，编译器不报任何错'},
+            {'label': 'C', 'text': '编译错误：push_back 之后引用自动失效'},
+            {'label': 'D', 'text': '抛出 std::out_of_range'},
+        ],
+        'answer': 'B',
+    },
+    {
+        'id': 157,
+        'chapter_id': 7,
+        'type': 'choice',
+        'title': '选择 9 · 迭代器死了，元素还活着',
+        'sort_order': 9,
+        'prompt': '''```cpp
+// 哪个操作会让「迭代器失效」，但「指向元素的引用/指针仍然有效」？
+```''',
+        'options': [
+            {'label': 'A', 'text': 'vector::push_back 触发重新分配'},
+            {'label': 'B', 'text': 'deque::push_front'},
+            {'label': 'C', 'text': 'list::erase(被删的那个元素)'},
+            {'label': 'D', 'text': 'vector::erase(中间某个元素)'},
+        ],
+        'answer': 'B',
+    },
+    {
+        'id': 158,
+        'chapter_id': 7,
+        'type': 'choice',
+        'title': '选择 10 · 换成 list 就安全吗',
+        'sort_order': 10,
+        'prompt': '''```cpp
+std::list<int> c{1, 2, 3};
+for (auto it = c.begin(); it != c.end(); ++it) {
+    if (*it == 2) c.erase(it);
+}
+```''',
+        'question': '把 `vector` 换成 `list` 之后，这段循环就安全了吗？',
+        'options': [
+            {'label': 'A', 'text': '安全：list 的 erase 只摘掉这一个节点，别的节点不受影响'},
+            {'label': 'B', 'text': '安全：节点容器的迭代器永远不会失效'},
+            {'label': 'C', 'text': '不安全：erase 之后 it 已失效，再拿它 ++ 仍是未定义行为；只是节点内存常未被复用，所以"看起来正常"'},
+            {'label': 'D', 'text': '编译错误：list::erase 返回 void，不能接返回值'},
+        ],
+        'answer': 'C',
+    },
+    {
+        'id': 159,
+        'chapter_id': 7,
+        'type': 'choice',
+        'title': '选择 11 · 换容器后静默越界',
+        'sort_order': 11,
+        'prompt': '''```cpp
+void feed(const int* p, std::size_t n);
+
+std::deque<int> d{1, 2, 3};
+feed(&d[0], d.size());   // 会怎样？
+```''',
+        'question': '`feed` 约定 `p` 指向连续存放的 `n` 个 `int`。这段代码会怎样？',
+        'options': [
+            {'label': 'A', 'text': '编译失败：deque 没有 data()，拿不到首元素地址'},
+            {'label': 'B', 'text': '编译通过、运行正常，结果正确'},
+            {'label': 'C', 'text': '编译通过，但 deque 的内存不保证连续，feed 会越界读取'},
+            {'label': 'D', 'text': '编译通过，运行时抛出异常'},
+        ],
+        'answer': 'C',
+    },
+    {
+        'id': 160,
+        'chapter_id': 7,
+        'type': 'choice',
+        'title': '选择 12 · 跑一千次都没崩',
+        'sort_order': 12,
+        'prompt': '''```cpp
+// 一段含未定义行为的代码在 CI 上连续跑了 1000 次、全部通过：可以据此认为它是安全的吗？
+```''',
+        'options': [
+            {'label': 'A', 'text': '可以：1000 次全过，出错概率可以忽略'},
+            {'label': 'B', 'text': '不可以：它的表现依赖内存布局、分配器状态与优化等级，要用 ASan/UBSan 这类工具才算验证'},
+            {'label': 'C', 'text': '不可以：把编译优化关掉，再跑 1000 次就行'},
+            {'label': 'D', 'text': '可以：只要 Debug 和 Release 都跑过'},
+        ],
+        'answer': 'B',
+    },
+    {
+        'id': 161,
+        'chapter_id': 7,
+        'type': 'blank',
+        'title': '填空 4 · 循环里删元素',
+        'sort_order': 13,
+        'prompt': '''std::vector<int> v{1, 2, 3, 4};
+for (auto it = v.begin(); it != v.end(); ) {
+    if (*it % 2 == 0) it = v.______(it);
+    else ++it;
+}''',
+        'question': '补全代码：删除所有偶数，并让迭代器安全地续接到下一个元素。',
+        'answer': ['erase'],
     },
     # ================= C8 客观题（id 53-58） =================
     {
@@ -3660,7 +3791,7 @@ int main() {
         'chapter_id': 7,
         'type': 'short',
         'title': '短题 1 · 容器选型：set 去重排序',
-        'sort_order': 7,
+        'sort_order': 14,
         'prompt': '实现 `std::vector<int> unique_sorted(const std::vector<int>& v)`：\n'
                   '用 `std::set` 去重并按升序排序。\n\n'
                   '> 考点：容器选型——set 自带去重 + 有序。',
@@ -3710,17 +3841,17 @@ int main() {
         'chapter_id': 7,
         'type': 'short',
         'title': '短题 2 · 迭代器失效修复',
-        'sort_order': 8,
-        'prompt': '下面的循环在 `erase` 后继续 `++it`，迭代器已失效，是未定义行为。\n'
-                  '用 erase-remove 惯用法修复 `remove_even`（删除所有偶数）。\n\n'
-                  '> 考点：vector erase 使迭代器失效；erase-remove 惯用法。',
+        'sort_order': 15,
+        'prompt': '`remove_even` 要删除 `v` 中所有偶数。下面的实现能编译、多数情况下也"看起来对"，'
+                  '但它有 bug。找出问题并修复（提示：注意循环体里容器本身发生了变化）。\n\n'
+                  '> 考点：遍历过程中修改容器 ⇒ 迭代器失效。',
         'starter_easy': r'''#include <vector>
 #include <algorithm>
 
-// BUG: erase 后 it 失效。用 erase-remove 惯用法修复。
+// TODO: 这段代码能编译、看起来也能跑，但有隐蔽的 bug —— 自己找出来并修好。
 void remove_even(std::vector<int>& v) {
     for (auto it = v.begin(); it != v.end(); ++it) {
-        if (*it % 2 == 0) v.erase(it);   // BUG: it 失效
+        if (*it % 2 == 0) v.erase(it);
     }
 }
 
@@ -3729,14 +3860,15 @@ void remove_even(std::vector<int>& v) {
         'starter_medium': r'''#include <vector>
 #include <algorithm>
 
-// 修复 remove_even：用 v.erase(std::remove_if(...), v.end()) 删除所有偶数。
+// 修复 remove_even：删除所有偶数。
+// 想清楚：为什么在循环里直接 erase 是不安全的？
 
 // 只实现，不要写 main（隐藏测试会提供）
 ''',
         'starter_hard': r'''#include <vector>
 #include <algorithm>
 
-// 需求：remove_even 删除所有偶数，避免迭代器失效。
+// 需求：remove_even 删除所有偶数。
 
 // 只实现，不要写 main（隐藏测试会提供）
 ''',
@@ -3762,7 +3894,7 @@ int main() {
         'chapter_id': 7,
         'type': 'short',
         'title': '短题 3 · 自定义比较器：降序 set',
-        'sort_order': 9,
+        'sort_order': 16,
         'prompt': '实现 `std::set<int, std::greater<int>> make_desc_set(const std::vector<int>& v)`：\n'
                   '返回一个降序排列的 set。\n\n'
                   '> 考点：自定义比较器（std::greater）改变容器排序。',
@@ -3816,7 +3948,7 @@ int main() {
         'chapter_id': 7,
         'type': 'short',
         'title': '短题 4 · 算法组合：过滤 + 变换',
-        'sort_order': 10,
+        'sort_order': 17,
         'prompt': '实现 `std::vector<int> filter_and_double(const std::vector<int>& v)`：\n'
                   '先过滤出正数，再把每个正数翻倍。可用 `std::copy_if` + `std::transform`，或手写。\n\n'
                   '> 考点：算法组合完成数据流水线。',
@@ -3866,7 +3998,7 @@ int main() {
         'chapter_id': 7,
         'type': 'boss',
         'title': 'Boss · LRU 缓存',
-        'sort_order': 11,
+        'sort_order': 18,
         'prompt': '实现一个 LRU（最近最少使用）缓存 `LRUCache`：\n\n'
                   '- `LRUCache(int capacity)`：构造，容量 capacity\n'
                   '- `int get(int key)`：存在则返回值并标记为最近使用，否则返回 -1\n'
@@ -7040,11 +7172,13 @@ void put(int key, int value) {
 - `list::splice` 把节点在链内「搬」到头部：**不拷贝**、**迭代器不失效**——所以 `map_` 里的迭代器始终有效。
 - 容量满时**先淘汰尾部再插入**，顺序别反。''',
 
-    47: '''**正确答案：B（未定义行为）**。
+    47: '''**正确答案：D（无法确定）**。
 
-`vector::erase` 会让被删位置**及其之后**的所有迭代器失效。`v.erase(it)` 后循环又执行 `++it`，操作的是已失效迭代器 ⇒ 未定义行为。
+`vector::erase` 会让被删位置**及其之后**的所有迭代器失效；循环随后又执行 `++it`，操作的是已失效的迭代器 ⇒ **未定义行为**。UB 既不许诺"崩溃"，也不许诺"结果正确"，所以 A/B/C 都可能出现，也可能直接段错误。
 
-修复用 erase-remove 惯用法：`v.erase(std::remove_if(...), v.end())`。''',
+选 B 的常见推理是：`erase` 后长度变 2，`++it` 就跳到末尾，循环结束。问题在于——`erase` 之后的 `it` 已不指向容器中任何有效位置，`++it` **不保证**"跳到下一个元素"。
+
+修复用 erase-remove 惯用法：`v.erase(std::remove_if(v.begin(), v.end(), pred), v.end())`。''',
 
     48: '''**正确答案：B（`map`）**。
 
@@ -8144,6 +8278,120 @@ include guard 以 `#endif` 收尾：
 ```
 
 `#endif` 后建议加注释标出对应的宏名，便于阅读。等价替代是现代编译器广泛支持的 `#pragma once`。''',
+
+    155: '''**正确答案：B（`list::insert` 到别处）。**
+
+四个选项逐个拆开：
+
+| 操作 | 迭代器 | 引用/指针 | 原因 |
+|---|---|---|---|
+| `vector::push_back` 触发重新分配 | 全失效 | 也失效 | 元素被搬到新内存，旧对象已销毁 |
+| `list::insert` 到别的位置 | **不受影响** | 不受影响 | 只改链表指针，节点地址不变 |
+| `vector::erase(v.begin())` | 被删位置及之后全失效 | 失效 | 后面的元素整体前移 |
+| `unordered_map` 触发 rehash | 全失效 | 仍有效 | 桶数组重建，节点本身没动 |
+
+**可迁移规则**：`list` / `map` / `set` 这类**节点容器**，插入不动已有节点；`vector` / `deque` / `unordered_*` 这类**连续或按桶组织**的容器，结构一变就要重新获取句柄。''',
+
+    156: '''**正确答案：B —— `v[0]` 是 1，而且这是未定义行为。**
+
+题目里的 `reserve(3)` 是为了把条件钉死：容量正好 3，`push_back(4)` **必然**重新分配。（不写 `reserve` 的话，`v{1, 2, 3}` 的初始容量由实现决定，可能本来就够用，这题的前提就不成立了。）
+
+`push_back` 触发重新分配时，`vector` 会把元素**搬**到新内存，再销毁旧内存上的对象。`r` 仍然指着旧内存那块地址——它已经归还给分配器了。
+
+`r = 99` 往这块死内存里写：**不报错、不崩溃**，因为它只是一次普通的内存写。这是最难抓的一类 bug：
+
+- 跑一万次都"正常"，因为那块内存还没被别的对象复用；
+- 上线后换个分配器、加行日志、改个优化等级，就变成随机的数据错乱或崩溃。
+
+**可迁移规则**：只要容器可能重新分配（`push_back` / `resize` / `reserve` / `insert`），跨越该操作保存的**任何**句柄——迭代器、引用、指针——都必须在操作之后重新获取。
+
+顺带一句：标准规定 `vector` 扩容会让所有引用、指针、迭代器失效，而 `deque::push_front` 和 `unordered_map` 的 rehash **不**失效引用——见下一题。''',
+
+    157: '''**正确答案：B（`deque::push_front`）。**
+
+标准其实区分了两种"失效"：**句柄失效**（迭代器不能用了）和**元素失效**（对象被销毁或搬家了）。大多数人默认两者同步，实际不是。
+
+| 操作 | 迭代器 | 引用/指针 | 原因 |
+|---|---|---|---|
+| `vector` 扩容 | 全失效 | **也失效** | 元素被 move 到新内存，旧对象销毁 |
+| `deque::push_front` | **全失效** | **仍有效** | 两端插入不动已有元素，只重建内部段表 |
+| `unordered_map` rehash | 全失效 | **仍有效** | 只重建桶数组，节点地址不变 |
+| `list::erase(e)` | 只有被删的那个 | 该元素真没了 | 元素本身被销毁 |
+
+关键一句：**迭代器失效 ≠ 元素失效**。失效的是"指向元素的方式"，不是元素本身。
+
+**可迁移规则**：判断危险时先问"对象搬家了没 / 被销毁了没"，再问"迭代器还能不能用"。`deque` 和 `unordered_map` 就是"句柄死了、对象还活着"的两个经典反例。''',
+
+    158: '''**正确答案：C —— 仍然不安全，只是"看起来正常"。**
+
+`list::erase(it)` 之后 `it` 已经失效，循环再执行 `++it` 就是对失效迭代器做自增，按标准依然是**未定义行为**。换成 `list` 并不能豁免。
+
+那为什么很多人觉得 list 上这么写"没问题"？因为 `erase` 只是把那一个节点归还给分配器，节点里的 `next` 指针常常还留着原值、内存也常没被复用，所以 `++it` **恰好**能走到下一个节点。这是运气，不是保证。
+
+这正是这类 bug 最难抓的地方：**能跑通 ≠ 合法**。同样的写法在 debug 版、ASan 版，或者内存压力大时会立刻现原形。
+
+**可迁移规则**：任何容器里，`erase` 之后都要用返回值续接：
+
+```cpp
+for (auto it = c.begin(); it != c.end(); ) {
+    if (pred(*it)) it = c.erase(it);   // 用返回值
+    else ++it;
+}
+```
+
+`list` / `map` / `set` 的 `erase` 从 C++11 起都返回下一个迭代器。''',
+
+    159: '''**正确答案：C —— 能编译，但会越界读。**
+
+先破一个常见误解：`deque` 确实没有 `data()`，但 `&d[0]` 是**完全合法**的——`operator[]` 返回引用，取地址自然合法。所以**编译期一点警告都没有**。
+
+问题在于 `deque` 的内存是**分段连续**的：若干定长块，块与块之间靠一张"段表"串起来。`&d[0]` 拿到的是第一块里的地址，`d.size()` 是 3，`feed` 却按"连续 3 个 int"去读——一旦跨块，读到的就是块尾之外的无关内存。
+
+**可迁移规则**：**"支持随机访问"不等于"内存连续"。**
+
+- 随机访问 `O(1)`：`vector`、`deque`、`array`
+- 内存连续（能安全 `data()` / `&c[0]` 交给 C API）：只有 `vector`、`array`、`string`
+
+要把 `deque` 喂给 C 接口，只能先拷进一个 `vector`。''',
+
+    160: '''**正确答案：B —— 不能用"跑过多少次"来验证。**
+
+未定义行为不是"随机崩溃"，而是**标准不作任何承诺**。同一段代码的表现取决于：
+
+- 内存布局与分配器状态（那块内存有没有被别人复用）
+- 编译优化等级（优化器可能把整个循环删掉，也可能把读操作重排）
+- 栈/堆初始内容、地址随机化、线程调度
+
+所以"跑了 1000 次全过"只证明**这 1000 次的内存布局恰好没暴露问题**，跟代码是否正确没有关系。真实项目里最常见的剧本是：本地全绿、CI 全绿，上线换了个容器大小或并发度立刻出事。
+
+**可迁移规则**：验证 UB 靠工具，不靠次数。
+
+| 手段 | 抓什么 |
+|---|---|
+| `-fsanitize=address`（ASan） | 越界、use-after-free、悬垂引用 |
+| `-fsanitize=undefined`（UBSan） | 有符号溢出、非法移位、空指针解引用 |
+| `-D_GLIBCXX_DEBUG` | 标准库迭代器越界、失效迭代器使用 |
+
+关掉优化重跑（C）没用——UB 的暴露与环境相关，不是"优化开关"这一个变量能控制的。''',
+
+    161: '''**正确答案：`erase`。**
+
+`vector::erase` 从 C++11 起**返回被删元素的下一个位置**，用它续接就能安全遍历：
+
+```cpp
+for (auto it = v.begin(); it != v.end(); ) {
+    if (*it % 2 == 0) it = v.erase(it);   // 删掉，it 自动指向下一个
+    else ++it;                            // 没删，才手动前进
+}
+```
+
+三个易错点：
+
+1. **删的分支不能再 `++it`** —— `erase` 已经把 `it` 移到下一个了，再自增会跳过元素；
+2. **循环头不写 `++it`** —— 前进只能放在 `else` 分支里，这是这个惯用法的骨架；
+3. `map` / `set` / `list` 同理，`erase` 都返回下一个迭代器。
+
+**可迁移规则**：`erase` 的返回值就是"续接点"，永远别在 `erase` 之后手动自增。''',
 }
 
 # ---------- 三张表 DDL（与 src/database.cpp initTable 保持一致） ----------

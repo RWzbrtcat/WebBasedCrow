@@ -107,30 +107,32 @@ def scan_brace_balance(code):
 def main():
     failed = 0
 
-    # 1. id 连续性 + 题数（154 = 14 章 × 11 题）
+    # 1. id 连续性（1..N）—— N 由题库自动推导，扩题不必改断言
     ids = sorted(e['id'] for e in EXERCISES)
-    if ids != list(range(1, 155)):
-        missing = [x for x in range(1, 155) if x not in ids]
+    expected_ids = list(range(1, len(ids) + 1))
+    if ids != expected_ids:
+        missing = [x for x in expected_ids if x not in ids]
         dup = [x for x, c in Counter(e['id'] for e in EXERCISES).items() if c > 1]
         print('[FAIL] id 不连续：缺失 %s，重复 %s' % (missing, dup))
         failed += 1
     else:
-        print('[PASS] id 连续 1..154，共 %d 道' % len(EXERCISES))
+        print('[PASS] id 连续 1..%d，共 %d 道' % (len(ids), len(EXERCISES)))
 
-    # 2. 章节题数与章内排序
+    # 2. 章内排序：每章 sort_order 必须是 1..N 连续（N = 本章题数）
     by_chapter = defaultdict(list)
     for e in EXERCISES:
         by_chapter[e['chapter_id']].append(e)
     bad_sort = []
     for cid in range(1, len(CHAPTERS) + 1):
-        sorts = sorted(e['sort_order'] for e in by_chapter.get(cid, []))
-        if sorts != list(range(1, 12)):
+        items = by_chapter.get(cid, [])
+        sorts = sorted(e['sort_order'] for e in items)
+        if sorts != list(range(1, len(items) + 1)):
             bad_sort.append((cid, sorts))
     if bad_sort:
-        print('[FAIL] 章内排序异常：%s' % bad_sort)
+        print('[FAIL] 章内排序异常（应为 1..N 连续）：%s' % bad_sort)
         failed += 1
     else:
-        print('[PASS] %d 章每章 sort_order 1..11' % len(CHAPTERS))
+        print('[PASS] %d 章 sort_order 均为 1..N 连续' % len(CHAPTERS))
 
     # 3. 逐题校验
     for e in EXERCISES:
