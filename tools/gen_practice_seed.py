@@ -52,7 +52,7 @@ EXERCISES = [
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 1 · auto 与 decltype 推导',
-        'sort_order': 7,
+        'sort_order': 13,
         'prompt': (
             '实现两个函数，验证 `auto` 的类型推导规则：\n\n'
             '1. `get_ref()`：返回全局变量 `g_value` 的**引用**\n'
@@ -127,7 +127,7 @@ int main() {
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 2 · enum class 类型安全',
-        'sort_order': 8,
+        'sort_order': 14,
         'prompt': (
             '用 `enum class` 定义一个日志级别，并实现它与字符串的双向转换：\n\n'
             '1. `enum class LogLevel { Debug, Info, Warn, Error };`\n'
@@ -216,7 +216,7 @@ int main() {
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 3 · override/final/=delete',
-        'sort_order': 9,
+        'sort_order': 15,
         'prompt': (
             '实现一个形状类层次，验证 `override` / `final` / `=default` / `=delete` 四个关键字：\n\n'
             '1. `Shape` 抽象基类：虚析构 + 纯虚函数 `double area() const`\n'
@@ -345,14 +345,16 @@ int main() {
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 4 · 统一初始化与范围 for',
-        'sort_order': 10,
+        'sort_order': 16,
         'prompt': (
             '实现 `IntArray` 类，验证列表初始化与范围 for：\n\n'
             '1. 支持列表初始化：`IntArray a{1, 2, 3, 4};`\n'
             '2. `size()` 返回元素个数\n'
             '3. `operator[]` 访问元素\n'
-            '4. 支持范围 for 遍历（`int* begin()` / `int* end()`），含引用遍历修改元素\n\n'
-            '> 考点：`std::initializer_list`、统一初始化、范围 for 的引用语义。\n'
+            '4. 支持范围 for 遍历（`int* begin()` / `int* end()`），含引用遍历修改元素\n'
+            '5. 拷贝构造与拷贝赋值用 `=delete` 禁止 —— 这个类自己管内存，'
+            '默认拷贝会让两个对象指向同一块内存（`double free`）\n\n'
+            '> 考点：`std::initializer_list`、统一初始化、范围 for 的引用语义、Rule of Three 的最小闭环。\n'
         ),
         'starter_easy': r'''#include <initializer_list>
 
@@ -378,6 +380,7 @@ public:
     int* end() {
         // TODO: 返回尾后指针
     }
+    // TODO: 禁止拷贝 —— 两行 =delete（否则两个对象会指向同一块 data_）
 private:
     int* data_;
     int size_;
@@ -394,6 +397,8 @@ private:
 //   int& operator[](int i)                      —— 访问第 i 个元素
 //   int* begin()                                —— 首元素指针（支持范围 for）
 //   int* end()                                  —— 尾后指针
+//   IntArray(const IntArray&) = delete;          —— 禁止拷贝构造
+//   IntArray& operator=(const IntArray&) = delete; —— 禁止拷贝赋值
 // 需自行设计成员变量（如 int* data_; int size_;）
 
 // 只实现，不要写 main（隐藏测试会提供）
@@ -405,12 +410,14 @@ private:
 //   - 支持 operator[] 访问元素
 //   - 支持范围 for 遍历（含引用遍历修改元素）
 //   - size() 返回元素个数
+//   - 拷贝构造与拷贝赋值必须 =delete（自管内存，默认拷贝会 double free）
 //   - 隐藏测试会：构造 {1,2,3,4}、检查 size、范围 for 累加、
-//     范围 for 引用修改元素、空列表构造
+//     范围 for 引用修改元素、空列表构造、is_copy_constructible 为 false
 
 // 只实现，不要写 main（隐藏测试会提供）
 ''',
         'test_driver': r'''#include <cstdio>
+#include <type_traits>
 
 int main() {
     int fail = 0;
@@ -444,11 +451,17 @@ int main() {
         std::printf("FAIL: 空列表 IntArray{} 的 size() 应为 0\n");
         ++fail;
     }
+    // 用例6：拷贝必须被 =delete 掉（否则 double free）
+    if (std::is_copy_constructible<IntArray>::value ||
+        std::is_copy_assignable<IntArray>::value) {
+        std::printf("FAIL: IntArray 应 =delete 拷贝构造与拷贝赋值\n");
+        ++fail;
+    }
     if (fail == 0) std::printf("PASS\n");
     return fail;
 }
 ''',
-        'total_cases': 5,
+        'total_cases': 6,
         'time_limit_ms': 2000,
     },
     {
@@ -456,7 +469,7 @@ int main() {
         'chapter_id': 1,
         'type': 'boss',
         'title': 'Boss · 类型安全的枚举状态机',
-        'sort_order': 11,
+        'sort_order': 19,
         'prompt': (
             '实现一个类型安全的 TCP 状态机，串起本章全部知识点：\n\n'
             '1. 用 `enum class` 定义 6 个状态：`Closed / Listen / Established / FinWait1 / FinWait2 / TimeWait`\n'
@@ -1184,42 +1197,53 @@ int main() {
         'time_limit_ms': 2000,
     },
     # ================= 客观题（选择题 id 11-13 / 填空题 id 14-16，C1） =================
+    # C1 客观题设计口径（2026-10-20 扩充）：
+    #   1) 题干不泄答案：标题里不出现「陷阱/失效」这类答案关键词，代码里不写「// BUG」。
+    #   2) 四个选项都必须是「真实会犯的错」——禁止用「编译错误」「未定义行为」凑数，
+    #      除非它本身就是最有吸引力的那个误解（如范围 for 遍历中扩容）。
+    #   3) 每题至少一个「文档里查得到、但背不下来」的标准细节做落点。
     {
         'id': 11,
         'chapter_id': 1,
         'type': 'choice',
-        'title': '选择 1 · auto 的引用衰减',
+        'title': '选择 1 · auto 到底推成了什么',
         'sort_order': 1,
+        'question': '`a` 与 `b` 的类型分别是？',
         'prompt': '''```cpp
 const int& get() {
     static int x = 42;
     return x;
 }
-auto a = get();   // a 的类型是？
+
+auto  a = get();
+auto& b = get();
 ```''',
         'options': [
-            {'label': 'A', 'text': 'const int&'},
-            {'label': 'B', 'text': 'int&'},
-            {'label': 'C', 'text': 'int'},
-            {'label': 'D', 'text': 'const int'},
+            {'label': 'A', 'text': 'a 是 int，b 是 const int&'},
+            {'label': 'B', 'text': 'a 是 const int&，b 是 const int&'},
+            {'label': 'C', 'text': 'a 是 int，b 是 int&'},
+            {'label': 'D', 'text': 'a 是 int&&，b 是 const int&'},
         ],
-        'answer': 'C',
+        'answer': 'A',
     },
     {
         'id': 12,
         'chapter_id': 1,
         'type': 'choice',
-        'title': '选择 2 · decltype 的括号陷阱',
+        'title': '选择 2 · decltype 看的是名字还是表达式',
         'sort_order': 2,
+        'question': '`z` 的类型是？',
         'prompt': '''```cpp
-int x = 0;
-decltype((x)) y = x;   // y 的类型是？
+const int cx = 0;
+
+decltype(cx)   y  = cx;
+decltype((cx)) z  = cx;
 ```''',
         'options': [
-            {'label': 'A', 'text': 'int'},
-            {'label': 'B', 'text': 'int&'},
-            {'label': 'C', 'text': 'int&&'},
-            {'label': 'D', 'text': 'const int&'},
+            {'label': 'A', 'text': 'const int'},
+            {'label': 'B', 'text': 'const int&'},
+            {'label': 'C', 'text': 'int&'},
+            {'label': 'D', 'text': 'int'},
         ],
         'answer': 'B',
     },
@@ -1227,59 +1251,69 @@ decltype((x)) y = x;   // y 的类型是？
         'id': 13,
         'chapter_id': 1,
         'type': 'choice',
-        'title': '选择 3 · 范围 for 的值语义',
+        'title': '选择 3 · 范围 for 的两轮循环',
         'sort_order': 3,
+        'question': '两轮循环都跑完之后，`v` 的内容是？',
         'prompt': '''```cpp
 std::vector<int> v{1, 2, 3};
-for (auto x : v) { x *= 2; }
-// 此时 v 的内容是？
+
+for (auto x : v)  { x *= 2; }   /* ① */
+for (auto& x : v) { x += 1; }   /* ② */
 ```''',
         'options': [
-            {'label': 'A', 'text': '{2, 4, 6}'},
-            {'label': 'B', 'text': '{1, 2, 3}'},
-            {'label': 'C', 'text': '编译错误'},
-            {'label': 'D', 'text': '未定义行为'},
+            {'label': 'A', 'text': '{2, 3, 4}'},
+            {'label': 'B', 'text': '{3, 5, 7}'},
+            {'label': 'C', 'text': '{1, 2, 3}'},
+            {'label': 'D', 'text': '{2, 4, 6}'},
         ],
-        'answer': 'B',
+        'answer': 'A',
     },
     {
         'id': 14,
         'chapter_id': 1,
         'type': 'blank',
-        'title': '填空 1 · nullptr 的类型安全',
-        'sort_order': 4,
-        'prompt': '''void f(int)   { /* 版本1 */ }
-void f(void*) { /* 版本2 */ }
+        'title': '填空 1 · 0 与 nullptr 选到不同重载',
+        'sort_order': 8,
+        'question': '空 1 必须走到 `f(int)`，空 2 必须走到 `f(void*)`。想清楚：`0` 和 `nullptr` 各自的类型是什么。',
+        'prompt': '''void f(int)   { }
+void f(void*) { }
 
-f(______);   // 想调用 void* 版本''',
-        'answer': ['nullptr'],
+f(______);   /* 空1 */
+f(______);   /* 空2 */''',
+        'answer': [['0'], ['nullptr']],
     },
     {
         'id': 15,
         'chapter_id': 1,
         'type': 'blank',
-        'title': '填空 2 · override 防误写',
-        'sort_order': 5,
-        'prompt': '''class Base { public: virtual void draw() const; };
+        'title': '填空 2 · 漏了 const 的 draw',
+        'sort_order': 9,
+        'question': '派生类的 `draw` 漏写了 `const`。在空位填一个关键字，让编译器**当场报错**，而不是悄悄把它变成一个「新函数」。',
+        'prompt': '''class Base {
+public:
+    virtual void draw() const { }
+};
+
 class Derived : public Base {
 public:
-    void draw() const ______;   // 填一个关键字
+    void draw() ______;   /* 空 */
 };''',
-        'answer': ['override'],
+        'answer': [['override']],
     },
     {
         'id': 16,
         'chapter_id': 1,
         'type': 'blank',
         'title': '填空 3 · =default / =delete',
-        'sort_order': 6,
+        'sort_order': 10,
+        'question': '空 1 要「默认行为」，空 2、空 3 要「彻底禁止拷贝」。三个空都是一种带等号的写法。',
         'prompt': '''class Handle {
 public:
-    Handle() ________;                          // 空1：显式默认构造
-    Handle(const Handle&) ________;             // 空2：禁止拷贝构造
-    Handle& operator=(const Handle&) ________;  // 空3：禁止拷贝赋值
+    Handle() ______;                          /* 空1 */
+    Handle(const Handle&) ______;             /* 空2 */
+    Handle& operator=(const Handle&) ______;  /* 空3 */
 };''',
-        'answer': ['= default', '= delete', '= delete'],
+        'answer': [['= default'], ['= delete'], ['= delete']],
     },
     # ================= C2 客观题（id 17-22） =================
     {
@@ -6982,6 +7016,445 @@ int main() {
         'total_cases': 3,
         'time_limit_ms': 2000,
     },
+    # ================= C1 扩充（id 170-177，2026-10-20） =================
+    # 主线：同一个知识点穿三关 —— ① 入门选择题（会不会/是不是）→
+    #       ② 源码阅读填空（为什么，看标准细节）→ ③ 自己实现（写错当场崩）。
+    #   推导线：11（auto 衰减）→ 175（decltype(auto) + 只读零拷贝绑定）→ 1（自己写）
+    #   类关键字线：172（没有 override 就静默不覆盖）→ 15（补 override 让编译期报错）→ 3（自己写）
+    #   初始化线：173（花括号抢走重载）→ 174（initializer_list 存成员 = 悬垂）→ 4/177（自己写）
+    #   枚举线：171（enum class 哪行编译不过）→ 176（自己重载位运算 + constexpr）
+    {
+        'id': 170,
+        'chapter_id': 1,
+        'type': 'choice',
+        'title': '选择 4 · 结构化绑定绑了个啥',
+        'sort_order': 4,
+        'question': '循环结束后，`m` 里的 value 是多少？',
+        'prompt': '''```cpp
+std::map<std::string, int> m{{"a", 1}, {"b", 2}};
+
+for (auto [k, v] : m) {
+    v = 99;
+}
+```''',
+        'options': [
+            {'label': 'A', 'text': '全是 99 —— v 就是 value 的引用'},
+            {'label': 'B', 'text': '还是 1 和 2 —— v 是 value 的拷贝'},
+            {'label': 'C', 'text': '1 和 99 —— 只有最后一轮才生效'},
+            {'label': 'D', 'text': '编译错误 —— std::map 的元素不能结构化绑定'},
+        ],
+        'answer': 'B',
+    },
+    {
+        'id': 171,
+        'chapter_id': 1,
+        'type': 'choice',
+        'title': '选择 5 · enum class 的四行代码',
+        'sort_order': 5,
+        'question': '这四行里只有一行编译不过，是哪个标号？',
+        'prompt': '''```cpp
+enum class Color : unsigned char { Red = 1, Green = 2, Blue = 4 };
+
+Color c = Color::Red;
+
+bool          a = (c == Color::Red);             /* ① */
+Color         b = static_cast<Color>(3);         /* ② */
+unsigned char u = static_cast<unsigned char>(c); /* ③ */
+Color         d = Color::Red | Color::Blue;      /* ④ */
+```''',
+        'options': [
+            {'label': 'A', 'text': '① 比较两个 enum class'},
+            {'label': 'B', 'text': '② 从整数造一个 enum class'},
+            {'label': 'C', 'text': '③ 取出它的底层整数值'},
+            {'label': 'D', 'text': '④ 直接按位或'},
+        ],
+        'answer': 'D',
+    },
+    {
+        'id': 172,
+        'chapter_id': 1,
+        'type': 'choice',
+        'title': '选择 6 · 能编译、能运行、结果是错的',
+        'sort_order': 6,
+        'question': '这段程序能编译、能运行。它的输出是？',
+        'prompt': '''```cpp
+struct Base {
+    virtual void draw() const { std::puts("Base"); }
+    virtual ~Base() = default;
+};
+
+struct Derived : Base {
+    void draw() { std::puts("Derived"); }
+};
+
+int main() {
+    Derived d;
+    Base& b = d;
+    b.draw();
+}
+```''',
+        'options': [
+            {'label': 'A', 'text': 'Base —— Derived::draw 少了 const，是另一个函数'},
+            {'label': 'B', 'text': 'Derived —— 虚函数总会调到派生类的版本'},
+            {'label': 'C', 'text': '先 Base 一行、再 Derived 一行'},
+            {'label': 'D', 'text': '编译错误 —— 派生类签名与基类不一致'},
+        ],
+        'answer': 'A',
+    },
+    {
+        'id': 173,
+        'chapter_id': 1,
+        'type': 'choice',
+        'title': '选择 7 · 花括号把重载抢走了',
+        'sort_order': 7,
+        'question': '`p.tag` 的值是？',
+        'prompt': '''```cpp
+struct Point {
+    Point(int x, int y) : x(x), y(y), tag(1) {}
+    Point(std::initializer_list<int>) : x(0), y(0), tag(2) {}
+    int x, y, tag;
+};
+
+Point p{1, 2};
+```''',
+        'options': [
+            {'label': 'A', 'text': '1 —— 走 Point(int, int)'},
+            {'label': 'B', 'text': '2 —— 花括号初始化优先选 initializer_list 构造'},
+            {'label': 'C', 'text': '编译错误 —— 两个构造都匹配，产生歧义'},
+            {'label': 'D', 'text': '不确定 —— 由实现自行选择'},
+        ],
+        'answer': 'B',
+    },
+    {
+        'id': 174,
+        'chapter_id': 1,
+        'type': 'blank',
+        'title': '阅读 1 · 存下来的 initializer_list',
+        'sort_order': 11,
+        'keep_notes': True,
+        'question': '空 1、空 2 填什么，才能让 `Args` 真正**拥有**元素，而不是只记住一块临时数组的地址？',
+        'prompt': r'''// 危险示范：把 initializer_list 当成"容器"存进了成员
+class Args {
+public:
+    Args(std::initializer_list<int> init) : list_(______) {}   /* 空1 */
+    std::size_t size() const { return list_.size(); }
+private:
+    std::______<int> list_;                                    /* 空2 */
+};
+
+Args make() {
+    return Args{1, 2, 3};    // 底层数组的生存期到这一行结束
+}
+
+int main() {
+    Args a = make();
+    std::printf("%zu\n", a.size());   // 旧写法在这里读到的是已销毁的数组
+}''',
+        'answer': [['init'], ['vector']],
+    },
+    {
+        'id': 175,
+        'chapter_id': 1,
+        'type': 'blank',
+        'title': '阅读 2 · 返回类型与只读绑定',
+        'sort_order': 12,
+        'keep_notes': True,
+        'question': '空 1 要让 `front(v) = 99;` 能改到容器里的元素；空 2 要只读遍历且**不拷贝**元素。',
+        'prompt': r'''// 泛型访问器：返回值要"原样保留"表达式的类型
+template <class Container>
+______ front(Container& c) {          /* 空1 */
+    return c[0];
+}
+
+void dump(const std::vector<int>& v) {
+    for (______ x : v) {              /* 空2 */
+        std::printf("%d\n", x);
+    }
+}
+
+int main() {
+    std::vector<int> v{1, 2, 3};
+    front(v) = 99;    // 必须能改到 v[0]
+    dump(v);          // 只读遍历，且不许拷贝元素
+}''',
+        'answer': [
+            ['decltype(auto)', 'auto&', 'auto &'],
+            ['const auto&', 'const auto &', 'const int&', 'const int &'],
+        ],
+    },
+    {
+        'id': 176,
+        'chapter_id': 1,
+        'type': 'short',
+        'title': '短题 5 · enum class 权限位',
+        'sort_order': 17,
+        'prompt': (
+            '用 `enum class` 做一套**类型安全的权限位**（不许退化成裸 `int`）：\n\n'
+            '1. `enum class Perm : unsigned char { None = 0, Read = 1, Write = 2, Exec = 4 };`（已提供）\n'
+            '2. `operator|` / `operator&`：都返回 `Perm`，且必须是 `constexpr`\n'
+            '3. `bool has(Perm set, Perm flag)`：`set` 是否**完全包含** `flag`（也要 `constexpr`）\n'
+            '4. `std::string perm_to_string(Perm p)`：按 `rwx` 顺序输出三位，缺位写 `-`'
+            '（`Read|Exec` → `"r-x"`，`None` → `"---"`）\n\n'
+            '> 考点：`enum class` 不参与隐式整型运算，位运算只能自己重载；返回值坚持 `Perm`，'
+            '调用方就拼不出非法值（比如 `1 | 8`）。\n'
+            '> 隐藏测试里有一行 `static_assert`：`operator|` 与 `has` 少写 `constexpr` 会直接编译失败。\n'
+        ),
+        'starter_easy': r'''#include <string>
+
+// 权限位（已提供，请勿修改）
+enum class Perm : unsigned char { None = 0, Read = 1, Write = 2, Exec = 4 };
+
+// TODO: 位或 —— 返回 Perm，必须 constexpr
+constexpr Perm operator|(Perm a, Perm b) {
+    // 提示：先转成 unsigned char 做位运算，再用 static_cast<Perm> 转回来
+}
+
+// TODO: 位与 —— 返回 Perm，必须 constexpr
+constexpr Perm operator&(Perm a, Perm b) {
+    // 提示：同上
+}
+
+// TODO: set 是否「完全包含」flag
+constexpr bool has(Perm set, Perm flag) {
+    // 提示：(set & flag) == flag
+}
+
+// TODO: 三位权限串：有该位输出字母，没有输出 '-'
+std::string perm_to_string(Perm p) {
+    // 提示：按 r / w / x 的顺序，依次判断 Perm::Read / Write / Exec
+}
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_medium': r'''#include <string>
+
+// TODO: 定义 enum class Perm : unsigned char { None = 0, Read = 1, Write = 2, Exec = 4 }
+// 并实现（签名必须一致，隐藏测试会直接调用）：
+//   constexpr Perm operator|(Perm a, Perm b);
+//   constexpr Perm operator&(Perm a, Perm b);
+//   constexpr bool has(Perm set, Perm flag);
+//   std::string perm_to_string(Perm p);      // "rwx" 风格，缺位 '-'
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_hard': r'''#include <string>
+
+// 需求：给权限做一套类型安全的位运算
+//   - enum class Perm，底层类型 unsigned char，取值 None/Read/Write/Exec（1/2/4）
+//   - operator| 与 operator& 都返回 Perm，且能在编译期求值
+//   - has(set, flag) 判断「完全包含」，也能在编译期求值
+//   - perm_to_string 输出三位 rwx 串，缺位写 '-'
+//   - 隐藏测试会：static_assert 编译期求值、检查 has 语义、检查 "rwx"/"r-x"/"---"
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'test_driver': r'''#include <cstdio>
+#include <string>
+
+int main() {
+    int fail = 0;
+
+    // 用例1：位或后两位都在
+    constexpr Perm rw = Perm::Read | Perm::Write;
+    if (!has(rw, Perm::Read) || !has(rw, Perm::Write)) {
+        std::printf("FAIL: Read|Write 应同时包含 Read 与 Write\n");
+        ++fail;
+    }
+    // 用例2：不含的位必须判 false
+    if (has(Perm::Read, Perm::Write)) {
+        std::printf("FAIL: has(Read, Write) 应为 false\n");
+        ++fail;
+    }
+    // 用例3：None 什么都不含
+    if (has(Perm::None, Perm::Read)) {
+        std::printf("FAIL: None 不该包含任何权限位\n");
+        ++fail;
+    }
+    // 用例4：部分包含不算包含（只有 Read 时不能算含 Read|Exec）
+    if (has(Perm::Read | Perm::Write, Perm::Read | Perm::Exec)) {
+        std::printf("FAIL: 只含 Read 不该被判为包含 Read|Exec\n");
+        ++fail;
+    }
+    // 用例5：编译期求值（少写 constexpr 这一步就过不去）
+    static_assert(has(Perm::Read | Perm::Exec, Perm::Exec), "operator| 与 has 必须是 constexpr");
+
+    // 用例6：位与返回 Perm，而不是退化成整数
+    if ((Perm::Read & Perm::Write) != Perm::None) {
+        std::printf("FAIL: Read & Write 应为 None\n");
+        ++fail;
+    }
+    // 用例7：三位全开
+    if (perm_to_string(Perm::Read | Perm::Write | Perm::Exec) != "rwx") {
+        std::printf("FAIL: 三个权限都打开时应输出 rwx\n");
+        ++fail;
+    }
+    // 用例8：缺位补 '-'
+    if (perm_to_string(Perm::Read | Perm::Exec) != "r-x") {
+        std::printf("FAIL: Read|Exec 应输出 r-x\n");
+        ++fail;
+    }
+    // 用例9：None
+    if (perm_to_string(Perm::None) != "---") {
+        std::printf("FAIL: None 应输出 ---\n");
+        ++fail;
+    }
+
+    if (fail == 0) std::printf("PASS\n");
+    return fail;
+}
+''',
+        'total_cases': 8,
+        'time_limit_ms': 2000,
+    },
+    {
+        'id': 177,
+        'chapter_id': 1,
+        'type': 'short',
+        'title': '短题 6 · 结构化绑定零拷贝遍历',
+        'sort_order': 18,
+        'prompt': (
+            '用**结构化绑定 + 范围 for** 实现两个小函数，并且做到「遍历零拷贝」：\n\n'
+            '1. `int total_qty(const std::vector<Row>& rows)`：所有行 `qty` 之和\n'
+            '2. `bool restock(std::vector<Row>& rows, int id, int delta)`：把指定 `id` 的那行 '
+            '`qty += delta`，找到返回 `true`，找不到返回 `false`\n\n'
+            '`Row` 结构已提供（请勿修改），它带一个 `copies` 计数器。**隐藏测试会在遍历前后对比它**：\n'
+            '- 两个函数遍历时都不许产生任何 `Row` 拷贝，否则直接判失败\n'
+            '- `restock` 还必须能真正改到容器里的元素\n\n'
+            '> 考点：范围 for 的绑定方式决定「拷贝 / 只读引用 / 可写引用」三档语义；'
+            '结构化绑定只是解包语法糖，值类别还是要靠 `&` 决定。\n'
+        ),
+        'starter_easy': r'''#include <vector>
+#include <cstddef>
+
+// 行数据（已提供，请勿修改）——copies 记录拷贝次数，隐藏测试会检查它
+struct Row {
+    static int copies;
+    int id;
+    int qty;
+    Row(int i, int q) : id(i), qty(q) {}
+    Row(const Row& o) : id(o.id), qty(o.qty) { ++copies; }
+    Row& operator=(const Row&) = default;
+};
+
+// TODO: 所有行 qty 之和（遍历时不许拷贝元素）
+int total_qty(const std::vector<Row>& rows) {
+    int sum = 0;
+    for (______ [id, qty] : rows) {     // 提示：只读，用引用绑定
+        sum += qty;
+    }
+    return sum;
+}
+
+// TODO: 给指定 id 的行 qty 加 delta，找到返回 true
+bool restock(std::vector<Row>& rows, int id, int delta) {
+    for (______ [rid, qty] : rows) {    // 提示：要能改到容器里的元素
+        if (rid == id) { qty += delta; return true; }
+    }
+    return false;
+}
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_medium': r'''#include <vector>
+#include <cstddef>
+
+struct Row {
+    static int copies;
+    int id;
+    int qty;
+    Row(int i, int q) : id(i), qty(q) {}
+    Row(const Row& o) : id(o.id), qty(o.qty) { ++copies; }
+    Row& operator=(const Row&) = default;
+};
+
+// 实现（签名必须一致）：
+//   int  total_qty(const std::vector<Row>& rows);
+//   bool restock(std::vector<Row>& rows, int id, int delta);
+// 要求：两个函数遍历时都零拷贝；restock 要改到容器里的元素。
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_hard': r'''#include <vector>
+#include <cstddef>
+
+struct Row {
+    static int copies;
+    int id;
+    int qty;
+    Row(int i, int q) : id(i), qty(q) {}
+    Row(const Row& o) : id(o.id), qty(o.qty) { ++copies; }
+    Row& operator=(const Row&) = default;
+};
+
+// 需求：
+//   - 求所有行 qty 之和
+//   - 给指定 id 的行加 delta，找到返回 true
+//   - 遍历零拷贝（测试会数 Row 的拷贝次数）
+//   - 隐藏测试会调用 total_qty / restock 并检查拷贝计数、目标行改动、非目标行不变
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'test_driver': r'''#include <cstdio>
+#include <vector>
+
+int Row::copies = 0;
+
+int main() {
+    int fail = 0;
+
+    std::vector<Row> rows;
+    rows.reserve(3);
+    rows.emplace_back(1, 2);
+    rows.emplace_back(2, 3);
+    rows.emplace_back(3, 4);
+
+    // 用例1：求和
+    if (total_qty(rows) != 9) {
+        std::printf("FAIL: total_qty 应为 9，实际 %d\n", total_qty(rows));
+        ++fail;
+    }
+    // 用例2：只读遍历零拷贝
+    Row::copies = 0;
+    (void)total_qty(rows);
+    if (Row::copies != 0) {
+        std::printf("FAIL: total_qty 遍历时拷贝了 Row，应零拷贝\n");
+        ++fail;
+    }
+    // 用例3：restock 找到目标
+    if (!restock(rows, 2, 10)) {
+        std::printf("FAIL: restock(2) 应找到并返回 true\n");
+        ++fail;
+    }
+    // 用例4：目标行被改到
+    if (rows[1].qty != 13) {
+        std::printf("FAIL: id=2 的 qty 应变成 13，实际 %d\n", rows[1].qty);
+        ++fail;
+    }
+    // 用例5：非目标行不受影响
+    if (rows[0].qty != 2 || rows[2].qty != 4) {
+        std::printf("FAIL: restock 不应动到其它行\n");
+        ++fail;
+    }
+    // 用例6：可写遍历也零拷贝
+    Row::copies = 0;
+    (void)restock(rows, 1, 5);
+    if (Row::copies != 0) {
+        std::printf("FAIL: restock 遍历时拷贝了 Row，应零拷贝\n");
+        ++fail;
+    }
+    // 用例7：找不到返回 false
+    if (restock(rows, 99, 1)) {
+        std::printf("FAIL: restock(99) 找不到时应返回 false\n");
+        ++fail;
+    }
+
+    if (fail == 0) std::printf("PASS\n");
+    return fail;
+}
+''',
+        'total_cases': 7,
+        'time_limit_ms': 2000,
+    },
 
 ]
 
@@ -7082,7 +7555,8 @@ int* end()   { return data_ + size_; }
 
 **要点**
 - 范围 for 只要求有 `begin()`/`end()`，返回指针即可。
-- `operator[]` 返回 `int&`（引用），`for (int& x : arr) x *= 2;` 才能改到原数组。''',
+- `operator[]` 返回 `int&`（引用），`for (int& x : arr) x *= 2;` 才能改到原数组。
+- 自己管内存的类必须封住拷贝：`IntArray(const IntArray&) = delete;` + `operator=` 同理。否则 `IntArray b = a;` 会让两个对象持有同一个 `data_`，析构时 `double free`（本题隐藏用例直接查 `is_copy_constructible`）。''',
 
     5: '''**思路**：合法转移是一条单向链加一个回环（`TimeWait → Closed`）。用 `switch` 表达转移表；`=delete` 拷贝让状态机成为只移动类型。
 
@@ -7146,43 +7620,185 @@ private:
 - 序列化用「表驱动」比一串 `if` 更难漏项。
 - 收口本章三件事：`enum class`（强类型）+ `=delete`（只移动）+ 序列化 round-trip。''',
 
-    11: '''**正确答案：C（`int`）**。
+    11: '''**正确答案：A（`a` 是 `int`，`b` 是 `const int&`）**。
 
-`get()` 返回 `const int&`，但 `auto` 会**按值推导**——丢掉引用，也丢掉顶层 `const`，所以 `a` 的类型是 `int`。
+- `auto` 按**值**推导：丢掉引用，也丢掉**顶层** const ⇒ `a` 是 `int`。
+- `auto&` 保留引用语义：`get()` 返回 `const int&`，推导出 `b` 是 `const int&`（这里的 const 不是顶层限定，不会被丢）。
 
-想让 `a` 保留引用必须写 `auto& a = get();`（此时 `a` 是 `const int&`）。''',
+**要点**
+- 推论：`auto a = get(); a = 1;` 改不到 `g_value`；而 `auto& b = get(); b = 1;` 直接编译不过（`b` 是 const 引用）。
+- 想把值类别一起继承下来，用 `decltype(auto)`（见 阅读 2）。''',
 
-    12: '''**正确答案：B（`int&`）**。
+    12: '''**正确答案：B（`const int&`）**。
 
-`decltype` 的规则：对**变量名** `x` 得到声明类型 `int`；但加了括号变成 `(x)` 后，`x` 是「左值表达式」，`decltype` 对左值返回**引用类型** `int&`。
+`decltype` 有两条规则：
+- `decltype(名字)` → 取变量**声明的类型**：`decltype(cx)` 是 `const int`（顶层 const 保留）。
+- `decltype(表达式)` → 由**值类别**决定：`(cx)` 是「带括号的 const 左值」，左值 ⇒ 结果是 `const int&`。
 
-这是经典的 `decltype((x))` vs `decltype(x)` 陷阱。当 `decltype` 要「原样保留值类别」时，可用 `decltype(auto)`。''',
+**要点**
+- 括号是值类别开关：`decltype(x)` 和 `decltype((x))` 是两个世界。
+- 同一机制解释了 `decltype(auto)` 里写 `return (x);` 会返回引用——括号把表达式变成了左值。''',
 
-    13: '''**正确答案：B（`{1, 2, 3}`）**。
+    13: '''**正确答案：A（`{2, 3, 4}`）**。
 
-`for (auto x : v)` 是**值拷贝**——`x` 是元素的副本，`x *= 2` 只改副本，原容器不变。
+- ① `for (auto x : v)`：`x` 是**副本**，`x *= 2` 只改副本，容器纹丝不动。
+- ② `for (auto& x : v)`：`x` 绑定到元素本身，`+1` 生效 ⇒ `{2, 3, 4}`。
 
-要就地修改必须用引用：`for (auto& x : v) { x *= 2; }`；只读遍历想省拷贝可用 `const auto&`。''',
+**要点**
+- 范围 for 的 `auto` 与普通 `auto` 一致，都是值拷贝；要改元素必须 `auto&`。
+- 只读又不想拷贝：`const auto&`（见 阅读 2 空 2）。''',
 
-    14: '''**应填：`nullptr`**。
+    14: '''**两个空依次是：`0`、`nullptr`**。
 
-`f(0)` / `f(NULL)` 都会匹配 `f(int)`（`NULL` 多数实现就是 `0`）。只有 `nullptr` 的类型是 `std::nullptr_t`，能明确匹配 `f(void*)`。
+- `f(0)`：`0` 的类型就是 `int`，`f(int)` 是**精确匹配**；`f(void*)` 还要走一次「空指针转换」 ⇒ 选 `f(int)`。
+- `f(nullptr)`：`nullptr` 的类型是 `std::nullptr_t`，它**不是整数**，转不成 `int`，只能转成指针 ⇒ 选 `f(void*)`。
 
-这正是 `nullptr` 的意义——消除 `0`/`NULL` 在重载解析中的歧义。''',
+**要点**
+- 这就是 `nullptr` 存在的意义：`f(0)` / `f(NULL)` 在指针场景下会静默选错重载。
+- 别把 `NULL` 当"类型安全的空指针"：它多数实现就是 `0`（或 `0L`），本质还是整数常量。''',
 
     15: '''**应填：`override`**。
 
-`override` 让编译器检查「这个函数确实重写了基类虚函数」。签名一旦不匹配（比如漏了 `const`），会**直接编译报错**，而不是静默变成一个「新函数」。
+基类是 `void draw() const`，派生类写成 `void draw() override;` —— 签名对不上，带 `override` 时编译器立刻报
+`marked 'override', but does not override`。
 
-不加 `override` 时，`void draw() const` 里漏写 `const` 不会报错，但多态会悄悄失效。''',
+**要点**
+- 不带 `override` 时这段代码**编译得过**：`Derived::draw()` 只是把基类的名字**隐藏**了（重载而非覆盖），多态悄悄失效。
+- `override` 的价值不是"写清楚"，而是把「静默不覆盖」变成编译错误（对照 选择 6）。''',
 
     16: '''**三个空依次填：`= default`、`= delete`、`= delete`**。
 
-- 空 1：`Handle() = default;` —— 显式要求编译器生成默认构造。
-- 空 2：`Handle(const Handle&) = delete;` —— 禁用拷贝构造。
-- 空 3：`Handle& operator=(const Handle&) = delete;` —— 禁用拷贝赋值。
+```cpp
+class Handle {
+public:
+    Handle() = default;                            // 要默认行为，但显式声明
+    Handle(const Handle&) = delete;                // 禁止拷贝构造
+    Handle& operator=(const Handle&) = delete;     // 禁止拷贝赋值
+};
+```
 
-`= default`/`= delete` 让「要默认行为 / 明确禁止」在代码里显式可见，比空实现更清晰。''',
+**要点**
+- `= default`：显式要编译器生成（同时保住「平凡 / 可平凡复制」等性质，写空实现 `{}` 会丢）。
+- `= delete`：仍然参与重载决议，一旦被选中就报错，比 `private` 未定义更早、更明确。''',
+
+    170: '''**正确答案：B（还是 1 和 2）**。
+
+`for (auto [k, v] : m)` 里的 `v` 绑定的是**解包出来的副本**：`auto` 只剥一层，`*it` 被拷贝进一个隐藏变量，`k` / `v` 再绑到副本的成员上。改 `v` 不会写回容器。
+
+**要点**
+- 要改 value：`for (auto& [k, v] : m) v = 99;`（`k` 仍是 `const std::string&`，map 的 key 本来就只读）。
+- 只读遍历：`for (const auto& [k, v] : m)`，零拷贝。
+- 性能陷阱：`auto` 版本每轮都拷一份 key，`std::string` 就是一次堆分配。''',
+
+    171: '''**正确答案：D（④）**。
+
+- ① `enum class` 之间可以 `==` 比较 ✅
+- ② `static_cast<Color>(3)` 是**显式**转换，合法 ✅
+- ③ `static_cast<unsigned char>(c)` 取出底层整数值，合法 ✅
+- ④ `Color::Red | Color::Blue` —— `enum class` **不参与隐式整型转换**，也没有内置 `operator|` ⇒ 编译错误 ✅
+
+**要点**
+- 想按位组合必须自己重载 `operator|` / `operator&`（见 短题 5）。
+- 这正是 `enum class` 的价值：别人写不出 `Color::Red + 1` 这种无意义表达式。''',
+
+    172: '''**正确答案：A（输出 `Base`）**。
+
+`Derived::draw()` 少了 `const`，和 `Base::draw() const` **不是同一个函数** —— 它没有覆盖，只是把基类名字隐藏了。`b` 的静态类型是 `Base&`，虚表里 `draw` 仍指向 `Base::draw`。
+
+**要点**
+- 这是 C++ 最阴的一类 bug：**能编译、能运行、结果错**，而且只有走基类指针/引用时才暴露。
+- 修法：写 `void draw() const override;`，签名不符时编译器当场报错（见 填空 2）。''',
+
+    173: '''**正确答案：B（`tag == 2`）**。
+
+列表初始化（花括号）在重载决议里**先挑 `std::initializer_list` 构造**：只要它可行就直接选它，完全不去比较 `Point(int, int)` 是否更"贴"。
+
+**要点**
+- 这是 `std::vector<int> v{3}`（1 个元素，值为 3）与 `v(3)`（3 个 0）的同一张坑。
+- 想让 `{1,2}` 走普通构造，只能去掉 `initializer_list` 重载，或改用圆括号。
+- 警示：类里同时存在 `initializer_list` 构造和普通构造时，`{}` 的含义会被悄悄改写。''',
+
+    174: '''**两个空：`init`、`vector`**。
+
+```cpp
+class Args {
+public:
+    Args(std::initializer_list<int> init) : list_(init) {}
+private:
+    std::vector<int> list_;      // 真正持有元素
+};
+```
+
+**要点**
+- `std::initializer_list` 是**指向编译器生成的临时数组的「指针 + 长度」**，不是容器：拷贝它只拷这两个字段。
+- `Args{1,2,3}` 里那个临时数组活到**完整表达式结束**；把 `initializer_list` 存进成员，事后再读就是访问已销毁的数组（悬垂，UB）。
+- 规则：`initializer_list` 只当**参数**用，要留下就从它构造一个真正拥有元素的容器（`vector` / `array` / `string`）。''',
+
+    175: '''**空 1：`decltype(auto)`（`auto&` 也对）；空 2：`const auto&`。**
+
+```cpp
+template <class Container>
+decltype(auto) front(Container& c) { return c[0]; }   // decltype((c[0])) ⇒ T&
+
+void dump(const std::vector<int>& v) {
+    for (const auto& x : v) { /* 只读 + 零拷贝 */ }
+}
+```
+
+**要点**
+- `auto` 返回值会**衰减**（丢引用），`decltype(auto)` 按表达式原样推导；`c[0]` 是左值 ⇒ `int&`。
+- 只读遍历一律 `const auto&`：`auto` 会拷元素，`std::string` 就是一次堆分配。
+- 别在 `decltype(auto)` 里写 `return (c[0]);` —— 括号强制成引用，返回局部变量时直接悬垂。''',
+
+    176: '''**思路**：`enum class` 没有内置位运算，把 `operator|` / `operator&` 重载成 `constexpr`，编译期和运行期就都能用。
+
+**参考实现**
+```cpp
+constexpr Perm operator|(Perm a, Perm b) {
+    return static_cast<Perm>(static_cast<unsigned char>(a) | static_cast<unsigned char>(b));
+}
+constexpr Perm operator&(Perm a, Perm b) {
+    return static_cast<Perm>(static_cast<unsigned char>(a) & static_cast<unsigned char>(b));
+}
+constexpr bool has(Perm set, Perm flag) { return (set & flag) == flag; }
+
+std::string perm_to_string(Perm p) {
+    std::string s;
+    s += has(p, Perm::Read)  ? 'r' : '-';
+    s += has(p, Perm::Write) ? 'w' : '-';
+    s += has(p, Perm::Exec)  ? 'x' : '-';
+    return s;
+}
+```
+
+**要点**
+- 必须 `static_cast<unsigned char>` 转出来再转回 `Perm`：`enum class` 不参与隐式整型运算，`a | b` 本身编不过。
+- 返回 `Perm` 而不是整数：调用方就拼不出 `Perm | 8` 这种越界值。
+- `has` 写成 `(set & flag) == flag` 而不是 `!= None`，否则「只含 Read」也会被判成包含 `Read|Write`。
+- 少写 `constexpr`，隐藏测试里的 `static_assert` 直接编译失败——这不是风格问题，是可测的能力。''',
+
+    177: '''**思路**：结构化绑定本身不决定值类别，`&` 才决定。
+
+**参考实现**
+```cpp
+int total_qty(const std::vector<Row>& rows) {
+    int sum = 0;
+    for (const auto& [id, qty] : rows) sum += qty;   // 零拷贝 + 只读
+    return sum;
+}
+
+bool restock(std::vector<Row>& rows, int id, int delta) {
+    for (auto& [rid, qty] : rows) {                  // 零拷贝 + 可写
+        if (rid == id) { qty += delta; return true; }
+    }
+    return false;
+}
+```
+
+**要点**
+- `for (auto [id, qty] : rows)` 每轮拷一份元素，测试里的 `copies` 计数直接爆掉；成员是 `std::string` 时这就是每轮一次堆分配。
+- `const auto&` vs `auto&`：只读用前者（连误改都被禁止），要写用后者。
+- 结构化绑定拿到的 `qty` 是**成员本身的引用**（绑定到 `Row::qty`），所以 `qty += delta` 直接改到容器里的对象。''',
 
     # ================= C2 · 移动语义与完美转发 =================
     6: '''**思路**：移动构造「偷」资源并置空源对象；移动赋值先释放旧资源、再转移，并处理自移动。
