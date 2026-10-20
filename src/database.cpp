@@ -531,6 +531,8 @@ void DataBase::initTable()
             type VARCHAR(10) NOT NULL DEFAULT 'short' COMMENT 'choice/blank/short/boss',
             title VARCHAR(256) NOT NULL COMMENT '题目标题',
             prompt TEXT NOT NULL COMMENT '题干：写代码=需求；选择=题干；填空=代码骨架(含______)',
+            question TEXT NULL COMMENT '题目问题/说明(选择题=问题；填空题=说明；代码框外展示)',
+            keep_notes TINYINT NOT NULL DEFAULT 0 COMMENT '1=prompt 里的注释属于代码本体(源码阅读题)，前端不抽成描述',
             sort_order INT NOT NULL DEFAULT 0 COMMENT '章内排序',
             options TEXT NULL COMMENT '选择题选项JSON(非选择题为NULL)',
             answer TEXT NULL COMMENT '选择=正确label(JSON字符串)；填空=答案数组(JSON)；写代码=NULL',
@@ -583,6 +585,15 @@ void DataBase::initTable()
         if (mysql_query(conn_, alterQuestion) != 0)
         {
             throw std::runtime_error(std::string("补充 question 列失败：") + mysql_error(conn_));
+        }
+    }
+    // 旧表迁移：补 keep_notes（源码阅读题：注释属于代码本体，不抽成描述）
+    if (!columnExists("practice_exercises", "keep_notes"))
+    {
+        const char* alterKeepNotes = "ALTER TABLE practice_exercises ADD COLUMN keep_notes TINYINT NOT NULL DEFAULT 0 COMMENT '1=prompt 里的注释属于代码本体，前端不抽成描述' AFTER question";
+        if (mysql_query(conn_, alterKeepNotes) != 0)
+        {
+            throw std::runtime_error(std::string("补充 keep_notes 列失败：") + mysql_error(conn_));
         }
     }
     // 旧表 test_driver 是 NOT NULL，客观题需存 NULL；MODIFY 为可空（幂等，重复执行无害）
@@ -3149,7 +3160,7 @@ crow::json::wvalue DataBase::getPracticeExercise(int id)
 
     crow::json::wvalue result;
 
-    std::string sql = "SELECT id, chapter_id, type, title, prompt, question, options, starter_easy, starter_medium, starter_hard, solution "
+    std::string sql = "SELECT id, chapter_id, type, title, prompt, question, keep_notes, options, starter_easy, starter_medium, starter_hard, solution "
                       "FROM practice_exercises WHERE status=1 AND id=" + std::to_string(id);
     if (mysql_query(conn_, sql.c_str()) != 0)
     {
@@ -3180,23 +3191,25 @@ crow::json::wvalue DataBase::getPracticeExercise(int id)
     result["prompt"] = row[4] ? row[4] : "";
     // 选择题/填空题的「问题/说明」（代码框外展示，生成阶段已从 // 注释固化）
     if (row[5]) result["question"] = row[5];
+    // 1 = prompt 里的注释属于代码本体（源码阅读题），前端不做「注释→描述」抽取
+    result["keep_notes"] = row[6] ? std::atoi(row[6]) : 0;
     // 选择题下发选项（不含答案）；客观题不返回 answer，判定在服务端做
-    if (row[6]) result["options"] = row[6];
+    if (row[7]) result["options"] = row[7];
     // 题解（公开下发，前端折叠展示）
-    if (row[10]) result["solution"] = row[10];
+    if (row[11]) result["solution"] = row[11];
 
     crow::json::wvalue tiers;
     crow::json::wvalue easy;
     easy["label"] = "入门";
-    easy["starter"] = row[7] ? row[7] : "";
+    easy["starter"] = row[8] ? row[8] : "";
     tiers["easy"] = std::move(easy);
     crow::json::wvalue medium;
     medium["label"] = "进阶";
-    medium["starter"] = row[8] ? row[8] : "";
+    medium["starter"] = row[9] ? row[9] : "";
     tiers["medium"] = std::move(medium);
     crow::json::wvalue hard;
     hard["label"] = "挑战";
-    hard["starter"] = row[9] ? row[9] : "";
+    hard["starter"] = row[10] ? row[10] : "";
     tiers["hard"] = std::move(hard);
     result["tiers"] = std::move(tiers);
 

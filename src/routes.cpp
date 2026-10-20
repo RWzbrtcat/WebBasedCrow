@@ -1274,8 +1274,12 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
         }
         else // blank
         {
+            // answer 两种写法都支持（可混用）：
+            //   老格式 ["erase", "vector"]                     —— 每个空一个标准答案
+            //   新格式 [["erase"], ["vector", "std::vector"]]  —— 每个空一组等价答案
+            // 判分逐空放开：空白归一后比较，大小写仍敏感（避免 "Vector" 蒙对）。
             auto stdArr = crow::json::load(answerJson);
-            bool isUserList = body.has("answer") && body["answer"].t() == crow::json::type::List;
+            const bool isUserList = body.has("answer") && body["answer"].t() == crow::json::type::List;
             if (stdArr && stdArr.t() == crow::json::type::List && isUserList)
             {
                 auto userArr = body["answer"];
@@ -1284,11 +1288,28 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
                     correct = true;
                     for (size_t i = 0; i < stdArr.size(); ++i)
                     {
-                        std::string stdVal = stdArr[i].t() == crow::json::type::String
-                                                 ? std::string(stdArr[i].s()) : "";
-                        std::string userVal = userArr[i].t() == crow::json::type::String
-                                                  ? std::string(userArr[i].s()) : "";
-                        if (normalizeBlankAnswer(stdVal) != normalizeBlankAnswer(userVal))
+                        auto cell = stdArr[i];
+                        const std::string userVal = userArr[i].t() == crow::json::type::String
+                                                        ? normalizeBlankAnswer(std::string(userArr[i].s()))
+                                                        : std::string();
+                        bool ok = false;
+                        if (cell.t() == crow::json::type::String)
+                        {
+                            ok = (normalizeBlankAnswer(std::string(cell.s())) == userVal);
+                        }
+                        else if (cell.t() == crow::json::type::List)
+                        {
+                            for (size_t k = 0; k < cell.size(); ++k)
+                            {
+                                if (cell[k].t() == crow::json::type::String &&
+                                    normalizeBlankAnswer(std::string(cell[k].s())) == userVal)
+                                {
+                                    ok = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!ok)
                         {
                             correct = false;
                             break;

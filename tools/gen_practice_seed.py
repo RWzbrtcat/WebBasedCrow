@@ -1974,6 +1974,195 @@ for (auto it = v.begin(); it != v.end(); ) {
         'question': '补全代码：删除所有偶数，并让迭代器安全地续接到下一个元素。',
         'answer': ['erase'],
     },
+    # ========== C7 源码阅读题（id 162-166）：keep_notes=1，注释属于代码本体 ==========
+    {
+        'id': 162,
+        'chapter_id': 7,
+        'type': 'blank',
+        'title': '阅读 1 · vector 扩容的三件事',
+        'sort_order': 14,
+        'keep_notes': True,
+        'question': '补全 ① ② ③ 三处关键调用。想清楚：① 为什么故意不用 `std::move`？',
+        'prompt': r'''// 简化版 vector 的扩容：只看「搬家」这一段
+template <class T>
+void mini_vector<T>::grow(std::size_t need) {
+    std::size_t cap = cap_ ? cap_ * 2 : 1;     // 按 2 倍增长（摊还 O(1)）
+    while (cap < need) cap *= 2;
+
+    T* fresh = static_cast<T*>(::operator new(cap * sizeof(T)));
+
+    // ① 在「原始内存」上逐个构造新对象
+    for (std::size_t i = 0; i < size_; ++i)
+        new (fresh + i) T(std::______(data_[i]));
+
+    // ② 旧对象必须被亲手销毁：原始内存不会替你调用析构
+    for (std::size_t i = 0; i < size_; ++i)
+        data_[i].______();
+
+    // ③ 只归还内存，不再调析构（②已经做过了）
+    ::operator ______(data_);
+
+    data_ = fresh;
+    cap_  = cap;
+}''',
+        'answer': [['move_if_noexcept'], ['~T', '~T()'], ['delete']],
+    },
+    {
+        'id': 163,
+        'chapter_id': 7,
+        'type': 'blank',
+        'title': '阅读 2 · list 只改指针',
+        'sort_order': 15,
+        'keep_notes': True,
+        'question': '补全 ① ②。想清楚：为什么 `insert` 之后，原本指向**其他节点**的迭代器一个都没失效？',
+        'prompt': r'''// 简化版 list：带哨兵的双向链表
+template <class T>
+class mini_list {
+    struct node { node* prev; node* next; T value; };
+    node        head_;          // 哨兵：head_.next 是首元素，head_.prev 是尾元素
+    std::size_t size_ = 0;
+
+public:
+    // 在 pos 之前插入：只分配一个新节点、改 4 个指针
+    node* insert(node* pos, const T& v) {
+        node* n = new node{______, pos, v};   // ① 新节点的前驱是谁
+
+        pos->prev->next = n;
+        pos->prev       = n;
+
+        ++size_;
+        return n;                             // 老节点地址一个都没变
+    }
+
+    // erase：摘链 + 归还内存，然后告诉调用方「下一个」在哪
+    node* erase(node* pos) {
+        node* after = pos->next;
+
+        pos->prev->next = pos->next;
+        pos->next->prev = pos->prev;
+        delete pos;
+
+        --size_;
+        return ______;                        // ② 循环要靠它续接
+    }
+};''',
+        'answer': [['pos->prev'], ['after']],
+    },
+    {
+        'id': 164,
+        'chapter_id': 7,
+        'type': 'blank',
+        'title': '阅读 3 · unordered_map 的桶',
+        'sort_order': 16,
+        'keep_notes': True,
+        'question': '补全 ① ②。注意 `rehash` 里到底换掉了什么：为什么它能让迭代器全失效，却一个节点都不搬？',
+        'prompt': r'''// 简化版 unordered_map：链地址法（数组 + 单链表）
+template <class K, class V>
+class mini_umap {
+    struct node { K key; V value; node* next; };
+
+    std::vector<node*> buckets_;    // 每个桶是一条单链表
+    std::size_t        size_ = 0;
+
+    // ① 同一个 key 永远落到同一个桶
+    std::size_t bucket_of(const K& key) const {
+        return std::hash<K>{}(key) % ______;
+    }
+
+public:
+    node* find(const K& key) {
+        std::size_t b = bucket_of(key);
+        for (node* p = buckets_[b]; p; p = p->______) {   // ② 顺着链走
+            if (p->key == key) return p;
+        }
+        return nullptr;                                   // 桶空了 = 没找到
+    }
+
+    void rehash(std::size_t newCap) {
+        std::vector<node*> fresh(newCap, nullptr);
+
+        for (node* head : buckets_) {
+            while (head) {
+                node* nxt = head->next;
+                std::size_t b = std::hash<K>{}(head->key) % newCap;
+
+                head->next = fresh[b];   // 头插
+                fresh[b]   = head;
+                head       = nxt;
+            }
+        }
+
+        buckets_.swap(fresh);   // ③ 只换桶数组，节点还留在原来的地址上
+    }
+};''',
+        'answer': [['buckets_.size()', 'bucket_count()'], ['next']],
+    },
+    {
+        'id': 165,
+        'chapter_id': 7,
+        'type': 'blank',
+        'title': '阅读 4 · 红黑树旋转与 ++it',
+        'sort_order': 17,
+        'keep_notes': True,
+        'question': '补全 ① ② ③。想清楚：左旋之后，x 与 y 的父子关系是怎么换过来的？',
+        'prompt': r'''// 简化版红黑树（map 的底层）：只看左旋与中序后继
+// 左旋：把 x 的右孩子 y 提上来，x 降为 y 的左孩子
+void rotate_left(node* x) {
+    node* y = x->right;
+
+    x->right = y->left;                 // y 的左子树改挂到 x 的右边
+    if (y->left) y->left->parent = x;
+
+    y->parent = x->parent;              // y 顶替 x 原来的位置
+    if (!x->parent)                root_ = y;
+    else if (x == x->parent->left) x->parent->left  = y;
+    else                           x->parent->right = y;
+
+    y->______ = x;                      // ① x 挂到 y 的哪一侧
+    x->parent = ______;                 // ② x 的新父亲是谁
+}
+
+// 中序后继：二叉搜索树「迭代器 ++」的实现
+node* next_node(node* n) {
+    if (n->______) {                    // ③ 有哪棵子树，才需要往下钻
+        n = n->right;                   //    然后一直走到底
+        while (n->left) n = n->left;
+        return n;
+    }
+    // 没有右子树：往上找「第一个把我当左孩子的祖先」
+    while (n->parent && n == n->parent->right) n = n->parent;
+    return n->parent;
+}''',
+        'answer': [['left'], ['y'], ['right']],
+    },
+    {
+        'id': 166,
+        'chapter_id': 7,
+        'type': 'blank',
+        'title': '阅读 5 · deque 的分段连续',
+        'sort_order': 18,
+        'keep_notes': True,
+        'question': '补全 ① ②。想清楚：为什么拿 `&d[0]` 当「连续数组」的首地址用会出事？',
+        'prompt': r'''// 简化版 deque：中控器 + 定长块
+// 注：块大小按 512 字节切，是某个具体实现（libstdc++）的取舍，不是标准要求
+template <class T>
+class mini_deque {
+    // ① 每块能放多少个元素
+    static constexpr std::size_t kBlock = 512 / ______ > 1 ? 512 / sizeof(T) : 1;
+
+    T**         map_;       // 中控器：一张「块指针数组」
+    std::size_t mapSize_;   // 中控器容量
+    std::size_t head_;      // 首元素在第几块
+    std::size_t offset_;    // 首元素在块内第几个
+
+    // ② 随机访问：先算块号，再算块内偏移
+    T& operator[](std::size_t i) {
+        std::size_t pos = offset_ + i;
+        return map_[head_ + pos / ______][pos % kBlock];
+    }
+};''',
+        'answer': [['sizeof(T)'], ['kBlock']],
+    },
     # ================= C8 客观题（id 53-58） =================
     {
         'id': 53,
@@ -3791,7 +3980,7 @@ int main() {
         'chapter_id': 7,
         'type': 'short',
         'title': '短题 1 · 容器选型：set 去重排序',
-        'sort_order': 14,
+        'sort_order': 19,
         'prompt': '实现 `std::vector<int> unique_sorted(const std::vector<int>& v)`：\n'
                   '用 `std::set` 去重并按升序排序。\n\n'
                   '> 考点：容器选型——set 自带去重 + 有序。',
@@ -3841,7 +4030,7 @@ int main() {
         'chapter_id': 7,
         'type': 'short',
         'title': '短题 2 · 迭代器失效修复',
-        'sort_order': 15,
+        'sort_order': 20,
         'prompt': '`remove_even` 要删除 `v` 中所有偶数。下面的实现能编译、多数情况下也"看起来对"，'
                   '但它有 bug。找出问题并修复（提示：注意循环体里容器本身发生了变化）。\n\n'
                   '> 考点：遍历过程中修改容器 ⇒ 迭代器失效。',
@@ -3894,7 +4083,7 @@ int main() {
         'chapter_id': 7,
         'type': 'short',
         'title': '短题 3 · 自定义比较器：降序 set',
-        'sort_order': 16,
+        'sort_order': 21,
         'prompt': '实现 `std::set<int, std::greater<int>> make_desc_set(const std::vector<int>& v)`：\n'
                   '返回一个降序排列的 set。\n\n'
                   '> 考点：自定义比较器（std::greater）改变容器排序。',
@@ -3948,7 +4137,7 @@ int main() {
         'chapter_id': 7,
         'type': 'short',
         'title': '短题 4 · 算法组合：过滤 + 变换',
-        'sort_order': 17,
+        'sort_order': 22,
         'prompt': '实现 `std::vector<int> filter_and_double(const std::vector<int>& v)`：\n'
                   '先过滤出正数，再把每个正数翻倍。可用 `std::copy_if` + `std::transform`，或手写。\n\n'
                   '> 考点：算法组合完成数据流水线。',
@@ -3998,7 +4187,7 @@ int main() {
         'chapter_id': 7,
         'type': 'boss',
         'title': 'Boss · LRU 缓存',
-        'sort_order': 18,
+        'sort_order': 23,
         'prompt': '实现一个 LRU（最近最少使用）缓存 `LRUCache`：\n\n'
                   '- `LRUCache(int capacity)`：构造，容量 capacity\n'
                   '- `int get(int key)`：存在则返回值并标记为最近使用，否则返回 -1\n'
@@ -8392,6 +8581,95 @@ for (auto it = v.begin(); it != v.end(); ) {
 3. `map` / `set` / `list` 同理，`erase` 都返回下一个迭代器。
 
 **可迁移规则**：`erase` 的返回值就是"续接点"，永远别在 `erase` 之后手动自增。''',
+
+    162: '''**答案**：① `move_if_noexcept` ② `~T` ③ `delete`。
+
+**① 为什么故意不用 `std::move`？**
+扩容过程中一旦某个元素的移动构造抛异常，已经搬过去的那批就变成"新内存一半、旧内存一半"的烂摊子，没法回滚。`move_if_noexcept` 的语义是：**只有当移动构造声明了 `noexcept` 才 move，否则退回拷贝**——拷贝失败的话原容器还完好无损。这是"强异常安全保证"的代价。
+
+**② 为什么必须手写析构？**
+`fresh` 那块内存来自 `::operator new`，是**原始内存**，上面只有 placement new 构造出来的对象。而 `::operator delete` 只归还内存、**不调析构**。所以必须先亲手把每个元素的析构跑一遍，否则元素持有的资源（`std::string` 的堆缓冲、`unique_ptr` 的对象……）全泄漏。
+
+**③ 与 ② 的分工**：析构负责"对象死亡"，`::operator delete` 负责"内存归还"。标准库把这两件事拆开，才可能复用那块内存。
+
+**这段代码就是「迭代器失效」的物理原因**
+旧内存被 `::operator delete` 归还之后，之前保存的迭代器 / 引用 / 指针指向的是一块**已经不属于你的内存**。「选择 8」「选择 9」问的"为什么失效"，答案就在这三行里。
+
+**可迁移规则**：写自己的容器时，「构造 / 析构 / 释放内存」是三件独立的事，漏掉任何一件都是 UB，而且通常不会立刻报错。''',
+
+    163: '''**答案**：① `pos->prev` ② `after`。
+
+**① 新节点的前驱是谁？**
+`new node{prev, next, value}` 按声明顺序初始化，第一个字段就是 `prev`。新节点要插在 `pos` 之前，它的前驱自然是 `pos->prev`。
+
+注意后面两行赋值的**顺序**：先 `pos->prev->next = n`，再 `pos->prev = n`。反过来的话，先把 `pos->prev` 覆盖成 `n`，原来的前驱就再也找不到了，链当场断掉。
+
+**② 为什么 erase 要返回 after？**
+`delete pos` 之后 `pos` 本身已经失效，调用方继续 `++pos` 就是 UB。返回删除前就存好的 `after`，循环才能安全续接——和「填空 4」（`it = c.erase(it)`）是同一个约定。
+
+**关键：为什么 list 插入后老迭代器全都不失效？**
+`insert` 只在堆上 `new` 了一个**新节点**，然后把 4 个指针改指向它，**所有既有节点的地址一个都没变**。list 的迭代器本质上就是"节点指针"，指针没变 ⇒ 迭代器继续有效。
+
+对比 vector：扩容把元素搬到新内存、旧对象销毁 ⇒ 地址变了、对象也没了，所以全废。
+
+**可迁移规则**：节点容器的"稳"来自**地址稳定**，连续容器的"脆"来自**会搬家**。判断失效时先问一句"这次操作会不会搬动已有元素"。''',
+
+    164: '''**答案**：① `buckets_.size()`（写 `bucket_count()` 也对）② `next`。
+
+**① 桶下标的本质**是 `hash(key) % 桶数`。取模保证结果落在 `[0, 桶数)`，这就是"桶"。同一个 key 每次算出来必须一样，否则 `insert` 存进去、`find` 就找不回来了——自定义哈希写成依赖时间/随机数，就是这种事故。
+
+**② 链地址法**：一个桶里塞了多个 key 时，用单链表串起来，`find` 顺着 `next` 走到底。平均 O(1) 的前提是**桶数够多、分布够均匀**，否则退化成一条长链表（O(n)）。
+
+**③ rehash 到底换掉了什么？**
+只换掉 `buckets_` 这个**桶指针数组**：新建更大的数组，把每个节点按新桶数重新挂一遍，旧数组丢掉。
+
+注意 `head->next = fresh[b]` 改的是 node 内部的 `next` 指针，**node 自身的地址一动没动**。于是：
+
+- 迭代器失效：迭代器的实现依赖"当前在哪个桶、桶内到哪了"，桶数一变这套记录全作废；
+- 引用/指针仍有效：它们指向 node 对象本身，node 还在原地。
+
+这正是「选择 9」那条反直觉规则的源码级解释。
+
+**可迁移规则**：`unordered_map` 的 rehash 是"重排索引、不搬对象"，`vector` 的扩容是"搬对象、换地址"。失效范围不同，根子就在这里。''',
+
+    165: '''**答案**：① `left` ② `y` ③ `right`。
+
+**左旋三步**（拿张纸画一遍最快）：
+
+1. `x->right = y->left` —— y 的左子树"过继"给 x（它比 x 大、比 y 小，正好挂在 x 右边）；
+2. `y` 顶替 `x` 的位置（父亲指针、祖父的左/右孩子指针全部改指向 y）；
+3. `y->left = x; x->parent = y;` —— x 降为 y 的左孩子。
+
+旋转之后**中序顺序必须不变**（`x` 依然在 `y` 前面），这是判断"转对了没"的唯一标准。
+
+**③ 中序后继**：`++it` 的语义是"下一个更大的元素"。
+
+- 有右子树 → 右子树里的**最小**节点（一路往左到底）；
+- 没有右子树 → 往上爬，直到"我是我父亲的左孩子"，那个父亲就是后继。
+
+**为什么均摊 O(1)**：单次 `++it` 最坏要爬 O(log n) 层，但在一次完整遍历里，**每条边最多被向上爬一次、向下走一次**。n 个节点的总爬升步数合计 O(n)，摊还到每次 `++` 就是 O(1)。这是摊还分析的经典例子，和 vector 倍增是同一套思路。
+
+**可迁移规则**：看到"单次最坏 O(log n)、整体遍历却是 O(n)"，八成是每条边只被访问常数次——算复杂度要看**总步数**，别只盯单次。''',
+
+    166: '''**答案**：① `sizeof(T)` ② `kBlock`。
+
+**① 块大小按什么切**：按字节数切，`512 / sizeof(T)` 个元素。`T` 大块里就少放几个，`T` 小块里多放几个。⚠️ 这个 512 是 libstdc++ 的选择，**不是标准要求**，MSVC 和 libc++ 取值都不同——所以这一空答 `sizeof(T)` 才是唯一稳妥的（问的是"按什么切"，不是"切多少字节"）。
+
+**② 两段式定位**：`pos / kBlock` 得块号，`pos % kBlock` 得块内偏移。这也是 deque 随机访问 O(1) 的原因——一次除法加一次取模，不用遍历。
+
+**③ 为什么 `&d[0]` 不能当连续数组用？**
+`map_[head_]` 给出的是一个块的起始地址，但 `d[0]` 的下一个元素可能在同一块里，也可能在**下一块**——而下一块跟这一块在内存里毫无关系。`feed(&d[0], n)` 按"连续 n 个元素"去读，跨块那一刻就开始读别人的内存。
+
+**四种能力，三种容器，差别很大**：
+
+| 能力 | vector | deque | list |
+|---|---|---|---|
+| 随机访问 O(1) | 是 | 是 | 否 |
+| 内存连续（可传 C API） | 是 | 否 | 否 |
+| 两端插入均摊 O(1) | 仅尾部 | 是 | 是 |
+| 插入后老迭代器仍有效 | 否 | 否 | 是 |
+
+**可迁移规则**：需要"连续内存"时只有 `vector` / `array` / `string` 三个选项。deque 的 `operator[]` 返回引用，取地址当然合法——**合法不等于连续**，这个坑编译期查不出来。''',
 }
 
 # ---------- 三张表 DDL（与 src/database.cpp initTable 保持一致） ----------
@@ -8410,6 +8688,7 @@ CREATE TABLE IF NOT EXISTS practice_exercises(
     title VARCHAR(256) NOT NULL COMMENT '题目标题',
     prompt TEXT NOT NULL COMMENT '题干：写代码=需求(markdown)；选择=纯代码(markdown)；填空=代码骨架(含______)',
     question TEXT NULL COMMENT '题目问题/说明(选择题=问题；填空题=说明；代码框外展示)',
+    keep_notes TINYINT NOT NULL DEFAULT 0 COMMENT '1=prompt 里的注释属于代码本体(源码阅读题)，前端不抽成描述',
     sort_order INT NOT NULL DEFAULT 0 COMMENT '章内排序',
     options TEXT NULL COMMENT '选择题选项JSON(非选择题为NULL)',
     answer TEXT NULL COMMENT '选择=正确label(JSON字符串)；填空=答案数组(JSON)；写代码=NULL',
@@ -8510,6 +8789,8 @@ COLUMN_MIGRATIONS = [
      "TEXT NULL COMMENT '题解(思路+参考实现+要点，markdown)' AFTER answer"),
     ('practice_exercises', 'question',
      "TEXT NULL COMMENT '题目问题/说明(选择题=问题,填空题=说明)' AFTER prompt"),
+    ('practice_exercises', 'keep_notes',
+     "TINYINT NOT NULL DEFAULT 0 COMMENT '1=prompt 里的注释属于代码本体(源码阅读题)，前端不抽成描述' AFTER question"),
 ]
 
 
@@ -8633,6 +8914,8 @@ def build():
         else:
             question_val = None          # 写代码题无独立问题字段
             prompt_val = e['prompt']
+        # 1 = prompt 里的注释属于代码本体（源码阅读题），前端不抽成描述
+        keep_notes = 1 if e.get('keep_notes') else 0
         # options / answer 序列化为 JSON；None -> NULL
         options_val = json.dumps(e['options'], ensure_ascii=False) if e.get('options') else None
         answer_val = e.get('answer')
@@ -8650,16 +8933,17 @@ def build():
 
         out.append(
             'INSERT INTO practice_exercises '
-            '(id, chapter_id, type, title, prompt, question, sort_order, options, answer, solution, '
+            '(id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, '
             'starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES ('
             f'{e["id"]}, {e["chapter_id"]}, {sql_literal(typ)}, {sql_literal(e["title"])}, '
-            f'{sql_literal(prompt_val)}, {sql_or_null(question_val)}, {e["sort_order"]}, '
+            f'{sql_literal(prompt_val)}, {sql_or_null(question_val)}, {keep_notes}, {e["sort_order"]}, '
             f'{sql_or_null(options_val)}, {sql_or_null(answer_val)}, {sql_or_null(solution_val)}, '
             f'{sql_literal(starter_easy)}, {sql_literal(starter_medium)}, '
             f'{sql_literal(starter_hard)}, {sql_or_null(test_driver)}, '
             f'{total_cases}, {time_limit_ms}, 1) '
             'ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), '
-            'title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), sort_order=VALUES(sort_order), '
+            'title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), '
+            'keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), '
             'options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), '
             'starter_easy=VALUES(starter_easy), '
             'starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), '

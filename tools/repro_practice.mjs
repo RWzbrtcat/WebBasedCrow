@@ -341,6 +341,20 @@ assert(/syncActions\('code'\)/.test(js) && /syncActions\('objective'\)/.test(js)
     '写代码题 / 客观题 / 空态三种操作区状态均已接入');
 assert(!/blankSubmitBtn/.test(js), '填空题不再自建内联提交按钮');
 
+// 填空代码框：行号 + 语法高亮 + 框内滚动（源码阅读题动辄 40 行）
+assert(/function renderBlankCode/.test(js), 'JS 有 renderBlankCode（逐行渲染填空代码）');
+assert(/BLANK_PLACEHOLDER/.test(js) && /BLANKX/.test(js),
+    'JS 用「合法标识符占位符」保护空位（hljs 不会把标识符拆碎）');
+assert(/function splitHighlightedLines/.test(js), 'JS 有 splitHighlightedLines（按行切高亮、补齐跨行 span）');
+assert(/Number\(ex\.keep_notes \|\| 0\)/.test(js), 'JS 读取 keep_notes（源码阅读题保留代码内注释）');
+assert(/\.practice-blank-body\s*\{[^}]*max-height/.test(css), '填空代码框限高 + 框内纵向滚动');
+assert(/\.practice-blank-ln\s*\{/.test(css), '填空代码框带行号槽');
+{
+    const routes = readFileSync(resolve(root, 'src/routes.cpp'), 'utf8');
+    assert(/type::List\)[\s\S]{0,400}cell\[k\]/.test(routes), 'routes.cpp 支持「每空一组等价答案」');
+    assert(routes.includes('normalizeBlankAnswer'), '填空判分仍走空白归一（大小写敏感）');
+}
+
 // 代码草稿持久化（防切题 / 刷新丢代码）
 assert(/DRAFT_KEY = 'practice\.draft\.v1'/.test(js), 'JS 定义草稿存储键 practice.draft.v1');
 ['loadDrafts', 'persistDrafts', 'saveDraftNow', 'scheduleSaveDraft', 'flushDraft', 'clearDraft'].forEach((fn) => {
@@ -423,6 +437,8 @@ assert(exerciseInserts >= 154, '题目数不应少于 154 道（当前 ' + exerc
 assert(!/INSERT IGNORE/.test(seed), 'seed 不应再有 INSERT IGNORE（已改 upsert）');
 assert(/solution\s+TEXT/.test(seed), 'seed 建表含 solution（题解）列');
 assert(seed.includes('ADD COLUMN solution'), 'seed 含 solution 幂等补列迁移（老库自愈，防 1054）');
+assert(/keep_notes TINYINT/.test(seed), 'seed 建表含 keep_notes（源码阅读题不抽注释）');
+assert(seed.includes('ADD COLUMN keep_notes'), 'seed 含 keep_notes 幂等补列迁移');
 assert(seed.includes('PREPARE stmt_mig FROM @ddl'), '补列迁移用 information_schema + PREPARE 动态执行');
 {
     const solUpserts = (seed.match(/solution=VALUES\(solution\)/g) || []).length;

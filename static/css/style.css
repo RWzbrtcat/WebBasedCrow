@@ -4225,21 +4225,49 @@ body.practice-page {
 }
 
 /* 客观题：填空题代码骨架 + 内嵌输入框 */
+/* 填空题代码框：外层只管边框圆角，滚动交给内层（横向长代码 + 纵向长文件） */
 .practice-blank-code {
     margin: 16px 0 0;
-    padding: 16px;
     background: var(--code-bg, rgba(0, 0, 0, 0.04));
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    overflow-x: auto;
-    font-size: 14px;
-    line-height: 2;
+    overflow: hidden;
+    font-size: 13.5px;
+    line-height: 1.75;
 }
 
-.practice-blank-code code {
+/* 源码阅读题动辄 40+ 行：限高 + 框内纵向滚动，避免把描述区撑爆 */
+.practice-blank-body {
+    max-height: 440px;
+    overflow: auto;
+    padding: 10px 0;
+}
+
+.practice-blank-line {
+    display: flex;
+    gap: 12px;
+    padding-right: 16px;
+}
+
+.practice-blank-line:hover {
+    background: rgba(127, 127, 127, 0.07);
+}
+
+.practice-blank-ln {
+    flex: 0 0 auto;
+    min-width: 3.2ch;
+    padding-left: 12px;
+    text-align: right;
+    font-family: ui-monospace, SFMono-Regular, Consolas, 'Courier New', monospace;
+    color: var(--text-muted);
+    user-select: none;
+}
+
+.practice-blank-text {
+    flex: 1 1 auto;
+    white-space: pre;
     font-family: ui-monospace, SFMono-Regular, Consolas, 'Courier New', monospace;
     color: var(--text);
-    white-space: pre;
 }
 
 /* 填空题：从代码框里抽出来的"任务说明"（正文，不在代码框中） */
@@ -4256,17 +4284,17 @@ body.practice-page {
 
 .practice-blank-input {
     display: inline-block;
-    width: 150px;
+    width: 148px;
     margin: 0 2px;
-    padding: 2px 8px;
+    padding: 1px 8px;
     border: 1px dashed var(--accent);
     border-radius: 4px;
     background: var(--accent-soft);
     color: var(--text);
     font-family: ui-monospace, SFMono-Regular, Consolas, 'Courier New', monospace;
-    font-size: 14px;
-    line-height: 1.4;
-    vertical-align: baseline;
+    font-size: 13px;
+    line-height: 1.5;
+    vertical-align: middle;
 }
 
 .practice-blank-input:focus {

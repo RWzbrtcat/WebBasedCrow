@@ -716,7 +716,7 @@
         renderHead(ex);
         setPromptHtml('<div class="practice-prompt markdown-body" id="promptBody"></div>');
         const body = document.getElementById('promptBody');
-        const split = splitPromptNotes(ex.prompt, 'choice');
+        const split = Number(ex.keep_notes || 0) ? { question: '', code: ex.prompt } : splitPromptNotes(ex.prompt, 'choice');
         const question = (ex.question || '').trim() || split.question;
         let md = '';
         if (question) md += '**问题：** ' + question + '\n\n';
@@ -744,17 +744,84 @@
     }
 
     // 填空题：说明(question 字段，缺失则从 prompt 的 // 注释抽) + 代码框(注释处留 ◀ 标记，空位 ______ 变输入框)
+    // ---------- 填空题：代码渲染（行号 + 语法高亮 + 空位输入框） ----------
+    // 坑：不能先高亮再找 ______ ——hljs 会把空位包进 span，直接替换会破坏标签。
+    // 做法：先把 ______ 换成合法 C++ 标识符占位符（hljs 把标识符当原子 token，
+    // 不会拆开），整块高亮后再把占位符还原成 <input>，最后按行切分。
+    const BLANK_PLACEHOLDER = /BLANKX(\d+)XEND/g;
+
+    // 把「可能跨行的 span」按行切开：行尾补齐闭合、行首补上开启，保证每行是完整 HTML
+    function splitHighlightedLines(html) {
+        const lines = [];
+        const openTags = [];
+        let cur = '';
+        let i = 0;
+        while (i < html.length) {
+            const ch = html[i];
+            if (ch === '<') {
+                const end = html.indexOf('>', i);
+                if (end === -1) { cur += html.slice(i); break; }
+                const tag = html.slice(i, end + 1);
+                if (tag.slice(0, 2) === '</') openTags.pop();
+                else if (tag.slice(-2) !== '/>') openTags.push(tag);
+                cur += tag;
+                i = end + 1;
+            } else if (ch === '\n') {
+                if (openTags.length) cur += '</span>'.repeat(openTags.length);
+                lines.push(cur);
+                cur = openTags.join('');
+                i += 1;
+            } else {
+                cur += ch;
+                i += 1;
+            }
+        }
+        lines.push(cur);
+        return lines;
+    }
+
+    function blankInputHtml(index) {
+        return '<input type="text" class="practice-blank-input" data-blank="' + index +
+            '" spellcheck="false" autocomplete="off" aria-label="第 ' + (index + 1) + ' 个空">';
+    }
+
+    function renderBlankCode(code) {
+        let seq = 0;
+        const marked = String(code || '').replace(/_{3,}/g, function () {
+            return 'BLANKX' + (seq++) + 'XEND';
+        });
+        const highlighted = highlightCpp(marked);
+        return splitHighlightedLines(highlighted).map(function (line, i) {
+            const body = line
+                ? line.replace(BLANK_PLACEHOLDER, function (m, n) { return blankInputHtml(Number(n)); })
+                : '&nbsp;';
+            return '<div class="practice-blank-line">' +
+                '<span class="practice-blank-ln" aria-hidden="true">' + (i + 1) + '</span>' +
+                '<code class="practice-blank-text">' + body + '</code></div>';
+        }).join('');
+    }
+
+    // 剥掉 markdown 代码围栏（源码阅读题的 prompt 可能带 ```cpp）
+    function stripCodeFence(src) {
+        const m = String(src || '').trim().match(/^```[A-Za-z0-9]*\n([\s\S]*?)\n?```$/);
+        return m ? m[1] : String(src || '');
+    }
+
     function renderBlank() {
         const ex = currentExercise;
         setWorkLayout(true);
         renderHead(ex);
-        const split = splitPromptNotes(ex.prompt, 'blank');
+        // keep_notes=1（源码阅读题）：注释属于代码本体，不抽成描述
+        const keepNotes = !!Number(ex.keep_notes || 0);
+        const split = keepNotes
+            ? { question: '', code: stripCodeFence(ex.prompt) }
+            : splitPromptNotes(ex.prompt, 'blank');
         const question = (ex.question || '').trim() || split.question;
-        const codeHtml = esc(split.code).replace(/_{3,}/g,
-            '<input type="text" class="practice-blank-input" data-blank spellcheck="false" autocomplete="off">');
         const intro = question ? '<p class="practice-blank-note">' + esc(question) + '</p>' : '';
         setPromptHtml(
-            '<div class="practice-prompt">' + intro + '<pre class="practice-blank-code"><code>' + codeHtml + '</code></pre></div>');
+            '<div class="practice-prompt">' + intro +
+            '<div class="practice-blank-code"><div class="practice-blank-body">' +
+            renderBlankCode(split.code) + '</div></div></div>');
         editorCardEl.hidden = true;
         answerCardEl.hidden = true;
         syncActions('objective');
