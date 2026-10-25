@@ -52,7 +52,7 @@ EXERCISES = [
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 1 · auto 与 decltype 推导',
-        'sort_order': 13,
+        'sort_order': 18,
         'prompt': (
             '实现两个函数，验证 `auto` 的类型推导规则：\n\n'
             '1. `get_ref()`：返回全局变量 `g_value` 的**引用**\n'
@@ -127,7 +127,7 @@ int main() {
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 2 · enum class 类型安全',
-        'sort_order': 14,
+        'sort_order': 19,
         'prompt': (
             '用 `enum class` 定义一个日志级别，并实现它与字符串的双向转换：\n\n'
             '1. `enum class LogLevel { Debug, Info, Warn, Error };`\n'
@@ -216,7 +216,7 @@ int main() {
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 3 · override/final/=delete',
-        'sort_order': 15,
+        'sort_order': 20,
         'prompt': (
             '实现一个形状类层次，验证 `override` / `final` / `=default` / `=delete` 四个关键字：\n\n'
             '1. `Shape` 抽象基类：虚析构 + 纯虚函数 `double area() const`\n'
@@ -345,7 +345,7 @@ int main() {
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 4 · 统一初始化与范围 for',
-        'sort_order': 16,
+        'sort_order': 21,
         'prompt': (
             '实现 `IntArray` 类，验证列表初始化与范围 for：\n\n'
             '1. 支持列表初始化：`IntArray a{1, 2, 3, 4};`\n'
@@ -469,7 +469,7 @@ int main() {
         'chapter_id': 1,
         'type': 'boss',
         'title': 'Boss · 类型安全的枚举状态机',
-        'sort_order': 19,
+        'sort_order': 25,
         'prompt': (
             '实现一个类型安全的 TCP 状态机，串起本章全部知识点：\n\n'
             '1. 用 `enum class` 定义 6 个状态：`Closed / Listen / Established / FinWait1 / FinWait2 / TimeWait`\n'
@@ -1273,7 +1273,7 @@ for (auto& x : v) { x += 1; }   /* ② */
         'chapter_id': 1,
         'type': 'blank',
         'title': '填空 1 · 0 与 nullptr 选到不同重载',
-        'sort_order': 8,
+        'sort_order': 12,
         'question': '空 1 必须走到 `f(int)`，空 2 必须走到 `f(void*)`。想清楚：`0` 和 `nullptr` 各自的类型是什么。',
         'prompt': '''void f(int)   { }
 void f(void*) { }
@@ -1287,7 +1287,7 @@ f(______);   /* 空2 */''',
         'chapter_id': 1,
         'type': 'blank',
         'title': '填空 2 · 漏了 const 的 draw',
-        'sort_order': 9,
+        'sort_order': 13,
         'question': '派生类的 `draw` 漏写了 `const`。在空位填一个关键字，让编译器**当场报错**，而不是悄悄把它变成一个「新函数」。',
         'prompt': '''class Base {
 public:
@@ -1305,7 +1305,7 @@ public:
         'chapter_id': 1,
         'type': 'blank',
         'title': '填空 3 · =default / =delete',
-        'sort_order': 10,
+        'sort_order': 14,
         'question': '空 1 要「默认行为」，空 2、空 3 要「彻底禁止拷贝」。三个空都是一种带等号的写法。',
         'prompt': '''class Handle {
 public:
@@ -7074,8 +7074,8 @@ Color         d = Color::Red | Color::Blue;      /* ④ */
         'id': 172,
         'chapter_id': 1,
         'type': 'choice',
-        'title': '选择 6 · 能编译、能运行、结果是错的',
-        'sort_order': 6,
+        'title': '选择 7 · 能编译、能运行、结果是错的',
+        'sort_order': 7,
         'question': '这段程序能编译、能运行。它的输出是？',
         'prompt': '''```cpp
 struct Base {
@@ -7105,8 +7105,8 @@ int main() {
         'id': 173,
         'chapter_id': 1,
         'type': 'choice',
-        'title': '选择 7 · 花括号把重载抢走了',
-        'sort_order': 7,
+        'title': '选择 8 · 花括号把重载抢走了',
+        'sort_order': 8,
         'question': '`p.tag` 的值是？',
         'prompt': '''```cpp
 struct Point {
@@ -7130,7 +7130,7 @@ Point p{1, 2};
         'chapter_id': 1,
         'type': 'blank',
         'title': '阅读 1 · 存下来的 initializer_list',
-        'sort_order': 11,
+        'sort_order': 15,
         'keep_notes': True,
         'question': '空 1、空 2 填什么，才能让 `Args` 真正**拥有**元素，而不是只记住一块临时数组的地址？',
         'prompt': r'''// 危险示范：把 initializer_list 当成"容器"存进了成员
@@ -7157,7 +7157,7 @@ int main() {
         'chapter_id': 1,
         'type': 'blank',
         'title': '阅读 2 · 返回类型与只读绑定',
-        'sort_order': 12,
+        'sort_order': 16,
         'keep_notes': True,
         'question': '空 1 要让 `front(v) = 99;` 能改到容器里的元素；空 2 要只读遍历且**不拷贝**元素。',
         'prompt': r'''// 泛型访问器：返回值要"原样保留"表达式的类型
@@ -7187,7 +7187,7 @@ int main() {
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 5 · enum class 权限位',
-        'sort_order': 17,
+        'sort_order': 22,
         'prompt': (
             '用 `enum class` 做一套**类型安全的权限位**（不许退化成裸 `int`）：\n\n'
             '1. `enum class Perm : unsigned char { None = 0, Read = 1, Write = 2, Exec = 4 };`（已提供）\n'
@@ -7311,7 +7311,7 @@ int main() {
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 6 · 结构化绑定零拷贝遍历',
-        'sort_order': 18,
+        'sort_order': 23,
         'prompt': (
             '用**结构化绑定 + 范围 for** 实现两个小函数，并且做到「遍历零拷贝」：\n\n'
             '1. `int total_qty(const std::vector<Row>& rows)`：所有行 `qty` 之和\n'
@@ -7453,6 +7453,371 @@ int main() {
 }
 ''',
         'total_cases': 7,
+        'time_limit_ms': 2000,
+    },
+
+    # ================= C1 扩充（id 178-183，2026-10-25）：枚举收尾 + union 从零补 =================
+    # 枚举线补最后一环：171（类型系统不让它当 int）→ 178（switch 漏值靠 -Wswitch 兜）→ 176（自己造位运算）
+    # union 线（全库此前 0 题）三关：
+    #   179（读非活跃成员是 UB，编译器只是"容忍"）→ 180（大小/对齐怎么算）→
+    #   181（非平凡成员 ⇒ 默认构造被删）→ 182（布局算到字节）→ 183（自己写 tagged variant，动手管生死）
+    {
+        'id': 178,
+        'chapter_id': 1,
+        'type': 'choice',
+        'title': '选择 6 · 少写一个分支会怎样',
+        'sort_order': 6,
+        'question': '后来有人往 `Level` 里加了 `Error`，`to_string` 没跟着改。用 `g++ -Wall` 编译，结果是？',
+        'prompt': r'''```cpp
+enum class Level { Debug, Info, Warn, Error };
+
+const char* to_string(Level lv) {
+    switch (lv) {
+        case Level::Debug: return "Debug";
+        case Level::Info:  return "Info";
+        case Level::Warn:  return "Warn";
+    }
+    return "Unknown";
+}
+```''',
+        'options': [
+            {'label': 'A', 'text': '编译报错：enum class 的 switch 必须覆盖全部枚举值'},
+            {'label': 'B', 'text': '编译通过，-Wswitch 给出「枚举值 Error 未处理」的警告'},
+            {'label': 'C', 'text': '编译通过，静默返回 "Unknown"，没有任何提示'},
+            {'label': 'D', 'text': '编译报错：switch 缺少 default 分支'},
+        ],
+        'answer': 'B',
+    },
+    {
+        'id': 179,
+        'chapter_id': 1,
+        'type': 'choice',
+        'title': '选择 9 · 换个身份读同一块内存',
+        'sort_order': 9,
+        'question': '`x.f = 1.0f;` 之后读 `x.u`，C++ 标准对这个结果是怎么规定的？',
+        'prompt': r'''```cpp
+union U {
+    float    f;
+    unsigned u;
+};
+
+U x;
+x.f = 1.0f;
+
+std::printf("%08x\n", x.u);   // 换一个成员，读同一块内存
+```''',
+        'options': [
+            {'label': 'A', 'text': '打印 3f800000 —— 标准保证就是这样'},
+            {'label': 'B', 'text': '未定义行为 —— 同一时刻只有一个成员活着，读另一个不算合法'},
+            {'label': 'C', 'text': '编译错误 —— union 的成员之间不能跨类型访问'},
+            {'label': 'D', 'text': '实现定义 —— 标准要求必须等于 A，只是写法不推荐'},
+        ],
+        'answer': 'B',
+    },
+    {
+        'id': 180,
+        'chapter_id': 1,
+        'type': 'choice',
+        'title': '选择 10 · 一个 union 有多大',
+        'sort_order': 10,
+        'question': '按 x86-64 常见 ABI（`double` 对齐 8 字节），`sizeof(U)` 与 `sizeof(P)` 分别是？',
+        'prompt': r'''```cpp
+union U {
+    char   a[5];
+    int    b;
+    double c;
+};
+
+struct P {
+    char tag;
+    U    body;
+};
+```''',
+        'options': [
+            {'label': 'A', 'text': '5 和 6 —— union 取最大成员，结构体把成员直接接上'},
+            {'label': 'B', 'text': '8 和 9 —— union 按最大对齐补齐，结构体不补'},
+            {'label': 'C', 'text': '8 和 16 —— 两者都按各自的最大对齐取整'},
+            {'label': 'D', 'text': '17 和 18 —— union 也要把所有成员都占住'},
+        ],
+        'answer': 'C',
+    },
+    {
+        'id': 181,
+        'chapter_id': 1,
+        'type': 'choice',
+        'title': '选择 11 · Msg 能不能直接声明',
+        'sort_order': 11,
+        'question': '`Msg m;` 这一行会怎样？',
+        'prompt': r'''```cpp
+struct Msg {
+    int kind;
+    union {
+        int         num;
+        std::string text;
+    };
+};
+```''',
+        'options': [
+            {'label': 'A', 'text': '编译通过，num 与 text 都处于未初始化状态'},
+            {'label': 'B', 'text': '编译通过，text 被默认构造成空串'},
+            {'label': 'C', 'text': '编译报错 —— 匿名 union 里有非平凡成员，Msg 的默认构造函数被删除了'},
+            {'label': 'D', 'text': '编译通过，但 text 从未构造，用它就是未定义行为'},
+        ],
+        'answer': 'C',
+    },
+    {
+        'id': 182,
+        'chapter_id': 1,
+        'type': 'blank',
+        'title': '阅读 3 · 头结构的真实大小',
+        'sort_order': 17,
+        'keep_notes': True,
+        'question': '空 1 填 `sizeof(Body)`，空 2 填 `body` 在 `Packet` 里的字节偏移。两个空都只填**十进制数字**（按 x86-64 常见 ABI）。',
+        'prompt': r'''#include <cstddef>
+#include <cstdint>
+
+union Body {
+    struct { uint32_t seq; uint16_t len; } hdr;
+    uint8_t  raw[8];
+};
+
+struct Packet {
+    uint8_t kind;
+    Body    body;
+};
+
+static_assert(sizeof(Body)           == ______, "Body 多大？");      /* 空1 */
+static_assert(offsetof(Packet, body) == ______, "body 从哪开始？");  /* 空2 */''',
+        'answer': [['8'], ['4']],
+    },
+    {
+        'id': 183,
+        'chapter_id': 1,
+        'type': 'short',
+        'title': '短题 7 · 亲手管一个 union',
+        'sort_order': 24,
+        'prompt': (
+            '用 `enum class` + `union` 实现一个**带标签的联合体**（tagged union），把三种值塞进同一块内存：\n\n'
+            '1. `enum class Kind { Int, Real, Obj };`\n'
+            '2. `class Value` 的四个构造 + 析构：\n'
+            '   - `Value()` → `Kind::Int`，整数 0\n'
+            '   - `Value(int)` → `Kind::Int`\n'
+            '   - `Value(double)` → `Kind::Real`\n'
+            '   - `Value(const Tracked&)` → `Kind::Obj`，**必须在 union 成员上 placement new**\n'
+            '   - `~Value()` → **只析构活跃的那个成员**（只有 `Kind::Obj` 才去析构 `Tracked`）\n'
+            '3. **显式禁止拷贝**（`= delete`）：union 里有非平凡成员时，编译器本来就会删掉隐式拷贝，'
+            '写出来是为了让意图明确、报错落在改动点\n'
+            '4. 四个访问器：`kind()` / `as_int()` / `as_real()` / `as_tracked()`，类型不对时分别返回 '
+            '`0` / `0.0` / `nullptr`，**不许 reinterpret**\n\n'
+            '`Tracked` 已提供（请勿修改），它带一个**存活计数**：隐藏测试会在构造/析构前后对比 '
+            '`Tracked::alive()` —— 漏写析构、或者不管 `kind` 见谁都析构，都会当场露出来。\n\n'
+            '> 考点：union 只负责「放」，不负责「造」和「销毁」。活跃成员靠 placement new 出生，'
+            '靠显式调用析构函数死亡 —— 这一套正是 `std::variant` 内部干的事。\n'
+        ),
+        'starter_easy': r'''#include <cstddef>
+#include <new>
+
+// 带存活计数的被管理类型（已提供，请勿修改）
+struct Tracked {
+    int v;
+    explicit Tracked(int x) : v(x) { ++alive(); }
+    Tracked(const Tracked& o) : v(o.v) { ++alive(); }
+    ~Tracked() { --alive(); }
+    static int& alive() { static int n = 0; return n; }
+};
+
+enum class Kind { Int, Real, Obj };
+
+class Value {
+public:
+    Value() : kind_(Kind::Int) { i_ = 0; }
+    explicit Value(int v) : kind_(Kind::Int) { i_ = v; }
+    explicit Value(double v) : kind_(Kind::Real) { d_ = v; }
+
+    // TODO: 在 t_ 上 placement new 一份 Tracked 副本
+    explicit Value(const Tracked& t) : kind_(Kind::Obj) {
+        // 提示：new (&t_) Tracked(t);
+    }
+
+    // TODO: 只析构活跃成员
+    ~Value() {
+        // 提示：if (kind_ == Kind::Obj) t_.~Tracked();
+    }
+
+    Value(const Value&) = delete;
+    Value& operator=(const Value&) = delete;
+
+    Kind   kind() const    { return kind_; }
+    int    as_int() const  { return kind_ == Kind::Int  ? i_ : 0; }
+    double as_real() const { return kind_ == Kind::Real ? d_ : 0.0; }
+
+    // TODO: 不是 Obj 时返回 nullptr
+    const Tracked* as_tracked() const { return nullptr; }
+
+private:
+    Kind kind_;
+    union { int i_; double d_; Tracked t_; };
+};
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_medium': r'''#include <cstddef>
+#include <new>
+
+// 带存活计数的被管理类型（已提供，请勿修改）
+struct Tracked {
+    int v;
+    explicit Tracked(int x) : v(x) { ++alive(); }
+    Tracked(const Tracked& o) : v(o.v) { ++alive(); }
+    ~Tracked() { --alive(); }
+    static int& alive() { static int n = 0; return n; }
+};
+
+// 实现（签名必须一致，隐藏测试会直接调用）：
+//   enum class Kind { Int, Real, Obj };
+//   class Value {
+//   public:
+//       Value();                          // Kind::Int，整数 0
+//       explicit Value(int v);            // Kind::Int
+//       explicit Value(double v);         // Kind::Real
+//       explicit Value(const Tracked& t); // Kind::Obj，placement new 构造
+//       ~Value();                         // 只析构活跃成员
+//       Value(const Value&) = delete;
+//       Value& operator=(const Value&) = delete;
+//       Kind kind() const;
+//       int  as_int() const;                  // 非 Int 返回 0
+//       double as_real() const;               // 非 Real 返回 0.0
+//       const Tracked* as_tracked() const;    // 非 Obj 返回 nullptr
+//   private:
+//       Kind kind_;
+//       union { int i_; double d_; Tracked t_; };
+//   };
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_hard': r'''#include <cstddef>
+#include <new>
+
+// 带存活计数的被管理类型（已提供，请勿修改）
+struct Tracked {
+    int v;
+    explicit Tracked(int x) : v(x) { ++alive(); }
+    Tracked(const Tracked& o) : v(o.v) { ++alive(); }
+    ~Tracked() { --alive(); }
+    static int& alive() { static int n = 0; return n; }
+};
+
+// 需求：自己实现一个带标签的联合体（tagged union）
+//   - enum class Kind { Int, Real, Obj }，三种值共用一块内存
+//   - 构造：Value() / Value(int) / Value(double) / Value(const Tracked&)
+//   - 析构：只析构活跃成员，绝不许对非 Obj 的值调 Tracked 的析构
+//   - 禁止拷贝（拷贝后必然双重销毁）
+//   - 访问器：kind() / as_int() / as_real() / as_tracked()，类型不符返回 0 / 0.0 / nullptr
+//   - 隐藏测试会用 Tracked::alive() 检查构造与析构是否配平
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'test_driver': r'''#include <cstdio>
+
+int main() {
+    int fail = 0;
+    Tracked::alive() = 0;
+
+    // 用例1：Int 的 kind
+    {
+        Value v(42);
+        if (v.kind() != Kind::Int) {
+            std::printf("FAIL: Value(42).kind() 应为 Int\n");
+            ++fail;
+        }
+    }
+    // 用例2：Int 的值
+    {
+        Value v(42);
+        if (v.as_int() != 42) {
+            std::printf("FAIL: Value(42).as_int() 应为 42\n");
+            ++fail;
+        }
+    }
+    // 用例3：Real 的 kind 与值
+    {
+        Value v(3.5);
+        if (v.kind() != Kind::Real || v.as_real() != 3.5) {
+            std::printf("FAIL: Value(3.5) 应为 Real / 3.5\n");
+            ++fail;
+        }
+    }
+    // 用例4：Int 值的 as_tracked 必须给 nullptr
+    {
+        Value v(7);
+        if (v.as_tracked() != nullptr) {
+            std::printf("FAIL: Int 值的 as_tracked() 应返回 nullptr\n");
+            ++fail;
+        }
+    }
+    // 用例5：装一个 Obj 后 alive 恰为 1（多了说明没配平临时量或重复构造）
+    {
+        Value v(Tracked(9));
+        if (Tracked::alive() != 1) {
+            std::printf("FAIL: 装一个 Obj 后 alive 应为 1，实际 %d\n", Tracked::alive());
+            ++fail;
+        }
+    }
+    // 用例6：Obj 取值正确
+    {
+        Value v(Tracked(9));
+        const Tracked* p = v.as_tracked();
+        if (p == nullptr || p->v != 9) {
+            std::printf("FAIL: as_tracked() 应指向值为 9 的对象\n");
+            ++fail;
+        }
+    }
+    // 用例7：Obj 值的 as_int 不能瞎读内存
+    {
+        Value v(Tracked(9));
+        if (v.as_int() != 0) {
+            std::printf("FAIL: Obj 值的 as_int() 应返回 0\n");
+            ++fail;
+        }
+    }
+    // 用例8：离开作用域后 alive 归零（漏写析构就挂在这里）
+    if (Tracked::alive() != 0) {
+        std::printf("FAIL: Obj 析构后 alive 应回到 0，实际 %d\n", Tracked::alive());
+        ++fail;
+    }
+    // 用例9：混合类型混着析构，alive 仍归零（不判 kind 就析构会在这里露出来）
+    {
+        Value a(1);
+        Value b(2.5);
+        Value c(Tracked(3));
+        Value d(4);
+    }
+    if (Tracked::alive() != 0) {
+        std::printf("FAIL: 混合析构后 alive 应回到 0，实际 %d\n", Tracked::alive());
+        ++fail;
+    }
+    // 用例10：默认构造必须是 Int / 0
+    {
+        Value v;
+        if (v.kind() != Kind::Int || v.as_int() != 0) {
+            std::printf("FAIL: 默认构造应为 Int / 0\n");
+            ++fail;
+        }
+    }
+    // 用例11：Obj 值的 as_real 也不能瞎读内存
+    {
+        Value v(Tracked(9));
+        if (v.as_real() != 0.0) {
+            std::printf("FAIL: Obj 值的 as_real() 应返回 0.0\n");
+            ++fail;
+        }
+    }
+
+    if (fail == 0) std::printf("PASS\n");
+    return fail;
+}
+''',
+        'total_cases': 11,
         'time_limit_ms': 2000,
     },
 
@@ -7799,6 +8164,97 @@ bool restock(std::vector<Row>& rows, int id, int delta) {
 - `for (auto [id, qty] : rows)` 每轮拷一份元素，测试里的 `copies` 计数直接爆掉；成员是 `std::string` 时这就是每轮一次堆分配。
 - `const auto&` vs `auto&`：只读用前者（连误改都被禁止），要写用后者。
 - 结构化绑定拿到的 `qty` 是**成员本身的引用**（绑定到 `Row::qty`），所以 `qty += delta` 直接改到容器里的对象。''',
+
+    178: '''**思路**：`switch` 不写 `default` 时，编译器才能替你查漏 —— `-Wswitch` 会点名没处理的枚举值。
+
+**要点**
+- 标准不要求 `switch` 穷尽枚举值，多出来的值直接跳过整条 `switch`，落到后面的 `return "Unknown"`。
+- 一旦写了 `default:`，编译器认为"兜底已经有了"，新加的枚举值被静默吞掉；要连 `default` 一起查漏，得开 `-Wswitch-enum`。
+- 所以推荐写法是：**枚举值全部列出来、不写 `default`**，函数末尾留一行兜底 `return`。
+- 实测（g++ 13 加 `-Wall`）：漏 `Error` 时给出 1 条 `enumeration value 'Error' not handled in switch [-Wswitch]`；补上 `default` 后 0 条。''',
+
+    179: '''**思路**：C 允许 union 类型双关，C++ 不允许 —— 同一时刻只有一个成员是"活的"，读别的成员是未定义行为。
+
+**正确写法**
+```cpp
+unsigned u;
+std::memcpy(&u, &x.f, sizeof u);              // C++11 起标准保证，编译器会优化成一条 mov
+// 或者 C++20
+unsigned u2 = std::bit_cast<unsigned>(x.f);   // 要求源与目标同大小、都可平凡复制
+```
+
+**要点**
+- 你在 g++ / clang 上真的会打印 `3f800000` —— 但那是编译器"容忍"，不是标准保证。变量一旦是 `constexpr`、或整个 union 被常量传播，`-O2` 下的结果可能和直觉不一致。
+- 真实事故来源：`union { float f; int i; }` 读非活跃成员做浮点判等，换个编译器或优化级别结果就漂。
+- 需要"按位重解释"就用 `memcpy` / `bit_cast`，它们语义明确、且在现代编译器上零开销。''',
+
+    180: '''**思路**：`sizeof(union)` = 最大成员的字节数，再向上取整到**最大对齐**；`struct` 里每个成员按自己的对齐摆放，缝隙补 padding。
+
+- `char[5]` 大 5 / 对齐 1，`int` 大 4 / 对齐 4，`double` 大 8 / 对齐 8 ⇒ `sizeof(U) = 8`。
+- `P`：`tag` 占 1 字节，`body` 要求 8 字节对齐 ⇒ 补 7 字节，`1 + 7 + 8 = 16`。
+
+**要点**
+- 对齐取的是**成员里最大的那个对齐**，不是"最大成员的类型"本身。
+- 别用"成员大小相加"验算布局：`offsetof` + `static_assert` 才是可信的核对方式。
+- x86-64 的 Linux/Windows 通常一致；某些 32 位 ARM ABI 里 `double` 只要求 4 字节对齐，`sizeof` 会变——这也是跨平台不能直接 `fwrite` 结构体的原因。''',
+
+    181: '''**思路**：C++11 起，union 成员只要有非平凡的特殊成员函数，union 对应的那些函数就被**删除**。
+
+**正确写法**
+```cpp
+struct Msg {
+    Kind kind;
+    union { int num; std::string text; };
+
+    Msg() : kind(Kind::Num) { num = 0; }
+    explicit Msg(const char* s) : kind(Kind::Text) { new (&text) std::string(s); }
+    ~Msg() { if (kind == Kind::Text) text.~basic_string(); }
+};
+```
+
+**要点**
+- `std::string` 有非平凡的默认构造与析构 ⇒ 匿名 union 的默认构造、析构都被删 ⇒ 外层 `Msg` 的默认构造跟着被删。
+- 报错是 `use of deleted function 'Msg::Msg()'`，很容易被误读成"union 不能放 string"——能放，但不能不管它。
+- `= default` 救不了：默认化一个被删除的函数，结果还是删除。''',
+
+    182: '''**思路**：`Body` 取最大成员（8 字节）并按最大对齐（4）取整 ⇒ 8；`Packet` 里 `kind` 占 1 字节，`body` 要求 4 字节对齐 ⇒ 偏移 4。
+
+**要点**
+- 匿名 `struct { uint32_t seq; uint16_t len; }` **不是 6 字节**，是 8 —— 尾部补 2 字节，保证数组里每个元素都对齐。
+- 所以 `Packet` 是 12 而不是 10。"文档写 10 字节、抓包算出 12 字节"的经典对不上号，差的就是这 2 字节。
+- 要跨编译器稳定：用 `static_assert` 把大小钉死，或按字段逐字节序列化（`std::endian` + `memcpy`），别直接 `fwrite` 整个结构体。''',
+
+    183: '''**思路**：`enum class` 记标签，`union` 共用内存，构造靠 placement new、析构靠显式调用 —— 这就是 `std::variant` 的最小骨架。
+
+**参考实现**
+```cpp
+class Value {
+public:
+    Value() : kind_(Kind::Int) { i_ = 0; }
+    explicit Value(int v) : kind_(Kind::Int) { i_ = v; }
+    explicit Value(double v) : kind_(Kind::Real) { d_ = v; }
+    explicit Value(const Tracked& t) : kind_(Kind::Obj) { new (&t_) Tracked(t); }
+    ~Value() { if (kind_ == Kind::Obj) t_.~Tracked(); }
+
+    Value(const Value&) = delete;
+    Value& operator=(const Value&) = delete;
+
+    Kind kind() const { return kind_; }
+    int  as_int() const { return kind_ == Kind::Int ? i_ : 0; }
+    double as_real() const { return kind_ == Kind::Real ? d_ : 0.0; }
+    const Tracked* as_tracked() const { return kind_ == Kind::Obj ? &t_ : nullptr; }
+
+private:
+    Kind kind_;
+    union { int i_; double d_; Tracked t_; };
+};
+```
+
+**要点**
+- 直接 `t_ = t;` 是给一个**还没出生**的对象赋值 ⇒ 未定义行为；必须先 `new (&t_) Tracked(t)`。
+- 析构必须判 `kind_`：对 `int` 值去调 `Tracked` 的析构，`alive()` 会变成负数（测试第 9 条专抓这个）。
+- `= delete` 这条是**显式冗余**：只要 union 里有非平凡成员，隐式拷贝构造/赋值本来就被删了。写出来是为了把意图钉在代码里——真要能拷贝，得自己写深拷贝（`std::variant` 替你做完了）。
+- 真实项目别手写：`std::variant<Tracked, int, double>` 就是这套东西的工业版，还带 `visit`。''',
 
     # ================= C2 · 移动语义与完美转发 =================
     6: '''**思路**：移动构造「偷」资源并置空源对象；移动赋值先释放旧资源、再转移，并处理自移动。

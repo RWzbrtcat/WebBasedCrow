@@ -116,7 +116,7 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, k
 全局变量 `int g_value = 42;` 已由题目提供，请勿修改。
 
 > 考点：`auto&` 保留引用，`auto` 丢失引用与顶层 const。
-', NULL, 0, 13, NULL, NULL, '**思路**：`auto` 按值推导、丢掉引用与顶层 const；要返回引用必须显式写 `int&`。
+', NULL, 0, 18, NULL, NULL, '**思路**：`auto` 按值推导、丢掉引用与顶层 const；要返回引用必须显式写 `int&`。
 
 **参考实现**
 ```cpp
@@ -189,7 +189,7 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, k
 3. `bool level_from_string(const char* s, LogLevel& out)`：从字符串解析，非法字符串返回 `false`
 
 > 考点：`enum class` 是强类型、不会隐式转 `int`；序列化要处理非法输入。
-', NULL, 0, 14, NULL, NULL, '**思路**：`enum class` 是强类型，映射到字符串用 `switch`；反向解析用一张小表逐个 `strcmp`。
+', NULL, 0, 19, NULL, NULL, '**思路**：`enum class` 是强类型，映射到字符串用 `switch`；反向解析用一张小表逐个 `strcmp`。
 
 **参考实现**
 ```cpp
@@ -295,7 +295,7 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, k
 4. `NonCopyable`：可默认构造，但拷贝构造/拷贝赋值用 `=delete` 禁止
 
 > 考点：`override` 防误写；`final` 禁止再继承；`=delete` 禁拷贝。
-', NULL, 0, 15, NULL, NULL, '**思路**：`override` 让编译器校验「确实重写了基类虚函数」；`final` 禁止再继承；`=delete` 显式禁用拷贝。
+', NULL, 0, 20, NULL, NULL, '**思路**：`override` 让编译器校验「确实重写了基类虚函数」；`final` 禁止再继承；`=delete` 显式禁用拷贝。
 
 **参考实现**
 ```cpp
@@ -443,7 +443,7 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, k
 5. 拷贝构造与拷贝赋值用 `=delete` 禁止 —— 这个类自己管内存，默认拷贝会让两个对象指向同一块内存（`double free`）
 
 > 考点：`std::initializer_list`、统一初始化、范围 for 的引用语义、Rule of Three 的最小闭环。
-', NULL, 0, 16, NULL, NULL, '**思路**：用 `std::initializer_list` 初始化，`begin/end` 返回裸指针即可支持范围 for；`operator[]` 返回引用才能就地修改。
+', NULL, 0, 21, NULL, NULL, '**思路**：用 `std::initializer_list` 初始化，`begin/end` 返回裸指针即可支持范围 for；`operator[]` 返回引用才能就地修改。
 
 **参考实现**
 ```cpp
@@ -575,7 +575,7 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, k
 合法转移链：`Closed → Listen → Established → FinWait1 → FinWait2 → TimeWait → Closed`
 
 > 收口：enum class（强类型）+ =delete（禁拷贝）+ 序列化（round-trip）。
-', NULL, 0, 19, NULL, NULL, '**思路**：合法转移是一条单向链加一个回环（`TimeWait → Closed`）。用 `switch` 表达转移表；`=delete` 拷贝让状态机成为只移动类型。
+', NULL, 0, 25, NULL, NULL, '**思路**：合法转移是一条单向链加一个回环（`TimeWait → Closed`）。用 `switch` 表达转移表；`=delete` 拷贝让状态机成为只移动类型。
 
 **参考实现**
 ```cpp
@@ -1432,7 +1432,7 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, k
 void f(void*) { }
 
 f(______);   /* 空1 */
-f(______);   /* 空2 */', '空 1 必须走到 `f(int)`，空 2 必须走到 `f(void*)`。想清楚：`0` 和 `nullptr` 各自的类型是什么。', 0, 8, NULL, '[["0"], ["nullptr"]]', '**两个空依次是：`0`、`nullptr`**。
+f(______);   /* 空2 */', '空 1 必须走到 `f(int)`，空 2 必须走到 `f(void*)`。想清楚：`0` 和 `nullptr` 各自的类型是什么。', 0, 12, NULL, '[["0"], ["nullptr"]]', '**两个空依次是：`0`、`nullptr`**。
 
 - `f(0)`：`0` 的类型就是 `int`，`f(int)` 是**精确匹配**；`f(void*)` 还要走一次「空指针转换」 ⇒ 选 `f(int)`。
 - `f(nullptr)`：`nullptr` 的类型是 `std::nullptr_t`，它**不是整数**，转不成 `int`，只能转成指针 ⇒ 选 `f(void*)`。
@@ -1448,7 +1448,7 @@ public:
 class Derived : public Base {
 public:
     void draw() ______;   /* 空 */
-};', '派生类的 `draw` 漏写了 `const`。在空位填一个关键字，让编译器**当场报错**，而不是悄悄把它变成一个「新函数」。', 0, 9, NULL, '[["override"]]', '**应填：`override`**。
+};', '派生类的 `draw` 漏写了 `const`。在空位填一个关键字，让编译器**当场报错**，而不是悄悄把它变成一个「新函数」。', 0, 13, NULL, '[["override"]]', '**应填：`override`**。
 
 基类是 `void draw() const`，派生类写成 `void draw() override;` —— 签名对不上，带 `override` 时编译器立刻报
 `marked ''override'', but does not override`。
@@ -1461,7 +1461,7 @@ public:
     Handle() ______;                          /* 空1 */
     Handle(const Handle&) ______;             /* 空2 */
     Handle& operator=(const Handle&) ______;  /* 空3 */
-};', '空 1 要「默认行为」，空 2、空 3 要「彻底禁止拷贝」。三个空都是一种带等号的写法。', 0, 10, NULL, '[["= default"], ["= delete"], ["= delete"]]', '**三个空依次填：`= default`、`= delete`、`= delete`**。
+};', '空 1 要「默认行为」，空 2、空 3 要「彻底禁止拷贝」。三个空都是一种带等号的写法。', 0, 14, NULL, '[["= default"], ["= delete"], ["= delete"]]', '**三个空依次填：`= default`、`= delete`、`= delete`**。
 
 ```cpp
 class Handle {
@@ -7174,7 +7174,7 @@ Color         d = Color::Red | Color::Blue;      /* ④ */
 **要点**
 - 想按位组合必须自己重载 `operator|` / `operator&`（见 短题 5）。
 - 这正是 `enum class` 的价值：别人写不出 `Color::Red + 1` 这种无意义表达式。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (172, 1, 'choice', '选择 6 · 能编译、能运行、结果是错的', '```cpp
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (172, 1, 'choice', '选择 7 · 能编译、能运行、结果是错的', '```cpp
 struct Base {
     virtual void draw() const { std::puts("Base"); }
     virtual ~Base() = default;
@@ -7189,14 +7189,14 @@ int main() {
     Base& b = d;
     b.draw();
 }
-```', '这段程序能编译、能运行。它的输出是？', 0, 6, '[{"label": "A", "text": "Base —— Derived::draw 少了 const，是另一个函数"}, {"label": "B", "text": "Derived —— 虚函数总会调到派生类的版本"}, {"label": "C", "text": "先 Base 一行、再 Derived 一行"}, {"label": "D", "text": "编译错误 —— 派生类签名与基类不一致"}]', '"A"', '**正确答案：A（输出 `Base`）**。
+```', '这段程序能编译、能运行。它的输出是？', 0, 7, '[{"label": "A", "text": "Base —— Derived::draw 少了 const，是另一个函数"}, {"label": "B", "text": "Derived —— 虚函数总会调到派生类的版本"}, {"label": "C", "text": "先 Base 一行、再 Derived 一行"}, {"label": "D", "text": "编译错误 —— 派生类签名与基类不一致"}]', '"A"', '**正确答案：A（输出 `Base`）**。
 
 `Derived::draw()` 少了 `const`，和 `Base::draw() const` **不是同一个函数** —— 它没有覆盖，只是把基类名字隐藏了。`b` 的静态类型是 `Base&`，虚表里 `draw` 仍指向 `Base::draw`。
 
 **要点**
 - 这是 C++ 最阴的一类 bug：**能编译、能运行、结果错**，而且只有走基类指针/引用时才暴露。
 - 修法：写 `void draw() const override;`，签名不符时编译器当场报错（见 填空 2）。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
-INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (173, 1, 'choice', '选择 7 · 花括号把重载抢走了', '```cpp
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (173, 1, 'choice', '选择 8 · 花括号把重载抢走了', '```cpp
 struct Point {
     Point(int x, int y) : x(x), y(y), tag(1) {}
     Point(std::initializer_list<int>) : x(0), y(0), tag(2) {}
@@ -7204,7 +7204,7 @@ struct Point {
 };
 
 Point p{1, 2};
-```', '`p.tag` 的值是？', 0, 7, '[{"label": "A", "text": "1 —— 走 Point(int, int)"}, {"label": "B", "text": "2 —— 花括号初始化优先选 initializer_list 构造"}, {"label": "C", "text": "编译错误 —— 两个构造都匹配，产生歧义"}, {"label": "D", "text": "不确定 —— 由实现自行选择"}]', '"B"', '**正确答案：B（`tag == 2`）**。
+```', '`p.tag` 的值是？', 0, 8, '[{"label": "A", "text": "1 —— 走 Point(int, int)"}, {"label": "B", "text": "2 —— 花括号初始化优先选 initializer_list 构造"}, {"label": "C", "text": "编译错误 —— 两个构造都匹配，产生歧义"}, {"label": "D", "text": "不确定 —— 由实现自行选择"}]', '"B"', '**正确答案：B（`tag == 2`）**。
 
 列表初始化（花括号）在重载决议里**先挑 `std::initializer_list` 构造**：只要它可行就直接选它，完全不去比较 `Point(int, int)` 是否更"贴"。
 
@@ -7228,7 +7228,7 @@ Args make() {
 int main() {
     Args a = make();
     std::printf("%zu\\n", a.size());   // 旧写法在这里读到的是已销毁的数组
-}', '空 1、空 2 填什么，才能让 `Args` 真正**拥有**元素，而不是只记住一块临时数组的地址？', 1, 11, NULL, '[["init"], ["vector"]]', '**两个空：`init`、`vector`**。
+}', '空 1、空 2 填什么，才能让 `Args` 真正**拥有**元素，而不是只记住一块临时数组的地址？', 1, 15, NULL, '[["init"], ["vector"]]', '**两个空：`init`、`vector`**。
 
 ```cpp
 class Args {
@@ -7259,7 +7259,7 @@ int main() {
     std::vector<int> v{1, 2, 3};
     front(v) = 99;    // 必须能改到 v[0]
     dump(v);          // 只读遍历，且不许拷贝元素
-}', '空 1 要让 `front(v) = 99;` 能改到容器里的元素；空 2 要只读遍历且**不拷贝**元素。', 1, 12, NULL, '[["decltype(auto)", "auto&", "auto &"], ["const auto&", "const auto &", "const int&", "const int &"]]', '**空 1：`decltype(auto)`（`auto&` 也对）；空 2：`const auto&`。**
+}', '空 1 要让 `front(v) = 99;` 能改到容器里的元素；空 2 要只读遍历且**不拷贝**元素。', 1, 16, NULL, '[["decltype(auto)", "auto&", "auto &"], ["const auto&", "const auto &", "const int&", "const int &"]]', '**空 1：`decltype(auto)`（`auto&` 也对）；空 2：`const auto&`。**
 
 ```cpp
 template <class Container>
@@ -7283,7 +7283,7 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, k
 
 > 考点：`enum class` 不参与隐式整型运算，位运算只能自己重载；返回值坚持 `Perm`，调用方就拼不出非法值（比如 `1 | 8`）。
 > 隐藏测试里有一行 `static_assert`：`operator|` 与 `has` 少写 `constexpr` 会直接编译失败。
-', NULL, 0, 17, NULL, NULL, '**思路**：`enum class` 没有内置位运算，把 `operator|` / `operator&` 重载成 `constexpr`，编译期和运行期就都能用。
+', NULL, 0, 22, NULL, NULL, '**思路**：`enum class` 没有内置位运算，把 `operator|` / `operator&` 重载成 `constexpr`，编译期和运行期就都能用。
 
 **参考实现**
 ```cpp
@@ -7419,7 +7419,7 @@ INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, k
 - `restock` 还必须能真正改到容器里的元素
 
 > 考点：范围 for 的绑定方式决定「拷贝 / 只读引用 / 可写引用」三档语义；结构化绑定只是解包语法糖，值类别还是要靠 `&` 决定。
-', NULL, 0, 18, NULL, NULL, '**思路**：结构化绑定本身不决定值类别，`&` 才决定。
+', NULL, 0, 23, NULL, NULL, '**思路**：结构化绑定本身不决定值类别，`&` 才决定。
 
 **参考实现**
 ```cpp
@@ -7566,3 +7566,356 @@ int main() {
     return fail;
 }
 ', 7, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (178, 1, 'choice', '选择 6 · 少写一个分支会怎样', '```cpp
+enum class Level { Debug, Info, Warn, Error };
+
+const char* to_string(Level lv) {
+    switch (lv) {
+        case Level::Debug: return "Debug";
+        case Level::Info:  return "Info";
+        case Level::Warn:  return "Warn";
+    }
+    return "Unknown";
+}
+```', '后来有人往 `Level` 里加了 `Error`，`to_string` 没跟着改。用 `g++ -Wall` 编译，结果是？', 0, 6, '[{"label": "A", "text": "编译报错：enum class 的 switch 必须覆盖全部枚举值"}, {"label": "B", "text": "编译通过，-Wswitch 给出「枚举值 Error 未处理」的警告"}, {"label": "C", "text": "编译通过，静默返回 \\"Unknown\\"，没有任何提示"}, {"label": "D", "text": "编译报错：switch 缺少 default 分支"}]', '"B"', '**思路**：`switch` 不写 `default` 时，编译器才能替你查漏 —— `-Wswitch` 会点名没处理的枚举值。
+
+**要点**
+- 标准不要求 `switch` 穷尽枚举值，多出来的值直接跳过整条 `switch`，落到后面的 `return "Unknown"`。
+- 一旦写了 `default:`，编译器认为"兜底已经有了"，新加的枚举值被静默吞掉；要连 `default` 一起查漏，得开 `-Wswitch-enum`。
+- 所以推荐写法是：**枚举值全部列出来、不写 `default`**，函数末尾留一行兜底 `return`。
+- 实测（g++ 13 加 `-Wall`）：漏 `Error` 时给出 1 条 `enumeration value ''Error'' not handled in switch [-Wswitch]`；补上 `default` 后 0 条。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (179, 1, 'choice', '选择 9 · 换个身份读同一块内存', '```cpp
+union U {
+    float    f;
+    unsigned u;
+};
+
+U x;
+x.f = 1.0f;
+
+std::printf("%08x\\n", x.u);   // 换一个成员，读同一块内存
+```', '`x.f = 1.0f;` 之后读 `x.u`，C++ 标准对这个结果是怎么规定的？', 0, 9, '[{"label": "A", "text": "打印 3f800000 —— 标准保证就是这样"}, {"label": "B", "text": "未定义行为 —— 同一时刻只有一个成员活着，读另一个不算合法"}, {"label": "C", "text": "编译错误 —— union 的成员之间不能跨类型访问"}, {"label": "D", "text": "实现定义 —— 标准要求必须等于 A，只是写法不推荐"}]', '"B"', '**思路**：C 允许 union 类型双关，C++ 不允许 —— 同一时刻只有一个成员是"活的"，读别的成员是未定义行为。
+
+**正确写法**
+```cpp
+unsigned u;
+std::memcpy(&u, &x.f, sizeof u);              // C++11 起标准保证，编译器会优化成一条 mov
+// 或者 C++20
+unsigned u2 = std::bit_cast<unsigned>(x.f);   // 要求源与目标同大小、都可平凡复制
+```
+
+**要点**
+- 你在 g++ / clang 上真的会打印 `3f800000` —— 但那是编译器"容忍"，不是标准保证。变量一旦是 `constexpr`、或整个 union 被常量传播，`-O2` 下的结果可能和直觉不一致。
+- 真实事故来源：`union { float f; int i; }` 读非活跃成员做浮点判等，换个编译器或优化级别结果就漂。
+- 需要"按位重解释"就用 `memcpy` / `bit_cast`，它们语义明确、且在现代编译器上零开销。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (180, 1, 'choice', '选择 10 · 一个 union 有多大', '```cpp
+union U {
+    char   a[5];
+    int    b;
+    double c;
+};
+
+struct P {
+    char tag;
+    U    body;
+};
+```', '按 x86-64 常见 ABI（`double` 对齐 8 字节），`sizeof(U)` 与 `sizeof(P)` 分别是？', 0, 10, '[{"label": "A", "text": "5 和 6 —— union 取最大成员，结构体把成员直接接上"}, {"label": "B", "text": "8 和 9 —— union 按最大对齐补齐，结构体不补"}, {"label": "C", "text": "8 和 16 —— 两者都按各自的最大对齐取整"}, {"label": "D", "text": "17 和 18 —— union 也要把所有成员都占住"}]', '"C"', '**思路**：`sizeof(union)` = 最大成员的字节数，再向上取整到**最大对齐**；`struct` 里每个成员按自己的对齐摆放，缝隙补 padding。
+
+- `char[5]` 大 5 / 对齐 1，`int` 大 4 / 对齐 4，`double` 大 8 / 对齐 8 ⇒ `sizeof(U) = 8`。
+- `P`：`tag` 占 1 字节，`body` 要求 8 字节对齐 ⇒ 补 7 字节，`1 + 7 + 8 = 16`。
+
+**要点**
+- 对齐取的是**成员里最大的那个对齐**，不是"最大成员的类型"本身。
+- 别用"成员大小相加"验算布局：`offsetof` + `static_assert` 才是可信的核对方式。
+- x86-64 的 Linux/Windows 通常一致；某些 32 位 ARM ABI 里 `double` 只要求 4 字节对齐，`sizeof` 会变——这也是跨平台不能直接 `fwrite` 结构体的原因。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (181, 1, 'choice', '选择 11 · Msg 能不能直接声明', '```cpp
+struct Msg {
+    int kind;
+    union {
+        int         num;
+        std::string text;
+    };
+};
+```', '`Msg m;` 这一行会怎样？', 0, 11, '[{"label": "A", "text": "编译通过，num 与 text 都处于未初始化状态"}, {"label": "B", "text": "编译通过，text 被默认构造成空串"}, {"label": "C", "text": "编译报错 —— 匿名 union 里有非平凡成员，Msg 的默认构造函数被删除了"}, {"label": "D", "text": "编译通过，但 text 从未构造，用它就是未定义行为"}]', '"C"', '**思路**：C++11 起，union 成员只要有非平凡的特殊成员函数，union 对应的那些函数就被**删除**。
+
+**正确写法**
+```cpp
+struct Msg {
+    Kind kind;
+    union { int num; std::string text; };
+
+    Msg() : kind(Kind::Num) { num = 0; }
+    explicit Msg(const char* s) : kind(Kind::Text) { new (&text) std::string(s); }
+    ~Msg() { if (kind == Kind::Text) text.~basic_string(); }
+};
+```
+
+**要点**
+- `std::string` 有非平凡的默认构造与析构 ⇒ 匿名 union 的默认构造、析构都被删 ⇒ 外层 `Msg` 的默认构造跟着被删。
+- 报错是 `use of deleted function ''Msg::Msg()''`，很容易被误读成"union 不能放 string"——能放，但不能不管它。
+- `= default` 救不了：默认化一个被删除的函数，结果还是删除。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (182, 1, 'blank', '阅读 3 · 头结构的真实大小', '#include <cstddef>
+#include <cstdint>
+
+union Body {
+    struct { uint32_t seq; uint16_t len; } hdr;
+    uint8_t  raw[8];
+};
+
+struct Packet {
+    uint8_t kind;
+    Body    body;
+};
+
+static_assert(sizeof(Body)           == ______, "Body 多大？");      /* 空1 */
+static_assert(offsetof(Packet, body) == ______, "body 从哪开始？");  /* 空2 */', '空 1 填 `sizeof(Body)`，空 2 填 `body` 在 `Packet` 里的字节偏移。两个空都只填**十进制数字**（按 x86-64 常见 ABI）。', 1, 17, NULL, '[["8"], ["4"]]', '**思路**：`Body` 取最大成员（8 字节）并按最大对齐（4）取整 ⇒ 8；`Packet` 里 `kind` 占 1 字节，`body` 要求 4 字节对齐 ⇒ 偏移 4。
+
+**要点**
+- 匿名 `struct { uint32_t seq; uint16_t len; }` **不是 6 字节**，是 8 —— 尾部补 2 字节，保证数组里每个元素都对齐。
+- 所以 `Packet` 是 12 而不是 10。"文档写 10 字节、抓包算出 12 字节"的经典对不上号，差的就是这 2 字节。
+- 要跨编译器稳定：用 `static_assert` 把大小钉死，或按字段逐字节序列化（`std::endian` + `memcpy`），别直接 `fwrite` 整个结构体。', '', '', '', NULL, 0, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
+INSERT INTO practice_exercises (id, chapter_id, type, title, prompt, question, keep_notes, sort_order, options, answer, solution, starter_easy, starter_medium, starter_hard, test_driver, total_cases, time_limit_ms, status) VALUES (183, 1, 'short', '短题 7 · 亲手管一个 union', '用 `enum class` + `union` 实现一个**带标签的联合体**（tagged union），把三种值塞进同一块内存：
+
+1. `enum class Kind { Int, Real, Obj };`
+2. `class Value` 的四个构造 + 析构：
+   - `Value()` → `Kind::Int`，整数 0
+   - `Value(int)` → `Kind::Int`
+   - `Value(double)` → `Kind::Real`
+   - `Value(const Tracked&)` → `Kind::Obj`，**必须在 union 成员上 placement new**
+   - `~Value()` → **只析构活跃的那个成员**（只有 `Kind::Obj` 才去析构 `Tracked`）
+3. **显式禁止拷贝**（`= delete`）：union 里有非平凡成员时，编译器本来就会删掉隐式拷贝，写出来是为了让意图明确、报错落在改动点
+4. 四个访问器：`kind()` / `as_int()` / `as_real()` / `as_tracked()`，类型不对时分别返回 `0` / `0.0` / `nullptr`，**不许 reinterpret**
+
+`Tracked` 已提供（请勿修改），它带一个**存活计数**：隐藏测试会在构造/析构前后对比 `Tracked::alive()` —— 漏写析构、或者不管 `kind` 见谁都析构，都会当场露出来。
+
+> 考点：union 只负责「放」，不负责「造」和「销毁」。活跃成员靠 placement new 出生，靠显式调用析构函数死亡 —— 这一套正是 `std::variant` 内部干的事。
+', NULL, 0, 24, NULL, NULL, '**思路**：`enum class` 记标签，`union` 共用内存，构造靠 placement new、析构靠显式调用 —— 这就是 `std::variant` 的最小骨架。
+
+**参考实现**
+```cpp
+class Value {
+public:
+    Value() : kind_(Kind::Int) { i_ = 0; }
+    explicit Value(int v) : kind_(Kind::Int) { i_ = v; }
+    explicit Value(double v) : kind_(Kind::Real) { d_ = v; }
+    explicit Value(const Tracked& t) : kind_(Kind::Obj) { new (&t_) Tracked(t); }
+    ~Value() { if (kind_ == Kind::Obj) t_.~Tracked(); }
+
+    Value(const Value&) = delete;
+    Value& operator=(const Value&) = delete;
+
+    Kind kind() const { return kind_; }
+    int  as_int() const { return kind_ == Kind::Int ? i_ : 0; }
+    double as_real() const { return kind_ == Kind::Real ? d_ : 0.0; }
+    const Tracked* as_tracked() const { return kind_ == Kind::Obj ? &t_ : nullptr; }
+
+private:
+    Kind kind_;
+    union { int i_; double d_; Tracked t_; };
+};
+```
+
+**要点**
+- 直接 `t_ = t;` 是给一个**还没出生**的对象赋值 ⇒ 未定义行为；必须先 `new (&t_) Tracked(t)`。
+- 析构必须判 `kind_`：对 `int` 值去调 `Tracked` 的析构，`alive()` 会变成负数（测试第 9 条专抓这个）。
+- `= delete` 这条是**显式冗余**：只要 union 里有非平凡成员，隐式拷贝构造/赋值本来就被删了。写出来是为了把意图钉在代码里——真要能拷贝，得自己写深拷贝（`std::variant` 替你做完了）。
+- 真实项目别手写：`std::variant<Tracked, int, double>` 就是这套东西的工业版，还带 `visit`。', '#include <cstddef>
+#include <new>
+
+// 带存活计数的被管理类型（已提供，请勿修改）
+struct Tracked {
+    int v;
+    explicit Tracked(int x) : v(x) { ++alive(); }
+    Tracked(const Tracked& o) : v(o.v) { ++alive(); }
+    ~Tracked() { --alive(); }
+    static int& alive() { static int n = 0; return n; }
+};
+
+enum class Kind { Int, Real, Obj };
+
+class Value {
+public:
+    Value() : kind_(Kind::Int) { i_ = 0; }
+    explicit Value(int v) : kind_(Kind::Int) { i_ = v; }
+    explicit Value(double v) : kind_(Kind::Real) { d_ = v; }
+
+    // TODO: 在 t_ 上 placement new 一份 Tracked 副本
+    explicit Value(const Tracked& t) : kind_(Kind::Obj) {
+        // 提示：new (&t_) Tracked(t);
+    }
+
+    // TODO: 只析构活跃成员
+    ~Value() {
+        // 提示：if (kind_ == Kind::Obj) t_.~Tracked();
+    }
+
+    Value(const Value&) = delete;
+    Value& operator=(const Value&) = delete;
+
+    Kind   kind() const    { return kind_; }
+    int    as_int() const  { return kind_ == Kind::Int  ? i_ : 0; }
+    double as_real() const { return kind_ == Kind::Real ? d_ : 0.0; }
+
+    // TODO: 不是 Obj 时返回 nullptr
+    const Tracked* as_tracked() const { return nullptr; }
+
+private:
+    Kind kind_;
+    union { int i_; double d_; Tracked t_; };
+};
+
+// 只实现，不要写 main（隐藏测试会提供）
+', '#include <cstddef>
+#include <new>
+
+// 带存活计数的被管理类型（已提供，请勿修改）
+struct Tracked {
+    int v;
+    explicit Tracked(int x) : v(x) { ++alive(); }
+    Tracked(const Tracked& o) : v(o.v) { ++alive(); }
+    ~Tracked() { --alive(); }
+    static int& alive() { static int n = 0; return n; }
+};
+
+// 实现（签名必须一致，隐藏测试会直接调用）：
+//   enum class Kind { Int, Real, Obj };
+//   class Value {
+//   public:
+//       Value();                          // Kind::Int，整数 0
+//       explicit Value(int v);            // Kind::Int
+//       explicit Value(double v);         // Kind::Real
+//       explicit Value(const Tracked& t); // Kind::Obj，placement new 构造
+//       ~Value();                         // 只析构活跃成员
+//       Value(const Value&) = delete;
+//       Value& operator=(const Value&) = delete;
+//       Kind kind() const;
+//       int  as_int() const;                  // 非 Int 返回 0
+//       double as_real() const;               // 非 Real 返回 0.0
+//       const Tracked* as_tracked() const;    // 非 Obj 返回 nullptr
+//   private:
+//       Kind kind_;
+//       union { int i_; double d_; Tracked t_; };
+//   };
+
+// 只实现，不要写 main（隐藏测试会提供）
+', '#include <cstddef>
+#include <new>
+
+// 带存活计数的被管理类型（已提供，请勿修改）
+struct Tracked {
+    int v;
+    explicit Tracked(int x) : v(x) { ++alive(); }
+    Tracked(const Tracked& o) : v(o.v) { ++alive(); }
+    ~Tracked() { --alive(); }
+    static int& alive() { static int n = 0; return n; }
+};
+
+// 需求：自己实现一个带标签的联合体（tagged union）
+//   - enum class Kind { Int, Real, Obj }，三种值共用一块内存
+//   - 构造：Value() / Value(int) / Value(double) / Value(const Tracked&)
+//   - 析构：只析构活跃成员，绝不许对非 Obj 的值调 Tracked 的析构
+//   - 禁止拷贝（拷贝后必然双重销毁）
+//   - 访问器：kind() / as_int() / as_real() / as_tracked()，类型不符返回 0 / 0.0 / nullptr
+//   - 隐藏测试会用 Tracked::alive() 检查构造与析构是否配平
+
+// 只实现，不要写 main（隐藏测试会提供）
+', '#include <cstdio>
+
+int main() {
+    int fail = 0;
+    Tracked::alive() = 0;
+
+    // 用例1：Int 的 kind
+    {
+        Value v(42);
+        if (v.kind() != Kind::Int) {
+            std::printf("FAIL: Value(42).kind() 应为 Int\\n");
+            ++fail;
+        }
+    }
+    // 用例2：Int 的值
+    {
+        Value v(42);
+        if (v.as_int() != 42) {
+            std::printf("FAIL: Value(42).as_int() 应为 42\\n");
+            ++fail;
+        }
+    }
+    // 用例3：Real 的 kind 与值
+    {
+        Value v(3.5);
+        if (v.kind() != Kind::Real || v.as_real() != 3.5) {
+            std::printf("FAIL: Value(3.5) 应为 Real / 3.5\\n");
+            ++fail;
+        }
+    }
+    // 用例4：Int 值的 as_tracked 必须给 nullptr
+    {
+        Value v(7);
+        if (v.as_tracked() != nullptr) {
+            std::printf("FAIL: Int 值的 as_tracked() 应返回 nullptr\\n");
+            ++fail;
+        }
+    }
+    // 用例5：装一个 Obj 后 alive 恰为 1（多了说明没配平临时量或重复构造）
+    {
+        Value v(Tracked(9));
+        if (Tracked::alive() != 1) {
+            std::printf("FAIL: 装一个 Obj 后 alive 应为 1，实际 %d\\n", Tracked::alive());
+            ++fail;
+        }
+    }
+    // 用例6：Obj 取值正确
+    {
+        Value v(Tracked(9));
+        const Tracked* p = v.as_tracked();
+        if (p == nullptr || p->v != 9) {
+            std::printf("FAIL: as_tracked() 应指向值为 9 的对象\\n");
+            ++fail;
+        }
+    }
+    // 用例7：Obj 值的 as_int 不能瞎读内存
+    {
+        Value v(Tracked(9));
+        if (v.as_int() != 0) {
+            std::printf("FAIL: Obj 值的 as_int() 应返回 0\\n");
+            ++fail;
+        }
+    }
+    // 用例8：离开作用域后 alive 归零（漏写析构就挂在这里）
+    if (Tracked::alive() != 0) {
+        std::printf("FAIL: Obj 析构后 alive 应回到 0，实际 %d\\n", Tracked::alive());
+        ++fail;
+    }
+    // 用例9：混合类型混着析构，alive 仍归零（不判 kind 就析构会在这里露出来）
+    {
+        Value a(1);
+        Value b(2.5);
+        Value c(Tracked(3));
+        Value d(4);
+    }
+    if (Tracked::alive() != 0) {
+        std::printf("FAIL: 混合析构后 alive 应回到 0，实际 %d\\n", Tracked::alive());
+        ++fail;
+    }
+    // 用例10：默认构造必须是 Int / 0
+    {
+        Value v;
+        if (v.kind() != Kind::Int || v.as_int() != 0) {
+            std::printf("FAIL: 默认构造应为 Int / 0\\n");
+            ++fail;
+        }
+    }
+    // 用例11：Obj 值的 as_real 也不能瞎读内存
+    {
+        Value v(Tracked(9));
+        if (v.as_real() != 0.0) {
+            std::printf("FAIL: Obj 值的 as_real() 应返回 0.0\\n");
+            ++fail;
+        }
+    }
+
+    if (fail == 0) std::printf("PASS\\n");
+    return fail;
+}
+', 11, 2000, 1) ON DUPLICATE KEY UPDATE chapter_id=VALUES(chapter_id), type=VALUES(type), title=VALUES(title), prompt=VALUES(prompt), question=VALUES(question), keep_notes=VALUES(keep_notes), sort_order=VALUES(sort_order), options=VALUES(options), answer=VALUES(answer), solution=VALUES(solution), starter_easy=VALUES(starter_easy), starter_medium=VALUES(starter_medium), starter_hard=VALUES(starter_hard), test_driver=VALUES(test_driver), total_cases=VALUES(total_cases), time_limit_ms=VALUES(time_limit_ms), status=VALUES(status);
