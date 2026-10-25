@@ -89,10 +89,14 @@
 
     // 题目标题里带的题型前缀（「选择 2 · 」「短题 3 · 」「Boss · 」）与相邻的题型徽章重复，
     // 而且左栏只有 224px 宽，前缀会吃掉近一半标题宽度 ⇒ 展示时剥掉，只留正题名。
-    // 题库 154 条标题全部带此前缀（生成器 title 约定）；剥不到或剥空则原样返回，避免标题消失。
+    // 题库全部标题带此前缀（生成器 title 约定）；剥不到或剥空则原样返回，避免标题消失。
+    // ⚠️ 前缀清单必须跟着题库扩充同步：C7 的源码阅读题是「阅读 1 · …」、容器实现题是
+    //    「实现 1 · …」，不在清单里就会原样漏到左栏与工作台标题上（徽章已写明题型，纯冗余）。
+    const TITLE_PREFIX = /^(选择|填空|短题|阅读|实现|写代码|Boss)\s*\d*\s*[·•・.:：]\s*/;
+
     function displayTitle(title) {
         const t = (title || '').trim();
-        const stripped = t.replace(/^(选择|填空|短题|写代码|Boss)\s*\d*\s*[·•・.]\s*/, '').trim();
+        const stripped = t.replace(TITLE_PREFIX, '').trim();
         return stripped || t;
     }
 
@@ -817,11 +821,20 @@
             ? { question: '', code: stripCodeFence(ex.prompt) }
             : splitPromptNotes(ex.prompt, 'blank');
         const question = (ex.question || '').trim() || split.question;
-        const intro = question ? '<p class="practice-blank-note">' + esc(question) + '</p>' : '';
+        // 说明文本是 markdown（含 `**加粗**` 与 `` `行内代码` ``）：必须走 renderMarkdownInto，
+        // 用 esc() 直接塞进 HTML 会把 ** 和反引号原样显示出来（2026-10-25 修）。
+        const intro = question ? '<div class="practice-blank-note markdown-body"></div>' : '';
         setPromptHtml(
             '<div class="practice-prompt">' + intro +
             '<div class="practice-blank-code"><div class="practice-blank-body">' +
             renderBlankCode(split.code) + '</div></div></div>');
+        if (question) {
+            const note = promptHostEl ? promptHostEl.querySelector('.practice-blank-note') : null;
+            if (note) {
+                if (window.renderMarkdownInto) renderMarkdownInto(note, question);
+                else note.textContent = question;
+            }
+        }
         editorCardEl.hidden = true;
         answerCardEl.hidden = true;
         syncActions('objective');
