@@ -79,7 +79,7 @@
 
 ### C1 · 现代语法糖
 
-> 本章定位：不从零教语法，专考老手容易翻车的地方——`auto` / `decltype` 的推导真相、`enum class` 的强类型边界与 `switch` 查漏、`override` 的编译期守卫、花括号初始化的重载优先级、`initializer_list` 的生存期，以及 `union` 的活跃成员、大小对齐与手工构造/析构。
+> 本章定位：不从零教语法，专考老手容易翻车的地方——`auto` / `decltype` 的推导真相、`enum class` 的强类型边界与 `switch` 查漏、`override` 的编译期守卫、花括号与圆括号两套初始化语义、`initializer_list` 的生存期、`explicit` 挡住的那条隐式转换、属性的真实作用域、头文件里 `inline` / `static` 变量的链接差异，以及 `union` 的活跃成员、大小对齐与手工构造/析构。
 
 **设计口径（2026-10-25 扩充后）**
 
@@ -95,11 +95,16 @@
 | 推导 | 选 1 · `auto` 推出什么 | 阅读 2 · `decltype(auto)` + 只读绑定 | 短 1 · `get_ref` / `get_value` |
 | 类关键字 | 选 7 · 少 `const` 静默不覆盖 | 填空 2 · 补 `override` 让编译期报错 | 短 3 · override / final / =delete |
 | 初始化 | 选 8 · 花括号抢走重载 | 阅读 1 · `initializer_list` 存进成员 | 短 4 / 短 6 |
+| 容器初始化 | 选 12 · `vector` 的 `(3)` vs `{3}` | — | 短 8 · 同一个类同时提供两种构造 |
+| 隐式转换 | 选 16 · `explicit` 拦住哪几行 | — | 短 8 的 `is_convertible` 用例 |
+| 属性 | 选 13 · 哪条属性写了等于没写 | — | — |
+| 别名 | 选 15 · `typedef` 干不了的那件事 | — | — |
+| 链接与 ODR | 选 14 · 头文件里的计数器有几份 | 阅读 4 · 一个计数器还是两个 | — |
 | 枚举 | 选 5 · 哪一行编译不过 → 选 6 · 漏一个分支谁来提醒 | — | 短 5 · 位运算 + `constexpr` |
 | 结构化绑定 | 选 4 · 能不能改到 map | — | 短 6 · 零拷贝遍历 |
 | **union** | 选 9 · 读非活跃成员 → 选 10 · 一个 union 有多大 → 选 11 · 为什么不能直接声明 | 阅读 3 · 布局算到字节 | 短 7 · tagged union 自己管生死 |
 
-#### 选择题 ×11（sort 1-11）
+#### 选择题 ×16（sort 1-16）
 
 | # | 标题 | 考点 | 答案 | 错项设计（各自对应的误解） |
 |---|---|---|---|---|
@@ -114,8 +119,13 @@
 | 179 | 换个身份读同一块内存 | union 同一时刻只有一个活跃成员，读别的成员是 UB | B | A 只在 g++ 上实测过（真能打印 `3f800000`）/ C 以为跨类型访问编译不过（其实能过）/ D 把 UB 说成实现定义 |
 | 180 | 一个 union 有多大 | `sizeof(union)` = 最大成员按最大对齐取整；struct 每个成员各自对齐再补 padding | C | A 忽略对齐（5/6）/ B 只补 union 不补 struct（8/9）/ D 以为 union 成员累加（17/18） |
 | 181 | Msg 能不能直接声明 | union 有非平凡成员 ⇒ 默认构造/析构被删 ⇒ 外层类跟着被删 | C | A 以为只是「未初始化」/ B 以为 `std::string` 会被默认构造成空串 / D 以为能编译但危险 |
+| 184 | 括号里是几个，花括号里是什么 | `(3)` 走 `vector(size_type)`（3 个 0），`{3}` 走 `initializer_list`（1 个 3） | A | B 两者完全颠倒 / C 以为花括号也该按个数 / D 以为括号也当列表 |
+| 185 | 哪条属性写了等于没写 | `[[nodiscard]]` 对 `void` 返回值没有「可丢弃的东西」，GCC 直接报 `-Wattributes` | B | A 以为 `nodiscard` 不生效（实测 `-Wunused-result`）/ C 以为 `[[maybe_unused]]` 无用（实测关掉 unused-parameter）/ D 以为 `[[fallthrough]]` 无用（实测关掉 `-Wimplicit-fallthrough`） |
+| 186 | 头文件里的计数器有几份 | `static` 在头文件里是内部链接（每个 TU 一份），`inline` 变量全程序一份 | A | B 以为 static 也共享 / C 以为 inline 变量也每 TU 一份 / D 以为 static 会重复定义（真正炸的是外部链接的普通定义） |
+| 187 | typedef 干不了的那件事 | 模板别名只有 `using` 能做：`typedef` 带不了模板参数 | B | A `template` 不能修饰 `typedef`（`template declaration of 'typedef'`）/ C 缺模板头 ⇒ `'T' was not declared` / D 包一层 struct 得到的是**新类型**，`Vec<int>` 不是容器 |
+| 188 | explicit 拦住了哪几行 | `explicit` 挡**隐式转换**（拷贝初始化、实参传递），不挡直接初始化 | B | A 只看到拷贝初始化 / C 以为括号形式也算隐式 / D 以为花括号也被挡 |
 
-#### 填空题 ×6（sort 12-17）
+#### 填空题 ×7（sort 17-23）
 
 | # | 标题 | 题干要点 | 答案 | 备注 |
 |---|---|---|---|---|
@@ -125,8 +135,9 @@
 | 174 | 存下来的 initializer_list | 成员类型改成真正拥有元素的容器 | `init` / `vector` | **源码阅读**（`keep_notes=1`）：`initializer_list` 只是「指针 + 长度」，存成员即悬垂 |
 | 175 | 返回类型与只读绑定 | 返回引用 + 只读零拷贝遍历 | `decltype(auto)`（`auto&` 亦可）/ `const auto&` | **源码阅读**：与选 1、短 1 同一条主线 |
 | 182 | 头结构的真实大小 | 算 `sizeof(Body)` 与 `offsetof(Packet, body)` | `8` / `4` | **源码阅读**：`struct { uint32_t; uint16_t; }` 是 8 不是 6（尾部 padding），`Packet` 是 12 不是 10——协议抓包对不上号的经典来源 |
+| 189 | 一个计数器还是两个 | 填关键字让两次 `++` 累加成 2；再填换成 `static` 后有几个对象 | `inline` / `2`（`两` 亦可） | **源码阅读**（`keep_notes=1`）：`inline` 变量全程序一份；`static` 是每个 TU 各一份，各加一次仍是 1 |
 
-#### 写代码题 ×7（sort 18-24）
+#### 写代码题 ×8（sort 24-31）
 
 | # | 题 | 知识点 | 入门（给骨架） | 进阶（给签名） | 挑战（只给需求） | 隐藏用例 |
 |---|---|---|---|---|---|---|
@@ -137,8 +148,9 @@
 | 176 | enum class 权限位 | 自重载 `operator\|` / `operator&` + `constexpr` | 补四个函数体 | 只给签名 | 只给需求 | 8（含一行 `static_assert` 强制编译期求值） |
 | 177 | 结构化绑定零拷贝遍历 | 绑定方式决定「拷贝 / 只读引用 / 可写引用」 | 填空绑定方式 | 只给签名 | 只给需求 | 7（用 `copies` 计数器验证零拷贝） |
 | 183 | 亲手管一个 union | 标签枚举 + union 共用内存 + placement new / 显式析构 | 补构造与析构体 | 只给签名 | 只给需求 | 11（`Tracked::alive()` 抓漏析构、误析构、用赋值代替 placement new） |
+| 190 | 同一个类，两种构造 | `initializer_list` 抢占 `{}`；`explicit` 只挡隐式转换 | 补四个构造体 | 只给签名 | 只给需求 | 7（`(3)` / `{3}` / `(3,7)` / `{3,7}` / `{}` / `{1,2,3}` + `is_convertible` 查 `explicit`） |
 
-#### Boss · 类型安全的枚举状态机（sort 25）
+#### Boss · 类型安全的枚举状态机（sort 32）
 
 需求：TCP 状态用 `enum class`，非法转移检测 + 序列化 round-trip + `=delete` 禁拷贝。
 
@@ -148,7 +160,20 @@
 | 进阶 | 只给需求 + 测试描述 | 自设计状态枚举和转移 |
 | 挑战 | 加多态状态处理器 + 序列化 | 非法转移被拒 / round-trip / =delete 禁拷贝 |
 
-#### 本次扩充记录（2026-10-25）
+#### 第二批扩充记录（2026-10-25）
+
+- 题库 183 → **190**，C1 25 → **32** 题（选择 11→16 / 填空 6→7 / 短题 7→8 / Boss 1）。
+- 补的都是「**日常必用、但从来没被单独讲过**」的语法点，全部先用本机 g++ 13.1.0 按沙箱参数 `-std=c++20 -O2 -Wall -pthread` 实测再落题：
+  - `184` `vector<int> a(3)` / `b{3}` ⇒ `a.size()=3, a[0]=0` / `b.size()=1, b[0]=3`（`(3,7)`/`{3,7}` 一并实测）。
+  - `185` 四类属性真实效果：`[[nodiscard]] int` 报 `-Wunused-result`；`[[nodiscard]] void` 报 `'nodiscard' attribute applied to 'void close_db()' with void return type [-Wattributes]`（⇒ 这条等于白写）；`[[maybe_unused]]` 关掉 `-Wextra` 的 unused-parameter；`[[fallthrough]]` 关掉 `-Wextra` 的 `-Wimplicit-fallthrough`（`-Wall` 下本来就不报）。
+  - `186` 两 TU 实测输出 `static=1 inline=2`。
+  - `187` 四个选项逐个编译：只有 `template <class T> using` 通过，其余分别错在 `template declaration of 'typedef'` / `'T' was not declared` / `too many initializers for 'Vec<int>'`。
+  - `188` 实测 `Widget b = 42;` 与 `send(42);` 报错，`Widget a(42);` / `Widget c{42};` 通过。
+- `190` 的判分做足变异测试：去掉 `explicit` / 把 `(n)` 当成「1 个值为 n」/ 列表构造只取首元素 / 双参构造忽略 `value` —— 4 组变异全部被判失败（其中「只取首元素」一次挂两条用例）。`starter_easy` 也确认能编译（只是 7 条用例里挂 6 条，符合骨架预期）。
+- 顺手修了个展示层隐患：**选项文本走 `esc()` 纯文本渲染，不解析 markdown**，所以选项里写反引号会原样显示（全库 244 个选项里只有这批新写的 10 个带了反引号，已全部去掉；代码型的选项直接以纯文本展示）。
+- `189` 是这章唯一需要「两个 `.cpp` 才讲得清」的知识点，沙箱只能提交单文件 ⇒ 三关里只保留「选择（选 14）+ 源码阅读（阅读 4）」，写代码那关不硬凑。
+
+#### 第一批扩充记录（2026-10-25）
 
 - 题库 177 → **183**，C1 19 → **25** 题（选择 7→11 / 填空 5→6 / 短题 6→7 / Boss 1）。
 - **union 此前全库 0 题**，这次按三关补齐：`179`（读非活跃成员是 UB）→ `180`（大小与对齐）→ `181`（非平凡成员删默认构造）→ `182`（布局算到字节）→ `183`（自己写 tagged union）。这条线正好接住 C2 的移动语义与 C3 的 `unique_ptr`：union 不负责构造/析构，谁负责？答：手写，或者用 `std::variant`。

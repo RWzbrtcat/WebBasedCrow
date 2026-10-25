@@ -52,7 +52,7 @@ EXERCISES = [
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 1 · auto 与 decltype 推导',
-        'sort_order': 18,
+        'sort_order': 24,
         'prompt': (
             '实现两个函数，验证 `auto` 的类型推导规则：\n\n'
             '1. `get_ref()`：返回全局变量 `g_value` 的**引用**\n'
@@ -127,7 +127,7 @@ int main() {
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 2 · enum class 类型安全',
-        'sort_order': 19,
+        'sort_order': 25,
         'prompt': (
             '用 `enum class` 定义一个日志级别，并实现它与字符串的双向转换：\n\n'
             '1. `enum class LogLevel { Debug, Info, Warn, Error };`\n'
@@ -216,7 +216,7 @@ int main() {
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 3 · override/final/=delete',
-        'sort_order': 20,
+        'sort_order': 26,
         'prompt': (
             '实现一个形状类层次，验证 `override` / `final` / `=default` / `=delete` 四个关键字：\n\n'
             '1. `Shape` 抽象基类：虚析构 + 纯虚函数 `double area() const`\n'
@@ -345,7 +345,7 @@ int main() {
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 4 · 统一初始化与范围 for',
-        'sort_order': 21,
+        'sort_order': 27,
         'prompt': (
             '实现 `IntArray` 类，验证列表初始化与范围 for：\n\n'
             '1. 支持列表初始化：`IntArray a{1, 2, 3, 4};`\n'
@@ -469,7 +469,7 @@ int main() {
         'chapter_id': 1,
         'type': 'boss',
         'title': 'Boss · 类型安全的枚举状态机',
-        'sort_order': 25,
+        'sort_order': 32,
         'prompt': (
             '实现一个类型安全的 TCP 状态机，串起本章全部知识点：\n\n'
             '1. 用 `enum class` 定义 6 个状态：`Closed / Listen / Established / FinWait1 / FinWait2 / TimeWait`\n'
@@ -1273,7 +1273,7 @@ for (auto& x : v) { x += 1; }   /* ② */
         'chapter_id': 1,
         'type': 'blank',
         'title': '填空 1 · 0 与 nullptr 选到不同重载',
-        'sort_order': 12,
+        'sort_order': 17,
         'question': '空 1 必须走到 `f(int)`，空 2 必须走到 `f(void*)`。想清楚：`0` 和 `nullptr` 各自的类型是什么。',
         'prompt': '''void f(int)   { }
 void f(void*) { }
@@ -1287,7 +1287,7 @@ f(______);   /* 空2 */''',
         'chapter_id': 1,
         'type': 'blank',
         'title': '填空 2 · 漏了 const 的 draw',
-        'sort_order': 13,
+        'sort_order': 18,
         'question': '派生类的 `draw` 漏写了 `const`。在空位填一个关键字，让编译器**当场报错**，而不是悄悄把它变成一个「新函数」。',
         'prompt': '''class Base {
 public:
@@ -1305,7 +1305,7 @@ public:
         'chapter_id': 1,
         'type': 'blank',
         'title': '填空 3 · =default / =delete',
-        'sort_order': 14,
+        'sort_order': 19,
         'question': '空 1 要「默认行为」，空 2、空 3 要「彻底禁止拷贝」。三个空都是一种带等号的写法。',
         'prompt': '''class Handle {
 public:
@@ -7130,7 +7130,7 @@ Point p{1, 2};
         'chapter_id': 1,
         'type': 'blank',
         'title': '阅读 1 · 存下来的 initializer_list',
-        'sort_order': 15,
+        'sort_order': 20,
         'keep_notes': True,
         'question': '空 1、空 2 填什么，才能让 `Args` 真正**拥有**元素，而不是只记住一块临时数组的地址？',
         'prompt': r'''// 危险示范：把 initializer_list 当成"容器"存进了成员
@@ -7157,7 +7157,7 @@ int main() {
         'chapter_id': 1,
         'type': 'blank',
         'title': '阅读 2 · 返回类型与只读绑定',
-        'sort_order': 16,
+        'sort_order': 21,
         'keep_notes': True,
         'question': '空 1 要让 `front(v) = 99;` 能改到容器里的元素；空 2 要只读遍历且**不拷贝**元素。',
         'prompt': r'''// 泛型访问器：返回值要"原样保留"表达式的类型
@@ -7187,7 +7187,7 @@ int main() {
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 5 · enum class 权限位',
-        'sort_order': 22,
+        'sort_order': 28,
         'prompt': (
             '用 `enum class` 做一套**类型安全的权限位**（不许退化成裸 `int`）：\n\n'
             '1. `enum class Perm : unsigned char { None = 0, Read = 1, Write = 2, Exec = 4 };`（已提供）\n'
@@ -7311,7 +7311,7 @@ int main() {
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 6 · 结构化绑定零拷贝遍历',
-        'sort_order': 23,
+        'sort_order': 29,
         'prompt': (
             '用**结构化绑定 + 范围 for** 实现两个小函数，并且做到「遍历零拷贝」：\n\n'
             '1. `int total_qty(const std::vector<Row>& rows)`：所有行 `qty` 之和\n'
@@ -7570,7 +7570,7 @@ struct Msg {
         'chapter_id': 1,
         'type': 'blank',
         'title': '阅读 3 · 头结构的真实大小',
-        'sort_order': 17,
+        'sort_order': 22,
         'keep_notes': True,
         'question': '空 1 填 `sizeof(Body)`，空 2 填 `body` 在 `Packet` 里的字节偏移。两个空都只填**十进制数字**（按 x86-64 常见 ABI）。',
         'prompt': r'''#include <cstddef>
@@ -7595,7 +7595,7 @@ static_assert(offsetof(Packet, body) == ______, "body 从哪开始？");  /* 空
         'chapter_id': 1,
         'type': 'short',
         'title': '短题 7 · 亲手管一个 union',
-        'sort_order': 24,
+        'sort_order': 30,
         'prompt': (
             '用 `enum class` + `union` 实现一个**带标签的联合体**（tagged union），把三种值塞进同一块内存：\n\n'
             '1. `enum class Kind { Int, Real, Obj };`\n'
@@ -7818,6 +7818,308 @@ int main() {
 }
 ''',
         'total_cases': 11,
+        'time_limit_ms': 2000,
+    },
+
+    # ================= C1 追加：括号 vs 花括号 / 属性 / inline 变量 / 别名模板 / explicit =================
+    {
+        'id': 184,
+        'chapter_id': 1,
+        'type': 'choice',
+        'title': '选择 12 · 括号里是几个，花括号里是什么',
+        'sort_order': 12,
+        'question': '`a` 与 `b` 分别是什么？',
+        'prompt': r'''```cpp
+std::vector<int> a(3);
+std::vector<int> b{3};
+```''',
+        'options': [
+            {'label': 'A', 'text': 'a 有 3 个元素、全是 0；b 只有 1 个元素，值为 3'},
+            {'label': 'B', 'text': 'a 只有 1 个元素，值为 3；b 有 3 个元素、全是 0'},
+            {'label': 'C', 'text': '两者都是 3 个元素、值全是 0'},
+            {'label': 'D', 'text': '两者都是 1 个元素、值都是 3'},
+        ],
+        'answer': 'A',
+    },
+    {
+        'id': 185,
+        'chapter_id': 1,
+        'type': 'choice',
+        'title': '选择 13 · 哪条属性写了等于没写',
+        'sort_order': 13,
+        'question': '四条属性里有一条**加了也没有任何效果**，编译器会直接给出「这条属性被忽略」的警告。是哪一条？',
+        'prompt': r'''```cpp
+[[nodiscard]] int  open_db();                          /* ① */
+[[nodiscard]] void close_db();                         /* ② */
+void log(int lv, [[maybe_unused]] const char* tag);    /* ③ */
+
+switch (code) {
+case 0:
+    step1();
+    [[fallthrough]];                                   /* ④ */
+case 1:
+    step2();
+    break;
+}
+```''',
+        'options': [
+            {'label': 'A', 'text': '①'},
+            {'label': 'B', 'text': '②'},
+            {'label': 'C', 'text': '③'},
+            {'label': 'D', 'text': '④'},
+        ],
+        'answer': 'B',
+    },
+    {
+        'id': 186,
+        'chapter_id': 1,
+        'type': 'choice',
+        'title': '选择 14 · 头文件里的计数器有几份',
+        'sort_order': 14,
+        'keep_notes': True,
+        'question': '`main` 里连调两次之后，`report()` 打印出来的两个值是什么？',
+        'prompt': r'''```cpp
+// counter.h —— a.cpp 与 b.cpp 各自 #include 一次
+static int g_local  = 0;
+inline int g_shared = 0;
+
+// a.cpp
+void hit_a() { ++g_local; ++g_shared; }
+void report() { std::printf("%d %d\n", g_local, g_shared); }
+
+// b.cpp
+void hit_b() { ++g_local; ++g_shared; }
+
+// main.cpp
+int main() {
+    hit_a();
+    hit_b();
+    report();
+}
+```''',
+        'options': [
+            {'label': 'A', 'text': '输出 1 2'},
+            {'label': 'B', 'text': '输出 2 2'},
+            {'label': 'C', 'text': '输出 1 1'},
+            {'label': 'D', 'text': '链接错误：g_local 与 g_shared 重复定义'},
+        ],
+        'answer': 'A',
+    },
+    {
+        'id': 187,
+        'chapter_id': 1,
+        'type': 'choice',
+        'title': '选择 15 · typedef 干不了的那件事',
+        'sort_order': 15,
+        'question': '要让 `Vec<int> v{1, 2, 3};` 直接编译通过，下面哪种写法可行？',
+        'prompt': r'''```cpp
+#include <vector>
+
+// 目标：让下面这句能编译通过
+Vec<int> v{1, 2, 3};
+```''',
+        'options': [
+            {'label': 'A', 'text': 'template <class T> typedef std::vector<T> Vec;'},
+            {'label': 'B', 'text': 'template <class T> using Vec = std::vector<T>;'},
+            {'label': 'C', 'text': 'using Vec = std::vector<T>;'},
+            {'label': 'D', 'text': 'template <class T> struct Vec { typedef std::vector<T> type; };'},
+        ],
+        'answer': 'B',
+    },
+    {
+        'id': 188,
+        'chapter_id': 1,
+        'type': 'choice',
+        'title': '选择 16 · explicit 拦住了哪几行',
+        'sort_order': 16,
+        'question': '哪几行编译不过？',
+        'prompt': r'''```cpp
+class Widget {
+public:
+    explicit Widget(int id);
+};
+
+void send(Widget w);
+
+Widget a(42);   /* ① */
+Widget b = 42;  /* ② */
+Widget c{42};   /* ③ */
+send(42);       /* ④ */
+```''',
+        'options': [
+            {'label': 'A', 'text': '只有 ②'},
+            {'label': 'B', 'text': '② 和 ④'},
+            {'label': 'C', 'text': '①、②、④'},
+            {'label': 'D', 'text': '②、③、④'},
+        ],
+        'answer': 'B',
+    },
+    {
+        'id': 189,
+        'chapter_id': 1,
+        'type': 'blank',
+        'title': '阅读 4 · 一个计数器还是两个',
+        'sort_order': 23,
+        'keep_notes': True,
+        'question': '空 1 填一个关键字，让 `hit_a(); hit_b();` 之后 `g_hits` 等于 **2**；'
+                    '空 2 填：如果把空 1 换成 `static`，整个程序里一共有几个 `g_hits` 对象（填阿拉伯数字）。',
+        'prompt': r'''// counter.h —— a.cpp 与 b.cpp 各自 #include 一次
+______ int g_hits = 0;      /* 空1 */
+
+// a.cpp
+void hit_a() { ++g_hits; }
+
+// b.cpp
+void hit_b() { ++g_hits; }
+
+// 若把空1 处写成 static int g_hits = 0;
+// 整个程序里共有 ______ 个 g_hits 对象   /* 空2 */''',
+        'answer': [['inline'], ['2', '两']],
+    },
+    {
+        'id': 190,
+        'chapter_id': 1,
+        'type': 'short',
+        'title': '短题 8 · 同一个类，两种构造',
+        'sort_order': 31,
+        'prompt': (
+            '实现一个小容器 `IntVec`，让它**同时支持「按个数」和「按内容」构造**：\n\n'
+            '1. `IntVec()` —— 空容器\n'
+            '2. `explicit IntVec(std::size_t n)` —— `n` 个 `0`\n'
+            '3. `IntVec(std::size_t n, int value)` —— `n` 个 `value`\n'
+            '4. `IntVec(std::initializer_list<int> init)` —— 按列表内容，顺序不变\n'
+            '5. `std::size_t size() const` 与 `operator[]`（`const` 与非 `const` 两版）\n'
+            '6. 成员自己设计（内部直接用 `std::vector<int>` 也可以）\n\n'
+            '隐藏测试会**同时用括号和花括号**构造同一个类，并用 `std::is_convertible` 检查第 2 条必须是 `explicit`。\n\n'
+            '> 考点：类里一旦有了 `initializer_list` 构造函数，`{}` 就**优先**走它 —— `(n)` 与 `{n}` '
+            '从此含义不同，这正是 `std::vector<int> v(3)` ≠ `v{3}` 的根源。\n'
+        ),
+        'starter_easy': r'''#include <cstddef>
+#include <initializer_list>
+#include <vector>
+
+class IntVec {
+public:
+    IntVec() = default;
+
+    // TODO: n 个 0（这一条记得加 explicit）
+    IntVec(std::size_t n) {
+    }
+
+    // TODO: n 个 value
+    IntVec(std::size_t n, int value) {
+    }
+
+    // TODO: 按列表内容，顺序不变
+    IntVec(std::initializer_list<int> init) {
+    }
+
+    std::size_t size() const { return data_.size(); }
+    int& operator[](std::size_t i) { return data_[i]; }
+    const int& operator[](std::size_t i) const { return data_[i]; }
+
+private:
+    std::vector<int> data_;
+};
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_medium': r'''#include <cstddef>
+#include <initializer_list>
+#include <vector>
+
+// 实现（签名必须一致，隐藏测试会直接调用）：
+//   class IntVec {
+//   public:
+//       IntVec();                                   // 空容器
+//       explicit IntVec(std::size_t n);             // n 个 0
+//       IntVec(std::size_t n, int value);           // n 个 value
+//       IntVec(std::initializer_list<int> init);    // 按列表内容
+//       std::size_t size() const;
+//       int&       operator[](std::size_t i);
+//       const int& operator[](std::size_t i) const;
+//   private:
+//       std::vector<int> data_;                     // 存储方式自己定
+//   };
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_hard': r'''// 需求：实现一个小容器 IntVec
+//   - IntVec()                                  空容器
+//   - explicit IntVec(std::size_t n)            n 个 0
+//   - IntVec(std::size_t n, int value)          n 个 value
+//   - IntVec(std::initializer_list<int> init)   按列表内容，顺序不变
+//   - size() / operator[]（const 与非 const 两版）
+//   - 隐藏测试用括号与花括号两种写法构造，并用 is_convertible 检查 explicit
+//   - 存储方式自己定（std::vector<int> 也允许）
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'test_driver': r'''#include <cstdio>
+#include <type_traits>
+
+int main() {
+    int fail = 0;
+
+    // 用例1：(size_t) 构造必须是 explicit，不能 int -> IntVec 隐式转换
+    if constexpr (std::is_convertible<int, IntVec>::value) {
+        std::printf("FAIL: IntVec(std::size_t) 必须声明为 explicit\n");
+        ++fail;
+    }
+    // 用例2：括号 + 一个数字 = n 个 0
+    {
+        IntVec a(3);
+        if (a.size() != 3 || a[0] != 0 || a[2] != 0) {
+            std::printf("FAIL: IntVec(3) 应为 3 个 0，实际 size=%zu\n", a.size());
+            ++fail;
+        }
+    }
+    // 用例3：花括号 + 一个数字 = 一个元素
+    {
+        IntVec b{3};
+        if (b.size() != 1 || b[0] != 3) {
+            std::printf("FAIL: IntVec{3} 应为 1 个元素 3，实际 size=%zu\n", b.size());
+            ++fail;
+        }
+    }
+    // 用例4：括号 + 两个数字 = n 个 value
+    {
+        IntVec c(3, 7);
+        if (c.size() != 3 || c[0] != 7 || c[2] != 7) {
+            std::printf("FAIL: IntVec(3, 7) 应为 3 个 7，实际 size=%zu\n", c.size());
+            ++fail;
+        }
+    }
+    // 用例5：花括号 + 两个数字 = 两个元素
+    {
+        IntVec d{3, 7};
+        if (d.size() != 2 || d[0] != 3 || d[1] != 7) {
+            std::printf("FAIL: IntVec{3, 7} 应为 2 个元素 3 与 7，实际 size=%zu\n", d.size());
+            ++fail;
+        }
+    }
+    // 用例6：空花括号 = 空容器
+    {
+        IntVec e{};
+        if (e.size() != 0) {
+            std::printf("FAIL: IntVec{} 的 size() 应为 0\n");
+            ++fail;
+        }
+    }
+    // 用例7：列表内容按顺序装入
+    {
+        IntVec f{1, 2, 3};
+        if (f.size() != 3 || f[0] != 1 || f[1] != 2 || f[2] != 3) {
+            std::printf("FAIL: IntVec{1,2,3} 的内容或顺序不对\n");
+            ++fail;
+        }
+    }
+
+    if (fail == 0) std::printf("PASS\n");
+    return fail;
+}
+''',
+        'total_cases': 7,
         'time_limit_ms': 2000,
     },
 
@@ -8255,6 +8557,109 @@ private:
 - 析构必须判 `kind_`：对 `int` 值去调 `Tracked` 的析构，`alive()` 会变成负数（测试第 9 条专抓这个）。
 - `= delete` 这条是**显式冗余**：只要 union 里有非平凡成员，隐式拷贝构造/赋值本来就被删了。写出来是为了把意图钉在代码里——真要能拷贝，得自己写深拷贝（`std::variant` 替你做完了）。
 - 真实项目别手写：`std::variant<Tracked, int, double>` 就是这套东西的工业版，还带 `visit`。''',
+
+    184: '''**思路**：`(3)` 走 `vector(size_type)`，是「**3 个**元素、值默认初始化」；`{3}` 走 `vector(initializer_list<int>)`，是「**一个**元素、值为 3」。
+
+**要点**
+- `vector` 同时提供这两种构造，而 `{}` 的优先级**永远**高于 `()`：只要列表里的元素都能转成 `value_type`，就走 `initializer_list`。
+- 所以四句话得到四种不同的东西：`(3)` → 3 个 0；`{3}` → 1 个 3；`(3, 7)` → 3 个 7；`{3, 7}` → 2 个元素 3 与 7。
+- 别靠猜：要「3 个 0」就写 `vector<int> v(3, 0)`，要「一个 3」就写 `vector<int> v{3}`。''',
+
+    185: '''**思路**：`[[nodiscard]]` 警告的是「返回值被丢弃」，而 `void` 函数**没有返回值** —— 这条属性挂上去没有任何东西可警告，GCC 直接报 `'nodiscard' attribute applied to 'void close_db()' with void return type [-Wattributes]`。
+
+**其余三条都真生效**
+- ① `open_db();` 丢掉返回值 ⇒ `warning: ignoring return value of 'int open_db()', declared with attribute 'nodiscard' [-Wunused-result]`。
+- ③ 形参没用 ⇒ `-Wextra` 的 unused-parameter 被 `[[maybe_unused]]` 关掉。
+- ④ `case` 之间故意穿透 ⇒ `-Wextra` 的 `-Wimplicit-fallthrough` 被 `[[fallthrough]]` 标成「这是我故意的」。
+
+**要点**
+- 属性只在**编译器能检查到的地方**起作用；写在不搭的位置不是加固，而是多一条新警告。
+- `[[fallthrough]]` 是**语句**，必须紧挨着下一个 `case` 标签之前；位置写错一样会告警。''',
+
+    186: '''**思路**：头文件里的 `static` 是**内部链接**，每个包含它的 `.cpp` 各拿到一份自己的副本 ⇒ `a.cpp` 与 `b.cpp` 里的 `g_local` 是两个不相干的对象，各加一次各是 1；`inline` 变量（C++17）在**整个程序里只有一份**，两个 TU 指的是同一个对象，各加一次就是 2。
+
+**输出 `1 2`**（本机实测 `static=1 inline=2`）。
+
+**要点**
+- 反直觉点：`static` 在头文件里**不会**造成重复定义 —— 内部链接正是为了避开它。真正会炸的是直接写 `int g_local = 0;`（外部链接 + 两份定义 ⇒ 链接错误）。
+- 头文件里要放「全程序共享的可变状态」用 `inline`；只在本 TU 用的辅助量用 `static` 或匿名命名空间。
+- `inline` 变量跟「内联展开」没关系：它的语义是**允许多处定义、链接期合并成一个**，规则与 `inline` 函数同源。''',
+
+    187: '''**思路**：`typedef` 只能给**已有类型**起别名，带不了模板参数；「模板别名」这件事只有 `using` 能做。
+
+**四个选项的真实结局（本机都编译过）**
+
+| 写法 | 结果 |
+|---|---|
+| `template <class T> typedef std::vector<T> Vec;` | `error: template declaration of 'typedef'` |
+| `template <class T> using Vec = std::vector<T>;` | ✅ 通过 |
+| `using Vec = std::vector<T>;` | `error: 'T' was not declared in this scope` |
+| `template <class T> struct Vec { typedef std::vector<T> type; };` | 能写 `Vec<int>::type`，但 `Vec<int>` 本身不是容器 ⇒ `too many initializers for 'Vec<int>'` |
+
+**要点**
+- `using X = ...` 不只是 `typedef` 的新写法，它是**超集**：模板别名 `typedef` 永远做不到。
+- 别名模板**不产生新类型**：`Vec<int>` 与 `std::vector<int>` 是同一个类型（`is_same` 为真）。第四种「包一层 struct」才产生新类型，还顺带丢掉所有构造函数。''',
+
+    188: '''**思路**：`explicit` 挡的是**隐式转换**（拷贝初始化、实参传递），不挡**直接初始化**。
+
+| 行 | 写法 | 结果 |
+|---|---|---|
+| ① | `Widget a(42);` | 直接初始化 ⇒ 通过 |
+| ② | `Widget b = 42;` | 拷贝初始化，要 `int -> Widget` 隐式转换 ⇒ **报错** |
+| ③ | `Widget c{42};` | 直接列表初始化 ⇒ 通过（只有窄化才报错） |
+| ④ | `send(42);` | 实参要隐式转换 ⇒ **报错** |
+
+所以是 ② 和 ④。
+
+**要点**
+- 别把 `explicit` 理解成「禁用这个构造函数」—— 它只禁止**拿它做隐式转换**。所以 `std::vector<int> v = 3;` 编不过，但 `std::vector<int> v(3);` 可以。
+- 单参数构造、以及「除第一个参数外全有默认值」的构造，默认都该加 `explicit`（C++ Core Guidelines C.46）。''',
+
+    189: '''**思路**：`inline` 变量是 C++17 的「允许多处定义、最终合并成一个」：同一个头文件被两个 TU 各包含一次，链接后仍然只有一个 `g_hits`，两次 `++` 累加得到 2。
+
+**两个空**
+1. `inline`
+2. `2` —— 换成 `static` 就是**内部链接**，每个 TU 一份独立副本；两个 `.cpp` 包含同一个头 ⇒ 两个互不相干的 `g_hits`，各加一次各是 1。
+
+**要点**
+- 会报「多个定义」的从来不是 `static`，而是**外部链接的普通定义**：`int g_hits = 0;` 放进头文件、被两个 TU 包含 ⇒ 链接期 duplicate symbol。
+- `inline` 变量的语义和 `inline` 函数同源：允许重复定义，链接器负责合并；跟「内联展开」没有关系。
+- 头文件里的常量优先 `inline constexpr`；只在本 TU 用的辅助量用 `static` / 匿名命名空间。''',
+
+    190: '''**思路**：类里一旦有了 `initializer_list` 构造函数，`{}` 就**优先**看它；`()` 则永远走普通构造函数。同一个类因此天然有两套语义。
+
+**参考实现**
+```cpp
+class IntVec {
+public:
+    IntVec() = default;
+    explicit IntVec(std::size_t n) : data_(n, 0) {}
+    IntVec(std::size_t n, int value) : data_(n, value) {}
+    IntVec(std::initializer_list<int> init) : data_(init) {}
+
+    std::size_t size() const { return data_.size(); }
+    int&       operator[](std::size_t i)       { return data_[i]; }
+    const int& operator[](std::size_t i) const { return data_[i]; }
+
+private:
+    std::vector<int> data_;
+};
+```
+
+**对照表**
+
+| 写法 | 结果 |
+|---|---|
+| `IntVec(3)` | 3 个 0 |
+| `IntVec{3}` | 1 个元素 3 |
+| `IntVec(3, 7)` | 3 个 7 |
+| `IntVec{3, 7}` | 2 个元素：3 和 7 |
+| `IntVec{}` | 空容器 |
+
+**要点**
+- `explicit` 只挡隐式转换：`IntVec v = 3;` 编不过，但 `IntVec v(3);` 与 `IntVec v{3};` 都合法（后者仍然走 `initializer_list`）。
+- 空花括号是特例：只要类有默认构造函数就走默认构造，不会被 `initializer_list` 抢走。
+- 想避免这种「两套语义」，就别提供 `initializer_list` 构造，或者把「按个数」做成具名静态函数（`IntVec::filled(3, 0)`）。''',
 
     # ================= C2 · 移动语义与完美转发 =================
     6: '''**思路**：移动构造「偷」资源并置空源对象；移动赋值先释放旧资源、再转移，并处理自移动。
