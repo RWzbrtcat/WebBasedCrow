@@ -601,7 +601,7 @@ int main() {
         'chapter_id': 2,
         'type': 'short',
         'title': '短题 1 · 移动构造与移动赋值',
-        'sort_order': 7,
+        'sort_order': 9,
         'prompt': (
             '实现一个**只移动**的 `Buffer` 类（持有动态分配的 `char` 数组）：\n\n'
             '1. 构造 `Buffer(std::size_t size)` 分配 `size` 字节（`size=0` 时 `data` 为 `nullptr`）\n'
@@ -726,7 +726,7 @@ int main() {
         'chapter_id': 2,
         'type': 'short',
         'title': '短题 2 · 修复移动语义的 bug',
-        'sort_order': 8,
+        'sort_order': 10,
         'prompt': (
             '下面的 `Wrapper` 类独占一个 `int*` 资源，但移动语义实现有 bug。\n\n'
             '请找出并修复所有 bug，使隐藏测试全部通过：\n\n'
@@ -852,7 +852,7 @@ int main() {
         'chapter_id': 2,
         'type': 'short',
         'title': '短题 3 · 只移动类（=delete 拷贝）',
-        'sort_order': 9,
+        'sort_order': 11,
         'prompt': (
             '实现一个**独占资源句柄** `Resource`（类似 `unique_ptr` 的简化版）：\n\n'
             '1. 构造 `Resource(int id)`，`id` 为 0 表示「空」（不持有资源）\n'
@@ -966,7 +966,7 @@ int main() {
         'chapter_id': 2,
         'type': 'short',
         'title': '短题 4 · 完美转发工厂',
-        'sort_order': 10,
+        'sort_order': 12,
         'prompt': (
             '实现一个完美转发工厂 `make_thing`，保持参数的左值/右值类别：\n\n'
             '测试类 `Thing` 已提供，它通过构造重载区分左值/右值入参：\n'
@@ -1065,7 +1065,7 @@ int main() {
         'chapter_id': 2,
         'type': 'boss',
         'title': 'Boss · 只移动的 Buffer 类',
-        'sort_order': 11,
+        'sort_order': 14,
         'prompt': (
             '实现一个完整的**只移动** `Buffer` 类，综合移动语义 + 异常安全 + 返回值优化：\n\n'
             '1. 持有动态分配的 `char` 数组，`size()` / `data()` 访问\n'
@@ -1380,7 +1380,7 @@ Widget x = make_widget();
         'chapter_id': 2,
         'type': 'blank',
         'title': '填空 1 · std::move',
-        'sort_order': 4,
+        'sort_order': 5,
         'prompt': '''std::vector<int> a{1, 2, 3};
 std::vector<int> b = ________(a);   // 转移 a 的资源，避免深拷贝''',
         'answer': ['std::move'],
@@ -1390,7 +1390,7 @@ std::vector<int> b = ________(a);   // 转移 a 的资源，避免深拷贝''',
         'chapter_id': 2,
         'type': 'blank',
         'title': '填空 2 · std::forward（完美转发）',
-        'sort_order': 5,
+        'sort_order': 6,
         'prompt': '''template <typename T>
 void wrapper(T&& arg) {
     target(________<T>(arg));   // 保持 arg 的左值/右值类别
@@ -1402,7 +1402,7 @@ void wrapper(T&& arg) {
         'chapter_id': 2,
         'type': 'blank',
         'title': '填空 3 · 移动构造的 noexcept',
-        'sort_order': 6,
+        'sort_order': 7,
         'prompt': '''class Buffer {
 public:
     Buffer(Buffer&& other) ________;   // 声明不抛异常
@@ -1763,7 +1763,7 @@ std::cout << v;   // 会发生什么？
         'chapter_id': 6,
         'type': 'blank',
         'title': '填空 1 · optional value_or',
-        'sort_order': 4,
+        'sort_order': 5,
         'prompt': '''std::optional<int> o;
 int x = o.________(42);   // 无值时给默认值''',
         'answer': ['value_or'],
@@ -1773,7 +1773,7 @@ int x = o.________(42);   // 无值时给默认值''',
         'chapter_id': 6,
         'type': 'blank',
         'title': '填空 2 · variant 访问',
-        'sort_order': 5,
+        'sort_order': 6,
         'prompt': '''std::variant<int, std::string> v = "hi";
 std::________([](auto&& arg){ /* 访问 */ }, v);''',
         'question': '请补全代码：用 std::visit 对 variant 当前持有的类型进行访问。',
@@ -1784,7 +1784,7 @@ std::________([](auto&& arg){ /* 访问 */ }, v);''',
         'chapter_id': 6,
         'type': 'blank',
         'title': '填空 3 · string_view 零拷贝切片',
-        'sort_order': 6,
+        'sort_order': 7,
         'prompt': '''std::string_view view = "hello world";
 auto sub = view.________(0, 5);   // 取前5个字符，不拷贝''',
         'answer': ['substr'],
@@ -4299,7 +4299,7 @@ int main() {
         'chapter_id': 6,
         'type': 'short',
         'title': '短题 1 · optional 返回',
-        'sort_order': 7,
+        'sort_order': 9,
         'prompt': '实现 `std::optional<int> find_first_even(const std::vector<int>& v)`：\n'
                   '返回第一个偶数；没有偶数则返回 `std::nullopt`。\n\n'
                   '> 考点：optional 表示"可能有值"，nullopt 表示无值。',
@@ -4350,7 +4350,7 @@ int main() {
         'chapter_id': 6,
         'type': 'short',
         'title': '短题 2 · string_view 悬垂修复',
-        'sort_order': 8,
+        'sort_order': 10,
         'prompt': '下面的函数返回局部 `std::string` 的 `string_view`，对象销毁后视图悬垂。\n'
                   '修复它：返回字符串字面量的 view（静态存储期，不悬垂）。\n\n'
                   '> 考点：string_view 不拥有内存，指向的对象须在其生命周期内。',
@@ -4396,7 +4396,7 @@ int main() {
         'chapter_id': 6,
         'type': 'short',
         'title': '短题 3 · variant 类型安全访问',
-        'sort_order': 9,
+        'sort_order': 11,
         'prompt': '实现 `std::string describe(const std::variant<int, std::string>& v)`：\n'
                   '用 `std::visit` 访问，int 返回 `"int:42"` 形式，string 返回 `"str:hi"` 形式。\n\n'
                   '> 考点：std::visit + 泛型 lambda + if constexpr 区分类型。',
@@ -4454,7 +4454,7 @@ int main() {
         'chapter_id': 6,
         'type': 'short',
         'title': '短题 4 · optional 重构错误处理',
-        'sort_order': 10,
+        'sort_order': 12,
         'prompt': '用 `optional` 替代"错误码"：实现 `std::optional<int> find_divisible(const std::vector<int>& v, int d)`，\n'
                   '返回第一个能被 d 整除的数；没有则返回 `std::nullopt`。\n\n'
                   '> 考点：optional 表达"可能失败"，替代魔法值 / 错误码。',
@@ -4505,7 +4505,7 @@ int main() {
         'chapter_id': 6,
         'type': 'boss',
         'title': 'Boss · 类型安全配置解析器',
-        'sort_order': 11,
+        'sort_order': 14,
         'prompt': '实现一个简单的类型安全配置类 `Config`：\n\n'
                   '- `void set(const std::string& key, const std::string& val)`：存配置\n'
                   '- `std::optional<std::string> get_str(const std::string& key)`：存在则返回值，否则 nullopt\n'
@@ -8123,6 +8123,388 @@ int main() {
         'time_limit_ms': 2000,
     },
 
+    # ================= C2 扩充（id 191-193，2026-10-25）：noexcept 的真实后果 =================
+    {
+        'id': 191,
+        'chapter_id': 2,
+        'type': 'choice',
+        'title': '选择 4 · 扩容时为什么走的是拷贝',
+        'sort_order': 4,
+        'prompt': '''```cpp
+struct Payload {
+    static int copies, moves;
+    std::string name;
+    Payload(const Payload& o) : name(o.name) { ++copies; }
+    Payload(Payload&& o) : name(std::move(o.name)) { ++moves; }
+};
+
+std::vector<Payload> v;
+for (int i = 0; i < 9; ++i) v.emplace_back();
+
+std::printf("copies=%d moves=%d", Payload::copies, Payload::moves);
+/* 实测输出：copies=15 moves=0 */
+```''',
+        'question': '移动构造明明写得没问题，为什么一扩容 `moves` 一次都没涨？',
+        'options': [
+            {'label': 'A', 'text': 'emplace_back 只能转发构造参数，容器迁移元素时只认拷贝构造'},
+            {'label': 'B', 'text': '移动构造没有声明 noexcept，vector 为了保住强异常安全而退回拷贝'},
+            {'label': 'C', 'text': 'vector 的元素必须连续存放，迁移时只能逐字节复制'},
+            {'label': 'D', 'text': '没开 -O2，移动构造被编译器优化掉了'},
+        ],
+        'answer': 'B',
+    },
+    {
+        'id': 192,
+        'chapter_id': 2,
+        'type': 'blank',
+        'title': '阅读 1 · 两个计数器分别涨到几',
+        'sort_order': 8,
+        'question': 'gcc 的 `vector` 按 2 倍扩容（1→2→4→8→16），9 次 `emplace_back` 累计迁移 15 个元素。'
+                    '两空都填阿拉伯数字。',
+        'prompt': '''#include <string>
+#include <vector>
+#include <utility>
+
+struct Payload {
+    static int copies;
+    static int moves;
+    std::string name;
+
+    Payload(const Payload& o) : name(o.name) { ++copies; }
+    Payload(Payload&& o) : name(std::move(o.name)) { ++moves; }
+    Payload() = default;
+};
+
+std::vector<Payload> v;
+for (int i = 0; i < 9; ++i) v.emplace_back();
+
+/* 执行完上面的循环后：copies = ______ ，moves = ______ */''',
+        'answer': [['15'], ['0']],
+        'keep_notes': 1,
+    },
+    {
+        'id': 193,
+        'chapter_id': 2,
+        'type': 'short',
+        'title': '短题 5 · 让扩容易主',
+        'sort_order': 13,
+        'prompt': (
+            '下面的 `Payload` 已经能移动，但把 9 个元素塞进 `vector` 时，扩容阶段全是拷贝'
+            '（实测 `copies=15 moves=0`）。\n\n'
+            '1. 保留两个静态计数器 `copies` / `moves`，分别统计拷贝构造、移动构造的调用次数\n'
+            '2. `vector` 扩容时必须走移动构造，`copies` 全程保持 **0**\n'
+            '3. `Payload` 仍然必须**可拷贝**（不许用 `=delete` 绕过去）\n'
+            '4. 迁移之后每个元素的内容都不能丢\n\n'
+            '> 考点：`noexcept` 不是「写给别人看的标注」，它直接决定标准库敢不敢用你的移动构造。\n'
+            '> 强异常安全保证要求「迁移到一半抛异常时容器还是原样」，所以标准库只敢在移动构造'
+            '**承诺不抛**时才用它。\n'
+        ),
+        'starter_easy': r'''#include <string>
+#include <utility>
+
+// 只差一个说明符 —— 让 vector 扩容时敢用这个移动构造
+struct Payload {
+    static int copies;
+    static int moves;
+
+    std::string name;
+
+    explicit Payload(std::string n) : name(std::move(n)) {}
+
+    Payload(const Payload& o) : name(o.name) { ++copies; }
+
+    // TODO: 这一行缺了点东西，导致扩容时 vector 宁愿拷贝也不用它
+    Payload(Payload&& o) /* TODO */ : name(std::move(o.name)) { ++moves; }
+};
+
+int Payload::copies = 0;
+int Payload::moves  = 0;
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_medium': r'''#include <string>
+
+// TODO: 实现 Payload，接口如下：
+//   static int copies;                  —— 拷贝构造被调用的次数
+//   static int moves;                   —— 移动构造被调用的次数
+//   std::string name;                   —— 元素内容
+//   explicit Payload(std::string n)      —— 从字符串构造
+//   Payload(const Payload&)              —— 递增 copies
+//   Payload(Payload&&)                   —— 递增 moves
+// 要求：往 std::vector 里塞 9 个元素，反复扩容期间 copies 必须保持 0
+// 注意：不许用 =delete 删掉拷贝构造，这个类型仍然必须可拷贝
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_hard': r'''// 需求：实现 Payload 类型
+//   - 持有一个 std::string 作为内容
+//   - 两个静态计数器 copies / moves，分别统计拷贝构造、移动构造的调用次数
+//   - 必须可拷贝（不许 =delete）
+//   - 塞进 std::vector 后反复扩容时，扩容阶段不得发生任何拷贝，全部走移动
+//   - 迁移完成后每个元素的内容都不能丢
+// 隐藏测试会验证：is_nothrow_move_constructible / is_copy_constructible /
+//   9 次 emplace_back 后 copies == 0 且 moves >= 15 / 内容正确
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'test_driver': r'''#include <cstdio>
+#include <string>
+#include <type_traits>
+#include <utility>
+#include <vector>
+
+int main() {
+    int fail = 0;
+
+    // 用例1：移动构造必须被标准库认定为「不抛」
+    if (!std::is_nothrow_move_constructible<Payload>::value) {
+        std::printf("FAIL: 移动构造没有被 is_nothrow_move_constructible 认可\n");
+        ++fail;
+    }
+    // 用例2：不能靠删掉拷贝构造来绕开问题
+    if (!std::is_copy_constructible<Payload>::value) {
+        std::printf("FAIL: Payload 仍然必须可拷贝（不许 =delete 拷贝构造）\n");
+        ++fail;
+    }
+
+    Payload::copies = 0;
+    Payload::moves  = 0;
+    {
+        std::vector<Payload> v;
+        for (int i = 0; i < 9; ++i) v.emplace_back(std::to_string(i));
+
+        // 用例3：扩容期间不应发生任何拷贝
+        if (Payload::copies != 0) {
+            std::printf("FAIL: 扩容期间发生了 %d 次拷贝\n", Payload::copies);
+            ++fail;
+        }
+        // 用例4：扩容必须真的走移动
+        if (Payload::moves < 15) {
+            std::printf("FAIL: 扩容期间的移动次数只有 %d 次，期望至少 15 次\n", Payload::moves);
+            ++fail;
+        }
+        // 用例5：移动之后元素内容不能丢
+        for (int i = 0; i < 9; ++i) {
+            if (v[static_cast<std::size_t>(i)].name != std::to_string(i)) {
+                std::printf("FAIL: 第 %d 个元素的内容在迁移后丢失\n", i);
+                ++fail;
+                break;
+            }
+        }
+    }
+
+    if (fail == 0) std::printf("PASS\n");
+    return fail;
+}
+''',
+        'total_cases': 5,
+        'time_limit_ms': 2000,
+    },
+
+    # ================= C6 扩充（id 194-196，2026-10-25）：空终止 + 求值时机 =================
+    {
+        'id': 194,
+        'chapter_id': 6,
+        'type': 'choice',
+        'title': '选择 4 · 交给 C 接口时哪行安全',
+        'sort_order': 4,
+        'prompt': '''```cpp
+std::string s = "key=value&flag=1";
+std::string_view sv(s.data() + 4, 5);   /* 逻辑上就是 "value" */
+```''',
+        'question': '上面的 `sv` 只有 5 个字符。下面哪一行能安全地只处理这 5 个字符？',
+        'options': [
+            {'label': 'A', 'text': 'printf("%s", sv.data())'},
+            {'label': 'B', 'text': 'printf("%.*s", (int)sv.size(), sv.data())'},
+            {'label': 'C', 'text': 'printf("%s", sv)'},
+            {'label': 'D', 'text': 'strlen(sv.data()) 求长度'},
+        ],
+        'answer': 'B',
+    },
+    {
+        'id': 195,
+        'chapter_id': 6,
+        'type': 'blank',
+        'title': '阅读 1 · 默认值到底算了几次',
+        'sort_order': 8,
+        'question': '两空都填阿拉伯数字：`g_calls` 最终是几，`r` 最终是几。',
+        'prompt': '''int g_calls = 0;
+int fallback() { ++g_calls; return 99; }
+
+std::optional<int> opt = 42;              /* 真的有值 */
+int r = opt.value_or(fallback());
+
+/* 执行完这两行之后：g_calls = ______ ，r = ______ */''',
+        'answer': [['1'], ['42']],
+        'keep_notes': 1,
+    },
+    {
+        'id': 196,
+        'chapter_id': 6,
+        'type': 'short',
+        'title': '短题 5 · 零拷贝分词器',
+        'sort_order': 13,
+        'prompt': (
+            '用 `std::string_view` 实现一个**零拷贝**分词函数：\n\n'
+            '```cpp\nstd::vector<std::string_view> split(std::string_view s, char sep);\n```\n\n'
+            '1. 按分隔符切分，**不复制任何字符**（每一段都直接指回 `s` 的内存）\n'
+            '2. 连续分隔符产生**空段**：`"a,,b"` → `{"a", "", "b"}`（3 段）\n'
+            '3. 首尾分隔符也产生空段：`",a,"` → `{"", "a", ""}`（3 段）\n'
+            '4. 空串 `""` → 1 段空串（不是 0 段）\n'
+            '5. 段数至少是 `分隔符个数 + 1`\n\n'
+            '> 考点：`string_view` 只是「指针 + 长度」，切片是纯算术——`data()` 前移、`size()` 缩小，'
+            '一个字符都不搬。\n'
+        ),
+        'starter_easy': r'''#include <cstddef>
+#include <string_view>
+#include <vector>
+
+// TODO: 补完 split 的函数体（骨架与循环结构已给）
+std::vector<std::string_view> split(std::string_view s, char sep) {
+    std::vector<std::string_view> out;
+    std::size_t start = 0;
+
+    for (std::size_t i = 0; i < s.size(); ++i) {
+        if (s[i] == sep) {
+            // TODO: 把 [start, i) 这一段塞进 out，然后 start = i + 1
+        }
+    }
+    // TODO: 别忘了最后一段（从 start 到结尾）
+    return out;
+}
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_medium': r'''#include <cstddef>
+#include <string_view>
+#include <vector>
+
+// TODO: 实现 split，接口如下：
+//   std::vector<std::string_view> split(std::string_view s, char sep)
+//   —— 按 sep 切分，返回的每一段都直接指向 s 的内存（零拷贝）
+//   —— 连续分隔符保留空段："a,,b" -> {"a","","b"}
+//   —— 首尾分隔符也保留空段：",a," -> {"","a",""}
+//   —— 空串 -> 1 段空串
+// 提示：s.substr(pos, len) 只做指针算术，不复制字符
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'starter_hard': r'''#include <cstddef>
+#include <string_view>
+#include <vector>
+
+// 需求：实现零拷贝分词器
+//   std::vector<std::string_view> split(std::string_view s, char sep)
+//   - 按 sep 切分，每一段必须直接指向 s 的内存，不复制任何字符
+//   - 连续分隔符、首尾分隔符都要产生空段
+//   - 空串切出 1 段空串
+// 隐藏测试会验证：切分结果、段数、每一段的 data() 都落在原串范围内、原串未被修改
+
+// 只实现，不要写 main（隐藏测试会提供）
+''',
+        'test_driver': r'''#include <cstddef>
+#include <cstdio>
+#include <string>
+#include <string_view>
+#include <vector>
+
+static bool in_range(std::string_view piece, std::string_view whole) {
+    const char* b = whole.data();
+    const char* e = whole.data() + whole.size();
+    return piece.data() >= b && piece.data() <= e &&
+           piece.data() + piece.size() <= e;
+}
+
+int main() {
+    int fail = 0;
+
+    // 用例1：普通切分
+    {
+        std::string s = "a,b,c";
+        auto r = split(std::string_view(s), ',');
+        if (r.size() != 3) {
+            std::printf("FAIL: \"a,b,c\" 应切成 3 段，实际 %zu 段\n", r.size());
+            ++fail;
+        } else if (r[0] != "a" || r[1] != "b" || r[2] != "c") {
+            std::printf("FAIL: \"a,b,c\" 的切分结果不对\n");
+            ++fail;
+        }
+    }
+    // 用例2：连续分隔符保留空段
+    {
+        std::string s = "a,,b";
+        auto r = split(std::string_view(s), ',');
+        if (r.size() != 3) {
+            std::printf("FAIL: \"a,,b\" 应切成 3 段（保留空段），实际 %zu 段\n", r.size());
+            ++fail;
+        } else if (!r[1].empty()) {
+            std::printf("FAIL: \"a,,b\" 中间那一段应为空\n");
+            ++fail;
+        }
+    }
+    // 用例3：首尾分隔符
+    {
+        std::string s = ",a,";
+        auto r = split(std::string_view(s), ',');
+        if (r.size() != 3) {
+            std::printf("FAIL: \",a,\" 应切成 3 段，实际 %zu 段\n", r.size());
+            ++fail;
+        } else if (!r[0].empty() || r[1] != "a" || !r[2].empty()) {
+            std::printf("FAIL: \",a,\" 的切分结果不对\n");
+            ++fail;
+        }
+    }
+    // 用例4：空串切出 1 段
+    {
+        std::string s;
+        auto r = split(std::string_view(s), ',');
+        if (r.size() != 1) {
+            std::printf("FAIL: 空串应切成 1 段，实际 %zu 段\n", r.size());
+            ++fail;
+        }
+    }
+    // 用例5：全程零拷贝（每一段都指回原串）
+    {
+        std::string s = "hello,world,foo";
+        std::string_view whole(s);
+        auto r = split(whole, ',');
+        bool bad = false;
+        for (const auto& piece : r) {
+            if (!in_range(piece, whole)) bad = true;
+        }
+        if (bad) {
+            std::printf("FAIL: 有片段不指向原串内存，说明发生了拷贝\n");
+            ++fail;
+        }
+    }
+    // 用例6：不修改原串
+    {
+        std::string s = "x;y;z";
+        const std::string before = s;
+        (void)split(std::string_view(s), ';');
+        if (s != before) {
+            std::printf("FAIL: split 不应该修改原串\n");
+            ++fail;
+        }
+    }
+    // 用例7：单字符无分隔符
+    {
+        std::string s = "solo";
+        auto r = split(std::string_view(s), ',');
+        if (r.size() != 1 || r[0] != "solo") {
+            std::printf("FAIL: 没有分隔符时应原样切出 1 段\n");
+            ++fail;
+        }
+    }
+
+    if (fail == 0) std::printf("PASS\n");
+    return fail;
+}
+''',
+        'total_cases': 10,
+        'time_limit_ms': 2000,
+    },
+
 ]
 
 # ---------- 题解表（id -> markdown 题解：思路 + 参考实现 + 要点）----------
@@ -8808,6 +9190,74 @@ C++17 起，**纯右值**（如 `return Widget{};`）的拷贝省略是**强制*
 `Buffer(Buffer&& other) noexcept;` 声明移动构造**不抛异常**。
 
 为什么关键：`std::vector` 扩容时要在「移动」和「拷贝」间选——只有元素的移动构造是 `noexcept`，`vector` 才敢用移动（否则中途抛异常无法回滚）；否则退回拷贝，白白损失性能。''',
+
+    191: '''**正确答案：B（移动构造没声明 noexcept）**。
+
+`vector` 扩容要把老缓冲里的元素搬到新缓冲。这一步有个硬要求：**强异常安全**——搬到一半任何一个元素抛异常，容器都必须留在原样。移动构造会把源对象的资源「偷走」，一旦中途抛异常，那些已经被搬过的源对象就回不去了，容器也就还原不了。
+
+所以 libstdc++ 的判断是：
+
+```cpp
+if (is_nothrow_move_constructible<T> || !is_copy_constructible<T>)
+    用移动构造;      // 移动承诺不抛，或者干脆没有拷贝可用
+else
+    用拷贝构造;      // 拷贝失败时源对象还在，可以回滚
+```
+
+你的移动构造**写了但没标 `noexcept`**，`is_nothrow_move_constructible` 就是 `false`，于是编译器老老实实退回复制——明明有更快的路，标准库不敢走。
+
+**实测对照**（gcc 13.1.0，9 次 `emplace_back`，累计迁移 15 个元素）：
+
+| 移动构造声明 | `copies` | `moves` |
+|---|---|---|
+| `Payload(Payload&&)` | **15** | 0 |
+| `Payload(Payload&&) noexcept` | 0 | **15** |
+
+**错项为什么是错的**
+- A：`emplace_back` 转发的是构造参数，跟「迁移时选移动还是拷贝」是两件不相干的事。
+- C：连续存储说的是**布局**，与迁移时调用哪个构造函数无关；正因为连续，标准库才要一个个搬过去，才需要选。
+- D：这是语言规则 + 标准库实现的选择，`-O2` 不会把可观测的构造函数调用优化掉（本例里 `copies` 计数器就证明了调用真实发生）。
+
+> 一个反证：如果这个类型 `=delete` 了拷贝构造，那么即使移动构造没标 `noexcept`，`vector` 也只能用移动（`!is_copy_constructible` 那半句生效）——因为没有别的选择。所以「加 noexcept」的收益，只在**同时可拷贝**的类型上才体现。''',
+
+    192: '''**应填：`copies = 15`，`moves = 0`**。
+
+扩容序列与迁移次数（gcc/libstdc++ 按 2 倍增长）：
+
+| 第几次 `emplace_back` | 容量变化 | 本次迁移元素数 |
+|---|---|---|
+| 1 | 0 → 1 | 0（直接构造） |
+| 2 | 1 → 2 | 1 |
+| 3 | 2 → 4 | 2 |
+| 5 | 4 → 8 | 4 |
+| 9 | 8 → 16 | 8 |
+| | | **合计 15** |
+
+这 15 次迁移全部走了**拷贝构造**，所以 `copies=15`、`moves=0`——移动构造一次都没被调用。
+
+**为什么会这样**：这个类的移动构造没标 `noexcept` ⇒ `is_nothrow_move_constructible<Payload>` 为 `false`，而它**又能拷贝**，于是标准库为了强异常安全退回复制。
+
+**把 `noexcept` 加上**，同一段代码的输出就变成 `copies=0 moves=15`。
+
+**要点**
+- `moves=0` 是「移动构造写了但白写」的典型症状——光看代码看不出来，得拿计数器量。
+- 计数器的顺序也值得注意：`++copies` 在拷贝构造体内，所以它统计的是**真实发生**的拷贝，不是「理论上可能发生」的拷贝。''',
+
+    193: '''**思路**：只差一个 `noexcept`。补上之后 `is_nothrow_move_constructible` 变 `true`，`vector` 扩容立刻改走移动。
+
+**参考实现**
+```cpp
+Payload(Payload&& o) noexcept : name(std::move(o.name)) { ++moves; }
+```
+
+一个词，`copies` 从 15 变成 0、`moves` 从 0 变成 15。
+
+**要点**
+- `noexcept` 在这里不是文档注释，是**参与重载决策/库策略判断的类型信息**。标准库真的会读它。
+- 别用 `=delete` 拷贝构造来「骗」`vector` 走移动：那会让类型不可拷贝，隐藏测试第 2 条会抓。而且真实项目里，一个不可拷贝的类型往往也用不了容器的一堆算法。
+- 移动构造能标 `noexcept` 就一定要标：`std::string`、`std::vector`、`std::unique_ptr` 的移动构造都是 `noexcept`，所以含这些成员的类，默认的移动操作也自动是 `noexcept`——只有你自己**手写**移动构造时，才需要记得加。
+- 与之相对，移动赋值要不要 `noexcept` 看场景：`vector` 扩容只看移动**构造**；但 `vector::erase`、`push_back` 的强异常安全也依赖移动赋值，能标就标。''',
+
     # ================= C3 · 智能指针与 RAII =================
     95: '''**思路**：`unique_ptr` 独占所有权、不可拷贝，只能靠 `std::move` 转移。
 
@@ -9307,6 +9757,81 @@ std::optional<int> get_int(const std::string& key) {
 `view.substr(0, 5)` 返回 `"hello"` 的 `string_view`——只调整「指针 + 长度」，**零拷贝**。
 
 这正是 `string_view` 的用途：字符串切片/解析时避免频繁分配。前提是被切的原字符串在使用期内一直有效。''',
+
+    194: '''**正确答案：B（`%.*s` 显式给长度）**。
+
+`string_view` **不保证**以 `\\0` 结尾——它只管「指针 + 长度」。`sv.data()` 返回的指针后面接的是原字符串剩下的字符，不是空字符。
+
+**实测**（`s = "key=value&flag=1"`，`sv` 指向第 4 个字符起 5 个字节）：
+
+| 写法 | 实际结果 |
+|---|---|
+| `printf("%s", sv.data())` | 打印 `value&flag=1`（一路读到原串结尾的 `\\0`） |
+| `printf("%.*s", 5, sv.data())` | 打印 `value` ✓ |
+| `printf("%s", sv)` | 能编译（只有 `-Wformat` 警告），运行时按 `const char*` 解析 ⇒ 未定义行为 |
+| `strlen(sv.data())` | 返回 **12**，不是 5 |
+
+**错项为什么是错的**
+- A：把「切片」当成「独立字符串」了。越界读的后果是读到别人的数据，甚至踩到未映射内存直接崩。
+- C：`string_view` 没有到 `const char*` 的隐式转换，gcc 只给一条 `-Wformat` 警告就放行，属于「能编过但运行时是 UB」的典型。
+- D：`strlen` 找的是 `\\0`，跟 `size()` 无关，返回的是「从 `data()` 到原串结尾」的长度。
+
+**要点**
+- 交给任何 C 风格接口（`printf`、`strlen`、`strcmp`、系统调用的 `const char*`）时，要么显式传长度，要么先落地成 `std::string`。
+- 这个坑有隐蔽性：从**字面量**或**整串**构造的 `string_view`，后面碰巧有 `\\0`，看起来一切正常；只有从中间切片、或指向大 buffer 的一小段时才暴露。
+- `sv[sv.size()]` 也是 UB：`operator[]` 要求 `pos < size()`，别指望它像 `string` 那样在末位返回 `'\\0'`。''',
+
+    195: '''**应填：`g_calls = 1`，`r = 42`**。
+
+`value_or` 的签名是 `T value_or(U&& default_value) const&`——默认值是**普通函数实参**，在函数被调用**之前**就已经求值了。`opt` 有没有值，都不影响 `fallback()` 先跑一遍。
+
+**实测**
+
+| 场景 | `g_calls` | 返回值 |
+|---|---|---|
+| `opt = 42`（有值），`opt.value_or(fallback())` | **1** | 42 |
+| `opt` 无值，`opt.value_or(fallback())` | 1 | 99 |
+| `opt = 7`（有值），`opt ? *opt : fallback()` | **0** | 7 |
+
+**所以 `value_or` 不是惰性的**。默认值的构造代价高（分配、查表、读配置）时，白算一遍就是纯浪费。
+
+**要惰性，得自己写条件表达式或 `if`：**
+
+```cpp
+int r = opt ? *opt : fallback();          // 有值时 fallback() 不会被调用
+auto r2 = opt.value_or(0);                // 默认值廉价时这样写就够了
+```
+
+**要点**
+- 同理：`optional::or_else(f)`（C++23）才是为此设计的惰性版——只有无值时才调用 `f`。
+- 判据：默认值是不是**纯字面量/廉价常量**。是就 `value_or`，否则用条件表达式。
+- 这条也适用于 `map::operator[]`（无值时插入默认构造）、`get_or_default(...)` 这类"给默认值"的 API——先问一句：这个默认值是什么时候算出来的。''',
+
+    196: '''**思路**：`string_view::substr(pos, len)` 只做指针算术，返回的 view 直接指回原串。所以只要扫一遍找分隔符位置，把每一段 `substr` 出去就行。
+
+**参考实现**
+```cpp
+std::vector<std::string_view> split(std::string_view s, char sep) {
+    std::vector<std::string_view> out;
+    std::size_t start = 0;
+
+    for (std::size_t i = 0; i < s.size(); ++i) {
+        if (s[i] == sep) {
+            out.push_back(s.substr(start, i - start));   // 只算指针，不搬字符
+            start = i + 1;
+        }
+    }
+    out.push_back(s.substr(start));                      // 收尾的最后一段
+    return out;
+}
+```
+
+**要点**
+- `substr(pos, len)` 返回 `string_view`，**不分配、不拷贝**。返回 `std::string` 就退化成每段一次堆分配。
+- 最后一段必须单独补：循环只在遇到分隔符时切，结尾那段没有分隔符触发。
+- `"a,,b"` → `i=1` 切出 `"a"`、`start=2`；`i=2` 切出 `substr(2, 0)` = 空段；收尾切出 `"b"`。空段天然保留，不用特判。
+- 空串：循环不执行，`substr(0)` 得到 1 段空串——恰好符合「`分隔符个数 + 1` 段」的规则。
+- **代价**：返回的每个 view 都指向调用方的字符串，调用方必须保证那块内存在使用期间有效。跨作用域返回这类结果，就是把悬垂问题从函数内部转移到了调用方——这是 `string_view` 的固有代价，不是 bug。''',
 
     # ================= C7 · STL 容器与算法 =================
     115: '''**思路**：`std::set` 自动去重 + 升序，构造后拷回 `vector`。

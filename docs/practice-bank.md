@@ -195,9 +195,10 @@
 
 ### C2 · 移动语义与完美转发
 
-> 本章定位：考移动语义的三个经典误区——move 后源对象状态、构造 vs 赋值、RVO 是否必然发生。
+> 本章定位：考移动语义的四个经典误区——move 后源对象状态、构造 vs 赋值、RVO 是否必然发生，
+> 以及 `noexcept` 到底影响了什么。最后一条最容易被当成"文档注释"跳过，但它能拿计数器量出来。
 
-#### 选择题 ×3
+#### 选择题 ×4
 
 **选 1 · move 之后源对象的状态**
 ```cpp
@@ -240,7 +241,40 @@ Widget x = make_widget();
 | C. 零次（拷贝省略） | ✓ C++17 起强制 |
 | D. 取决于编译器 | ✗ 过时认知，C++17 后强制 |
 
-#### 填空题 ×3
+**选 4 · 扩容时为什么走的是拷贝**
+```cpp
+struct Payload {
+    static int copies, moves;
+    std::string name;
+    Payload(const Payload& o) : name(o.name) { ++copies; }
+    Payload(Payload&& o) : name(std::move(o.name)) { ++moves; }
+};
+
+std::vector<Payload> v;
+for (int i = 0; i < 9; ++i) v.emplace_back();
+
+std::printf("copies=%d moves=%d", Payload::copies, Payload::moves);
+/* 实测输出：copies=15 moves=0 */
+```
+| 选项 | 结果 |
+|---|---|
+| A. emplace_back 只能转发构造参数，容器迁移元素时只认拷贝构造 | ✗ 迁移与构造参数是两件事 |
+| B. 移动构造没有声明 noexcept，vector 为保住强异常安全而退回拷贝 | ✓ |
+| C. vector 元素连续存放，迁移时只能逐字节复制 | ✗ 说的是布局，不是调哪个构造 |
+| D. 没开 -O2，移动构造被编译器优化掉了 | ✗ 构造函数调用是可观测行为 |
+
+同一个类，只改移动构造的声明：
+
+| 移动构造声明 | `copies` | `moves` |
+|---|---|---|
+| `Payload(Payload&&)` | **15** | 0 |
+| `Payload(Payload&&) noexcept` | 0 | **15** |
+
+标准库的判断（libstdc++）是：`is_nothrow_move_constructible<T> || !is_copy_constructible<T>` 才敢用移动。
+**反证**：如果类型 `=delete` 了拷贝构造，即使移动构造没标 `noexcept` 也只能走移动——所以「加 noexcept」的收益，
+只在**同时可拷贝**的类型上才体现。
+
+#### 填空题 ×4
 
 **填 1 · std::move**
 ```cpp
@@ -267,7 +301,40 @@ public:
 ```
 答案 `noexcept`。考点：不加 noexcept，vector 扩容时会退化成拷贝（拷贝才有异常安全保证）。
 
-#### 写代码 ×4
+**阅读 1 · 两个计数器分别涨到几**（源码阅读，`keep_notes=1`）
+```cpp
+struct Payload {
+    static int copies;
+    static int moves;
+    std::string name;
+
+    Payload(const Payload& o) : name(o.name) { ++copies; }
+    Payload(Payload&& o) : name(std::move(o.name)) { ++moves; }
+    Payload() = default;
+};
+
+std::vector<Payload> v;
+for (int i = 0; i < 9; ++i) v.emplace_back();
+
+/* 执行完上面的循环后：copies = ______ ，moves = ______ */
+```
+答案 `15` / `0`。
+
+扩容序列（gcc/libstdc++ 按 2 倍增长）：1→2→4→8→16，迁移次数 1+2+4+8 = **15**，全部走拷贝。
+把 `noexcept` 补上，同一段代码的输出就变成 `copies=0 moves=15`。
+
+| 第几次 `emplace_back` | 容量变化 | 本次迁移元素数 |
+|---|---|---|
+| 1 | 0 → 1 | 0（直接构造） |
+| 2 | 1 → 2 | 1 |
+| 3 | 2 → 4 | 2 |
+| 5 | 4 → 8 | 4 |
+| 9 | 8 → 16 | 8 |
+| | | **合计 15** |
+
+考点：`moves=0` 是「移动构造写了但白写」的症状——光看代码看不出来，得拿计数器量。
+
+#### 写代码 ×5
 
 | 题 | 知识点 | 入门（给骨架） | 进阶（给签名） | 挑战（只给需求） |
 |---|---|---|---|---|
@@ -275,6 +342,11 @@ public:
 | 短2 | 移动后源对象/自移动 bug | 错误已标注 | 自己定位移动后误用 | 加自移动赋值安全 |
 | 短3 | 只移动类（=delete 拷贝） | 补移动构造/赋值 | 自设计接口 | unique_ptr 简化版 |
 | 短4 | 完美转发工厂 | 补 forward 调用 | 自写可变参转发 | make_unique 风格工厂 |
+| 短5 | **让扩容易主（noexcept）** | **补一个说明符** | **只给签名** | **只给需求** |
+
+短 5 的判分要点：既验 `is_nothrow_move_constructible` 为 `true`，又验 `is_copy_constructible` 仍为 `true`——
+防止有人用 `=delete` 拷贝构造「骗」vector 走移动。再加 9 次 `emplace_back` 后 `copies == 0`、`moves >= 15`、
+以及每个元素内容在迁移后不丢。
 
 #### Boss · 只移动的 Buffer 类
 
@@ -287,6 +359,25 @@ public:
 | 3 | vector<Buffer> 扩容走移动构造 | 若 noexcept 缺失会退化成拷贝 |
 | 4 | 拷贝构造被 =delete 禁止 | 拷贝路径编译失败 |
 | 5 | 按值返回 Buffer | RVO 零构造 |
+
+#### 本次扩充记录（2026-10-25，第二批）
+
+| id | 类型 | 考点 | 实测事实（g++ 13.1.0 / `-std=c++20 -O2 -Wall -pthread`） |
+|---|---|---|---|
+| 191 | 选择 4 | 扩容为何调的是拷贝 | 不带 noexcept → `copies=15 moves=0`；带 → `copies=0 moves=15` |
+| 192 | 阅读 1 | 两个计数器各涨到几 | `15` / `0`（gcc 2 倍扩容，累计迁移 15 次） |
+| 193 | 短题 5 | 补一个 `noexcept` 让扩容改走移动 | 参考实现 PASS；4 组变异全挂 |
+
+三关映射：`22`（写出 `noexcept` 这个词）→ **`191`**（它导致了什么后果）→ **`192`**（量出具体数字）→ **`193`**（动手改成移动）。
+
+193 的变异测试（4 组全部被抓）：
+
+| 变异 | 被抓的用例 |
+|---|---|
+| 去掉 `noexcept` | 用例1（类型判断）+ 用例3（扩容发生 15 次拷贝） |
+| 拷贝构造 `=delete` | 用例2（仍必须可拷贝） |
+| 移动构造不递增 `moves` | 用例4（移动次数只有 0 次） |
+| 移动构造不转移 `name` | 用例5（第 0 个元素内容丢失） |
 
 ---
 
@@ -580,9 +671,10 @@ void f(T t) {
 
 ### C6 · 现代工具类型
 
-> 本章定位：考 optional/variant/string_view 的三个坑——无值默认、union 区别、string_view 悬垂。
+> 本章定位：考 optional/variant/string_view 的五个坑——无值默认、union 区别、string_view 悬垂、
+> 不保证空终止、`value_or` 的求值时机。后两个都属于「看着对、跑起来才发现不对」的类型。
 
-#### 选择题 ×3
+#### 选择题 ×4
 
 **选 1 · optional 无值**
 ```cpp
@@ -626,7 +718,22 @@ std::cout << v;   // 会发生什么？
 | C. 输出空 | ✗ |
 | D. 编译错误 | ✗ |
 
-#### 填空题 ×3
+**选 4 · 交给 C 接口时哪行安全**
+```cpp
+std::string s = "key=value&flag=1";
+std::string_view sv(s.data() + 4, 5);   /* 逻辑上就是 "value" */
+```
+| 选项 | 实测结果 |
+|---|---|
+| A. `printf("%s", sv.data())` | ✗ 打印 `value&flag=1`（一路读到原串结尾的 `\0`） |
+| B. `printf("%.*s", (int)sv.size(), sv.data())` | ✓ 打印 `value` |
+| C. `printf("%s", sv)` | ✗ 只有 `-Wformat` 警告仍能编译，运行时按 `const char*` 解析 ⇒ UB |
+| D. `strlen(sv.data())` 求长度 | ✗ 返回 **12**，不是 5 |
+
+`string_view` 只管「指针 + 长度」，**不保证**以 `\0` 结尾。从字面量或整串构造时碰巧后面有 `\0`，
+所以这个坑有隐蔽性——只有从中间切片、或指向大 buffer 的一小段时才暴露。
+
+#### 填空题 ×4
 
 **填 1 · optional value_or**
 ```cpp
@@ -649,7 +756,30 @@ auto sub = view.________(0, 5);   // 取前5个字符，不拷贝
 ```
 答案 `substr`。考点：string_view::substr 是 O(1) 零拷贝，string::substr 是拷贝。
 
-#### 写代码 ×4
+**阅读 1 · 默认值到底算了几次**（源码阅读，`keep_notes=1`）
+```cpp
+int g_calls = 0;
+int fallback() { ++g_calls; return 99; }
+
+std::optional<int> opt = 42;              /* 真的有值 */
+int r = opt.value_or(fallback());
+
+/* 执行完这两行之后：g_calls = ______ ，r = ______ */
+```
+答案 `1` / `42`。
+
+`value_or` 的默认值是**普通函数实参**，在函数被调用**之前**就求值了——`opt` 有没有值都不影响它先跑一遍。
+
+| 场景 | `g_calls` | 返回值 |
+|---|---|---|
+| 有值，`opt.value_or(fallback())` | **1** | 42 |
+| 无值，`opt.value_or(fallback())` | 1 | 99 |
+| 有值，`opt ? *opt : fallback()` | **0** | 7 |
+
+**所以 `value_or` 不是惰性的。**默认值构造代价高（分配、查表、读配置）时，白算一遍纯属浪费——
+要惰性必须自己写条件表达式，或用 C++23 的 `or_else`。
+
+#### 写代码 ×5
 
 | 题 | 知识点 | 入门（给骨架） | 进阶（给签名） | 挑战（只给需求） |
 |---|---|---|---|---|
@@ -657,6 +787,10 @@ auto sub = view.________(0, 5);   // 取前5个字符，不拷贝
 | 短2 | string_view 悬垂 | 错误已标注 | 自己定位悬垂 | 生命周期边界 |
 | 短3 | variant 类型安全访问 | 补 std::visit | 自设计 variant 访问 | 非法类型访问防护 |
 | 短4 | optional 重构错误处理 | 补返回类型改造 | 自写错误码 → optional | 异常 → 结果类型 |
+| 短5 | **零拷贝分词器** | **补循环体** | **只给签名** | **只给需求** |
+
+短 5 的判分要点：7 组用例覆盖普通切分、连续分隔符、首尾分隔符、空串、**每段 `data()` 必须落在原串范围内**
+（这一条才真正验证「零拷贝」）、原串未被修改、无分隔符。返回 `vector<std::string>` 的实现会在零拷贝那条挂。
 
 #### Boss · 类型安全配置解析器
 
@@ -667,6 +801,27 @@ auto sub = view.________(0, 5);   // 取前5个字符，不拷贝
 | 入门 | 接口 + 解析骨架已给 | 解析整型/字符串配置 |
 | 进阶 | 只给需求 | 自设计类型分发 |
 | 挑战 | 加 variant 多类型 + 缺省值 | 缺失配置给默认 / 类型不匹配报错 / 零拷贝切片 |
+
+#### 本次扩充记录（2026-10-25，第二批）
+
+| id | 类型 | 考点 | 实测事实（g++ 13.1.0） |
+|---|---|---|---|
+| 194 | 选择 4 | string_view 不保证空终止 | `%s` 打出 `value&flag=1`、`strlen` 返回 12、`%.*s` 才正确 |
+| 195 | 阅读 1 | `value_or` 的实参总是求值 | `g_calls=1`、`r=42`；惰性写法 `g_calls=0` |
+| 196 | 短题 5 | string_view 零拷贝分词 | 参考实现 PASS；4 组变异全挂 |
+
+三关映射：
+- `43`（悬垂：内存没了）→ **`194`**（另一种失效：内存还在，但不保证终止）→ `46`（substr 零拷贝）→ **`196`**（自己写分词器）
+- `44`（`value_or` 是什么）→ **`195`**（它什么时候求值）
+
+196 的变异测试（4 组全部被抓）：
+
+| 变异 | 被抓的用例 |
+|---|---|
+| 跳过空段 | 用例2、用例3（段数不对） |
+| 忘记收尾最后一段 | 用例1、2、3、7（少一段） |
+| `substr(start, i - start + 1)` 差一 | 用例1、2（内容多一个字符） |
+| 修改原串 | 用例6（split 不应改原串） |
 
 ---
 
