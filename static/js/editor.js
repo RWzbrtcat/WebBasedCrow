@@ -16,6 +16,9 @@ let imageInsertContext = null;
 // 当前登录管理员的昵称（作者字段只读，自动填充）
 let currentNickname = '';
 
+// 保存/发布进行中标记：按钮与快捷键可能连续触发，需去重
+let saving = false;
+
 // Tab 键插入的缩进宽度（空格）
 const TAB_INDENT = '    ';
 
@@ -312,6 +315,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 写作快捷键：Ctrl/⌘+S 存草稿、Ctrl/⌘+Enter 发布（发布走表单校验，标题为空会提示）
+    document.addEventListener('keydown', (e) => {
+        if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+        const key = e.key.toLowerCase();
+        if (key === 's') {
+            e.preventDefault();
+            savePost('draft');
+        } else if (key === 'enter') {
+            e.preventDefault();
+            const form = document.getElementById('postForm');
+            if (form && typeof form.requestSubmit === 'function') {
+                form.requestSubmit();
+            } else {
+                savePost('published');
+            }
+        }
+    });
+
     // ===== 插入图片弹窗 =====
     const imageModal = document.getElementById('imageModal');
     document.getElementById('imageModalClose').addEventListener('click', closeImageModal);
@@ -478,7 +499,7 @@ function updateToc() {
     tocList.innerHTML = Array.from(headings).map((h, i) => {
         const level = parseInt(h.tagName.slice(1), 10);
         const text = h.textContent.trim();
-        return `<button type="button" class="toc-item" data-index="${i}" style="padding-left:${10 + (level - 1) * 14}px">${escapeHtml(text)}</button>`;
+        return `<button type="button" class="toc-item" data-index="${i}" title="${escapeHtml(text)}" style="padding-left:${10 + (level - 1) * 14}px">${escapeHtml(text)}</button>`;
     }).join('');
 }
 
@@ -814,6 +835,8 @@ async function handleSubmit(e) {
 
 // 保存文章（status 为 published 发布 / draft 草稿）
 async function savePost(status) {
+    if (saving) return; // 按钮与快捷键可能连按，进行中直接忽略
+
     let title = document.getElementById('title').value.trim();
     const author = document.getElementById('author').value.trim() || '匿名';
     const topic = document.getElementById('topic').value.trim();
@@ -833,6 +856,7 @@ async function savePost(status) {
 
     const savingBtn = isDraft ? document.getElementById('draftBtn') : document.getElementById('submitBtn');
     const originalText = savingBtn.textContent;
+    saving = true;
     savingBtn.disabled = true;
     savingBtn.textContent = isDraft ? '保存中...' : '提交中...';
 
@@ -847,10 +871,10 @@ async function savePost(status) {
             if (isDraft) {
                 showToast('📝 草稿已保存');
                 document.getElementById('editorTitle').textContent = '编辑文章';
-                document.getElementById('submitBtn').textContent = '发布';
                 document.title = `编辑 · ${title}`;
                 savingBtn.disabled = false;
                 savingBtn.textContent = originalText;
+                saving = false;
             } else {
                 showToast('✅ 文章发布成功');
                 setTimeout(() => {
@@ -861,11 +885,13 @@ async function savePost(status) {
             showToast(data.message || '操作失败', 'error');
             savingBtn.disabled = false;
             savingBtn.textContent = originalText;
+            saving = false;
         }
     } catch (err) {
         showToast(err.message || '提交失败，请检查服务是否运行', 'error');
         savingBtn.disabled = false;
         savingBtn.textContent = originalText;
+        saving = false;
     }
 }
 

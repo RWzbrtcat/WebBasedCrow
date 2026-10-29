@@ -908,54 +908,23 @@ html {
 
 /* ========== 表单（编辑器） ========== */
 .editor-card {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 32px 30px;
+    padding: 14px 20px;
     box-shadow: var(--shadow);
 }
 
 .editor-card h1 {
-    font-family: var(--serif);
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 24px;
-}
-
-.editor-meta {
-    display: flex;
-    gap: 20px;
-    align-items: stretch;
-}
-
-.editor-meta-left,
-.editor-meta-right {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-.editor-meta-right .form-group {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 0;
-}
-
-.editor-meta-right textarea {
-    flex: 1;
-    resize: vertical;
-}
-
-.editor-meta-row {
-    display: flex;
-    gap: 16px;
-}
-
-.editor-meta-half {
-    flex: 1;
-    min-width: 0;
+    font-family: var(--sans);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0;
 }
 
 .form-group {
@@ -1001,9 +970,9 @@ html {
 }
 
 #summary {
-    min-height: 76px;
+    min-height: 0;
     font-family: var(--sans);
-    line-height: 1.7;
+    line-height: 1.5;
 }
 
 .form-actions {
@@ -1013,20 +982,17 @@ html {
 }
 
 .editor-footer {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 12px 16px;
-    margin-top: 20px;
-    padding: 12px 16px;
-    position: sticky;
-    bottom: 0;
-    background: var(--surface);
+    gap: 6px 16px;
+    margin-top: 10px;
+    padding: 7px 12px;
+    background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
-    z-index: 20;
+    border-radius: 8px;
 }
 
 .editor-footer .form-actions {
@@ -1368,11 +1334,11 @@ html {
 
 .markdown-editor {
     display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
     border: 1px solid var(--border);
     border-radius: 0 0 8px 8px;
     overflow: hidden;
-    height: 82vh;
-    min-height: 520px;
 }
 
 .markdown-editor-pane {
@@ -6387,5 +6353,395 @@ body.dash-page .site-footer a:hover {
     .dash-post-link::before,
     .dash-progress-bar > span {
         transition: none;
+    }
+}
+
+/* ============================================================
+   写文章 · 全屏工作台（一屏装下：导航操作 / 信息区 / 编辑区 / 状态栏）
+   本段后写，覆盖上方 .editor-card / .markdown-editor / .editor-footer 的旧尺寸；
+   .editor-meta* 群已随结构重做删除，字段改为 .editor-fields。
+   ============================================================ */
+
+body.editor-page {
+    --header-width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+body.editor-page .site-header {
+    flex-shrink: 0;
+}
+
+/* 整页不滚 → .scrolled 永不触发，常驻胶囊底，避免导航浮在内容上 */
+body.editor-page .site-header-pill {
+    background: var(--nav-bg);
+    border-color: var(--card-border);
+    border-radius: 999px;
+    box-shadow: var(--shadow-md);
+}
+
+/* 头部三栏：品牌 / 写作操作（居中）/ 导航
+   ⚠ 三列均显式 grid-row:1：否则自动排布按 DOM 顺序推进游标，
+   nav(第 3 列) 之后的操作(第 2 列) 会被迫换行 —— 表现为按钮掉到第二行。 */
+body.editor-page .site-header-pill .header-inner {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-rows: auto;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 10px 6px 20px;
+}
+
+body.editor-page .site-header-pill .brand {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+}
+
+body.editor-page .site-header-pill .nav {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+}
+
+.editor-top-actions {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.editor-top-actions .btn {
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    line-height: 1.7;
+    white-space: nowrap;
+}
+
+/* 主体撑满剩余高度，内部再分「信息区 / 编辑区 / 状态栏」 */
+body.editor-page .container-editor {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 12px 18px 14px;
+    display: flex;
+}
+
+body.editor-page #postForm {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 信息区第一行：页面状态 + 快捷键提示 */
+.editor-head {
+    flex-shrink: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.editor-head-hint {
+    margin-left: auto;
+    font-family: var(--sans);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+/* 标题：无边框大号输入，靠一条底线分隔，视觉上更接近写作工具 */
+.editor-title-input {
+    flex-shrink: 0;
+    width: 100%;
+    padding: 4px 2px 9px;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    background: transparent;
+    color: var(--text);
+    font-family: var(--serif);
+    font-size: 1.45rem;
+    font-weight: 700;
+    line-height: 1.35;
+    transition: border-color 0.15s;
+}
+
+.editor-title-input::placeholder {
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.editor-title-input:focus {
+    outline: none;
+    background: transparent;
+    border-bottom-color: var(--accent);
+    box-shadow: none;
+}
+
+/* 三个字段挤成一行：专栏 / 主题 / 简介 */
+.editor-fields {
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr) minmax(0, 1.7fr);
+    gap: 10px 14px;
+    margin: 10px 0 12px;
+}
+
+.editor-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.editor-field-label {
+    font-family: var(--sans);
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+}
+
+.editor-field select,
+.editor-field input {
+    width: 100%;
+    min-height: 0;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 0.88rem;
+    line-height: 1.5;
+    box-shadow: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.editor-field select:focus,
+.editor-field input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: #fff;
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* 编辑区吃掉剩余高度：工具栏固定，目录/编辑/预览各自滚动 */
+.editor-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+body.editor-page .markdown-toolbar {
+    flex-shrink: 0;
+    overflow-y: auto;
+}
+
+/* 长内容不得撑破布局：flex/grid 子项默认 min-width:auto 会吃进内容最小宽度，
+   一旦某段不可断行（长代码、宽表格、nowrap 提示），整页就会被撑出横向滚动。
+   这里沿布局链逐层压 0，让内容在各自面板内滚动而不是把页面顶宽。 */
+body.editor-page .editor-card,
+body.editor-page #postForm,
+body.editor-page .editor-head,
+body.editor-page .editor-body,
+body.editor-page .editor-fields,
+body.editor-page .markdown-toolbar,
+body.editor-page .markdown-editor,
+body.editor-page .markdown-editor-pane,
+body.editor-page .markdown-body,
+body.editor-page .editor-title-input,
+body.editor-page .editor-field {
+    min-width: 0;
+}
+
+body.editor-page .editor-head h1 {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 状态栏右侧：退出编辑 */
+.editor-footer-links {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.editor-exit {
+    font-family: var(--sans);
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 3px 8px;
+    border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+}
+
+.editor-exit:hover {
+    color: var(--accent);
+    background: var(--accent-soft);
+}
+
+/* ---------- 响应式（必须在上面所有规则之后） ---------- */
+
+/* 中屏：目录让出宽度给正文 */
+@media (max-width: 1180px) {
+    .markdown-editor-toc {
+        flex-basis: 168px;
+    }
+}
+
+/* 中等宽度：压缩头部三项，避免导航文字被挤成两行 */
+@media (max-width: 1100px) {
+    body.editor-page .site-header-pill .header-inner {
+        gap: 8px;
+        padding: 6px 8px 6px 14px;
+    }
+
+    body.editor-page .site-header-pill .nav a,
+    body.editor-page .site-header-pill .nav .nav-create-toggle {
+        padding: 5px 8px;
+        font-size: 0.82rem;
+        white-space: nowrap;
+    }
+
+    .editor-top-actions {
+        gap: 6px;
+    }
+
+    .editor-top-actions .btn {
+        padding: 5px 12px;
+        font-size: 12px;
+    }
+}
+
+/* 小屏：目录隐藏，字段改两列（简介独占一行） */
+@media (max-width: 980px) {
+    body.editor-page .container-editor {
+        padding: 10px 14px 12px;
+    }
+
+    .markdown-editor-toc {
+        display: none;
+    }
+
+    .markdown-editor-input,
+    .markdown-editor-preview {
+        flex: 1 1 0;
+    }
+
+    .editor-fields {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .editor-field:last-child {
+        grid-column: 1 / -1;
+    }
+
+    .editor-head-hint {
+        display: none;
+    }
+}
+
+/* 窄屏：一屏装不下，恢复页面滚动，编辑/预览改上下堆叠 */
+@media (max-width: 820px) {
+    body.editor-page {
+        height: auto;
+        min-height: 100dvh;
+        overflow: visible;
+    }
+
+    body.editor-page .container-editor {
+        padding: 10px 12px 16px;
+    }
+
+    body.editor-page .editor-card {
+        padding: 12px 14px;
+    }
+
+    /* 头部三栏放不下：品牌 + 操作一行，导航整行横向滚动
+       （三栏 grid 在窄屏会让 nowrap 的导航把页面撑出横向溢出） */
+    body.editor-page .site-header-pill {
+        border-radius: 22px;
+    }
+
+    body.editor-page .site-header-pill .header-inner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px 10px;
+        padding: 8px 12px;
+    }
+
+    body.editor-page .site-header-pill .nav {
+        order: 3;
+        width: 100%;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        overflow-x: auto;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+    }
+
+    body.editor-page .site-header-pill .nav::-webkit-scrollbar {
+        height: 0;
+    }
+
+    .editor-top-actions {
+        order: 2;
+    }
+
+    body.editor-page .markdown-editor {
+        flex-direction: column;
+        min-height: 620px;
+    }
+
+    .markdown-editor-input {
+        flex: 0 0 50%;
+    }
+
+    /* 纵向堆叠后左右拖动会错位，直接隐藏分隔条 */
+    .markdown-editor-resizer {
+        display: none;
+    }
+
+    body.editor-page .editor-top-actions .btn {
+        padding: 5px 12px;
+        font-size: 12px;
+    }
+}
+
+/* 矮屏：压掉信息区，高度全给正文 */
+@media (max-height: 700px) {
+    body.editor-page .editor-head {
+        display: none;
+    }
+
+    .editor-title-input {
+        font-size: 1.25rem;
+        padding-bottom: 6px;
+    }
+
+    .editor-fields {
+        margin: 6px 0 10px;
+    }
+
+    body.editor-page .editor-footer {
+        margin-top: 6px;
+        padding: 5px 10px;
     }
 }

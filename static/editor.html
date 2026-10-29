@@ -7,8 +7,8 @@
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/highlight.css">
 </head>
-<body>
-    <!-- 站点头部 -->
+<body class="editor-page">
+    <!-- 站点头部：左品牌 / 中写作操作 / 右导航（与练习闯关页同一套三栏结构） -->
     <header class="site-header site-header-pill">
         <div class="header-inner">
             <div class="brand">
@@ -27,46 +27,42 @@
                     </div>
                 </div>
             </nav>
+            <!-- 写作主操作常驻居中：主按钮用 form 属性关联表单，无需嵌在 form 内 -->
+            <div class="editor-top-actions">
+                <button type="button" class="btn btn-secondary" id="draftBtn" title="保存为草稿 (Ctrl+S)">保存草稿</button>
+                <button type="submit" form="postForm" class="btn btn-primary" id="submitBtn" title="发布文章 (Ctrl+Enter)">发布</button>
+            </div>
         </div>
     </header>
 
     <!-- 主体 -->
     <main class="container container-editor">
         <div class="editor-card">
-            <h1 id="editorTitle">写文章</h1>
             <form id="postForm">
-                <div class="editor-meta">
-                    <div class="editor-meta-left">
-                        <div class="editor-meta-row">
-                            <div class="form-group editor-meta-half">
-                                <label for="title">标题 *</label>
-                                <input type="text" id="title" placeholder="输入文章标题..." required>
-                            </div>
-                            <div class="form-group editor-meta-half">
-                                <label for="author">作者</label>
-                                <input type="text" id="author" readonly placeholder="自动使用你的账号昵称" title="作者由账号昵称自动生成，不可修改">
-                            </div>
-                        </div>
-                        <div class="editor-meta-row">
-                            <div class="form-group editor-meta-half">
-                                <label for="topic">专栏</label>
-                                <select id="topic"></select>
-                            </div>
-                            <div class="form-group editor-meta-half">
-                                <label for="theme">主题</label>
-                                <input type="text" id="theme" placeholder="自定义主题，如：智能指针详解">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="editor-meta-right">
-                        <div class="form-group">
-                            <label for="summary">内容简介</label>
-                            <textarea id="summary" rows="3" placeholder="一句话概括这篇文章（可选，会显示在文章列表中）"></textarea>
-                        </div>
-                    </div>
+                <div class="editor-head">
+                    <h1 id="editorTitle">写文章</h1>
+                    <!-- 作者由账号昵称自动写入，仅作提交用，不在界面占位 -->
+                    <input type="hidden" id="author">
+                    <span class="editor-head-hint">Ctrl+S 存草稿 · Ctrl+Enter 发布</span>
                 </div>
-                <div class="form-group">
-                    <label for="content">正文（支持 Markdown 语法）</label>
+
+                <input type="text" id="title" class="editor-title-input" placeholder="文章标题" required aria-label="文章标题">
+
+                <div class="editor-fields">
+                    <label class="editor-field">
+                        <span class="editor-field-label">专栏</span>
+                        <select id="topic"></select>
+                    </label>
+                    <label class="editor-field">
+                        <span class="editor-field-label">主题</span>
+                        <input type="text" id="theme" placeholder="如：智能指针详解">
+                    </label>
+                    <label class="editor-field">
+                        <span class="editor-field-label">简介</span>
+                        <input type="text" id="summary" placeholder="一句话概括（可选，显示在列表）">
+                    </label>
+                </div>
+                <div class="editor-body">
                     <div class="markdown-toolbar" id="markdownToolbar">
                         <button type="button" class="md-btn" data-action="undo" title="撤销 (Ctrl+Z)">撤销</button>
                         <button type="button" class="md-btn" data-action="redo" title="重做 (Ctrl+Y)">重做</button>
@@ -124,7 +120,7 @@
                             <div class="pane-label">Markdown 编辑</div>
                             <div class="code-editor">
                                 <pre class="code-editor-highlight" aria-hidden="true"><code id="highlightLayer"></code></pre>
-                                <textarea id="content" placeholder="使用 Markdown 语法写下你的内容，例如：# 标题、**加粗**、- 列表、```代码块```..."></textarea>
+                                <textarea id="content" aria-label="正文，支持 Markdown 语法" placeholder="使用 Markdown 语法写下你的内容，例如：# 标题、**加粗**、- 列表、```代码块```..."></textarea>
                             </div>
                         </div>
                         <div class="markdown-editor-resizer" id="markdownResizer"></div>
@@ -136,10 +132,8 @@
                 </div>
                 <div class="editor-footer">
                     <div class="editor-stats" id="editorStats">行数 0 · 字数 0 · 词数 0</div>
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-primary" id="submitBtn">发布</button>
-                        <button type="button" class="btn btn-secondary" id="draftBtn">保存</button>
-                        <a href="/" class="btn btn-secondary">取消</a>
+                    <div class="editor-footer-links">
+                        <a href="/posts" class="editor-exit">退出编辑</a>
                     </div>
                 </div>
             </form>
