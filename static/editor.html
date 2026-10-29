@@ -39,12 +39,8 @@
     <main class="container container-editor">
         <div class="editor-card">
             <form id="postForm">
-                <div class="editor-head">
-                    <h1 id="editorTitle">写文章</h1>
-                    <!-- 作者由账号昵称自动写入，仅作提交用，不在界面占位 -->
-                    <input type="hidden" id="author">
-                    <span class="editor-head-hint">Ctrl+S 存草稿 · Ctrl+Enter 发布</span>
-                </div>
+                <!-- 作者由账号昵称自动写入，仅作提交用，不在界面占位 -->
+                <input type="hidden" id="author">
 
                 <input type="text" id="title" class="editor-title-input" placeholder="文章标题" required aria-label="文章标题">
 
@@ -59,7 +55,7 @@
                     </label>
                     <label class="editor-field">
                         <span class="editor-field-label">简介</span>
-                        <input type="text" id="summary" placeholder="一句话概括（可选，显示在列表）">
+                        <input type="text" id="summary" placeholder="可选，会显示在文章列表">
                     </label>
                 </div>
                 <div class="editor-body">
@@ -110,6 +106,8 @@
                         <span class="md-divider"></span>
                         <button type="button" class="md-btn" data-action="import" title="从本地导入 Markdown 文件">导入</button>
                         <button type="button" class="md-btn" data-action="export" title="导出为 Markdown 文件">导出</button>
+                        <!-- 专注模式：收起导航与信息栏，把整屏高度让给正文 -->
+                        <button type="button" class="md-btn md-btn-focus" id="focusToggle" aria-pressed="false" title="专注模式：隐藏导航与信息栏（Esc 退出）">专注</button>
                     </div>
                     <div class="markdown-editor">
                         <div class="markdown-editor-toc">
@@ -131,8 +129,13 @@
                     </div>
                 </div>
                 <div class="editor-footer">
-                    <div class="editor-stats" id="editorStats">行数 0 · 字数 0 · 词数 0</div>
+                    <div class="editor-footer-meta">
+                        <!-- 状态文字（写文章 / 编辑文章）与字数统计并排，省掉顶部一整行标题 -->
+                        <span class="editor-status" id="editorTitle">写文章</span>
+                        <span class="editor-stats" id="editorStats">行数 0 · 字数 0 · 词数 0</span>
+                    </div>
                     <div class="editor-footer-links">
+                        <span class="editor-kbd-hint">Ctrl+S 存草稿 · Ctrl+Enter 发布</span>
                         <a href="/posts" class="editor-exit">退出编辑</a>
                     </div>
                 </div>

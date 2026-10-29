@@ -261,6 +261,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = e.target.closest('.md-btn');
         if (!btn) return;
         const action = btn.dataset.action;
+        // 专注按钮等「无 data-action」的按钮由自己的监听处理，不走 Markdown 插入
+        if (!action) return;
         if (action === 'undo') { undo(); return; }
         if (action === 'redo') { redo(); return; }
         if (action === 'import') { importMarkdown(); return; }
@@ -307,6 +309,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('postForm').addEventListener('submit', handleSubmit);
     document.getElementById('draftBtn').addEventListener('click', () => savePost('draft'));
+
+    // ===== 专注模式：收起导航与字段行，把整屏高度让给正文 =====
+    const focusBtn = document.getElementById('focusToggle');
+    function setFocusMode(on) {
+        document.body.classList.toggle('editor-focus', on);
+        if (focusBtn) {
+            focusBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+            focusBtn.textContent = on ? '退出专注' : '专注';
+        }
+    }
+    if (focusBtn) {
+        focusBtn.addEventListener('click', () => {
+            setFocusMode(!document.body.classList.contains('editor-focus'));
+        });
+    }
+    document.addEventListener('keydown', (e) => {
+        // 弹窗打开时 Esc 优先关弹窗（上面的监听已处理），这里只在专注态下响应
+        if (e.key === 'Escape' && document.body.classList.contains('editor-focus')) {
+            const modal = document.getElementById('imageModal');
+            if (modal && !modal.hidden) return;
+            setFocusMode(false);
+        }
+    });
 
     // 单行输入框内按回车不提交表单（避免误提交，多行 textarea 不受影响）
     document.getElementById('postForm').addEventListener('keydown', (e) => {
@@ -813,7 +838,7 @@ async function loadForEdit(id) {
             return;
         }
         const post = data.post;
-        document.getElementById('editorTitle').textContent = '编辑文章';
+        document.getElementById('editorTitle').textContent = '编辑中';
         document.getElementById('title').value = post.title;
         document.getElementById('author').value = post.author || currentNickname || '';
         populateTopicSelect(post.topic || '');
@@ -870,7 +895,7 @@ async function savePost(status) {
 
             if (isDraft) {
                 showToast('📝 草稿已保存');
-                document.getElementById('editorTitle').textContent = '编辑文章';
+                document.getElementById('editorTitle').textContent = '编辑中';
                 document.title = `编辑 · ${title}`;
                 savingBtn.disabled = false;
                 savingBtn.textContent = originalText;

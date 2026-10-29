@@ -6424,15 +6424,20 @@ body.editor-page .site-header-pill .nav {
     white-space: nowrap;
 }
 
-/* 主体撑满剩余高度，内部再分「信息区 / 编辑区 / 状态栏」 */
+/* 主体撑满剩余高度，内部再分「信息区 / 编辑区 / 状态栏」
+   外层留白全部收到最小：这里是纯写作页，边框内的每一像素都该给正文 */
 body.editor-page .container-editor {
     flex: 1 1 auto;
     min-height: 0;
     width: 100%;
     max-width: none;
     margin: 0;
-    padding: 12px 18px 14px;
+    padding: 8px 12px 10px;
     display: flex;
+}
+
+body.editor-page .editor-card {
+    padding: 10px 14px;
 }
 
 body.editor-page #postForm {
@@ -6442,37 +6447,50 @@ body.editor-page #postForm {
     flex-direction: column;
 }
 
-/* 信息区第一行：页面状态 + 快捷键提示 */
-.editor-head {
-    flex-shrink: 0;
+/* 状态栏左侧：页面状态 + 字数统计
+   原先这两项各占一行（顶部 h1 一行 + 底部统计一行），现在合并到底部一条，
+   把省下的 ~30px 全部让给正文编辑区。 */
+.editor-footer-meta {
     display: flex;
-    align-items: baseline;
-    gap: 12px;
-    margin-bottom: 4px;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
 }
 
-.editor-head-hint {
-    margin-left: auto;
+.editor-status {
     font-family: var(--sans);
-    font-size: 0.75rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+/* 快捷键提示：常驻状态栏右侧，替代原先顶部那行 hint */
+.editor-kbd-hint {
+    font-family: var(--sans);
+    font-size: 0.72rem;
     color: var(--text-muted);
     white-space: nowrap;
 }
 
-/* 标题：无边框大号输入，靠一条底线分隔，视觉上更接近写作工具 */
+/* 标题：无边框大号输入，靠一条底线分隔，视觉上更接近写作工具
+   （字号 1.45 → 1.3rem、上下留白收紧：标题只是「一行内容」，不该吃掉编辑区高度） */
 .editor-title-input {
     flex-shrink: 0;
     width: 100%;
-    padding: 4px 2px 9px;
+    padding: 2px 2px 7px;
     border: none;
     border-bottom: 1px solid var(--border);
     border-radius: 0;
     background: transparent;
     color: var(--text);
     font-family: var(--serif);
-    font-size: 1.45rem;
+    font-size: 1.3rem;
     font-weight: 700;
-    line-height: 1.35;
+    line-height: 1.3;
     transition: border-color 0.15s;
 }
 
@@ -6488,41 +6506,48 @@ body.editor-page #postForm {
     box-shadow: none;
 }
 
-/* 三个字段挤成一行：专栏 / 主题 / 简介 */
+/* 三个字段挤成一行：专栏 / 主题 / 简介
+   label 从「独立一行」改为「与输入框同一行」，三段总高从 ~76px 降到 ~50px */
 .editor-fields {
     flex-shrink: 0;
     display: grid;
-    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr) minmax(0, 1.7fr);
-    gap: 10px 14px;
-    margin: 10px 0 12px;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.1fr) minmax(0, 1.7fr);
+    gap: 8px 14px;
+    margin: 8px 0 10px;
 }
 
 .editor-field {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    flex-direction: row;
+    align-items: center;
+    gap: 7px;
     min-width: 0;
 }
 
 .editor-field-label {
+    flex: 0 0 auto;
+    min-width: 2.2em;
     font-family: var(--sans);
     font-size: 0.74rem;
     font-weight: 600;
     color: var(--text-muted);
     letter-spacing: 0.02em;
+    white-space: nowrap;
 }
 
 .editor-field select,
 .editor-field input {
+    flex: 1 1 auto;
     width: 100%;
+    min-width: 0;
     min-height: 0;
-    padding: 7px 10px;
+    padding: 6px 9px;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--bg);
     color: var(--text);
     font-family: var(--sans);
-    font-size: 0.88rem;
+    font-size: 0.86rem;
     line-height: 1.5;
     box-shadow: none;
     transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
@@ -6546,7 +6571,41 @@ body.editor-page #postForm {
 
 body.editor-page .markdown-toolbar {
     flex-shrink: 0;
+    gap: 5px;
+    padding: 5px 8px 5px;
     overflow-y: auto;
+}
+
+/* 工具按钮瘦身：工具栏一行 36px 左右，够点就行，不用撑成按钮墙 */
+body.editor-page .md-btn {
+    padding: 4px 9px;
+    font-size: 0.8rem;
+}
+
+body.editor-page .md-btn-icon {
+    padding: 4px 7px;
+}
+
+/* 专注按钮推到工具栏最右，和编辑类操作分开 */
+.md-btn-focus {
+    margin-left: auto;
+}
+
+.md-btn-focus[aria-pressed="true"] {
+    color: #fff;
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+/* 面板小标题（目录 / Markdown 编辑 / 预览）压薄，把高度留给正文本体 */
+body.editor-page .pane-label {
+    padding: 5px 12px;
+    font-size: 0.72rem;
+}
+
+/* 编辑区默认占比略高于预览：写作时左边才是主角（右侧分隔条仍可拖拽调整） */
+body.editor-page .markdown-editor-input {
+    flex: 0 0 55%;
 }
 
 /* 长内容不得撑破布局：flex/grid 子项默认 min-width:auto 会吃进内容最小宽度，
@@ -6554,7 +6613,6 @@ body.editor-page .markdown-toolbar {
    这里沿布局链逐层压 0，让内容在各自面板内滚动而不是把页面顶宽。 */
 body.editor-page .editor-card,
 body.editor-page #postForm,
-body.editor-page .editor-head,
 body.editor-page .editor-body,
 body.editor-page .editor-fields,
 body.editor-page .markdown-toolbar,
@@ -6562,22 +6620,59 @@ body.editor-page .markdown-editor,
 body.editor-page .markdown-editor-pane,
 body.editor-page .markdown-body,
 body.editor-page .editor-title-input,
+body.editor-page .editor-footer,
+body.editor-page .editor-footer-meta,
 body.editor-page .editor-field {
     min-width: 0;
 }
 
-body.editor-page .editor-head h1 {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+/* 状态栏：底部一条通栏，左侧状态+统计，右侧快捷键+退出 */
+body.editor-page .editor-footer {
+    flex-shrink: 0;
+    margin-top: 6px;
+    padding: 4px 10px;
+    gap: 4px 12px;
 }
 
-/* 状态栏右侧：退出编辑 */
+/* 状态栏右侧：快捷键提示 + 退出编辑 */
 .editor-footer-links {
     display: flex;
     align-items: center;
     gap: 12px;
+    min-width: 0;
+}
+
+/* ---------- 专注模式：折叠导航与字段行，整屏交给正文 ----------
+   ⚠ 头部不能整块 display:none ——「保存草稿 / 发布」就在里面，
+   藏了 header 等于藏了唯一的提交入口。这里只摘掉品牌与导航，
+   把胶囊壳做成透明，视觉上「导航消失」但操作仍在。 */
+body.editor-page.editor-focus .site-header-pill {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    margin-top: 4px;
+}
+
+body.editor-page.editor-focus .site-header-pill .brand,
+body.editor-page.editor-focus .site-header-pill .nav,
+body.editor-page.editor-focus .editor-fields {
+    display: none;
+}
+
+body.editor-page.editor-focus .site-header-pill .header-inner {
+    padding: 2px 0;
+    justify-content: center;
+}
+
+body.editor-page.editor-focus .container-editor {
+    padding: 0;
+}
+
+body.editor-page.editor-focus .editor-card {
+    border: none;
+    border-radius: 0;
+    padding: 8px 12px;
+    box-shadow: none;
 }
 
 .editor-exit {
@@ -6638,8 +6733,8 @@ body.editor-page .editor-head h1 {
         display: none;
     }
 
-    .markdown-editor-input,
-    .markdown-editor-preview {
+    body.editor-page .markdown-editor-input,
+    body.editor-page .markdown-editor-preview {
         flex: 1 1 0;
     }
 
@@ -6651,7 +6746,8 @@ body.editor-page .editor-head h1 {
         grid-column: 1 / -1;
     }
 
-    .editor-head-hint {
+    /* 窄屏状态栏放不下快捷键提示，直接隐藏（按钮 title 里仍可查） */
+    .editor-kbd-hint {
         display: none;
     }
 }
@@ -6710,7 +6806,7 @@ body.editor-page .editor-head h1 {
         min-height: 620px;
     }
 
-    .markdown-editor-input {
+    body.editor-page .markdown-editor-input {
         flex: 0 0 50%;
     }
 
@@ -6725,23 +6821,34 @@ body.editor-page .editor-head h1 {
     }
 }
 
-/* 矮屏：压掉信息区，高度全给正文 */
-@media (max-height: 700px) {
-    body.editor-page .editor-head {
-        display: none;
+/* 极窄屏：字段内联 label 摆不下，退回单列堆叠 */
+@media (max-width: 560px) {
+    .editor-fields {
+        grid-template-columns: minmax(0, 1fr);
     }
 
+    .editor-field:last-child {
+        grid-column: auto;
+    }
+
+    .md-btn-focus {
+        margin-left: 0;
+    }
+}
+
+/* 矮屏：信息区已并入状态栏，这里只再压一层标题与字段间距 */
+@media (max-height: 700px) {
     .editor-title-input {
-        font-size: 1.25rem;
-        padding-bottom: 6px;
+        font-size: 1.15rem;
+        padding-bottom: 5px;
     }
 
     .editor-fields {
-        margin: 6px 0 10px;
+        margin: 6px 0 8px;
     }
 
     body.editor-page .editor-footer {
-        margin-top: 6px;
-        padding: 5px 10px;
+        margin-top: 5px;
+        padding: 3px 9px;
     }
 }
