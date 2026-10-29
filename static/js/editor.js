@@ -144,19 +144,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 用户自己滚预览时让位一段时间，避免和光标跟随互相拉扯出「上下跳」
+    // 用户自己滚预览时让位一段时间，避免和光标跟随互相拉扯出「上下跳」。
+    // ⚠️ 只认用户主动产生的事件（滚轮 / 触摸 / 在滚动条上按下），**不听 scroll**：
+    // 编辑时 Chrome 的滚动锚定会为了保持可见内容不动而自动微调 scrollTop，
+    // 那些 scroll 事件和用户滚动长得一模一样，一旦按 scroll 判定，让位期就会被
+    // 无限续期，跟随彻底失效（内容一路跑出视口）。锚定改变的是可见位置以外的
+    // 补偿量，本来也不该算作用户滚走。
     const previewEl = document.getElementById('preview');
     if (previewEl) {
-        const markUserScroll = (force) => {
-            if (!force && Date.now() < previewProgrammaticUntil) return;
+        const markUserScroll = () => {
             cancelPreviewAnim();
+            previewWrittenTop = null;
             previewUserScrollAt = Date.now();
         };
-        // wheel / touchmove 一定出自用户，程序化滚动期间也要接管
-        previewEl.addEventListener('wheel', () => markUserScroll(true), { passive: true });
-        previewEl.addEventListener('touchmove', () => markUserScroll(true), { passive: true });
-        // scroll 兜底覆盖拖动滚动条、键盘 PageDown 等
-        previewEl.addEventListener('scroll', () => markUserScroll(false), { passive: true });
+        previewEl.addEventListener('wheel', markUserScroll, { passive: true });
+        previewEl.addEventListener('touchmove', markUserScroll, { passive: true });
+        previewEl.addEventListener('pointerdown', markUserScroll, { passive: true });
     }
 
     // 撤销 / 重做：输入前记录状态（800ms 内连续输入合并为一步）
@@ -527,57 +530,70 @@ function mutePreviewSync(ms) {
 const PREVIEW_USER_SCROLL_GRACE = 2000;
 let previewUserScrollAt = 0;
 
-// 程序化滚动的时间窗标记。scroll 事件是异步派发的，用时间窗比布尔量可靠。
-let previewProgrammaticUntil = 0;
+// 跟随滚动不做瞬跳，而是「持续逼近」。
+// ⚠️ 关键：**不能在每次输入时重启动画**。按 200ms 动画、100ms 一个键算，
+// 每个键都在动画只走到一半时把它 cancel 掉、从原地重新出发，预览就永远
+// 到不了目标：左光标一路往下走、右侧只肯龟挪一小步，对应的内容于是被
+// 顶出视口（就是「右边一直往下跑」）。改成只更新目标、由同一个循环
+// 指数逼近，无论输入多密集都会收敛。
+// 正在追的目标：{ pv, target, raf, timer, min, max }
+let previewChase = null;
 
-function markPreviewProgrammatic(ms) {
-    previewProgrammaticUntil = Date.now() + (ms || 300);
+// 我们最后一次写进预览的 scrollTop（仅用于调试与断言，不参与滚动归属判断）
+let previewWrittenTop = null;
+
+function writePreviewTop(pv, v) {
+    previewWrittenTop = v;
+    pv.scrollTop = v;
 }
-
-// 跟随滚动做成短动画（easeOutCubic）而不是瞬跳：
-// 一屏一屏地「滑过去」比直接赋值 200~2000px 的位移观感稳定得多。
-const PREVIEW_ANIM_MS = 200;
-let previewAnimRaf = 0;
-let previewAnimFrom = 0;
-let previewAnimTo = 0;
-let previewAnimStart = 0;
 
 function cancelPreviewAnim() {
-    if (previewAnimRaf) {
-        cancelAnimationFrame(previewAnimRaf);
-        previewAnimRaf = 0;
-    }
+    if (!previewChase) return;
+    if (previewChase.raf) cancelAnimationFrame(previewChase.raf);
+    if (previewChase.timer) clearTimeout(previewChase.timer);
+    previewChase = null;
 }
 
+// 把预览持续推进到 top。已在追踪中则只换目标，不重启循环。
 function animatePreviewScrollTo(pv, top) {
-    cancelPreviewAnim();
     const from = pv.scrollTop;
-    if (Math.abs(top - from) < 1) return;
+    if (!previewChase && Math.abs(top - from) < 1) return;
 
-    previewAnimFrom = from;
-    previewAnimTo = top;
-    previewAnimStart = performance.now();
-    markPreviewProgrammatic(PREVIEW_ANIM_MS + 150);
+    if (previewChase) {
+        previewChase.target = top;
+        previewChase.min = Math.min(previewChase.min, top);
+        previewChase.max = Math.max(previewChase.max, top);
+    } else {
+        const self = { pv: pv, target: top, raf: 0, timer: 0, min: Math.min(from, top), max: Math.max(from, top) };
+        previewChase = self;
+        const step = () => {
+            if (previewChase !== self) return;   // 已被新一轮接管
+            const cur = pv.scrollTop;
+            const delta = self.target - cur;
+            if (Math.abs(delta) < 1) {
+                if (self.timer) clearTimeout(self.timer);
+                self.timer = 0;
+                self.raf = 0;
+                previewChase = null;
+                writePreviewTop(pv, self.target);
+                return;
+            }
+            // 指数逼近：每帧走剩余距离的约 1/3，十来帧到位，帧稀疏也不会冲过头
+            writePreviewTop(pv, cur + delta * 0.34);
+            self.raf = requestAnimationFrame(step);
+        };
+        self.raf = requestAnimationFrame(step);
 
-    const step = (now) => {
-        const p = Math.min(1, (now - previewAnimStart) / PREVIEW_ANIM_MS);
-        const eased = 1 - Math.pow(1 - p, 3);
-        pv.scrollTop = previewAnimFrom + (previewAnimTo - previewAnimFrom) * eased;
-        if (p < 1) {
-            previewAnimRaf = requestAnimationFrame(step);
-        } else {
-            previewAnimRaf = 0;
-        }
-    };
-    previewAnimRaf = requestAnimationFrame(step);
-
-    // 兜底：后台标签页 / 不渲染的文档里 rAF 可能一直不回调，
-    // 那样目标位置就永远落不了地。超时后直接落位（动画已跑完时这里是空操作）。
-    setTimeout(() => {
-        if (!previewAnimRaf) return;
-        cancelPreviewAnim();
-        pv.scrollTop = previewAnimTo;
-    }, PREVIEW_ANIM_MS + 80);
+        // 看门狗：后台标签页 / 不渲染的文档里 rAF 可能一直不回调，
+        // 没有它目标位置就永远落不了地（实测 30s 只跑 8 帧）。
+        self.timer = setTimeout(() => {
+            // ⚠️ 必须比对对象身份：目标每次更新都续期，但上一轮结束后来不及清的
+            // 定时器不能把新一轮一起掐掉、把旧目标写回去。
+            if (previewChase !== self) return;
+            cancelPreviewAnim();
+            writePreviewTop(pv, self.target);
+        }, 320);
+    }
 }
 
 // 元素相对预览内容顶部的偏移（预览自身就是滚动容器）
@@ -644,10 +660,14 @@ function syncPreviewToCaret() {
     if (y == null) return;
 
     const h = pv.clientHeight;
-    const cur = pv.scrollTop;
-    if (y >= cur + h * 0.12 && y <= cur + h * 0.82) return;
+    // 判断用「这一轮追踪最终会停在哪里」，而不是追踪途中的瞬时位置：
+    // 否则逼近过程中每次输入都判定为越界，目标会被反复改写成细微不同的值。
+    const resting = previewChase && previewChase.pv === pv ? previewChase.target : pv.scrollTop;
+    // 舒适区收窄到 28%~55%：重启问题解决后，频繁改目标是安全的，
+    // 换来的是「跟着走」而不是「两百多像素一跳」。
+    if (y >= resting + h * 0.28 && y <= resting + h * 0.55) return;
 
-    // 一次滚到位（让光标内容落在视口 38% 处），而不是每键挪一小格
+    // 让光标内容落在视口 38% 处
     const target = Math.max(0, Math.min(y - h * 0.38, max));
     animatePreviewScrollTo(pv, target);
 }
@@ -710,8 +730,8 @@ function jumpToHeading(index) {
     if (!heading) return;
 
     // 平滑滚动期间别让「预览跟随光标」把它拽回去
-    mutePreviewSync(500);
-    markPreviewProgrammatic(900);
+    cancelPreviewAnim();
+    mutePreviewSync(600);
 
     const top = heading.getBoundingClientRect().top - preview.getBoundingClientRect().top + preview.scrollTop;
     preview.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' });
