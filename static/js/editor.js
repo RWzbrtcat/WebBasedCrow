@@ -132,6 +132,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // 输入时实时刷新预览
     contentInput.addEventListener('input', updatePreview);
 
+    // 点击 / 用方向键、Home、End、翻页移动光标后，预览也跟到对应位置
+    // （放在 rAF 里等浏览器先把新的 selection 落定）
+    const followCaret = () => { requestAnimationFrame(syncPreviewToCaret); };
+    contentInput.addEventListener('click', followCaret);
+    contentInput.addEventListener('keyup', (e) => {
+        const k = e.key;
+        if (k.startsWith('Arrow') || k === 'Home' || k === 'End' || k === 'PageUp' || k === 'PageDown') {
+            followCaret();
+        }
+    });
+
     // 撤销 / 重做：输入前记录状态（800ms 内连续输入合并为一步）
     contentInput.addEventListener('beforeinput', (e) => {
         if (e.inputType && e.inputType.startsWith('history')) return;
@@ -281,6 +292,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!block) return;
         const offset = Number(block.dataset.offset);
         if (Number.isNaN(offset)) return;
+        // 用户是「看着预览点」的，别让光标跟随反过来把预览滚走
+        mutePreviewSync(400);
         const ta = contentTextarea();
         ta.focus({ preventScroll: true });
         ta.setSelectionRange(offset, offset);
@@ -480,6 +493,88 @@ function populateTopicSelect(selected) {
     select.value = selected || '';
 }
 
+// ===== 预览跟随：编辑位置 → 右侧对应位置 =====
+// 左侧每次输入都会重建预览 DOM，若两侧滚动互不关联，写长文时光标在编辑区一路下移、
+// 预览却停在原处，看到的就是「右边对应我编辑的那段内容一直在往下跑，最后跑出视口」。
+// 这里用预览里已有的 data-offset 锚点把光标偏移换算成预览中的纵向位置，
+// 并在相邻两块之间按字符比例插值 —— 比按滚动比例硬换算稳得多：
+// 代码块、表格、图片在两侧的高度完全不成比例，比例法会持续漂移（表现为预览自己往下滑）。
+let previewSyncMutedUntil = 0;
+
+function mutePreviewSync(ms) {
+    previewSyncMutedUntil = Date.now() + (ms || 300);
+}
+
+// 元素相对预览内容顶部的偏移（预览自身就是滚动容器）
+function previewTopOf(pv, pvTop, el) {
+    return el.getBoundingClientRect().top - pvTop + pv.scrollTop;
+}
+
+// 源文本偏移 caret 在预览中对应的 Y 坐标
+function previewYForOffset(pv, pvTop, caret) {
+    const blocks = pv.querySelectorAll('[data-offset]');
+    const n = blocks.length;
+    if (!n) return null;
+    if (n === 1) return previewTopOf(pv, pvTop, blocks[0]);
+
+    // 二分找最后一个 offset <= caret 的块
+    let lo = 0;
+    let hi = n - 1;
+    let idx = -1;
+    while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        const off = Number(blocks[mid].dataset.offset);
+        if (!Number.isNaN(off) && off <= caret) {
+            idx = mid;
+            lo = mid + 1;
+        } else {
+            hi = mid - 1;
+        }
+    }
+
+    const a = idx >= 0 ? blocks[idx] : null;
+    const b = blocks[idx + 1] || null;
+    if (!a) return previewTopOf(pv, pvTop, blocks[0]);
+    if (!b) return previewTopOf(pv, pvTop, a);
+
+    const oa = Number(a.dataset.offset);
+    const ob = Number(b.dataset.offset);
+    const ya = previewTopOf(pv, pvTop, a);
+    if (Number.isNaN(oa) || Number.isNaN(ob) || ob <= oa) return ya;
+    const yb = previewTopOf(pv, pvTop, b);
+    const r = Math.min(1, Math.max(0, (caret - oa) / (ob - oa)));
+    return ya + (yb - ya) * r;
+}
+
+// 把预览滚到「光标所在内容」的位置。已在舒适区内则完全不动 ——
+// 否则每敲一个字都微调一下滚动条，观感就是预览自己在往下跑。
+function syncPreviewToCaret() {
+    if (Date.now() < previewSyncMutedUntil) return;
+    const ta = contentTextarea();
+    const pv = document.getElementById('preview');
+    if (!ta || !pv) return;
+    // 只在真正编辑（textarea 有焦点）时跟随：加载文章时 value 赋值会让光标落到末尾，
+    // 若不判断，打开一篇长文预览就会直接跳到底部。
+    if (document.activeElement !== ta) return;
+
+    const max = pv.scrollHeight - pv.clientHeight;
+    if (max <= 0) return;
+    const caret = ta.selectionEnd;
+    if (caret == null) return;
+
+    const pvTop = pv.getBoundingClientRect().top;
+    const y = previewYForOffset(pv, pvTop, caret);
+    if (y == null) return;
+
+    const h = pv.clientHeight;
+    const cur = pv.scrollTop;
+    if (y >= cur + h * 0.12 && y <= cur + h * 0.82) return;
+
+    // 一次滚到位（让光标内容落在视口 38% 处），而不是每键挪一小格
+    const target = y - h * 0.38;
+    pv.scrollTop = Math.max(0, Math.min(target, max));
+}
+
 // 刷新右侧预览
 function updatePreview() {
     const text = document.getElementById('content').value;
@@ -495,6 +590,7 @@ function updatePreview() {
     updateToc();
     updateStats(text);
     scrollCaretIntoView(contentTextarea());
+    syncPreviewToCaret();
 }
 
 // 更新左下角的行数 / 字数 / 词数统计
@@ -535,6 +631,9 @@ function jumpToHeading(index) {
     const headings = preview.querySelectorAll('h1, h2, h3, h4, h5, h6');
     const heading = headings[index];
     if (!heading) return;
+
+    // 平滑滚动期间别让「预览跟随光标」把它拽回去
+    mutePreviewSync(500);
 
     const top = heading.getBoundingClientRect().top - preview.getBoundingClientRect().top + preview.scrollTop;
     preview.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' });
