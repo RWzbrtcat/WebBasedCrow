@@ -1489,8 +1489,16 @@ html {
     opacity: 1;
 }
 
+/* 选区配色：输入框自身的字形是「透明」的，可见文字全部来自下层高亮层。
+   若 ::selection 让输入框画出不透明的前景色（全局 ::selection 的
+   color: var(--accent-dark) 就是），等于把下层那层语法配色整片盖住 ——
+   选中注释时会「突然变正体、变红棕」，因为压上来的是等宽正体的字形。
+   正解：前景显式保持透明，只画半透明底色，让下层语法色（含注释的斜体灰）透出来。
+   ⚠ 不要在这里写白色/深色前景，那会重现这个 bug。 */
 .markdown-editor-input textarea::selection {
-    background: rgba(59, 130, 246, 0.22);
+    background: rgba(59, 130, 246, 0.24);
+    color: transparent;
+    -webkit-text-fill-color: transparent;
 }
 
 .markdown-editor-input textarea:focus {

@@ -22,6 +22,10 @@ let saving = false;
 // Tab 键插入的缩进宽度（空格）
 const TAB_INDENT = '    ';
 
+// 代码块内的括号 / 引号配对表（与练习闯关页的代码编辑器保持一致的口径）
+const CODE_PAIRS = { '(': ')', '[': ']', '{': '}', '"': '"', "'": "'" };
+const CODE_CLOSERS = { ')': '(', ']': '[', '}': '{', '"': '"', "'": "'" };
+
 // ===== 撤销 / 重做 =====
 const MAX_HISTORY = 200;
 let undoStack = [];
@@ -183,8 +187,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 代码块内的括号 / 引号判定（自动配对、跳过右半边、成对删除、括号间回车展开）。
+    // 必须注册在下面「回车续接列表」之前：回车相关分支要抢先处理，
+    // 处理不了时返回 false，再由后面的处理器接手。
+    contentInput.addEventListener('keydown', (e) => {
+        handleCodeBlockEditing(e);
+    });
+
     // 列表回车自动续接：有序列表数字递增、无序列表保持标记
     contentInput.addEventListener('keydown', (e) => {
+        // 前面「代码块括号判定」已经接管过（括号间展开、续接缩进），这里不要再插一次换行
+        if (e.defaultPrevented) return;
         if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.isComposing) return;
         const ta = e.target;
         const pos = ta.selectionStart;
@@ -192,7 +205,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const lineStart = value.lastIndexOf('\n', pos - 1) + 1;
         const before = value.slice(lineStart, pos);
 
-        // 代码块内回车：按 markdown 规则，仅继承上一行缩进，不针对 { ( [ : 额外缩进
+        // 代码块内回车（兜底）：括号间展开、行尾 { ( [ 多缩进一级这两类已由
+        // handleCodeBlockEditing 先行处理，走到这里的情况只继承上一行缩进
         if (isInsideCodeBlock(value, pos)) {
             e.preventDefault();
             pushUndoState();
@@ -1280,6 +1294,133 @@ function isInsideCodeBlock(text, pos) {
     const before = text.slice(0, pos);
     const fences = before.match(/^```[ \t]*/gm) || [];
     return fences.length % 2 === 1;
+}
+
+// 标识符字符：用来判断「在已有标识符前插括号」这类情形
+function isWordChar(ch) {
+    return !!ch && /[A-Za-z0-9_$]/.test(ch);
+}
+
+// ===== 代码块内的括号 / 引号判定 =====
+// 只在围栏代码块内接管按键：正文里的圆括号、方括号是排版符号（「（一）」、
+// [文本](url)），自动补全只会添乱。
+// 返回 true 表示已处理（调用方无需再 preventDefault）。
+function handleCodeBlockEditing(e) {
+    const ta = e.target;
+    if (!ta || ta.id !== 'content') return false;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing || e.keyCode === 229) return false;
+
+    const key = e.key;
+    const v = ta.value;
+    const s = ta.selectionStart;
+    const en = ta.selectionEnd;
+    if (!isInsideCodeBlock(v, s)) return false;
+
+    const prev = s > 0 ? v[s - 1] : '';
+    const next = v[s] || '';
+
+    // ① 成对括号 / 引号：删左半边时右半边一起删
+    if (key === 'Backspace' && s === en && CODE_PAIRS[prev] && CODE_PAIRS[prev] === next) {
+        e.preventDefault();
+        pushUndoState();
+        ta.value = v.slice(0, s - 1) + v.slice(s + 1);
+        ta.setSelectionRange(s - 1, s - 1);
+        updatePreview();
+        return true;
+    }
+
+    // ② 回车：光标夹在成对括号中间 → 展开成三行（VS Code 招牌行为）
+    //    行尾是 { ( [ → 比上一行多缩进一级
+    if (key === 'Enter' && !e.shiftKey && s === en) {
+        const lineStart = v.lastIndexOf('\n', s - 1) + 1;
+        const before = v.slice(lineStart, s);
+        const outer = (before.match(/^[ \t]*/) || [''])[0];
+
+        // 引号之间回车不能展开（那是在字符串里换行），只有 () [] {} 才展开
+        if (CODE_PAIRS[prev] && CODE_PAIRS[prev] === next && prev !== '"' && prev !== "'") {
+            e.preventDefault();
+            pushUndoState();
+            const inner = outer + TAB_INDENT;
+            ta.value = v.slice(0, s) + '\n' + inner + '\n' + outer + v.slice(s);
+            const caret = s + 1 + inner.length;
+            ta.setSelectionRange(caret, caret);
+            updatePreview();
+            return true;
+        }
+        if (/[\[({]\s*$/.test(before)) {
+            e.preventDefault();
+            pushUndoState();
+            const insert = '\n' + outer + TAB_INDENT;
+            ta.value = v.slice(0, s) + insert + v.slice(s);
+            const caret = s + insert.length;
+            ta.setSelectionRange(caret, caret);
+            updatePreview();
+            return true;
+        }
+        // 其余情况交回「继承上一行缩进」的原逻辑
+        return false;
+    }
+
+    // ③ 行首位置输入 } → 反缩进一级（缩进不足一级时按实际宽度退，2 空格缩进也适用）
+    if (key === '}' && s === en) {
+        const lineStart = v.lastIndexOf('\n', s - 1) + 1;
+        const before = v.slice(lineStart, s);
+        if (before.length > 0 && /^[ \t]*$/.test(before)) {
+            const remove = before.endsWith(TAB_INDENT)
+                ? TAB_INDENT.length
+                : (before.length % TAB_INDENT.length) || TAB_INDENT.length;
+            e.preventDefault();
+            pushUndoState();
+            const caret = s - remove;
+            ta.value = v.slice(0, caret) + '}' + v.slice(s);
+            ta.setSelectionRange(caret + 1, caret + 1);
+            updatePreview();
+            return true;
+        }
+    }
+
+    // ④ 右半边已经在光标后：跳过去，而不是再插一个
+    if (CODE_CLOSERS[key] && s === en && next === key) {
+        e.preventDefault();
+        ta.setSelectionRange(s + 1, s + 1);
+        return true;
+    }
+
+    if (!CODE_PAIRS[key]) return false;
+    const close = CODE_PAIRS[key];
+    const isQuote = key === '"' || key === "'";
+
+    // ⑤ 有选区 → 用这一对包起来，选区落在中间，方便继续改写
+    if (s !== en) {
+        e.preventDefault();
+        pushUndoState();
+        const sel = v.slice(s, en);
+        ta.value = v.slice(0, s) + key + sel + close + v.slice(en);
+        ta.setSelectionRange(s + 1, en + 1);
+        updatePreview();
+        return true;
+    }
+
+    // ⑥ 没有选区 → 判断要不要补右半边
+    //   · 引号：紧跟标识符 / 反斜杠 / 同种引号 → 这是撇号或转义引号，不补（don't、\"x）
+    //   · 引号后紧跟标识符 → 不补（是在已有词前打引号）
+    //   · 括号后紧跟标识符 → 只插左边，别把已有表达式挡在后面
+    //   ⚠ 光标后已经是同类右括号时**照样补**：若这里也只插左边，用户想配平还得再敲一个
+    //     `)`，而那个 `)` 会被上面的「跳过已存在的右半边」吃掉 —— 变成永远配不平的死胡同。
+    let autoClose = true;
+    if (isQuote) {
+        if (isWordChar(prev) || prev === '\\' || prev === key) autoClose = false;
+        if (isWordChar(next)) autoClose = false;
+    } else if (isWordChar(next)) {
+        autoClose = false;
+    }
+
+    e.preventDefault();
+    pushUndoState();
+    ta.value = v.slice(0, s) + key + (autoClose ? close : '') + v.slice(s);
+    ta.setSelectionRange(s + 1, s + 1);
+    updatePreview();
+    return true;
 }
 
 function escapeHtml(text) {
