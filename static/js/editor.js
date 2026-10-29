@@ -132,9 +132,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // 输入时实时刷新预览
     contentInput.addEventListener('input', updatePreview);
 
-    // 点击 / 用方向键、Home、End、翻页移动光标后，预览也跟到对应位置
-    // （放在 rAF 里等浏览器先把新的 selection 落定）
-    const followCaret = () => { requestAnimationFrame(syncPreviewToCaret); };
+    // 点击 / 用方向键、Home、End、翻页移动光标后，预览也跟到对应位置。
+    // 用 setTimeout 而不是 rAF 调度：只等浏览器把新的 selection 落定，不需要渲染帧；
+    // rAF 在后台标签页 / 不渲染的文档里会停摆，跟随就再也不触发了。
+    const followCaret = () => { setTimeout(syncPreviewToCaret, 0); };
     contentInput.addEventListener('click', followCaret);
     contentInput.addEventListener('keyup', (e) => {
         const k = e.key;
@@ -142,6 +143,21 @@ document.addEventListener('DOMContentLoaded', () => {
             followCaret();
         }
     });
+
+    // 用户自己滚预览时让位一段时间，避免和光标跟随互相拉扯出「上下跳」
+    const previewEl = document.getElementById('preview');
+    if (previewEl) {
+        const markUserScroll = (force) => {
+            if (!force && Date.now() < previewProgrammaticUntil) return;
+            cancelPreviewAnim();
+            previewUserScrollAt = Date.now();
+        };
+        // wheel / touchmove 一定出自用户，程序化滚动期间也要接管
+        previewEl.addEventListener('wheel', () => markUserScroll(true), { passive: true });
+        previewEl.addEventListener('touchmove', () => markUserScroll(true), { passive: true });
+        // scroll 兜底覆盖拖动滚动条、键盘 PageDown 等
+        previewEl.addEventListener('scroll', () => markUserScroll(false), { passive: true });
+    }
 
     // 撤销 / 重做：输入前记录状态（800ms 内连续输入合并为一步）
     contentInput.addEventListener('beforeinput', (e) => {
@@ -505,6 +521,65 @@ function mutePreviewSync(ms) {
     previewSyncMutedUntil = Date.now() + (ms || 300);
 }
 
+// 用户手动滚动预览后的「让位期」。
+// 不设这段缓冲的话：用户往下看 → 敲一个字 → 光标跟随把预览拽回光标处 →
+// 用户再滚 → 再被拽回，配合滚轮/触控板的惯性滚动，观感就是右侧一直在上下跳。
+const PREVIEW_USER_SCROLL_GRACE = 2000;
+let previewUserScrollAt = 0;
+
+// 程序化滚动的时间窗标记。scroll 事件是异步派发的，用时间窗比布尔量可靠。
+let previewProgrammaticUntil = 0;
+
+function markPreviewProgrammatic(ms) {
+    previewProgrammaticUntil = Date.now() + (ms || 300);
+}
+
+// 跟随滚动做成短动画（easeOutCubic）而不是瞬跳：
+// 一屏一屏地「滑过去」比直接赋值 200~2000px 的位移观感稳定得多。
+const PREVIEW_ANIM_MS = 200;
+let previewAnimRaf = 0;
+let previewAnimFrom = 0;
+let previewAnimTo = 0;
+let previewAnimStart = 0;
+
+function cancelPreviewAnim() {
+    if (previewAnimRaf) {
+        cancelAnimationFrame(previewAnimRaf);
+        previewAnimRaf = 0;
+    }
+}
+
+function animatePreviewScrollTo(pv, top) {
+    cancelPreviewAnim();
+    const from = pv.scrollTop;
+    if (Math.abs(top - from) < 1) return;
+
+    previewAnimFrom = from;
+    previewAnimTo = top;
+    previewAnimStart = performance.now();
+    markPreviewProgrammatic(PREVIEW_ANIM_MS + 150);
+
+    const step = (now) => {
+        const p = Math.min(1, (now - previewAnimStart) / PREVIEW_ANIM_MS);
+        const eased = 1 - Math.pow(1 - p, 3);
+        pv.scrollTop = previewAnimFrom + (previewAnimTo - previewAnimFrom) * eased;
+        if (p < 1) {
+            previewAnimRaf = requestAnimationFrame(step);
+        } else {
+            previewAnimRaf = 0;
+        }
+    };
+    previewAnimRaf = requestAnimationFrame(step);
+
+    // 兜底：后台标签页 / 不渲染的文档里 rAF 可能一直不回调，
+    // 那样目标位置就永远落不了地。超时后直接落位（动画已跑完时这里是空操作）。
+    setTimeout(() => {
+        if (!previewAnimRaf) return;
+        cancelPreviewAnim();
+        pv.scrollTop = previewAnimTo;
+    }, PREVIEW_ANIM_MS + 80);
+}
+
 // 元素相对预览内容顶部的偏移（预览自身就是滚动容器）
 function previewTopOf(pv, pvTop, el) {
     return el.getBoundingClientRect().top - pvTop + pv.scrollTop;
@@ -550,6 +625,8 @@ function previewYForOffset(pv, pvTop, caret) {
 // 否则每敲一个字都微调一下滚动条，观感就是预览自己在往下跑。
 function syncPreviewToCaret() {
     if (Date.now() < previewSyncMutedUntil) return;
+    // 用户刚手动滚过预览 ⇒ 这一拍让给他，别把滚动位置抢回来
+    if (Date.now() - previewUserScrollAt < PREVIEW_USER_SCROLL_GRACE) return;
     const ta = contentTextarea();
     const pv = document.getElementById('preview');
     if (!ta || !pv) return;
@@ -571,8 +648,8 @@ function syncPreviewToCaret() {
     if (y >= cur + h * 0.12 && y <= cur + h * 0.82) return;
 
     // 一次滚到位（让光标内容落在视口 38% 处），而不是每键挪一小格
-    const target = y - h * 0.38;
-    pv.scrollTop = Math.max(0, Math.min(target, max));
+    const target = Math.max(0, Math.min(y - h * 0.38, max));
+    animatePreviewScrollTo(pv, target);
 }
 
 // 刷新右侧预览
@@ -634,6 +711,7 @@ function jumpToHeading(index) {
 
     // 平滑滚动期间别让「预览跟随光标」把它拽回去
     mutePreviewSync(500);
+    markPreviewProgrammatic(900);
 
     const top = heading.getBoundingClientRect().top - preview.getBoundingClientRect().top + preview.scrollTop;
     preview.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' });
