@@ -136,10 +136,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // 输入时实时刷新预览
     contentInput.addEventListener('input', updatePreview);
 
-    // 点击 / 用方向键、Home、End、翻页移动光标后，预览也跟到对应位置。
+    // 点击 / 用方向键、Home、End、翻页移动光标后，预览也跟到对应位置，
+    // 左侧目录同步把光标所在章节点亮。
     // 用 setTimeout 而不是 rAF 调度：只等浏览器把新的 selection 落定，不需要渲染帧；
     // rAF 在后台标签页 / 不渲染的文档里会停摆，跟随就再也不触发了。
-    const followCaret = () => { setTimeout(syncPreviewToCaret, 0); };
+    const followCaret = () => {
+        setTimeout(() => {
+            syncPreviewToCaret();
+            syncTocActive();
+        }, 0);
+    };
     contentInput.addEventListener('click', followCaret);
     contentInput.addEventListener('keyup', (e) => {
         const k = e.key;
@@ -147,6 +153,9 @@ document.addEventListener('DOMContentLoaded', () => {
             followCaret();
         }
     });
+    // 拖选 / Ctrl+A / 输入法改选区也会换章节，select 兜住这些情况
+    // （syncTocActive 内部有「序号没变就直接返回」的短路，频繁触发没有代价）
+    contentInput.addEventListener('select', syncTocActive);
 
     // 用户自己滚预览时让位一段时间，避免和光标跟随互相拉扯出「上下跳」。
     // ⚠️ 只认用户主动产生的事件（滚轮 / 触摸 / 在滚动条上按下），**不听 scroll**：
@@ -331,6 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ta.focus({ preventScroll: true });
         ta.setSelectionRange(offset, offset);
         scrollToOffset(ta, offset);
+        syncTocActive();
     });
 
     // 预览中的内部链接：平滑滚动到对应标题（不触发原生 hash 跳转）
@@ -780,23 +790,108 @@ function updateStats(text) {
     statsEl.textContent = `行数 ${lines} · 字数 ${chars} · 词数 ${words}`;
 }
 
-// 根据预览中渲染出的标题，重建左侧目录
+// ===== 目录高亮：跟随光标所在的章节 =====
+// -2 是「需要重算」的哨兵；-1 表示光标在第一个标题之前（确实没有所属章节），是有效值。
+let tocActiveIndex = -2;
+// 上一次渲染的标题集合指纹，没变就不重建目录
+let tocSignature = '';
+
+// 光标所处的章节序号（以「标题在源文本里的偏移」判定，不含预览滚动位置）
+function tocIndexForCaret() {
+    const ta = contentTextarea();
+    const pv = document.getElementById('preview');
+    if (!ta || !pv) return -1;
+    const headings = pv.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    if (!headings.length) return -1;
+    const caret = ta.selectionEnd;
+    if (caret == null) return -1;
+
+    // 不按预览的滚动位置判断：预览正被「光标跟随」推着走，
+    // 滚动途中的瞬时位置会指向错误的章节，高亮就会来回跳。
+    // 标题被包在引用块 / 列表里时，偏移标在外层块上，用 closest 取。
+    let idx = -1;
+    for (let i = 0; i < headings.length; i++) {
+        const host = headings[i].closest('[data-offset]');
+        const off = host ? Number(host.dataset.offset) : NaN;
+        if (!Number.isNaN(off) && off <= caret) idx = i;
+    }
+    return idx;
+}
+
+// 把高亮挪到当前章节，并让目录自己滚到能看见它的位置
+function syncTocActive() {
+    const tocList = document.getElementById('tocList');
+    if (!tocList) return;
+    const items = tocList.querySelectorAll('.toc-item');
+    if (!items.length) {
+        tocActiveIndex = -2;
+        return;
+    }
+
+    const idx = tocIndexForCaret();
+    if (idx === tocActiveIndex) return;
+    tocActiveIndex = idx;
+
+    for (let i = 0; i < items.length; i++) {
+        const on = i === idx;
+        items[i].classList.toggle('is-active', on);
+        if (on) items[i].setAttribute('aria-current', 'location');
+        else items[i].removeAttribute('aria-current');
+    }
+
+    // 只改目录自己的 scrollTop：scrollIntoView 会连带滚动所有可滚动祖先，
+    // 在这套「整页不滚、三栏各自滚」的布局里容易把编辑区或预览一起带偏。
+    // 越界时多带 30% 余量而不是刚好贴边：贴边的话往下挪一节就又要滚一次，
+    // 目录会跟着光标一节一节地跳。窄屏下目录是 display:none（clientHeight 为 0），
+    // 此时只更新类名，别去算这些拿到全 0 的矩形。
+    if (idx >= 0 && tocList.clientHeight > 0) {
+        const pad = 6;
+        const lr = tocList.getBoundingClientRect();
+        const er = items[idx].getBoundingClientRect();
+        if (er.top < lr.top + pad) {
+            tocList.scrollTop -= (lr.top + pad - er.top) + lr.height * 0.3;
+        } else if (er.bottom > lr.bottom - pad) {
+            tocList.scrollTop += (er.bottom - (lr.bottom - pad)) + lr.height * 0.3;
+        }
+    }
+}
+
+// 根据预览中渲染出的标题，重建左侧目录（仅在标题集合真的变了时才重建）
 function updateToc() {
     const tocList = document.getElementById('tocList');
     const preview = document.getElementById('preview');
     if (!tocList || !preview) return;
 
-    const headings = preview.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    const headings = Array.from(preview.querySelectorAll('h1, h2, h3, h4, h5, h6'));
     if (!headings.length) {
-        tocList.innerHTML = '<p class="toc-empty">暂无标题</p>';
+        if (tocSignature !== '') {
+            tocSignature = '';
+            tocList.innerHTML = '<p class="toc-empty">暂无标题</p>';
+        }
+        tocActiveIndex = -2;
         return;
     }
 
-    tocList.innerHTML = Array.from(headings).map((h, i) => {
+    // 正文里改一个字也要重建整列目录是白费；而且 innerHTML 重写会把目录的
+    // 滚动位置清零（点目录跳转后随手一敲就弹回顶部）。标题集合没变就只同步高亮。
+    const signature = headings.map((h) => h.tagName + '\u0001' + h.textContent.trim()).join('\u0002');
+    if (signature === tocSignature) {
+        syncTocActive();
+        return;
+    }
+    tocSignature = signature;
+
+    const keepScroll = tocList.scrollTop;
+    tocList.innerHTML = headings.map((h, i) => {
         const level = parseInt(h.tagName.slice(1), 10);
         const text = h.textContent.trim();
         return `<button type="button" class="toc-item" data-index="${i}" title="${escapeHtml(text)}" style="padding-left:${10 + (level - 1) * 14}px">${escapeHtml(text)}</button>`;
     }).join('');
+    tocList.scrollTop = keepScroll;
+
+    // 节点全是新的，active 类随旧节点一起没了，强制按当前光标重算一次
+    tocActiveIndex = -2;
+    syncTocActive();
 }
 
 // 点击目录项：预览滚动到对应标题，并同步滚动左侧编辑区到源文本对应位置
@@ -823,6 +918,9 @@ function jumpToHeading(index) {
     ta.focus({ preventScroll: true });
     ta.setSelectionRange(offset, offset);
     scrollToOffset(ta, offset);
+
+    // setSelectionRange 不触发任何事件，目录高亮得手动跟一下
+    syncTocActive();
 }
 
 // 工具栏动作定义

@@ -1374,6 +1374,8 @@ html {
     text-align: left;
     background: none;
     border: none;
+    /* 预留高亮竖条的位置：否则点亮瞬间整列文字右移 2px，目录会「抖」一下 */
+    border-left: 2px solid transparent;
     border-radius: 6px;
     padding: 5px 10px;
     font-family: var(--sans);
@@ -1384,12 +1386,20 @@ html {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: color 0.12s, background 0.12s;
+    transition: color 0.12s, background 0.12s, border-color 0.12s;
 }
 
 .toc-item:hover {
     color: var(--accent);
     background: var(--accent-soft);
+}
+
+/* 光标所在章节：与文章页 .post-toc-link.active 同一套语言（竖条 + 暖底 + 加粗） */
+.toc-item.is-active {
+    color: var(--accent-dark);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
 }
 
 .toc-empty {
