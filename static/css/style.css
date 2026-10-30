@@ -1564,6 +1564,12 @@ html {
     flex: 1;
     overflow-y: auto;
     padding: 16px 22px;
+    /* 关闭滚动锚定：编辑时每次输入都会全量重建预览 DOM，光标上方段落一折行，
+       Chrome 的滚动锚定就会自动补偿 scrollTop 来「保持阅读位置」，窄预览下
+       折行多、补偿量大，和光标跟随叠加就变成 486px 的上下乱跳（实测宽预览 0 跳、
+       窄预览 8 次方向反转）。预览的滚动应完全交给光标跟随逻辑，锚定在此是干扰源。
+       ⚠ 只对编辑器预览关，文章详情页的 .markdown-body 保留锚定（阅读场景它才有益）。 */
+    overflow-anchor: none;
 }
 
 .empty-preview {
