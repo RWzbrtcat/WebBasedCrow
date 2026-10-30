@@ -63,23 +63,23 @@
                         <button type="button" class="md-btn" data-action="undo" title="撤销 (Ctrl+Z)">撤销</button>
                         <button type="button" class="md-btn" data-action="redo" title="重做 (Ctrl+Y)">重做</button>
                         <span class="md-divider"></span>
-                        <button type="button" class="md-btn md-btn-bold" data-action="bold" title="加粗">B</button>
-                        <button type="button" class="md-btn md-btn-italic" data-action="italic" title="斜体">I</button>
-                        <button type="button" class="md-btn md-btn-strike" data-action="strike" title="删除线">S</button>
+                        <button type="button" class="md-btn md-btn-bold" data-action="bold" data-shortcut="bold" title="加粗">B</button>
+                        <button type="button" class="md-btn md-btn-italic" data-action="italic" data-shortcut="italic" title="斜体">I</button>
+                        <button type="button" class="md-btn md-btn-strike" data-action="strike" data-shortcut="strike" title="删除线">S</button>
                         <span class="md-divider"></span>
-                        <button type="button" class="md-btn" data-action="heading" title="二级标题">标题</button>
-                        <button type="button" class="md-btn" data-action="quote" title="引用">引用</button>
+                        <button type="button" class="md-btn" data-action="heading" data-shortcut="heading" title="标题">标题</button>
+                        <button type="button" class="md-btn" data-action="quote" data-shortcut="quote" title="引用">引用</button>
                         <div class="md-dropdown">
                             <button type="button" class="md-btn md-dropdown-toggle" title="列表">列表<span class="md-caret"></span></button>
                             <div class="md-dropdown-menu" hidden>
-                                <button type="button" class="md-dropdown-item" data-action="ul">无序列表</button>
-                                <button type="button" class="md-dropdown-item" data-action="ol">有序列表</button>
+                                <button type="button" class="md-dropdown-item" data-action="ul" data-shortcut="ul">无序列表</button>
+                                <button type="button" class="md-dropdown-item" data-action="ol" data-shortcut="ol">有序列表</button>
                             </div>
                         </div>
                         <span class="md-divider"></span>
-                        <button type="button" class="md-btn" data-action="code" title="行内代码">行内代码</button>
+                        <button type="button" class="md-btn" data-action="code" data-shortcut="code" title="行内代码">行内代码</button>
                         <div class="md-dropdown">
-                            <button type="button" class="md-btn md-dropdown-toggle" title="代码块">代码块<span class="md-caret"></span></button>
+                            <button type="button" class="md-btn md-dropdown-toggle" data-shortcut="codeblock" title="代码块">代码块<span class="md-caret"></span></button>
                             <div class="md-dropdown-menu" hidden>
                                 <button type="button" class="md-dropdown-item" data-lang="">纯文本</button>
                                 <button type="button" class="md-dropdown-item" data-lang="bash">Bash</button>
@@ -95,7 +95,7 @@
                                 <button type="button" class="md-dropdown-item" data-lang="mermaid" title="插入 Mermaid 图表（流程图 / 时序图 / 类图等）">Mermaid 图表</button>
                             </div>
                         </div>
-                        <button type="button" class="md-btn md-btn-icon" data-action="link" title="插入链接"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+                        <button type="button" class="md-btn md-btn-icon" data-action="link" data-shortcut="link" title="插入链接"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
                         <button type="button" class="md-btn md-btn-icon" data-action="image" title="插入图片"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
                         <div class="md-dropdown" id="anchorDropdown">
                             <button type="button" class="md-btn md-dropdown-toggle" title="插入文章内部链接（跳转到某标题）">内部链接<span class="md-caret"></span></button>
@@ -136,6 +136,11 @@
                     </div>
                     <div class="editor-footer-links">
                         <span class="editor-kbd-hint">Ctrl+S 存草稿 · Ctrl+Enter 发布</span>
+                        <!-- 快捷键面板入口：quiet 的文本按钮，与「退出编辑」同一视觉重量 -->
+                        <button type="button" class="editor-shortcut-btn" id="shortcutBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="shortcutModal" title="查看全部快捷键">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
+                            <span>快捷键</span>
+                        </button>
                         <a href="/posts" class="editor-exit">退出编辑</a>
                     </div>
                 </div>
@@ -158,6 +163,17 @@
             </div>
         </div>
         <input type="file" id="imageFileInput" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" hidden>
+    </div>
+
+    <!-- 快捷键面板（内容由 editor.js 的 SHORTCUTS 表渲染） -->
+    <div class="shortcut-overlay" id="shortcutModal" hidden>
+        <div class="shortcut-modal" role="dialog" aria-modal="true" aria-labelledby="shortcutModalTitle" tabindex="-1">
+            <div class="shortcut-modal-head">
+                <h3 id="shortcutModalTitle">快捷键</h3>
+                <button type="button" class="image-modal-close" id="shortcutClose" aria-label="关闭">&times;</button>
+            </div>
+            <div class="shortcut-modal-body" id="shortcutList"></div>
+        </div>
     </div>
 
     <!-- 导入 Markdown 文件的隐藏输入框 -->

@@ -6860,3 +6860,190 @@ body.editor-page.editor-focus .editor-card {
         padding: 3px 9px;
     }
 }
+
+/* ============================================================
+   快捷键面板（写作页）
+   用发丝线分组，不再套卡片：这份内容本身就是「说明」，
+   再分层只会增加噪音。键帽是唯一的「实体」，用来引导视线。
+   ============================================================ */
+.shortcut-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(31, 35, 40, 0.34);
+    backdrop-filter: blur(3px);
+}
+
+.shortcut-overlay[hidden] {
+    display: none;
+}
+
+.shortcut-modal {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    position: relative;
+    max-width: 560px;
+    max-height: min(86vh, 700px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    animation: shortcutPanelIn 0.16s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+@keyframes shortcutPanelIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.shortcut-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+.shortcut-modal-head h3 {
+    font-family: var(--sans);
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.shortcut-modal-body {
+    padding: 2px 18px 16px;
+    overflow-y: auto;
+}
+
+/* 内容超出容器时才挂底部渐隐：半行被裁的样子像 bug，渐隐才像「还有更多」 */
+.shortcut-modal.is-scrollable::after {
+    content: '';
+    position: absolute;
+    right: 1px;
+    bottom: 1px;
+    left: 1px;
+    height: 22px;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--surface));
+    pointer-events: none;
+}
+
+/* 面板本身可聚焦（键盘上下文），但不该出现焦点环 */
+.shortcut-modal:focus {
+    outline: none;
+}
+
+.shortcut-group + .shortcut-group {
+    border-top: 1px solid var(--border);
+}
+
+.shortcut-group-title {
+    padding: 11px 0 1px;
+    font-family: var(--sans);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.shortcut-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 3px 0;
+}
+
+.shortcut-label {
+    min-width: 0;
+    font-family: var(--sans);
+    font-size: 0.83rem;
+    color: var(--text);
+}
+
+.shortcut-keys {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 3px;
+}
+
+.shortcut-key {
+    min-width: 20px;
+    padding: 0 6px;
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    background: var(--bg);
+    color: var(--text-secondary);
+    font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+    font-size: 0.7rem;
+    line-height: 1.6;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.shortcut-plus {
+    color: var(--text-muted);
+    font-size: 0.68rem;
+}
+
+/* 状态栏入口：与「退出编辑」同一视觉重量，不做成按钮 */
+.editor-shortcut-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--sans);
+    font-size: 0.72rem;
+    line-height: 1.6;
+    cursor: pointer;
+    transition: color var(--transition), background var(--transition), border-color var(--transition);
+}
+
+.editor-shortcut-btn:hover {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-color: var(--card-border);
+}
+
+.editor-shortcut-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .shortcut-modal {
+        animation: none;
+    }
+}
+
+@media (max-width: 560px) {
+    .shortcut-overlay {
+        padding: 12px;
+    }
+
+    .shortcut-modal {
+        max-height: 84vh;
+    }
+
+    .shortcut-row {
+        gap: 12px;
+    }
+}

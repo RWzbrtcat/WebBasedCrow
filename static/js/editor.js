@@ -356,6 +356,70 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('postForm').addEventListener('submit', handleSubmit);
     document.getElementById('draftBtn').addEventListener('click', () => savePost('draft'));
 
+    // ===== 快捷键：正文内的格式动作 =====
+    // 在 keydown 阶段接管（而不是 input 之后改文本），选区语义才和工具栏按钮一致：
+    // 未选中时插入占位词并选中它，选中时包裹 / 取消包裹。
+    contentInput.addEventListener('keydown', (e) => {
+        if (!(e.ctrlKey || e.metaKey) || e.isComposing || e.keyCode === 229) return;
+        const code = e.code || '';
+        const shift = !!e.shiftKey;
+        const alt = !!e.altKey;
+        for (const b of SHORTCUT_BINDINGS) {
+            if (b.code !== code) continue;
+            if (b.shift !== undefined && b.shift !== shift) continue;
+            if (b.alt !== undefined && b.alt !== alt) continue;
+            e.preventDefault();
+            b.run();
+            return;
+        }
+    });
+
+    // 工具按钮的 title 补上快捷键：只写一份在 SHORTCUTS 里，HTML 不手抄
+    document.querySelectorAll('[data-shortcut]').forEach((el) => {
+        const item = SHORTCUTS.find((s) => s.hint === el.dataset.shortcut);
+        if (!item) return;
+        const combo = item.keys.join(IS_MAC ? '' : '+');
+        const base = el.getAttribute('title');
+        el.title = base ? `${base}（${combo}）` : combo;
+    });
+
+    // 面板入口：按钮 / 关闭 / 点遮罩 / Ctrl+/ / Esc
+    const shortcutBtn = document.getElementById('shortcutBtn');
+    const shortcutModal = document.getElementById('shortcutModal');
+    if (shortcutBtn) shortcutBtn.addEventListener('click', () => openShortcutPanel());
+    const shortcutClose = document.getElementById('shortcutClose');
+    if (shortcutClose) shortcutClose.addEventListener('click', closeShortcutPanel);
+    if (shortcutModal) {
+        shortcutModal.addEventListener('click', (e) => {
+            if (e.target === shortcutModal) closeShortcutPanel();
+        });
+        // 面板内只有「面板本体」「关闭按钮」两个落点，Tab 在两处循环即可，
+        // 不让焦点跑到背后的表单里
+        shortcutModal.addEventListener('keydown', (e) => {
+            if (e.key !== 'Tab') return;
+            e.preventDefault();
+            const dialog = shortcutModal.querySelector('.shortcut-modal');
+            const next = document.activeElement === shortcutClose ? dialog : shortcutClose;
+            if (next) next.focus({ preventScroll: true });
+        });
+    }
+    // 焦点不在正文（比如在标题框里）时也能用 Ctrl+/ 打开
+    document.addEventListener('keydown', (e) => {
+        if (!(e.ctrlKey || e.metaKey) || e.isComposing) return;
+        if ((e.code || '') !== 'Slash') return;
+        if (e.target === contentInput || isShortcutPanelOpen()) return;
+        e.preventDefault();
+        openShortcutPanel();
+    });
+    // Esc 关面板。注册在「专注模式」的 Esc 之前，并用 stopImmediatePropagation
+    // 吃掉这一次按键，否则同一个 Esc 会顺手把专注模式也退掉。
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape' || !isShortcutPanelOpen()) return;
+        closeShortcutPanel();
+        e.preventDefault();
+        e.stopImmediatePropagation();
+    });
+
     // ===== 专注模式：收起导航与字段行，把整屏高度让给正文 =====
     const focusBtn = document.getElementById('focusToggle');
     function setFocusMode(on) {
@@ -776,6 +840,119 @@ const TOOLBAR_ACTIONS = {
     image:     { type: 'image', placeholder: '图片描述' }
 };
 
+// ===== 快捷键 =====
+// 平台修饰键：Mac 显示 ⌘，其余显示 Ctrl（绑定逻辑两个键都接受）
+const IS_MAC = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent || '');
+const MOD = IS_MAC ? '⌘' : 'Ctrl';
+
+// 面板数据 + 工具按钮 title 的唯一来源。hint 对应按钮的 data-shortcut。
+const SHORTCUTS = [
+    { group: '行内格式', label: '加粗', keys: [MOD, 'B'], hint: 'bold' },
+    { group: '行内格式', label: '斜体', keys: [MOD, 'I'], hint: 'italic' },
+    { group: '行内格式', label: '删除线', keys: [MOD, 'Shift', 'X'], hint: 'strike' },
+    { group: '行内格式', label: '行内代码', keys: [MOD, 'E'], hint: 'code' },
+    { group: '行内格式', label: '插入链接', keys: [MOD, 'K'], hint: 'link' },
+
+    { group: '段落', label: '标题（一级 / 二级 / 三级）', keys: [MOD, 'Alt', '1 / 2 / 3'], hint: 'heading' },
+    { group: '段落', label: '取消标题，回到正文', keys: [MOD, 'Alt', '0'] },
+    { group: '段落', label: '引用', keys: [MOD, 'Shift', '.'], hint: 'quote' },
+    { group: '段落', label: '无序列表', keys: [MOD, 'Shift', '8'], hint: 'ul' },
+    { group: '段落', label: '有序列表', keys: [MOD, 'Shift', '7'], hint: 'ol' },
+
+    { group: '编写与提交', label: '代码块', keys: [MOD, 'Shift', 'K'], hint: 'codeblock' },
+    { group: '编写与提交', label: '保存草稿', keys: [MOD, 'S'] },
+    { group: '编写与提交', label: '发布文章', keys: [MOD, 'Enter'] },
+    { group: '编写与提交', label: '撤销 / 重做', keys: [MOD, 'Z / Y'] },
+    { group: '编写与提交', label: '打开这个面板', keys: [MOD, '/'] }
+];
+
+// 按键绑定。⚠ 用 e.code（物理键）而不是 e.key：Shift+/ 在多数键盘上产出 '?'，
+// 用 e.key 匹配会漏掉，且中文输入法状态下 e.key 不稳定。
+// 同一 code 有多条时按数组顺序匹配，所以不带修饰键的必须显式写 shift: false。
+const SHORTCUT_BINDINGS = [
+    { code: 'KeyB', shift: false, alt: false, run: () => applyMarkdown('bold') },
+    { code: 'KeyI', shift: false, alt: false, run: () => applyMarkdown('italic') },
+    { code: 'KeyE', shift: false, alt: false, run: () => applyMarkdown('code') },
+    { code: 'KeyK', shift: false, alt: false, run: () => applyMarkdown('link') },
+    { code: 'KeyX', shift: true, alt: false, run: () => applyMarkdown('strike') },
+    { code: 'KeyK', shift: true, alt: false, run: () => insertCodeBlock('') },
+    { code: 'Digit7', shift: true, alt: false, run: () => applyMarkdown('ol') },
+    { code: 'Digit8', shift: true, alt: false, run: () => applyMarkdown('ul') },
+    { code: 'Period', shift: true, alt: false, run: () => applyMarkdown('quote') },
+    { code: 'Digit0', alt: true, run: () => setHeadingLevel(0) },
+    { code: 'Digit1', alt: true, run: () => setHeadingLevel(1) },
+    { code: 'Digit2', alt: true, run: () => setHeadingLevel(2) },
+    { code: 'Digit3', alt: true, run: () => setHeadingLevel(3) },
+    // Ctrl+/ ：有的键盘要按 Shift 才打出 '/'，所以这一条不校验修饰键状态
+    { code: 'Slash', run: () => openShortcutPanel() }
+];
+
+// ---------- 快捷键面板 ----------
+function isShortcutPanelOpen() {
+    const el = document.getElementById('shortcutModal');
+    return !!el && !el.hidden;
+}
+
+function renderShortcutPanel() {
+    const list = document.getElementById('shortcutList');
+    if (!list) return;
+
+    // 按 SHORTCUTS 里的 group 顺序分组（不另立分组表，改表即改面板）
+    const groups = [];
+    SHORTCUTS.forEach((s) => {
+        let g = groups.find((x) => x.title === s.group);
+        if (!g) {
+            g = { title: s.group, items: [] };
+            groups.push(g);
+        }
+        g.items.push(s);
+    });
+
+    list.innerHTML = groups.map((g) => `
+        <section class="shortcut-group">
+            <h4 class="shortcut-group-title">${escapeHtml(g.title)}</h4>
+            ${g.items.map((it) => `
+                <div class="shortcut-row">
+                    <span class="shortcut-label">${escapeHtml(it.label)}</span>
+                    <span class="shortcut-keys">${it.keys
+                        .map((k, i) => (i ? '<span class="shortcut-plus">+</span>' : '') +
+                            `<kbd class="shortcut-key">${escapeHtml(k)}</kbd>`)
+                        .join('')}</span>
+                </div>`).join('')}
+        </section>`).join('');
+}
+
+function openShortcutPanel() {
+    const el = document.getElementById('shortcutModal');
+    if (!el || !el.hidden) return false;
+    // 图片弹窗还开着就先收起，避免两层遮罩叠在一起
+    const imageModal = document.getElementById('imageModal');
+    if (imageModal && !imageModal.hidden) closeImageModal();
+    renderShortcutPanel();
+    el.hidden = false;
+    // 内容超出时才挂底部渐隐（此时才有布局可测）
+    const body = document.getElementById('shortcutList');
+    if (body) el.querySelector('.shortcut-modal').classList.toggle('is-scrollable', body.scrollHeight - body.clientHeight > 1);
+    const btn = document.getElementById('shortcutBtn');
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+    // 聚焦面板本身：给键盘一个落点，又不至于让关闭按钮带上焦点环
+    const dialog = el.querySelector('.shortcut-modal');
+    if (dialog) dialog.focus({ preventScroll: true });
+    return true;
+}
+
+function closeShortcutPanel() {
+    const el = document.getElementById('shortcutModal');
+    if (!el || el.hidden) return false;
+    el.hidden = true;
+    const btn = document.getElementById('shortcutBtn');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+    // 关掉后把焦点还给正文，顺手接着写
+    const ta = contentTextarea();
+    if (ta) ta.focus({ preventScroll: true });
+    return true;
+}
+
 // 在光标处插入 / 包裹选中文本（支持再次点击取消）
 function applyMarkdown(actionName) {
     const action = TOOLBAR_ACTIONS[actionName];
@@ -947,6 +1124,42 @@ function toggleBlock(ta, start, end, prefix, placeholder) {
         ta.value = ta.value.slice(0, lineStart) + prefix + content + ta.value.slice(lineEnd);
         ta.setSelectionRange(lineStart + prefix.length, lineStart + prefix.length + content.length);
     }
+}
+
+// 标题级别：0 = 回到正文（去掉 # 前缀），1~3 = 对应级别。
+// 同一级别再按一次即取消；换级别时先剥掉旧前缀再加新的（否则会出现「# ## 标题」）。
+function setHeadingLevel(level) {
+    const ta = contentTextarea();
+    if (!ta) return false;
+    const value = ta.value;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+    const nextNewline = value.indexOf('\n', start);
+    const lineEnd = nextNewline === -1 ? value.length : nextNewline;
+    const lineText = value.slice(lineStart, lineEnd);
+
+    const m = lineText.match(/^(#{1,6})[ \t]+/);
+    const rest = m ? lineText.slice(m[0].length) : lineText;
+    const newLine = (level === 0 || (m && m[1].length === level))
+        ? rest
+        : '#'.repeat(level) + ' ' + rest;
+    if (newLine === lineText) return false;
+
+    pushUndoState();
+    ta.value = value.slice(0, lineStart) + newLine + value.slice(lineEnd);
+
+    // 光标在正文内的相对位置保持不变（前缀长度会变）
+    const prefixLen = newLine.length - rest.length;
+    if (start === end) {
+        const rel = Math.max(0, Math.min(start - lineStart - (m ? m[0].length : 0), rest.length));
+        ta.setSelectionRange(lineStart + prefixLen + rel, lineStart + prefixLen + rel);
+    } else {
+        ta.setSelectionRange(lineStart, lineStart + newLine.length);
+    }
+    ta.focus({ preventScroll: true });
+    updatePreview();
+    return true;
 }
 
 // 打开插入图片弹窗，记录插入位置与选中文本
@@ -1301,8 +1514,7 @@ function isWordChar(ch) {
     return !!ch && /[A-Za-z0-9_$]/.test(ch);
 }
 
-// ===== 代码块内的括号 / 引号判定 =====
-// 只在围栏代码块内接管按键：正文里的圆括号、方括号是排版符号（「（一）」、
+// ===== 代码块内的括号 / 引号判定 =====// 只在围栏代码块内接管按键：正文里的圆括号、方括号是排版符号（「（一）」、
 // [文本](url)），自动补全只会添乱。
 // 返回 true 表示已处理（调用方无需再 preventDefault）。
 function handleCodeBlockEditing(e) {
