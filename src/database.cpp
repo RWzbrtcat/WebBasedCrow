@@ -232,6 +232,7 @@ void DataBase::initTable()
             topic VARCHAR(100) NOT NULL DEFAULT '' COMMENT '文章主题',
             status VARCHAR(20) NOT NULL DEFAULT 'published' COMMENT '文章状态: published/draft',
             likes INT NOT NULL DEFAULT 0 COMMENT '点赞数',
+            views INT NOT NULL DEFAULT 0 COMMENT '浏览量',
             hidden TINYINT NOT NULL DEFAULT 0 COMMENT '是否隐藏（0 显示 / 1 隐藏）',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
@@ -642,6 +643,16 @@ void DataBase::initTable()
         }
     }
 
+    // 兼容旧表：若 posts 缺少 views 列，则补充（文章浏览量）
+    if (!columnExists("posts", "views"))
+    {
+        const char* alterSql = "ALTER TABLE posts ADD COLUMN views INT NOT NULL DEFAULT 0 COMMENT '浏览量' AFTER likes";
+        if (mysql_query(conn_, alterSql) != 0)
+        {
+            throw std::runtime_error(std::string("补充 views 列失败：") + mysql_error(conn_));
+        }
+    }
+
     // 历史文章（author_id=0）一律归到主管理员，作者显示名同步为主管理员昵称
     backfillLegacyPosts();
 
@@ -712,7 +723,7 @@ crow::json::wvalue DataBase::getPosts(const std::string& status)
     crow::json::wvalue result;
     std::vector<crow::json::wvalue> posts;
 
-    std::string sql = "SELECT p.id, p.title, p.content, p.summary, p.author, p.author_id, p.topic, p.theme, p.status, p.likes, p.created_at, p.updated_at, "
+    std::string sql = "SELECT p.id, p.title, p.content, p.summary, p.author, p.author_id, p.topic, p.theme, p.status, p.likes, p.views, p.created_at, p.updated_at, "
         "(SELECT COUNT(*) FROM comments c WHERE c.post_id=p.id AND c.hidden=0) AS comment_count "
         "FROM posts p WHERE p.status='" + status + "' AND p.hidden=0 ORDER BY p.updated_at DESC";
 
@@ -740,9 +751,10 @@ crow::json::wvalue DataBase::getPosts(const std::string& status)
             post["theme"] = row[7] ? row[7] : "";
             post["status"] = row[8] ? row[8] : "";
             post["likes"] = row[9] ? std::stoi(row[9]) : 0;
-            post["created_at"] = row[10] ? row[10] : "";
-            post["updated_at"] = row[11] ? row[11] : "";
-            post["comment_count"] = row[12] ? std::stoi(row[12]) : 0;
+            post["views"] = row[10] ? std::stoi(row[10]) : 0;
+            post["created_at"] = row[11] ? row[11] : "";
+            post["updated_at"] = row[12] ? row[12] : "";
+            post["comment_count"] = row[13] ? std::stoi(row[13]) : 0;
             posts.push_back(std::move(post));
         }
         mysql_free_result(res);
@@ -814,7 +826,7 @@ crow::json::wvalue DataBase::getPostById(int id, bool isMain, int adminId)
     checkConnection();
 
     crow::json::wvalue result;
-    std::string sql = "SELECT id, title, content, summary, author, author_id, topic, theme, status, likes, hidden, created_at, updated_at FROM posts WHERE id=" + std::to_string(id);
+    std::string sql = "SELECT id, title, content, summary, author, author_id, topic, theme, status, likes, views, hidden, created_at, updated_at FROM posts WHERE id=" + std::to_string(id);
 
     if (mysql_query(conn_, sql.c_str()) != 0)
     {
@@ -837,7 +849,7 @@ crow::json::wvalue DataBase::getPostById(int id, bool isMain, int adminId)
 
     MYSQL_ROW row = mysql_fetch_row(res);
     int authorId = row[5] ? std::stoi(row[5]) : 0;
-    bool hidden = row[10] && std::stoi(row[10]) != 0;
+    bool hidden = row[11] && std::stoi(row[11]) != 0;
 
     // 隐藏的文章，仅作者本人或主管理员可见
     if (hidden && !(isMain || (adminId > 0 && adminId == authorId)))
@@ -859,9 +871,10 @@ crow::json::wvalue DataBase::getPostById(int id, bool isMain, int adminId)
     post["theme"] = row[7] ? row[7] : "";
     post["status"] = row[8] ? row[8] : "";
     post["likes"] = row[9] ? std::stoi(row[9]) : 0;
+    post["views"] = row[10] ? std::stoi(row[10]) : 0;
     post["hidden"] = hidden;
-    post["created_at"] = row[11] ? row[11] : "";
-    post["updated_at"] = row[12] ? row[12] : "";
+    post["created_at"] = row[12] ? row[12] : "";
+    post["updated_at"] = row[13] ? row[13] : "";
     mysql_free_result(res);
 
     result["post"] = std::move(post);
@@ -1181,6 +1194,50 @@ crow::json::wvalue DataBase::changeLikes(int id, int delta)
             }
             result["success"] = true;
         }
+    }
+    mysql_stmt_close(stmt);
+    return result;
+}
+
+// 文章浏览量 +1（公开，无需登录；幂等性由前端按会话去重保证）
+crow::json::wvalue DataBase::incrementPostViews(int id)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    checkConnection();
+
+    crow::json::wvalue result;
+    MYSQL_STMT* stmt = mysql_stmt_init(conn_);
+    if (!stmt)
+    {
+        result["success"] = false;
+        result["message"] = "mysql_stmt_init 失败";
+        return result;
+    }
+
+    const char* sql = "UPDATE posts SET views = views + 1 WHERE id=?";
+    if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+        mysql_stmt_close(stmt);
+        return result;
+    }
+
+    MYSQL_BIND bind[1];
+    std::memset(bind, 0, sizeof(bind));
+    bind[0].buffer_type = MYSQL_TYPE_LONG;
+    bind[0].buffer = (void*)&id;
+    mysql_stmt_bind_param(stmt, bind);
+
+    if (mysql_stmt_execute(stmt) != 0)
+    {
+        result["success"] = false;
+        result["message"] = mysql_stmt_error(stmt);
+    }
+    else
+    {
+        // 文章不存在（affected=0）不视为错误，静默忽略
+        result["success"] = true;
     }
     mysql_stmt_close(stmt);
     return result;

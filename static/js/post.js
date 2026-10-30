@@ -4,6 +4,9 @@
 
 const API_BASE = '/api';
 
+// 浏览量眼睛图标（内联 SVG，与列表页风格一致）
+const VIEW_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+
 let currentPostId = null;
 let currentLikes = 0;
 let liked = false;
@@ -98,6 +101,7 @@ async function loadPost(id) {
         const isMain = !!(authData && authData.is_main);
         const adminId = Number(authData && authData.admin_id) || 0;
         if (postData.success) {
+            recordView(id);
             renderPost(postData.post, authed, isMain, adminId);
         } else {
             showNotFound(postData.message || '文章不存在');
@@ -118,6 +122,16 @@ async function loadPost(id) {
             });
         }
     }
+}
+
+// 记录一次浏览：同一标签页会话内只计一次（sessionStorage 去重），失败静默
+function recordView(id) {
+    try {
+        const key = `viewed_post_${id}`;
+        if (sessionStorage.getItem(key)) return;
+        sessionStorage.setItem(key, '1');
+        fetch(`${API_BASE}/posts/${id}/view`, { method: 'POST' }).catch(() => { /* 忽略 */ });
+    } catch (e) { /* 忽略存储失败 */ }
 }
 
 function renderPost(post, authed, isMain, adminId) {
@@ -141,6 +155,9 @@ function renderPost(post, authed, isMain, adminId) {
         ? `<span class="post-theme">${escapeHtml(theme)}</span>`
         : '';
 
+    const views = Number(post.views) || 0;
+    const viewsHtml = `<span class="post-views">${VIEW_ICON}<span>${views} 次浏览</span></span>`;
+
     document.getElementById('postDetail').innerHTML = `
         <article class="post-full">
             <h1 class="post-title">${escapeHtml(post.title)}</h1>
@@ -148,6 +165,8 @@ function renderPost(post, authed, isMain, adminId) {
                 ${topicBadge}
                 ${themeBadge}
                 <span>${escapeHtml(post.author || '匿名')}</span>
+                <span class="sep">·</span>
+                ${viewsHtml}
                 <span class="sep">·</span>
                 <span>${formatDate(post.created_at)}</span>
                 ${updated}

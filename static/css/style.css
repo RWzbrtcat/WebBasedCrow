@@ -757,6 +757,10 @@ html {
     color: var(--accent);
 }
 
+.post-stat-view svg {
+    color: var(--text-muted);
+}
+
 .post-excerpt {
     color: var(--text-secondary);
     font-size: 0.95rem;
@@ -837,6 +841,18 @@ html {
     padding-bottom: 20px;
     border-bottom: 1px solid var(--border);
     margin-bottom: 28px;
+}
+
+.post-views {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.post-views svg {
+    display: block;
+    flex-shrink: 0;
+    color: var(--text-muted);
 }
 
 .post-content {

@@ -517,6 +517,13 @@ void setupRoutes(crow::SimpleApp& app, DataBase& db, const std::string& staticDi
         return res;
     });
 
+    // POST /api/posts/<id>/view - 记录一次浏览（公开，无需登录；前端按会话去重）
+    CROW_ROUTE(app, "/api/posts/<int>/view").methods("POST"_method)([&db](int id){
+        crow::response res(db.incrementPostViews(id));
+        addCorsHeaders(res);
+        return res;
+    });
+
     // GET /api/posts/<id>/comments - 获取评论（公开；站长登录后额外包含被隐藏评论）
     CROW_ROUTE(app, "/api/posts/<int>/comments").methods("GET"_method)([&db](const crow::request& req, int id){
         // 传入匿名标识，用于在结果中标注「哪条是自己发的」（mine / can_edit）；token 本身不下发

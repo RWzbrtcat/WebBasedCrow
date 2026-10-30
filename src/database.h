@@ -43,6 +43,7 @@ public:
     crow::json::wvalue deletePost(int id);
     crow::json::wvalue setPostHidden(int id, int hidden);
     crow::json::wvalue changeLikes(int id, int delta);
+    crow::json::wvalue incrementPostViews(int id);
     bool getPostAuthor(int id, int& outAuthorId, std::string& outAuthor);
 
     // ===== 评论 =====
