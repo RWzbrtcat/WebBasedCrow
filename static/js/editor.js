@@ -136,13 +136,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // 输入时实时刷新预览
     contentInput.addEventListener('input', updatePreview);
 
+    // 中文输入法拼音组合（composition）：期间预览不跟随，等确认成字后一次跟到位。
+    // 拼音比汉字长，中途跟随会让预览随拼音增删来回滚（上下跳）。
+    contentInput.addEventListener('compositionstart', () => { composing = true; });
+    contentInput.addEventListener('compositionend', () => {
+        composing = false;
+        setTimeout(() => syncPreviewToCaret(true), 0);
+    });
+
     // 点击 / 用方向键、Home、End、翻页移动光标后，预览也跟到对应位置，
     // 左侧目录同步把光标所在章节点亮。
     // 用 setTimeout 而不是 rAF 调度：只等浏览器把新的 selection 落定，不需要渲染帧；
     // rAF 在后台标签页 / 不渲染的文档里会停摆，跟随就再也不触发了。
     const followCaret = () => {
         setTimeout(() => {
-            syncPreviewToCaret();
+            syncPreviewToCaret(true);
             syncTocActive();
         }, 0);
     };
@@ -608,6 +616,10 @@ function populateTopicSelect(selected) {
 // 代码块、表格、图片在两侧的高度完全不成比例，比例法会持续漂移（表现为预览自己往下滑）。
 let previewSyncMutedUntil = 0;
 
+// 中文输入法拼音组合（composition）进行中：拼音比汉字长，打拼音时内容变长、
+// 确认成汉字时变短，中途跟随会让预览来回滚；此标志期间跳过跟随。
+let composing = false;
+
 function mutePreviewSync(ms) {
     previewSyncMutedUntil = Date.now() + (ms || 300);
 }
@@ -725,12 +737,17 @@ function previewYForOffset(pv, pvTop, caret) {
     return ya + (yb - ya) * r;
 }
 
-// 把预览滚到「光标所在内容」的位置。已在舒适区内则完全不动 ——
-// 否则每敲一个字都微调一下滚动条，观感就是预览自己在往下跑。
-function syncPreviewToCaret() {
+// 把预览滚到「光标所在内容」的位置。
+// aggressive=true（光标移动：点击 / 方向键 / 双击定位）→ 精确跟随到视口 38%。
+// aggressive=false（打字 input）→ 保守跟随：光标内容还在视口内就完全不动，只有它
+//   被折行「顶出」视口底部才滚到 80% 处。打字时左侧折行会让光标对应的内容持续下移，
+//   若每次都精确跟随，预览就会跟着每一次击键往下滚（「一直跳」），预览够宽不折行才不跳。
+function syncPreviewToCaret(aggressive) {
     if (Date.now() < previewSyncMutedUntil) return;
     // 用户刚手动滚过预览 ⇒ 这一拍让给他，别把滚动位置抢回来
     if (Date.now() - previewUserScrollAt < PREVIEW_USER_SCROLL_GRACE) return;
+    // 拼音组合期间不跟随：等 compositionend 光标位置确定后一次跟到位
+    if (composing) return;
     const ta = contentTextarea();
     const pv = document.getElementById('preview');
     if (!ta || !pv) return;
@@ -751,13 +768,19 @@ function syncPreviewToCaret() {
     // 判断用「这一轮追踪最终会停在哪里」，而不是追踪途中的瞬时位置：
     // 否则逼近过程中每次输入都判定为越界，目标会被反复改写成细微不同的值。
     const resting = previewChase && previewChase.pv === pv ? previewChase.target : pv.scrollTop;
-    // 舒适区收窄到 28%~55%：重启问题解决后，频繁改目标是安全的，
-    // 换来的是「跟着走」而不是「两百多像素一跳」。
-    if (y >= resting + h * 0.28 && y <= resting + h * 0.55) return;
 
-    // 让光标内容落在视口 38% 处
-    const target = Math.max(0, Math.min(y - h * 0.38, max));
-    animatePreviewScrollTo(pv, target);
+    if (aggressive) {
+        // 精确跟随：光标内容落在视口 38% 处，28%~55% 舒适区内不动
+        if (y >= resting + h * 0.28 && y <= resting + h * 0.55) return;
+        const target = Math.max(0, Math.min(y - h * 0.38, max));
+        animatePreviewScrollTo(pv, target);
+    } else {
+        // 保守跟随：光标内容还在视口内（留 48px 底部余量）就不动。
+        // 打字只让 y 往下跑，不会跑到视口上方，故只判下界。
+        if (y <= resting + h - 48) return;
+        const target = Math.max(0, Math.min(y - h * 0.8, max));
+        animatePreviewScrollTo(pv, target);
+    }
 }
 
 // 刷新右侧预览
@@ -775,7 +798,7 @@ function updatePreview() {
     updateToc();
     updateStats(text);
     scrollCaretIntoView(contentTextarea());
-    syncPreviewToCaret();
+    syncPreviewToCaret(false);
 }
 
 // 更新左下角的行数 / 字数 / 词数统计
