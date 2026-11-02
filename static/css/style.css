@@ -1538,7 +1538,7 @@ html {
 .code-editor-highlight .hljs-keyword,
 .code-editor-highlight .hljs-formula { color: #d73a49; }
 .code-editor-highlight .hljs-comment,
-.code-editor-highlight .hljs-quote { color: #6a737d; font-style: italic; }
+.code-editor-highlight .hljs-quote { color: #6a737d; }
 .code-editor-highlight .hljs-name,
 .code-editor-highlight .hljs-section,
 .code-editor-highlight .hljs-selector-tag,
@@ -5498,7 +5498,7 @@ body.practice-page .site-footer {
 
 /* 高亮层内的 C++ token 配色：随主题切换（变量见 .practice-code 与各 data-editor-theme） */
 .practice-code-hl .hljs-comment,
-.practice-code-hl .hljs-quote { color: var(--c-tok-comment); font-style: italic; }
+.practice-code-hl .hljs-quote { color: var(--c-tok-comment); }
 
 /* 关键字 / 字面量 / 预处理：蓝 */
 .practice-code-hl .hljs-keyword,
