@@ -270,6 +270,10 @@ async function loadPosts() {
 function renderHiddenPosts(posts, list) {
     list.innerHTML = posts.map(post => {
         const href = post.status === 'draft' ? `/editor?id=${post.id}` : `/post?id=${post.id}`;
+        // 与主列表保持一致：有更新显示更新时间，否则显示发布时间
+        const isUpdated = !!(post.updated_at && post.updated_at !== post.created_at);
+        const dateLabel = isUpdated ? '更新于' : '发布于';
+        const dateText = formatDate(isUpdated ? post.updated_at : post.created_at);
         return `
         <article class="post-card" data-href="${href}">
             <h2 class="post-title"><a href="${href}">${escapeHtml(post.title)}</a></h2>
@@ -277,7 +281,7 @@ function renderHiddenPosts(posts, list) {
                 <span class="post-hidden">已隐藏</span>
                 <span>${escapeHtml(post.author || '匿名')}</span>
                 <span class="sep">·</span>
-                <span>${formatDate(post.created_at)}</span>
+                <span>${dateLabel} ${dateText}</span>
             </div>
             <button type="button" class="btn btn-secondary hidden-restore-btn" data-id="${post.id}">取消隐藏</button>
         </article>
@@ -481,9 +485,10 @@ function renderPosts() {
             ? `<a class="read-more" href="${href}">继续编辑 →</a>`
             : `<a class="read-more" href="${href}">阅读全文 →</a>`;
         const summary = makeExcerpt(post);
-        const updatedHtml = post.updated_at && post.updated_at !== post.created_at
-            ? `<span class="sep">·</span><span>更新于 ${formatDate(post.updated_at)}</span>`
-            : '';
+        // 列表排序依据是 updated_at，所以卡片日期也用同一依据，避免「顺序看着乱」
+        const isUpdated = !!(post.updated_at && post.updated_at !== post.created_at);
+        const dateLabel = isUpdated ? '更新于' : '发布于';
+        const dateHtml = `<span>${dateLabel} ${formatDate(isUpdated ? post.updated_at : post.created_at)}</span>`;
         const statsHtml = IS_DRAFTS ? '' : `
             <span class="sep">·</span>
             <span class="post-stat post-stat-view">${VIEW_ICON}<span>${post.views || 0}</span></span>
@@ -499,8 +504,7 @@ function renderPosts() {
                     ${themeBadge}
                     <span>${escapeHtml(post.author || '匿名')}</span>
                     <span class="sep">·</span>
-                    <span>${formatDate(post.created_at)}</span>
-                    ${updatedHtml}
+                    ${dateHtml}
                     ${statsHtml}
                 </div>
                 ${summary ? `<p class="post-excerpt">${escapeHtml(summary)}</p>` : ''}

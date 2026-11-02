@@ -725,7 +725,7 @@ crow::json::wvalue DataBase::getPosts(const std::string& status)
 
     std::string sql = "SELECT p.id, p.title, p.content, p.summary, p.author, p.author_id, p.topic, p.theme, p.status, p.likes, p.views, p.created_at, p.updated_at, "
         "(SELECT COUNT(*) FROM comments c WHERE c.post_id=p.id AND c.hidden=0) AS comment_count "
-        "FROM posts p WHERE p.status='" + status + "' AND p.hidden=0 ORDER BY p.updated_at DESC";
+        "FROM posts p WHERE p.status='" + status + "' AND p.hidden=0 ORDER BY p.updated_at DESC, p.id DESC";
 
     if (mysql_query(conn_, sql.c_str()) != 0)
     {
@@ -780,7 +780,7 @@ crow::json::wvalue DataBase::getHiddenPosts(bool isMain, int adminId)
     {
         sql += " AND author_id=" + std::to_string(adminId);
     }
-    sql += " ORDER BY updated_at DESC";
+    sql += " ORDER BY updated_at DESC, id DESC";
 
     if (mysql_query(conn_, sql.c_str()) != 0)
     {
@@ -1091,7 +1091,7 @@ crow::json::wvalue DataBase::setPostHidden(int id, int hidden)
         return result;
     }
 
-    const char* sql = "UPDATE posts SET hidden=? WHERE id=?";
+    const char* sql = "UPDATE posts SET hidden=?, updated_at = updated_at WHERE id=?";
     if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
     {
         result["success"] = false;
@@ -1142,7 +1142,7 @@ crow::json::wvalue DataBase::changeLikes(int id, int delta)
         return result;
     }
 
-    const char* sql = "UPDATE posts SET likes = GREATEST(likes + ?, 0) WHERE id=?";
+    const char* sql = "UPDATE posts SET likes = GREATEST(likes + ?, 0), updated_at = updated_at WHERE id=?";
     if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
     {
         result["success"] = false;
@@ -1214,7 +1214,7 @@ crow::json::wvalue DataBase::incrementPostViews(int id)
         return result;
     }
 
-    const char* sql = "UPDATE posts SET views = views + 1 WHERE id=?";
+    const char* sql = "UPDATE posts SET views = views + 1, updated_at = updated_at WHERE id=?";
     if (mysql_stmt_prepare(stmt, sql, std::strlen(sql)) != 0)
     {
         result["success"] = false;
@@ -1935,7 +1935,7 @@ void DataBase::backfillLegacyPosts()
     std::vector<char> nickEsc(mainNick.length() * 2 + 1);
     mysql_real_escape_string(conn_, nickEsc.data(), mainNick.c_str(), static_cast<unsigned long>(mainNick.length()));
     std::string sql = "UPDATE posts SET author_id=" + std::to_string(mainId) +
-        ", author='" + std::string(nickEsc.data()) + "' WHERE author_id=0";
+        ", author='" + std::string(nickEsc.data()) + "', updated_at = updated_at WHERE author_id=0";
     if (mysql_query(conn_, sql.c_str()) != 0)
     {
         throw std::runtime_error(std::string("历史文章归属主管理员失败：") + mysql_error(conn_));
@@ -2022,7 +2022,7 @@ crow::json::wvalue DataBase::deleteAdmin(int id)
             std::vector<char> nickEsc(mainNick.length() * 2 + 1);
             mysql_real_escape_string(conn_, nickEsc.data(), mainNick.c_str(), static_cast<unsigned long>(mainNick.length()));
             std::string upd = "UPDATE posts SET author_id=" + std::to_string(mainId) +
-                ", author='" + std::string(nickEsc.data()) + "' WHERE author_id=" + std::to_string(id);
+                ", author='" + std::string(nickEsc.data()) + "', updated_at = updated_at WHERE author_id=" + std::to_string(id);
             mysql_query(conn_, upd.c_str());
         }
     }
@@ -2183,7 +2183,7 @@ crow::json::wvalue DataBase::updateProfile(int adminId, const std::string& nickn
     MYSQL_STMT* stmt2 = mysql_stmt_init(conn_);
     if (stmt2)
     {
-        const char* sql2 = "UPDATE posts SET author=? WHERE author_id=?";
+        const char* sql2 = "UPDATE posts SET author=?, updated_at = updated_at WHERE author_id=?";
         if (mysql_stmt_prepare(stmt2, sql2, std::strlen(sql2)) == 0)
         {
             MYSQL_BIND b2[2];

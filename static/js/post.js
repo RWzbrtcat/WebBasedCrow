@@ -142,9 +142,10 @@ function renderPost(post, authed, isMain, adminId) {
     liked = isLiked(post.id);
     isAdmin = authed;
 
-    const updated = post.updated_at && post.updated_at !== post.created_at
-        ? `<span class="sep">·</span><span>更新于 ${formatDate(post.updated_at)}</span>`
-        : '';
+    // 与列表页一致的日期语义：更新过就显示更新时间，否则显示发布时间
+    const isUpdated = !!(post.updated_at && post.updated_at !== post.created_at);
+    const dateLabel = isUpdated ? '更新于' : '发布于';
+    const dateHtml = `<span>${dateLabel} ${formatDate(isUpdated ? post.updated_at : post.created_at)}</span>`;
 
     const topic = (post.topic || '').trim();
     const topicBadge = topic
@@ -168,8 +169,7 @@ function renderPost(post, authed, isMain, adminId) {
                 <span class="sep">·</span>
                 ${viewsHtml}
                 <span class="sep">·</span>
-                <span>${formatDate(post.created_at)}</span>
-                ${updated}
+                ${dateHtml}
             </div>
             ${post.hidden ? '<div class="post-hidden-banner">此文章已隐藏，仅作者与管理员可见</div>' : ''}
             <div class="post-content markdown-body" id="postContent"></div>
