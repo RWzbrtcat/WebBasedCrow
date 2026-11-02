@@ -196,7 +196,9 @@ function buildPostToc() {
     const content = document.getElementById('postContent');
     if (!box || !list || !content) return;
 
-    const heads = Array.from(content.querySelectorAll('h1, h2, h3'))
+    // 收录全部六级标题：此前只取 h1~h3，导致文章里的 #### 标题在正文可见却在目录里
+    // 「不显示」，与编辑器大纲（h1~h6）不一致。层级靠 .post-toc-level-N 的缩进区分。
+    const heads = Array.from(content.querySelectorAll('h1, h2, h3, h4, h5, h6'))
         .filter((h) => h.id && h.textContent.trim());
 
     // 标题少于 2 个时目录没有意义：隐藏侧栏，正文回到居中单列

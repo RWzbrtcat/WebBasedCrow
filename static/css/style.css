@@ -2897,6 +2897,28 @@ input[readonly] {
     font-size: 0.84rem;
 }
 
+/* 四级以下：缩进继续递进到侧栏（236px，内容宽约 208px）能容纳的上限，
+   字号与对比度逐级收敛 —— 既保证每个标题都能在目录里看到，
+   又不让长文的细碎小标题淹没主干层级。
+   注：.post-toc-link.active / :hover 特异性更高，高亮状态仍会盖回强调色。 */
+.post-toc-level-4 {
+    padding-left: 46px;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.post-toc-level-5 {
+    padding-left: 56px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.post-toc-level-6 {
+    padding-left: 64px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
 /* 正文适度放大 */
 .post-page .post-full {
     padding: 48px 44px;
