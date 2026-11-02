@@ -1737,22 +1737,64 @@ body.post-page .markdown-body h6 {
 .markdown-body table {
     border-collapse: collapse;
     width: 100%;
-    margin: 1em 0;
-    font-size: 0.92rem;
+    margin: 1.3em 0;
+    font-size: 0.9rem;
     font-family: var(--sans);
+    /* 兜底：编辑器预览没有 .table-wrap 包裹，表格自己当滚动容器 */
     display: block;
     overflow-x: auto;
 }
 
-.markdown-body th,
-.markdown-body td {
-    border: 1px solid var(--border);
-    padding: 8px 12px;
-    text-align: left;
+/* 详情页：外层 .table-wrap 负责横向滚动，表格恢复真实布局，
+   才能做到「窄表格撑满、宽表格按内容展开并滚动」 */
+.markdown-body .table-wrap {
+    margin: 1.3em 0;
+    overflow-x: auto;
+    border-radius: 10px;
 }
 
-.markdown-body th { background: #f6f5f2; font-weight: 600; }
-.markdown-body tr:nth-child(even) td { background: #faf9f7; }
+.markdown-body .table-wrap > table {
+    display: table;
+    overflow: visible;
+    margin: 0;
+}
+
+/* 去掉竖线只留水平分隔：正文里更像排版，不像 Excel 截屏 */
+.markdown-body th,
+.markdown-body td {
+    border: none;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.markdown-body th:first-child,
+.markdown-body td:first-child {
+    padding-left: 0;
+}
+
+.markdown-body th {
+    background: transparent;
+    border-bottom: 1.5px solid #d8d4cc;
+    font-weight: 600;
+    font-size: 0.86em;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.markdown-body tbody tr {
+    transition: background-color var(--transition);
+}
+
+.markdown-body tbody tr:hover td {
+    background: #fbf7f2;
+}
+
+.markdown-body tbody tr:last-child td {
+    border-bottom: none;
+}
 
 .markdown-body input[type="checkbox"] { margin-right: 0.4em; }
 
@@ -2482,9 +2524,15 @@ input[readonly] {
 /* ========== 底部浮动互动栏 ========== */
 .floating-actions {
     position: fixed;
-    left: 50%;
+    /* 原来用 left:50% + translateX(-50%) 居中：fixed 定位下可用宽度会变成
+       「视口右半部分」，窄屏时三个按钮被挤到只剩 260px，文字被迫竖排换行。
+       改成左右贴边 + margin:auto + max-content，宽度按内容走。 */
+    left: 0;
+    right: 0;
     bottom: 24px;
-    transform: translateX(-50%);
+    margin: 0 auto;
+    width: max-content;
+    max-width: calc(100vw - 24px);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -2511,6 +2559,7 @@ input[readonly] {
     color: var(--text-secondary);
     font-size: 0.9rem;
     font-weight: 600;
+    white-space: nowrap;
     cursor: pointer;
     font-family: inherit;
     transition: all 0.15s;
@@ -2806,24 +2855,28 @@ input[readonly] {
 }
 
 /* ========== 文章详情页：左侧目录 + 加宽正文 ========== */
+/* 宽度策略：卡片（视觉容器）尽量占满视口，但正文行宽控制在 820~870px ——
+   中文在这个宽度约 45~48 字/行，再宽就需要转头扫行，反而累。
+   所以加宽主要加在「卡片 + 内边距」上，而不是让文字无限拉长。 */
 .post-page {
-    --header-width: 1180px;   /* 导航胶囊跟随正文宽度对齐 */
+    --header-width: 1280px;   /* 导航胶囊跟随正文宽度对齐 */
 }
 
 .container-post {
-    max-width: 1180px;
+    max-width: 1280px;
 }
 
 /* 无目录时正文居中单列；有目录时 JS 给 .post-layout 加 has-toc 变双列 */
 .post-layout {
     display: grid;
-    grid-template-columns: minmax(0, 860px);
+    grid-template-columns: minmax(0, 960px);
     justify-content: center;
     align-items: start;
 }
 
+/* 236 + 32 + 960 = 1228 ≤ 容器内容宽 1280-48=1232 ⇒ 刚好放下，不溢出 */
 .post-layout.has-toc {
-    grid-template-columns: 236px minmax(0, 860px);
+    grid-template-columns: 236px minmax(0, 960px);
     gap: 32px;
 }
 
@@ -2921,7 +2974,7 @@ input[readonly] {
 
 /* 正文适度放大 */
 .post-page .post-full {
-    padding: 48px 44px;
+    padding: 52px 68px;
 }
 
 .post-page .post-full .post-title {
@@ -2932,11 +2985,155 @@ input[readonly] {
     font-size: 1.12rem;
 }
 
-/* 窄屏：收起目录，正文回到单列并收紧内边距 */
-@media (max-width: 1080px) {
+/* ---------- 详情页正文装饰 ---------- */
+
+/* 顶部阅读进度条：贴顶固定，用 transform 走合成层（比改 width 少一次重排） */
+.read-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+    background: linear-gradient(90deg, var(--accent), #f59e0b);
+    z-index: 120;
+    pointer-events: none;
+}
+
+/* 代码块：右上角常驻语言标签，hover 时淡出并换成一键复制 */
+.code-block {
+    position: relative;
+    margin: 1.2em 0;
+}
+
+.code-block pre {
+    margin: 0;
+    /* 给右上角的标签/按钮腾出一条「标题栏」空间，避免压住第一行代码 */
+    padding-top: 38px;
+}
+
+.code-lang {
+    position: absolute;
+    top: 13px;
+    right: 14px;
+    font-family: var(--sans);
+    font-size: 0.7rem;
+    line-height: 1;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6e7681;
+    pointer-events: none;
+    user-select: none;
+    transition: opacity var(--transition);
+}
+
+.code-copy {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    padding: 3px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #b9c0cb;
+    font-family: var(--sans);
+    font-size: 0.72rem;
+    line-height: 1.7;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--transition), background-color var(--transition), color var(--transition);
+}
+
+.code-block:hover .code-copy,
+.code-copy:focus-visible {
+    opacity: 1;
+}
+
+.code-block:hover .code-lang {
+    opacity: 0;
+}
+
+.code-copy:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+
+.code-copy.ok {
+    color: #86efac;
+    border-color: rgba(134, 239, 172, 0.4);
+}
+
+/* 触屏没有 hover：复制按钮常驻，语言标签让位 */
+@media (hover: none) {
+    .code-copy {
+        opacity: 1;
+    }
+
+    .code-lang {
+        display: none;
+    }
+}
+
+/* 文末收束标记 */
+.post-end {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 2.8em;
+    color: var(--text-muted);
+    font-family: var(--sans);
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
+    user-select: none;
+}
+
+.post-end::before,
+.post-end::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    /* 渐变要在 55% 前到达实色，否则整条线有一半是「几乎透明」，视觉上只剩短短一截 */
+    background: linear-gradient(90deg, transparent, var(--border) 55%);
+}
+
+.post-end::after {
+    background: linear-gradient(90deg, var(--border) 45%, transparent);
+}
+
+/* 超宽屏：卡片再放大一档，内边距同步加厚，正文行宽守在 840px 左右。
+   260 + 48 + 1060 = 1368 ≤ 容器内容宽 1460-48=1412，安全。 */
+@media (min-width: 1600px) {
+    .post-page {
+        --header-width: 1460px;
+    }
+
+    .container-post {
+        max-width: 1460px;
+    }
+
+    .post-layout {
+        grid-template-columns: minmax(0, 1060px);
+    }
+
+    .post-layout.has-toc {
+        grid-template-columns: 260px minmax(0, 1060px);
+        gap: 48px;
+    }
+
+    .post-page .post-full {
+        padding: 56px 110px;
+    }
+}
+
+/* 收起目录的断点要按「双列放得下」来定，而不是随便 1080：
+   双列需 236+32+960=1228 ⇒ 视口 ≥ 1228+48=1276。
+   若沿用 1080，1200px 左右的窗口会变成「双列把正文挤到 39 字/行，
+   比 1060px 单列还窄」——窗口更宽反而更难读。 */
+@media (max-width: 1279px) {
     .post-layout,
     .post-layout.has-toc {
-        grid-template-columns: minmax(0, 860px);
+        grid-template-columns: minmax(0, 960px);
         gap: 0;
     }
 

@@ -176,15 +176,139 @@ function renderPost(post, authed, isMain, adminId) {
         </article>
     `;
 
-    renderMarkdownInto(document.getElementById('postContent'), post.content);
-    bindInternalLinks(document.getElementById('postContent'));
+    const contentEl = document.getElementById('postContent');
+    renderMarkdownInto(contentEl, post.content);
+    enhanceCodeBlocks(contentEl);
+    enhanceTables(contentEl);
+    appendPostFooter(contentEl);
+    bindInternalLinks(contentEl);
     buildPostToc();
+    attachReadingProgress();
 
     const canEdit = authed && (isMain || Number(post.author_id) === adminId);
     renderPostAdminActions(post, canEdit);
     document.getElementById('floatingActions').hidden = false;
     bindPostInteractions();
     loadComments();
+}
+
+// ===== 正文增强：代码块 / 表格 / 文末标记 / 阅读进度 =====
+// 这些装饰只在详情页做，不动 markdown.js —— 编辑器预览的 DOM 会被每次输入全量重建，
+// 多包一层容器会干扰 data-offset 锚点与滚动跟随的坐标计算。
+
+// 代码块：右上角常驻语言标签，hover 时淡出并换成一键复制按钮
+function enhanceCodeBlocks(root) {
+    if (!root) return;
+    root.querySelectorAll('pre').forEach((pre) => {
+        if (pre.parentElement && pre.parentElement.classList.contains('code-block')) return;
+        const code = pre.querySelector('code');
+        if (!code) return;
+        // Mermaid 稍后会被 renderMermaidBlocks 替换成 .mermaid-block，包一层只会剩个空壳
+        if (/(^|\s)(language|lang)-mermaid(\s|$)/.test(code.className)) return;
+
+        // hljs 高亮后 class 形如 "hljs language-cpp"，取第一个语言标记即可
+        const matched = code.className.match(/(?:language|lang)-([\w+#.-]+)/);
+        const lang = matched ? matched[1] : '';
+
+        const wrap = document.createElement('div');
+        wrap.className = 'code-block';
+        pre.parentNode.insertBefore(wrap, pre);
+        wrap.appendChild(pre);
+
+        if (lang) {
+            const tag = document.createElement('span');
+            tag.className = 'code-lang';
+            tag.textContent = lang;
+            tag.setAttribute('aria-hidden', 'true');
+            wrap.appendChild(tag);
+        }
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'code-copy';
+        btn.textContent = '复制';
+        btn.setAttribute('aria-label', '复制代码');
+        btn.addEventListener('click', () => copyCode(btn, code));
+        wrap.appendChild(btn);
+    });
+}
+
+// 复制代码：优先异步剪贴板（https/localhost），失败退回 execCommand 以便 http 下也能用
+async function copyCode(btn, code) {
+    const text = String(code.innerText || '').replace(/\n+$/, '');
+    let ok = false;
+    if (navigator.clipboard && window.isSecureContext) {
+        try {
+            await navigator.clipboard.writeText(text);
+            ok = true;
+        } catch (e) {
+            ok = false;
+        }
+    }
+    if (!ok) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:-1000px;left:0;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        ta.remove();
+    }
+
+    btn.textContent = ok ? '已复制' : '复制失败';
+    btn.classList.toggle('ok', ok);
+    clearTimeout(btn._resetTimer);
+    btn._resetTimer = setTimeout(() => {
+        btn.textContent = '复制';
+        btn.classList.remove('ok');
+    }, 1600);
+}
+
+// 表格外包一层滚动容器：窄表格撑满、宽表格横向滚动，
+// 不再出现「表格自己 display:block，右边空一大块」的老问题
+function enhanceTables(root) {
+    if (!root) return;
+    root.querySelectorAll('table').forEach((table) => {
+        if (table.parentElement && table.parentElement.classList.contains('table-wrap')) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'table-wrap';
+        table.parentNode.insertBefore(wrap, table);
+        wrap.appendChild(table);
+    });
+}
+
+// 文末收束标记，避免正文「戛然而止」
+function appendPostFooter(root) {
+    if (!root || root.querySelector('.post-end')) return;
+    const end = document.createElement('div');
+    end.className = 'post-end';
+    const span = document.createElement('span');
+    span.textContent = '全文完';
+    end.appendChild(span);
+    root.appendChild(end);
+}
+
+// 顶部阅读进度条：用 transform:scaleX 走合成层，比改 width 少一次重排。
+// 不用 rAF 调度 —— scroll 事件本身已被浏览器按帧节流，而 rAF 在后台标签页 /
+// 不渲染的文档里会停摆，那样进度条会彻底不更新。
+function attachReadingProgress() {
+    const bar = document.getElementById('readProgress');
+    if (!bar) return;
+    let max = -1;
+    const update = () => {
+        const doc = document.documentElement;
+        // 内容可能因为图片 / 字体延迟加载而变高，这里顺手校正分母
+        const current = doc.scrollHeight - doc.clientHeight;
+        if (current !== max) max = current;
+        const ratio = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+        bar.style.transform = 'scaleX(' + ratio + ')';
+    };
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update, { passive: true });
+    // 图片加载完页面会变长，补一次校正
+    setTimeout(update, 800);
 }
 
 // ===== 左侧文章目录（TOC） =====
